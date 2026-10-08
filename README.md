@@ -6,6 +6,13 @@
 
 <p align="center">A Twitch client for Android.</p>
 
+<p align="center">
+  <img src="screenshots/home.png" width="200" alt="Home with live followed channels">
+  <img src="screenshots/stream.png" width="200" alt="Stream with chat and emotes">
+  <img src="screenshots/channel.webp" width="200" alt="Channel profile">
+  <img src="screenshots/chat-settings.png" width="200" alt="Chat settings with 7TV, FFZ and BTTV emotes">
+</p>
+
 The source is closed; this repository hosts the releases.
 
 ## Download
@@ -50,6 +57,11 @@ News and updates: [Telegram](https://t.me/customtv_app)
 ## Premium
 
 A small subscription unlocks past broadcasts, whispers, channel points, polls and predictions, moderation tools, customizable notifications, link previews in chat, and AI chatter portraits.
+
+<p align="center">
+  <img src="screenshots/premium-chat-replay.png" width="200" alt="Past broadcast with chat replay">
+  <img src="screenshots/premium-channel-points.png" width="200" alt="Channel points rewards">
+</p>
 
 ## Security
 

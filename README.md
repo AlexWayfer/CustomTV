@@ -1,6 +1,10 @@
-# CustomTV
+<p align="center">
+  <img src="logo.png" width="128" alt="CustomTV logo">
+</p>
 
-A Twitch client for Android.
+<h1 align="center">CustomTV</h1>
+
+<p align="center">A Twitch client for Android.</p>
 
 The source is closed; this repository hosts the releases.
 

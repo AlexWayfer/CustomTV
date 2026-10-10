@@ -1,0 +1,4 @@
+<resources>
+    <!-- Debug builds install next to the release build, so the launcher tells them apart. -->
+    <string name="app_name" translatable="false">CustomTV Debug</string>
+</resources>

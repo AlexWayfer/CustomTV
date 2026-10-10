@@ -1,0 +1,32 @@
+package name.alexwayfer.customtv.data
+
+data class AppSettings(
+    val sevenTvEmotes: Boolean = true,
+    val ffzEmotes: Boolean = true,
+    val bttvEmotes: Boolean = true,
+    val meMessageItalic: Boolean = true,
+    val highlightFirstMessages: Boolean = false,
+    val markRaiders: Boolean = true,
+    val highlightMentions: Boolean = true,
+    val mentionVibration: Boolean = true,
+    val mentionVibrationMs: Int = 400,
+    val mentionVibrationPercent: Int = 80,
+    val mentionSound: Boolean = false,
+    val mentionSoundUri: String = "",
+    val keywordPhrases: List<KeywordPhrase> = emptyList(),
+    val temporarilyPinHighlightedMessages: Boolean = false,
+    val highlightPinSeconds: Int = 15,
+    val loadRecentChatOnOpen: Boolean = true,
+    val emoteCompletionWithoutColon: Boolean = false,
+    val keepKeyboardAfterSend: Boolean = false,
+    val backgroundSoundOnly: Boolean = true,
+    val streamStartNotifications: Boolean = true,
+    val streamChangeNotifications: Boolean = false,
+    val watchStreakNotifications: Boolean = true,
+    val linkPreviewMode: LinkPreviewMode = LinkPreviewMode.None,
+    val autoClaimBonus: Boolean = false,
+    val portraitLanguage: PortraitLanguage = PortraitLanguage.System,
+    val portraitModel: PortraitModelKind = PortraitModelKind.GroqQwen,
+    /** The sleep timer's time set last, in minutes, which its picker opens on; zero before the first one. */
+    val sleepTimerMinutes: Int = 0,
+)

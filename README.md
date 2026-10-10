@@ -13,7 +13,7 @@
   <img src="screenshots/chat-settings.png" width="200" alt="Chat settings with 7TV, FFZ and BTTV emotes">
 </p>
 
-The source is closed; this repository hosts the releases.
+This repository holds the source of the free edition and its releases. The Premium features are closed source.
 
 ## Download
 
@@ -66,3 +66,24 @@ A small subscription unlocks past broadcasts, whispers, channel points, polls an
 ## Security
 
 You never type your Twitch password into the app. It logs in with Twitch's device flow, the one TVs use: you approve it on twitch.tv/activate. The token is stored encrypted with a key from the Android Keystore and is excluded from backups.
+
+## Building
+
+1. Register an application in the [Twitch developer console](https://dev.twitch.tv/console) with the client type Public.
+2. Put its client ID into `twitch.properties` at the root of the project:
+
+   ```properties
+   TWITCH_CLIENT_ID=your-client-id
+   ```
+
+3. Open the project in Android Studio and run the `freeDebug` variant, or build it with `./gradlew assembleFreeDebug`.
+
+The update check reads the releases from a Telegram group and stays off without `telegram.properties`.
+
+## Contributing
+
+Issues with bugs and ideas are welcome. Pull requests are not accepted: the same code goes into the closed Premium build.
+
+## License
+
+[GPL-3.0](LICENSE)

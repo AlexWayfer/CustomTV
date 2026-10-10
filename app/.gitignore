@@ -1,0 +1,4 @@
+/build
+# Signed APKs that Android Studio builds per flavor
+/free/release/
+/premium/release/

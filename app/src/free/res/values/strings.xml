@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="refresh_emotes_and_labels">Refresh emotes</string>
+    <string name="premium_experimental">Experimental:</string>
+    <string name="premium_feature_past_broadcasts">Past broadcasts</string>
+    <string name="premium_feature_notifications">Customizable notifications</string>
+    <string name="premium_feature_moderation">Moderation tools</string>
+    <string name="premium_feature_chat">Link previews in chat</string>
+    <string name="premium_feature_chatter_portraits">AI chatter portraits</string>
+    <string name="premium_and_more">And more!</string>
+    <string name="premium_upgrade">Upgrade to Premium</string>
+    <string name="premium_not_now">Not now</string>
+    <string name="notification_prompt">Get notified about app updates and crashes</string>
+    <string name="notification_prompt_enable">Enable</string>
+    <string name="notification_prompt_dismiss">Not now</string>
+</resources>

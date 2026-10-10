@@ -1,0 +1,13 @@
+<resources>
+    <style name="Theme.CustomTV" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/twitch_purple</item>
+        <item name="colorPrimaryVariant">@color/twitch_bg</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/twitch_purple</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">@color/twitch_bg</item>
+        <item name="android:navigationBarColor">@color/twitch_bg</item>
+        <item name="android:windowBackground">@color/twitch_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

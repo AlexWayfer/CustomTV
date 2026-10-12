@@ -1,5 +1,8 @@
 package name.alexwayfer.customtv.telegram
 
+import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.UiText
+import name.alexwayfer.customtv.update.AppVersion
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -45,10 +48,22 @@ class TelegramChecksTest {
 
     @Test
     fun forumReadsOnlyTheConfiguredTopic() {
-        assertEquals(TelegramHistoryRequest.Topic(65), telegramHistoryRequest(chatId = -1001L, forum = true, topicId = 65))
-        assertEquals(TelegramHistoryRequest.TopicMissing, telegramHistoryRequest(chatId = -1001L, forum = true, topicId = 0))
-        assertEquals(TelegramHistoryRequest.WholeChat, telegramHistoryRequest(chatId = -1001L, forum = false, topicId = 65))
-        assertEquals(TelegramHistoryRequest.ChatMissing, telegramHistoryRequest(chatId = 0L, forum = true, topicId = 65))
+        assertEquals(
+            TelegramHistoryRequest.Topic(65),
+            telegramHistoryRequest(chatId = -1001L, forum = true, topicId = 65),
+        )
+        assertEquals(
+            TelegramHistoryRequest.TopicMissing,
+            telegramHistoryRequest(chatId = -1001L, forum = true, topicId = 0),
+        )
+        assertEquals(
+            TelegramHistoryRequest.WholeChat,
+            telegramHistoryRequest(chatId = -1001L, forum = false, topicId = 65),
+        )
+        assertEquals(
+            TelegramHistoryRequest.ChatMissing,
+            telegramHistoryRequest(chatId = 0L, forum = true, topicId = 65),
+        )
     }
 
     @Test
@@ -75,5 +90,14 @@ class TelegramChecksTest {
         assertEquals("Alex Way @alex", telegramAccountLabel("Alex", "Way", "alex"))
         assertEquals("@alex", telegramAccountLabel(" ", "", "alex"))
         assertEquals("", telegramAccountLabel("", "", null))
+    }
+
+    @Test
+    fun noUpdateStatusNamesTheLatestVersionFound() {
+        assertEquals(
+            UiText.Resource(R.string.telegram_no_new_versions_latest, listOf("1.2.3")),
+            telegramNoUpdateText(AppVersion.parse("1.2.3")),
+        )
+        assertEquals(UiText.Resource(R.string.telegram_no_new_versions), telegramNoUpdateText(null))
     }
 }

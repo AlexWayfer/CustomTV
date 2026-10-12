@@ -7,17 +7,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 
 /**
- * How compact the full overlaid chat looks as it rises out of the corner or sinks back into it ([progress], from 0
- * to 1, read when drawn), and which of its messages the compact chat shows, oldest first: those take its bubbles,
- * the rest fade.
- */
-internal class OverlayChatRowMorph(
-    val progress: () -> Float,
-    val compactIds: List<String>,
-    val fadedId: String?,
-)
-
-/**
  * Turns a row of the full chat into a bubble of the compact one along [morph]'s progress: the rounded see-through
  * ground, the faded top of the uppermost one, and the gap above each, which lifts the rows instead of laying them out
  * again, so neither the text nor the list moves under it. A row the compact chat leaves out fades away above them.

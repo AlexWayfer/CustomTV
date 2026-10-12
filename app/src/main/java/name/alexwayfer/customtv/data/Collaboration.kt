@@ -2,14 +2,6 @@ package name.alexwayfer.customtv.data
 
 import org.json.JSONObject
 
-internal data class CollaborationChannel(
-    val id: String,
-    val login: String,
-    val displayName: String,
-    val avatarUrl: String?,
-    val viewerCount: Int?,
-)
-
 private data class ParsedCollaborator(
     val channel: CollaborationChannel,
     val leader: Boolean,
@@ -29,7 +21,7 @@ internal fun parseCollaborationChannels(
     body: String,
     currentLogin: String? = null,
 ): List<CollaborationChannel>? {
-    val channel = runCatching { JSONObject(body) }.getOrNull()
+    val channel = body.toJsonObjectOrNull()
         ?.optJSONObject("data")
         ?.optJSONObject("channel")
         ?: return null
@@ -37,27 +29,7 @@ internal fun parseCollaborationChannels(
     val collaborators = channel.optJSONObject("collaboration")
         ?.optJSONArray("collaborators")
         ?: return emptyList()
-    val parsed = buildList {
-        for (index in 0 until collaborators.length()) {
-            val item = collaborators.optJSONObject(index) ?: continue
-            val status = item.optString("status")
-            if (status.isNotBlank() && !status.equals("ACTIVE", ignoreCase = true)) continue
-            val user = item.optJSONObject("user") ?: continue
-            val id = user.optString("id").takeIf { it.isNotBlank() && it != "null" } ?: continue
-            val login = user.optString("login").takeIf { it.isNotBlank() && it != "null" } ?: continue
-            val displayName = user.optString("displayName").takeIf { it.isNotBlank() && it != "null" } ?: login
-            val avatar = user.optString("profileImageURL").takeIf { it.isNotBlank() && it != "null" }
-            val viewers = user.optJSONObject("stream")?.let { stream ->
-                if (stream.isNull("viewersCount")) null else stream.optInt("viewersCount")
-            }
-            add(
-                ParsedCollaborator(
-                    channel = CollaborationChannel(id, login, displayName, avatar, viewers),
-                    leader = item.optString("role").equals("LEADER", ignoreCase = true),
-                ),
-            )
-        }
-    }
+    val parsed = collaborators.objects().filter(::isActiveCollaborator).mapNotNull(::parseCollaborator)
     return parsed.sortedWith(
         compareByDescending<ParsedCollaborator> {
             currentLogin != null && it.channel.login.equals(currentLogin, ignoreCase = true)
@@ -67,4 +39,18 @@ internal fun parseCollaborationChannels(
             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.channel.displayName }
             .thenBy { it.channel.login },
     ).map { it.channel }
+}
+
+/** A collaborator with the channel shown for them; one without an ID or login is dropped. */
+private fun parseCollaborator(item: JSONObject): ParsedCollaborator? {
+    val user = item.optJSONObject("user") ?: return null
+    val id = user.text("id") ?: return null
+    val login = user.text("login") ?: return null
+    val displayName = user.text("displayName") ?: login
+    val avatar = user.text("profileImageURL")
+    val viewers = user.optJSONObject("stream")?.intOrNull("viewersCount")
+    return ParsedCollaborator(
+        channel = CollaborationChannel(id, login, displayName, avatar, viewers),
+        leader = item.optString("role").equals("LEADER", ignoreCase = true),
+    )
 }

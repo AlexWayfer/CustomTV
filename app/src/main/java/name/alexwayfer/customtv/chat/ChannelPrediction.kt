@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.chat
 
-import java.time.Instant
+import name.alexwayfer.customtv.data.instantMillisOrNull
+import name.alexwayfer.customtv.data.trimmedText
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -42,14 +43,11 @@ internal object ChannelPredictionParser {
         if (type != "event-created" && type != "event-updated") return null
         val data = message.optJSONObject("data") ?: return null
         val event = data.optJSONObject("event") ?: return null
-        val serverNow = instant(jsonText(data, "timestamp")) ?: nowMillis
+        val serverNow = instant(data.trimmedText("timestamp")) ?: nowMillis
         return parse(
             event = event,
-            createdKey = "created_at",
-            windowKey = "prediction_window_seconds",
-            pointsKey = "total_points",
-            usersKey = "total_users",
-            winningOutcomeId = jsonText(event, "winning_outcome_id"),
+            keys = PUB_SUB_KEYS,
+            winningOutcomeId = event.trimmedText("winning_outcome_id"),
             clockOffsetMillis = nowMillis - serverNow,
         )
     }
@@ -59,48 +57,59 @@ internal object ChannelPredictionParser {
         if (event == null) return null
         return parse(
             event = event,
-            createdKey = "createdAt",
-            windowKey = "predictionWindowSeconds",
-            pointsKey = "totalPoints",
-            usersKey = "totalUsers",
-            winningOutcomeId = jsonText(event.optJSONObject("winningOutcome"), "id"),
+            keys = GQL_KEYS,
+            winningOutcomeId = event.optJSONObject("winningOutcome")?.trimmedText("id"),
             clockOffsetMillis = 0L,
         )
     }
 
+    /** The field names of one source of predictions. */
+    private data class PredictionKeys(val created: String, val window: String, val points: String, val users: String)
+
+    private val PUB_SUB_KEYS = PredictionKeys(
+        created = "created_at",
+        window = "prediction_window_seconds",
+        points = "total_points",
+        users = "total_users",
+    )
+
+    private val GQL_KEYS = PredictionKeys(
+        created = "createdAt",
+        window = "predictionWindowSeconds",
+        points = "totalPoints",
+        users = "totalUsers",
+    )
+
     private fun parse(
         event: JSONObject,
-        createdKey: String,
-        windowKey: String,
-        pointsKey: String,
-        usersKey: String,
+        keys: PredictionKeys,
         winningOutcomeId: String?,
         clockOffsetMillis: Long,
     ): ChannelPrediction? {
-        val id = jsonText(event, "id") ?: return null
-        val windowMillis = event.optLong(windowKey).coerceAtLeast(0L) * 1_000L
-        val createdAt = instant(jsonText(event, createdKey))
+        val id = event.trimmedText("id") ?: return null
+        val windowMillis = event.optLong(keys.window).coerceAtLeast(0L) * 1_000L
+        val createdAt = instant(event.trimmedText(keys.created))
         return ChannelPrediction(
             id = id,
-            title = jsonText(event, "title").orEmpty(),
+            title = event.trimmedText("title").orEmpty(),
             status = status(event.optString("status")),
-            outcomes = parseOutcomes(event.optJSONArray("outcomes"), pointsKey, usersKey),
+            outcomes = parseOutcomes(event.optJSONArray("outcomes"), keys),
             winningOutcomeId = winningOutcomeId,
             windowMillis = windowMillis,
             endsAtMillis = createdAt?.let { it + windowMillis + clockOffsetMillis } ?: 0L,
         )
     }
 
-    private fun parseOutcomes(array: JSONArray?, pointsKey: String, usersKey: String): List<ChannelPredictionOutcome> {
+    private fun parseOutcomes(array: JSONArray?, keys: PredictionKeys): List<ChannelPredictionOutcome> {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
             val outcome = array.optJSONObject(index) ?: return@mapNotNull null
-            val id = jsonText(outcome, "id") ?: return@mapNotNull null
+            val id = outcome.trimmedText("id") ?: return@mapNotNull null
             ChannelPredictionOutcome(
                 id = id,
-                title = jsonText(outcome, "title").orEmpty(),
-                points = outcome.optLong(pointsKey).coerceAtLeast(0L),
-                users = outcome.optInt(usersKey).coerceAtLeast(0),
+                title = outcome.trimmedText("title").orEmpty(),
+                points = outcome.optLong(keys.points).coerceAtLeast(0L),
+                users = outcome.optInt(keys.users).coerceAtLeast(0),
             )
         }
     }
@@ -112,5 +121,5 @@ internal object ChannelPredictionParser {
     }
 
     private fun instant(raw: String?): Long? =
-        raw?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+        raw?.let(::instantMillisOrNull)
 }

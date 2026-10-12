@@ -165,30 +165,36 @@ private fun PremiumBannerDialog(onDismiss: () -> Unit) {
                         Spacer(Modifier.height(12.dp))
                     }
                 }
-                Column(
-                    // No top padding: the list above already keeps its gap from the buttons.
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Button(
-                        onClick = {
-                            openUpgrade()
-                            onDismiss()
-                        },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        colors = goldButtonColors(),
-                        contentPadding = PaddingValues(horizontal = 40.dp),
-                    ) {
-                        Text(stringResource(R.string.premium_upgrade), style = MaterialTheme.typography.titleMedium)
-                    }
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.premium_not_now))
-                    }
-                }
+                PremiumBannerButtons(openUpgrade, onDismiss)
             }
+        }
+    }
+}
+
+/** Upgrade, which opens where it leads and closes the banner, and Not now. */
+@Composable
+private fun PremiumBannerButtons(openUpgrade: () -> Unit, onDismiss: () -> Unit) {
+    Column(
+        // No top padding: the list above already keeps its gap from the buttons.
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Button(
+            onClick = {
+                openUpgrade()
+                onDismiss()
+            },
+            modifier = Modifier.heightIn(min = 48.dp),
+            colors = goldButtonColors(),
+            contentPadding = PaddingValues(horizontal = 40.dp),
+        ) {
+            Text(stringResource(R.string.premium_upgrade), style = MaterialTheme.typography.titleMedium)
+        }
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(R.string.premium_not_now))
         }
     }
 }

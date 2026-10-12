@@ -40,14 +40,6 @@ import name.alexwayfer.customtv.chat.whispersNavEnabled
 import name.alexwayfer.customtv.chat.whispersUnreadCount
 import name.alexwayfer.customtv.ui.components.UnreadCountBadge
 
-internal enum class AppSection {
-    Home,
-    Whispers,
-    Account,
-    ChannelProfile,
-    Settings,
-}
-
 /** One destination of the app navigation, drawn the same at the bottom or on the rail. */
 private class NavEntry(
     val selected: Boolean,
@@ -83,33 +75,7 @@ internal fun AppNavigationBar(
             ),
         )
         if (whispersNavEnabled()) {
-            val unread = if (loggedIn) whispersUnreadCount() else 0
-            val unreadText = pluralStringResource(R.plurals.whispers_unread, unread, unread)
-            add(
-                NavEntry(
-                    selected = section == AppSection.Whispers,
-                    onClick = if (loggedIn) onWhispers else onLogIn,
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                UnreadCountBadge(
-                                    count = unread,
-                                    modifier = Modifier.semantics {
-                                        if (unread > 0) contentDescription = unreadText
-                                    },
-                                )
-                            },
-                        ) {
-                            NavIcon(
-                                section == AppSection.Whispers,
-                                Icons.Filled.FilledEmail,
-                                Icons.Outlined.OutlinedEmail,
-                            )
-                        }
-                    },
-                    label = { NavLabel(stringResource(R.string.nav_whispers), section == AppSection.Whispers) },
-                ),
-            )
+            add(whispersNavEntry(section == AppSection.Whispers, loggedIn, if (loggedIn) onWhispers else onLogIn))
         }
         add(
             NavEntry(
@@ -145,52 +111,85 @@ internal fun AppNavigationBar(
             ),
         )
     }
+    if (rail) NavRail(entries, modifier) else NavBottomBar(entries, modifier)
+}
+
+/** Whispers, with the count of unread conversations on the icon. */
+@Composable
+private fun whispersNavEntry(selected: Boolean, loggedIn: Boolean, onClick: () -> Unit): NavEntry {
+    val unread = if (loggedIn) whispersUnreadCount() else 0
+    val unreadText = pluralStringResource(R.plurals.whispers_unread, unread, unread)
+    return NavEntry(
+        selected = selected,
+        onClick = onClick,
+        icon = {
+            BadgedBox(
+                badge = {
+                    UnreadCountBadge(
+                        count = unread,
+                        modifier = Modifier.semantics {
+                            if (unread > 0) contentDescription = unreadText
+                        },
+                    )
+                },
+            ) {
+                NavIcon(selected, Icons.Filled.FilledEmail, Icons.Outlined.OutlinedEmail)
+            }
+        },
+        label = { NavLabel(stringResource(R.string.nav_whispers), selected) },
+    )
+}
+
+@Composable
+private fun NavRail(entries: List<NavEntry>, modifier: Modifier) {
     val iconColor = MaterialTheme.colorScheme.onSurfaceVariant
-    if (rail) {
-        val itemColors = NavigationRailItemDefaults.colors(
-            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            unselectedIconColor = iconColor,
-            selectedTextColor = MaterialTheme.colorScheme.secondaryContainer,
-            unselectedTextColor = iconColor,
-        )
-        NavigationRail(
-            modifier = modifier,
-            // The bottom bar's color, so turning the phone only moves the navigation.
-            containerColor = NavigationBarDefaults.containerColor,
-            windowInsets = WindowInsets.systemBars
-                .union(WindowInsets.displayCutout)
-                .only(WindowInsetsSides.Vertical + WindowInsetsSides.Start),
-        ) {
-            // Grouped in the middle of the edge, where a thumb reaches a phone held on its side.
-            Spacer(Modifier.weight(1f))
-            entries.forEach { entry ->
-                NavigationRailItem(
-                    selected = entry.selected,
-                    onClick = entry.onClick,
-                    icon = entry.icon,
-                    label = entry.label,
-                    colors = itemColors,
-                )
-            }
-            Spacer(Modifier.weight(1f))
+    val itemColors = NavigationRailItemDefaults.colors(
+        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        unselectedIconColor = iconColor,
+        selectedTextColor = MaterialTheme.colorScheme.secondaryContainer,
+        unselectedTextColor = iconColor,
+    )
+    NavigationRail(
+        modifier = modifier,
+        // The bottom bar's color, so turning the phone only moves the navigation.
+        containerColor = NavigationBarDefaults.containerColor,
+        windowInsets = WindowInsets.systemBars
+            .union(WindowInsets.displayCutout)
+            .only(WindowInsetsSides.Vertical + WindowInsetsSides.Start),
+    ) {
+        // Grouped in the middle of the edge, where a thumb reaches a phone held on its side.
+        Spacer(Modifier.weight(1f))
+        entries.forEach { entry ->
+            NavigationRailItem(
+                selected = entry.selected,
+                onClick = entry.onClick,
+                icon = entry.icon,
+                label = entry.label,
+                colors = itemColors,
+            )
         }
-    } else {
-        val itemColors = NavigationBarItemDefaults.colors(
-            selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            unselectedIconColor = iconColor,
-            selectedTextColor = MaterialTheme.colorScheme.secondaryContainer,
-            unselectedTextColor = iconColor,
-        )
-        NavigationBar(modifier) {
-            entries.forEach { entry ->
-                NavigationBarItem(
-                    selected = entry.selected,
-                    onClick = entry.onClick,
-                    icon = entry.icon,
-                    label = entry.label,
-                    colors = itemColors,
-                )
-            }
+        Spacer(Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun NavBottomBar(entries: List<NavEntry>, modifier: Modifier) {
+    val iconColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        unselectedIconColor = iconColor,
+        selectedTextColor = MaterialTheme.colorScheme.secondaryContainer,
+        unselectedTextColor = iconColor,
+    )
+    NavigationBar(modifier) {
+        entries.forEach { entry ->
+            NavigationBarItem(
+                selected = entry.selected,
+                onClick = entry.onClick,
+                icon = entry.icon,
+                label = entry.label,
+                colors = itemColors,
+            )
         }
     }
 }

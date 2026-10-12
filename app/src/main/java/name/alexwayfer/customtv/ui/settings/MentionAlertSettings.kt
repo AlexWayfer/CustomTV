@@ -12,31 +12,31 @@ internal fun MentionAlertSettings(settings: AppSettings, viewModel: SettingsView
         label = stringResource(R.string.mention_vibration),
         hint = stringResource(R.string.mention_vibration_hint),
         checked = settings.mentionVibration,
-        onCheckedChange = viewModel::setMentionVibration,
+        onCheckedChange = viewModel.mentions::setMentionVibration,
     )
     SettingDetails(visible = settings.mentionVibration) {
         MentionVibrationControls(
             durationMs = settings.mentionVibrationMs,
             strengthPercent = settings.mentionVibrationPercent,
-            onDurationChange = viewModel::setMentionVibrationMs,
-            onStrengthChange = viewModel::setMentionVibrationPercent,
+            onDurationChange = viewModel.mentions::setMentionVibrationMs,
+            onStrengthChange = viewModel.mentions::setMentionVibrationPercent,
         )
     }
     SettingsToggle(
         label = stringResource(R.string.mention_sound),
         hint = stringResource(R.string.mention_sound_hint),
         checked = settings.mentionSound,
-        onCheckedChange = viewModel::setMentionSound,
+        onCheckedChange = viewModel.mentions::setMentionSound,
     )
     SettingDetails(visible = settings.mentionSound) {
         MentionSoundChoice(
             storedUri = settings.mentionSoundUri,
-            onUriChange = viewModel::setMentionSoundUri,
+            onUriChange = viewModel.mentions::setMentionSoundUri,
         )
     }
     RecentChatSettings(
         enabled = settings.loadRecentChatOnOpen,
-        onEnabledChange = viewModel::setLoadRecentChatOnOpen,
+        onEnabledChange = viewModel.mentions::setLoadRecentChatOnOpen,
     )
     PremiumMentionSettings(settings, viewModel)
 }

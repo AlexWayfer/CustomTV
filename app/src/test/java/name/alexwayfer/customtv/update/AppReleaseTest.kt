@@ -103,7 +103,8 @@ class AppReleaseTest {
     fun anotherFilesDownloadDoesNotCount() {
         val release = release(7, "1.2")
         assertEquals(AppUpdateAction.Download(null), appUpdateAction(release, AppUpdateDownload.Running(8, 0.3f)))
-        assertEquals(AppUpdateAction.Download(null), appUpdateAction(release, AppUpdateDownload.Failed(8, UiText.Raw("Timeout"))))
+        val failed = AppUpdateDownload.Failed(8, UiText.Raw("Timeout"))
+        assertEquals(AppUpdateAction.Download(null), appUpdateAction(release, failed))
     }
 
     @Test

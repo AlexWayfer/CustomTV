@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.ui.home
 
 import name.alexwayfer.customtv.data.FollowedChannel
+import name.alexwayfer.customtv.data.FollowedChannelsResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -9,6 +10,86 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FollowedRefreshPolicyTest {
+    @Test
+    fun theMinuteRefreshReadsOnlyWhoIsLive() {
+        assertFalse(followedLoadIsFull(liveOnly = true, listEmpty = false, lastFullFailed = false))
+    }
+
+    @Test
+    fun theMinuteRefreshAfterAFailedWholeLoadReadsTheWholeList() {
+        assertTrue(followedLoadIsFull(liveOnly = true, listEmpty = false, lastFullFailed = true))
+    }
+
+    @Test
+    fun anEmptyListOrAWholeLoadAskedForReadsTheWholeList() {
+        assertTrue(followedLoadIsFull(liveOnly = true, listEmpty = true, lastFullFailed = false))
+        assertTrue(followedLoadIsFull(liveOnly = false, listEmpty = false, lastFullFailed = false))
+    }
+
+    @Test
+    fun theFirstFailureLeavingAnOldListOnScreenIsTold() {
+        assertTrue(
+            followedLoadFailureShown(
+                FollowedChannelsResult.Unavailable,
+                listShown = true,
+                failedBefore = false,
+                userAsked = false,
+            ),
+        )
+    }
+
+    @Test
+    fun theMinuteRetriesOfAFailedLoadDoNotTellItAgain() {
+        assertFalse(
+            followedLoadFailureShown(
+                FollowedChannelsResult.Unavailable,
+                listShown = true,
+                failedBefore = true,
+                userAsked = false,
+            ),
+        )
+    }
+
+    @Test
+    fun aLoadTheUserAskedForTellsEveryFailure() {
+        assertTrue(
+            followedLoadFailureShown(
+                FollowedChannelsResult.Unavailable,
+                listShown = true,
+                failedBefore = true,
+                userAsked = true,
+            ),
+        )
+    }
+
+    @Test
+    fun anEmptyListOrAnotherAnswerIsNotToldBySnackbar() {
+        assertFalse(
+            followedLoadFailureShown(
+                FollowedChannelsResult.Unavailable,
+                listShown = false,
+                failedBefore = false,
+                userAsked = true,
+            ),
+        )
+        assertFalse(
+            followedLoadFailureShown(
+                FollowedChannelsResult.Rejected,
+                listShown = true,
+                failedBefore = false,
+                userAsked = true,
+            ),
+        )
+    }
+
+    @Test
+    fun onlyAFailureThatMayPassIsTriedAgain() {
+        assertTrue(followedLoadRetries(FollowedChannelsResult.Unavailable))
+        assertFalse(followedLoadRetries(FollowedChannelsResult.Rejected))
+        assertFalse(followedLoadRetries(FollowedChannelsResult.NeedsPermission))
+        assertFalse(followedLoadRetries(FollowedChannelsResult.Ready(emptyList())))
+    }
+
     @Test
     fun theFirstAutomaticLoadIsAllowed() {
         assertTrue(
@@ -129,9 +210,13 @@ class FollowedRefreshPolicyTest {
     @Test
     fun followsAreUnknownWhileLoadingOrFailedOrLoggedOut() {
         val channels = listOf(FollowedChannel(id = "1", login = "amy", displayName = "amy"))
-        assertNull(followedChannelIds(signedIn = true, status = FollowedChannelsStatus.Loading, channels = emptyList()))
-        assertNull(followedChannelIds(signedIn = true, status = FollowedChannelsStatus.Unavailable, channels = emptyList()))
-        assertNull(followedChannelIds(signedIn = true, status = FollowedChannelsStatus.NeedsPermission, channels = emptyList()))
+        for (status in listOf(
+            FollowedChannelsStatus.Loading,
+            FollowedChannelsStatus.Unavailable,
+            FollowedChannelsStatus.NeedsPermission,
+        )) {
+            assertNull(followedChannelIds(signedIn = true, status = status, channels = emptyList()))
+        }
         assertNull(followedChannelIds(signedIn = false, status = FollowedChannelsStatus.Ready, channels = channels))
     }
 }

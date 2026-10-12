@@ -10,6 +10,9 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
+/** A scroll that falls behind the animation by more than this has hit an edge, so the fling stops. */
+private const val HALF_PIXEL = 0.5f
+
 /**
  * The notice page a fling settles on. [position] counts pages from the first, so 1.3 is a third of
  * the way from the second page to the third. A fling faster than [minFlingVelocity] moves to the
@@ -45,7 +48,7 @@ internal class ChatNoticeFlingBehavior(
         AnimationState(initialValue = previous, initialVelocity = initialVelocity).animateTo(target.toFloat()) {
             val consumed = scrollBy(value - previous)
             previous += consumed
-            if (abs(value - previous) > 0.5f) cancelAnimation()
+            if (abs(value - previous) > HALF_PIXEL) cancelAnimation()
         }
         return 0f
     }

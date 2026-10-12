@@ -23,8 +23,11 @@ import kotlin.math.roundToInt
 
 fun emoteAspectRatio(url: String): Float? = SharedEmoteStore.aspectRatio(url)
 
+/** Keeps a broken fallback from collapsing an emote to no width. */
+private const val MIN_EMOTE_ASPECT_RATIO = 0.01f
+
 fun resolvedEmoteAspectRatio(url: String, fallback: Float): Float {
-    return emoteAspectRatio(url) ?: fallback.coerceAtLeast(0.01f)
+    return emoteAspectRatio(url) ?: fallback.coerceAtLeast(MIN_EMOTE_ASPECT_RATIO)
 }
 
 internal fun aspectRatioFromIntrinsic(width: Int, height: Int): Float? {

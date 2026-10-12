@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -91,51 +93,62 @@ internal fun SleepTimerWheel(
                 }
             },
     ) {
-        LazyColumn(
-            state = listState,
-            flingBehavior = rememberSnapFlingBehavior(listState),
-            modifier = Modifier
-                .fillMaxSize()
-                .clearAndSetSemantics { },
-        ) {
-            items(WHEEL_ITEM_COUNT) { index ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(WheelItemHeight),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = (wheelValue(index, count) * step).toString(),
-                        color = if (index == centerIndex) TwitchPurple else TwitchTextSecondary,
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                }
+        WheelNumbers(listState, count, step, centerIndex = { centerIndex })
+        WheelFrame(label)
+    }
+}
+
+@Composable
+private fun WheelNumbers(listState: LazyListState, count: Int, step: Int, centerIndex: () -> Int) {
+    LazyColumn(
+        state = listState,
+        flingBehavior = rememberSnapFlingBehavior(listState),
+        modifier = Modifier
+            .fillMaxSize()
+            .clearAndSetSemantics { },
+    ) {
+        items(WHEEL_ITEM_COUNT) { index ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WheelItemHeight),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = (wheelValue(index, count) * step).toString(),
+                    color = if (index == centerIndex()) TwitchPurple else TwitchTextSecondary,
+                    style = MaterialTheme.typography.titleLarge,
+                )
             }
         }
-        HorizontalDivider(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = -WheelItemHeight / 2),
-            color = TwitchTextSecondary,
-        )
-        HorizontalDivider(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .offset(y = WheelItemHeight / 2),
-            color = TwitchTextSecondary,
-        )
-        // The unit stays beside the chosen number, so it does not read as one more row of the wheel.
-        Text(
-            text = label,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 8.dp)
-                .clearAndSetSemantics { },
-            color = TwitchTextSecondary,
-            style = MaterialTheme.typography.bodyMedium,
-        )
     }
+}
+
+/** The lines around the middle row, and the unit beside it. */
+@Composable
+private fun BoxScope.WheelFrame(label: String) {
+    HorizontalDivider(
+        modifier = Modifier
+            .align(Alignment.Center)
+            .offset(y = -WheelItemHeight / 2),
+        color = TwitchTextSecondary,
+    )
+    HorizontalDivider(
+        modifier = Modifier
+            .align(Alignment.Center)
+            .offset(y = WheelItemHeight / 2),
+        color = TwitchTextSecondary,
+    )
+    // The unit stays beside the chosen number, so it does not read as one more row of the wheel.
+    Text(
+        text = label,
+        modifier = Modifier
+            .align(Alignment.CenterEnd)
+            .padding(end = 8.dp)
+            .clearAndSetSemantics { },
+        color = TwitchTextSecondary,
+        style = MaterialTheme.typography.bodyMedium,
+    )
 }
 
 /** The visible item nearest the middle of the wheel; null before the first layout. */

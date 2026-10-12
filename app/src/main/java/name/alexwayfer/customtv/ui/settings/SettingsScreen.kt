@@ -45,10 +45,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.ui.notifications.SettingsNotificationPrompt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onClose: () -> Unit,
@@ -67,51 +67,14 @@ fun SettingsScreen(
         // A subpage is the whole section and opens at its top; only the main list scrolls to one.
         if (page != SettingsPage.Main) onScrolled()
     }
-    val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val savedCredentials by ChatterLabelsRepository.credentials.collectAsStateWithLifecycle()
-    val credentialsLoaded by ChatterLabelsRepository.credentialsLoaded.collectAsStateWithLifecycle()
-    val body = settingsBody(
-        animatedControlValue(settings),
-        animatedControlValue(
-            if (credentialsLoaded) {
-                chatterLabelFieldSeed(savedCredentials?.token, savedCredentials?.gistId)
-            } else {
-                null
-            },
-        ),
-    )
+    val body = storedSettingsBody(viewModel)
     val leaveGuard = remember { SettingsLeaveGuard() }
+    val backToMain = { leaveGuard.leave { page = SettingsPage.Main } }
     BackHandler(onBack = onClose)
-    BackHandler(enabled = page != SettingsPage.Main) { leaveGuard.leave { page = SettingsPage.Main } }
+    BackHandler(enabled = page != SettingsPage.Main, onBack = backToMain)
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
-                        Text(stringResource(current.titleRes()))
-                    }
-                },
-                navigationIcon = {
-                    // Grows from no width, so the title slides aside instead of jumping.
-                    AnimatedVisibility(
-                        visible = page != SettingsPage.Main,
-                        enter = fadeIn() + expandHorizontally(),
-                        exit = fadeOut() + shrinkHorizontally(),
-                    ) {
-                        IconButton(onClick = { leaveGuard.leave { page = SettingsPage.Main } }) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.navigate_back),
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        },
+        topBar = { SettingsTopBar(page, onBack = backToMain) },
     ) { padding ->
         AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
             // The keyboard's inset already holds the navigation bar the Scaffold padded for; without consuming it
@@ -124,36 +87,7 @@ fun SettingsScreen(
                     modifier = pageModifier,
                     scroll = mainScroll,
                 ) { anchor ->
-                    SettingsNotificationPrompt()
-                    SettingsPageEntry(
-                        icon = painterResource(R.drawable.ic_chat),
-                        title = stringResource(R.string.settings_page_chat),
-                        hint = stringResource(R.string.settings_page_chat_hint),
-                        onOpen = { page = SettingsPage.Chat },
-                    )
-                    SettingsPageEntry(
-                        icon = painterResource(R.drawable.ic_alternate_email),
-                        title = stringResource(R.string.settings_page_mentions),
-                        hint = stringResource(R.string.settings_page_mentions_hint),
-                        onOpen = { page = SettingsPage.Mentions },
-                    )
-                    NotificationSettingsEntry(onOpen = { page = SettingsPage.Notifications })
-                    SettingsPageEntry(
-                        icon = rememberVectorPainter(Icons.Outlined.PlayArrow),
-                        title = stringResource(R.string.settings_section_playback),
-                        hint = stringResource(R.string.settings_page_playback_hint),
-                        onOpen = { page = SettingsPage.Playback },
-                    )
-                    ChatterPortraitSettingsEntry(onOpen = { page = SettingsPage.ChatterPortraits })
-                    ChatterLabelsSettingsEntry(onOpen = { page = SettingsPage.ChatterLabels })
-                    ExperimentalSettingsEntry(accountName, onOpen = { page = SettingsPage.Experimental })
-                    Column(modifier = Modifier.settingsScrollAnchor(anchor)) {
-                        TelegramSettings()
-                    }
-                    PremiumSettings()
-                    LanguageSettings()
-                    ProblemReportSettings()
-                    GesturesSettingsEntry(onOpen = { page = SettingsPage.Gestures })
+                    SettingsMainEntries(anchor, accountName, onOpen = { page = it })
                 }
                 SettingsPage.Gestures -> GesturesSettingsPage(pageModifier)
                 // A subpage shows once every stored value is read, so no control animates from a placeholder.
@@ -163,19 +97,114 @@ fun SettingsScreen(
                 }
                 else -> if (body != null) {
                     SettingsPageColumn(modifier = pageModifier) {
-                        when (current) {
-                            SettingsPage.Chat -> ChatSettings(body.settings, viewModel)
-                            SettingsPage.Mentions -> MentionSettings(body.settings, viewModel)
-                            SettingsPage.Notifications -> NotificationSettings(body.settings, signedIn, viewModel)
-                            SettingsPage.Playback -> PlaybackSettings(body.settings, viewModel)
-                            SettingsPage.ChatterPortraits -> ChatterPortraitSettings(body.settings, viewModel)
-                            SettingsPage.Experimental -> ExperimentalSettings(accountName, body.settings, viewModel)
-                            SettingsPage.Main, SettingsPage.Gestures, SettingsPage.ChatterLabels -> Unit
-                        }
+                        SettingsSubpage(current, body.settings, signedIn, accountName, viewModel)
                     }
                 }
             }
         }
+    }
+}
+
+/** The settings and the Gist fields once both are read, or null until then. */
+@Composable
+private fun storedSettingsBody(viewModel: SettingsViewModel): SettingsBody? {
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val savedCredentials by ChatterLabelsRepository.credentials.collectAsStateWithLifecycle()
+    val credentialsLoaded by ChatterLabelsRepository.credentialsLoaded.collectAsStateWithLifecycle()
+    return settingsBody(
+        animatedControlValue(settings),
+        animatedControlValue(
+            if (credentialsLoaded) {
+                chatterLabelFieldSeed(savedCredentials?.token, savedCredentials?.gistId)
+            } else {
+                null
+            },
+        ),
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsTopBar(page: SettingsPage, onBack: () -> Unit) {
+    TopAppBar(
+        title = {
+            AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
+                Text(stringResource(current.titleRes()))
+            }
+        },
+        navigationIcon = {
+            // Grows from no width, so the title slides aside instead of jumping.
+            AnimatedVisibility(
+                visible = page != SettingsPage.Main,
+                enter = fadeIn() + expandHorizontally(),
+                exit = fadeOut() + shrinkHorizontally(),
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.navigate_back),
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+        ),
+    )
+}
+
+/** The list of subpages and the sections that sit on the main page itself. */
+@Composable
+private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: String?, onOpen: (SettingsPage) -> Unit) {
+    SettingsNotificationPrompt()
+    SettingsPageEntry(
+        icon = painterResource(R.drawable.ic_chat),
+        title = stringResource(R.string.settings_page_chat),
+        hint = stringResource(R.string.settings_page_chat_hint),
+        onOpen = { onOpen(SettingsPage.Chat) },
+    )
+    SettingsPageEntry(
+        icon = painterResource(R.drawable.ic_alternate_email),
+        title = stringResource(R.string.settings_page_mentions),
+        hint = stringResource(R.string.settings_page_mentions_hint),
+        onOpen = { onOpen(SettingsPage.Mentions) },
+    )
+    NotificationSettingsEntry(onOpen = { onOpen(SettingsPage.Notifications) })
+    SettingsPageEntry(
+        icon = rememberVectorPainter(Icons.Outlined.PlayArrow),
+        title = stringResource(R.string.settings_section_playback),
+        hint = stringResource(R.string.settings_page_playback_hint),
+        onOpen = { onOpen(SettingsPage.Playback) },
+    )
+    ChatterPortraitSettingsEntry(onOpen = { onOpen(SettingsPage.ChatterPortraits) })
+    ChatterLabelsSettingsEntry(onOpen = { onOpen(SettingsPage.ChatterLabels) })
+    ExperimentalSettingsEntry(accountName, onOpen = { onOpen(SettingsPage.Experimental) })
+    Column(modifier = Modifier.settingsScrollAnchor(anchor)) {
+        TelegramSettings()
+    }
+    PremiumSettings()
+    LanguageSettings()
+    ProblemReportSettings()
+    GesturesSettingsEntry(onOpen = { onOpen(SettingsPage.Gestures) })
+}
+
+/** A subpage laid out in the common column; the main, gestures, and labels pages lay out their own. */
+@Composable
+private fun SettingsSubpage(
+    page: SettingsPage,
+    settings: AppSettings,
+    signedIn: Boolean,
+    accountName: String?,
+    viewModel: SettingsViewModel,
+) {
+    when (page) {
+        SettingsPage.Chat -> ChatSettings(settings, viewModel)
+        SettingsPage.Mentions -> MentionSettings(settings, viewModel)
+        SettingsPage.Notifications -> NotificationSettings(settings, signedIn, viewModel)
+        SettingsPage.Playback -> PlaybackSettings(settings, viewModel)
+        SettingsPage.ChatterPortraits -> ChatterPortraitSettings(settings, viewModel)
+        SettingsPage.Experimental -> ExperimentalSettings(accountName, settings, viewModel)
+        SettingsPage.Main, SettingsPage.Gestures, SettingsPage.ChatterLabels -> Unit
     }
 }
 

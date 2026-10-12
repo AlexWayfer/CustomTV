@@ -46,24 +46,12 @@ internal fun StreamLiveMeta(
     sharedViewerCount: Int?,
     onViewersClick: (() -> Unit)? = null,
 ) {
-    val showSharedChannels = stringResource(R.string.collaboration_show)
     val now = rememberSecondTicker(running = startedAtMillis != null)
     val uptime = startedAtMillis?.let { formatStreamUptime(it, now) }
     val displayedViewers = viewerCount?.let { animateCount(it.toLong(), VIEWER_COUNT_ANIMATION_MS) }
     val viewers = displayedViewers?.let { NumberFormat.getIntegerInstance().format(it) }
     val liveDescription = uptime?.let { stringResource(R.string.stream_live_for, it) }
-    val viewersDescription = viewerCount?.let { ownViewers ->
-        val ownFormatted = NumberFormat.getIntegerInstance().format(ownViewers)
-        if (sharedViewerCount != null) {
-            stringResource(
-                R.string.stream_viewers_with_shared,
-                ownFormatted,
-                NumberFormat.getIntegerInstance().format(sharedViewerCount),
-            )
-        } else {
-            pluralStringResource(R.plurals.stream_viewers, ownViewers, ownFormatted)
-        }
-    }
+    val viewersDescription = viewerCount?.let { streamViewersDescription(it, sharedViewerCount) }
     // A profile that loads after the screen opens fades its numbers in, rather than drawing them at once.
     val shownViewers = rememberLastNonNull(viewers?.let { it to viewersDescription.orEmpty() })
     val shownUptime = rememberLastNonNull(uptime?.let { it to liveDescription.orEmpty() })
@@ -73,29 +61,7 @@ internal fun StreamLiveMeta(
     ) {
         AnimatedVisibility(visible = viewers != null, enter = HeaderFadeIn, exit = HeaderFadeOut) {
             val (text, description) = shownViewers ?: return@AnimatedVisibility
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .semantics { contentDescription = description }
-                    .then(
-                        if (onViewersClick != null) {
-                            Modifier.clickable(
-                                    role = Role.Button,
-                                    onClickLabel = showSharedChannels,
-                                    onClick = onViewersClick,
-                                )
-                        } else {
-                            Modifier
-                        },
-                    ),
-            ) {
-                StreamViewersIcon(TwitchTextSecondary, Modifier.size(14.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(text, color = TwitchText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                AnimatedVisibility(visible = sharedViewerCount != null, enter = HeaderFadeIn, exit = HeaderFadeOut) {
-                    rememberLastNonNull(sharedViewerCount)?.let { SharedViewerCount(it, TwitchTextSecondary) }
-                }
-            }
+            StreamViewers(text, description, sharedViewerCount, onViewersClick)
         }
         AnimatedVisibility(visible = uptime != null, enter = HeaderFadeIn, exit = HeaderFadeOut) {
             val (text, description) = shownUptime ?: return@AnimatedVisibility
@@ -107,6 +73,48 @@ internal fun StreamLiveMeta(
                 Spacer(Modifier.width(6.dp))
                 Text(text, color = TwitchText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
+        }
+    }
+}
+
+@Composable
+private fun streamViewersDescription(ownViewers: Int, sharedViewerCount: Int?): String {
+    val ownFormatted = NumberFormat.getIntegerInstance().format(ownViewers)
+    return if (sharedViewerCount != null) {
+        stringResource(
+            R.string.stream_viewers_with_shared,
+            ownFormatted,
+            NumberFormat.getIntegerInstance().format(sharedViewerCount),
+        )
+    } else {
+        pluralStringResource(R.plurals.stream_viewers, ownViewers, ownFormatted)
+    }
+}
+
+@Composable
+private fun StreamViewers(text: String, description: String, sharedViewerCount: Int?, onViewersClick: (() -> Unit)?) {
+    val showSharedChannels = stringResource(R.string.collaboration_show)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .semantics { contentDescription = description }
+            .then(
+                if (onViewersClick != null) {
+                    Modifier.clickable(
+                        role = Role.Button,
+                        onClickLabel = showSharedChannels,
+                        onClick = onViewersClick,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
+    ) {
+        StreamViewersIcon(TwitchTextSecondary, Modifier.size(14.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(text, color = TwitchText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        AnimatedVisibility(visible = sharedViewerCount != null, enter = HeaderFadeIn, exit = HeaderFadeOut) {
+            rememberLastNonNull(sharedViewerCount)?.let { SharedViewerCount(it, TwitchTextSecondary) }
         }
     }
 }

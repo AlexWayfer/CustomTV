@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.data
 
-import name.alexwayfer.customtv.chat.ChatterFollow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -12,13 +11,16 @@ import name.alexwayfer.customtv.diagnostics.Diagnostics
 import name.alexwayfer.customtv.diagnostics.HELIX_EXPECTED_CODES
 import okhttp3.OkHttpClient
 import java.io.IOException
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
+
+/** The log tag of the followed channels: their list, its saved copy, and the user's own follow. */
+internal const val FOLLOWED_CHANNELS_TAG = "FollowedChannels"
 
 internal class FollowedChannelsRepository(
     private val clientId: String,
     private val http: OkHttpClient = sharedHttpClient.newBuilder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10.seconds)
+        .readTimeout(10.seconds)
         .build(),
 ) {
     suspend fun load(
@@ -27,42 +29,52 @@ internal class FollowedChannelsRepository(
         onList: (List<FollowedChannel>) -> Unit,
     ): FollowedChannelsResult {
         return try {
-            val channels = when (
-                val read = withContext(Dispatchers.IO) {
-                    readAllFollowed(accessToken, userId) { page ->
-                        onList(orderedFollowedChannels(page))
-                    }
+            val read = withContext(Dispatchers.IO) {
+                readAllFollowed(accessToken, userId) { page ->
+                    onList(orderedFollowedChannels(page))
                 }
-            ) {
-                is FollowedRead.Failed -> return read.failure
-                is FollowedRead.OkLive -> return FollowedChannelsResult.Unavailable
-                is FollowedRead.Ok -> read.channels
             }
-            if (channels.isEmpty()) return FollowedChannelsResult.Ready(emptyList())
-            val ids = channels.map { it.id }.distinct()
-            coroutineScope {
-                val avatarsJob = async(Dispatchers.IO) { readAvatars(accessToken, ids) }
-                val liveJob = async(Dispatchers.IO) { readLiveResult(accessToken, ids) }
-                val datesJob = async(Dispatchers.IO) { followedUserDetails(channels.map { it.login }) }
-                val avatars = avatarsJob.await()
-                onList(mergeFollowedChannels(channels, avatars, emptyMap()))
-                val liveRead = liveJob.await()
-                val live = if (liveRead is FollowedRead.OkLive) liveRead.live else emptyMap()
-                onList(mergeFollowedChannels(channels, avatars, live))
-                val details = datesJob.await()
-                val ready = mergeFollowedChannels(
-                    channels,
-                    avatars,
-                    live,
-                    details.lastBroadcastAtMillis,
-                    details.collaborationByLogin,
-                )
-                onList(ready)
-                FollowedChannelsResult.Ready(ready, liveKnown = liveRead is FollowedRead.OkLive)
+            when (read) {
+                is FollowedRead.Failed -> read.failure
+                is FollowedRead.OkLive -> FollowedChannelsResult.Unavailable
+                is FollowedRead.Ok -> if (read.channels.isEmpty()) {
+                    FollowedChannelsResult.Ready(emptyList())
+                } else {
+                    loadDetails(accessToken, read.channels, onList)
+                }
             }
         } catch (error: IOException) {
-            AppLog.w(TAG, "follows failed ${error.javaClass.simpleName}")
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "follows failed ${error.javaClass.simpleName}")
             FollowedChannelsResult.Unavailable
+        }
+    }
+
+    /** Avatars, who is live, and the last broadcasts of [channels], each shown through [onList] once it is in. */
+    private suspend fun loadDetails(
+        accessToken: String,
+        channels: List<FollowedChannel>,
+        onList: (List<FollowedChannel>) -> Unit,
+    ): FollowedChannelsResult {
+        val ids = channels.map { it.id }.distinct()
+        return coroutineScope {
+            val avatarsJob = async(Dispatchers.IO) { readAvatars(accessToken, ids) }
+            val liveJob = async(Dispatchers.IO) { readLiveResult(accessToken, ids) }
+            val datesJob = async(Dispatchers.IO) { followedUserDetails(channels.map { it.login }) }
+            val avatars = avatarsJob.await()
+            onList(mergeFollowedChannels(channels, avatars, emptyMap()))
+            val liveRead = liveJob.await()
+            val live = if (liveRead is FollowedRead.OkLive) liveRead.live else emptyMap()
+            onList(mergeFollowedChannels(channels, avatars, live))
+            val details = datesJob.await()
+            val ready = mergeFollowedChannels(
+                channels,
+                avatars,
+                live,
+                details.lastBroadcastAtMillis,
+                details.collaborationByLogin,
+            )
+            onList(ready)
+            FollowedChannelsResult.Ready(ready, liveKnown = liveRead is FollowedRead.OkLive)
         }
     }
 
@@ -75,7 +87,7 @@ internal class FollowedChannelsRepository(
                 else -> null
             }
         } catch (error: IOException) {
-            AppLog.w(TAG, "follows failed ${error.javaClass.simpleName}")
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "follows failed ${error.javaClass.simpleName}")
             null
         }
     }
@@ -87,20 +99,20 @@ internal class FollowedChannelsRepository(
             try {
                 val channels = mutableListOf<FollowedChannel>()
                 var cursor: String? = null
-                repeat(FOLLOWED_PAGE_LIMIT) {
-                    val response = get(accessToken, liveFollowedStreamsUrl(userId, cursor))
-                    if (response.code == 429) {
-                        AppLog.w(TAG, "live follows rate limited")
+                repeat(FOLLOWED_PAGE_LIMIT) { _ ->
+                    val response = http.helixGet(liveFollowedStreamsUrl(userId, cursor), accessToken, clientId)
+                    if (response.code == HTTP_TOO_MANY_REQUESTS) {
+                        AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows rate limited")
                         return@withContext LiveFollowedRead.RateLimited(
                             helixRateLimitResetMillis(response.rateLimitReset),
                         )
                     }
-                    if (response.code in 400..499) {
-                        AppLog.w(TAG, "live follows rejected HTTP ${response.code}")
+                    if (response.code in HTTP_CLIENT_ERROR) {
+                        AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows rejected HTTP ${response.code}")
                         return@withContext LiveFollowedRead.Rejected(response.code, twitchAuthMessage(response.body))
                     }
-                    if (response.code !in 200..299) {
-                        AppLog.w(TAG, "live follows failed HTTP ${response.code}")
+                    if (response.code !in HTTP_SUCCESS) {
+                        AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows failed HTTP ${response.code}")
                         return@withContext LiveFollowedRead.Failed
                     }
                     val page = parseLiveFollowedStreamsPage(response.body)
@@ -109,85 +121,13 @@ internal class FollowedChannelsRepository(
                     cursor = page.cursor
                     if (cursor.isNullOrBlank()) return@withContext LiveFollowedRead.Ready(channels.distinctBy { it.id })
                 }
-                AppLog.w(TAG, "live follows truncated")
+                AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows truncated")
                 LiveFollowedRead.Ready(channels.distinctBy { it.id })
             } catch (error: CancellationException) {
                 throw error
             } catch (error: IOException) {
-                AppLog.w(TAG, "live follows failed ${error.javaClass.simpleName}")
+                AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows failed ${error.javaClass.simpleName}")
                 LiveFollowedRead.Failed
-            }
-        }
-    }
-
-    suspend fun ownChatterFollow(accessToken: String, userId: String, broadcasterId: String): ChatterFollow? =
-        chatterFollowOf(readOwnFollow(accessToken, userId, broadcasterId))
-
-    suspend fun readOwnSubscription(
-        accessToken: String,
-        userId: String,
-        broadcasterId: String,
-    ): UserSubscriptionRead {
-        if (userId.isBlank() || broadcasterId.isBlank()) return UserSubscriptionRead.Unavailable
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = get(accessToken, userSubscriptionUrl(userId, broadcasterId))
-                val read = userSubscriptionRead(response.code, response.body)
-                if (read == UserSubscriptionRead.Unavailable) {
-                    if (response.code in 400..499) {
-                        AppLog.w(TAG, "subscription rejected HTTP ${response.code}")
-                        Diagnostics.reportHttp(
-                            TAG,
-                            "helix/subscriptions/user",
-                            response.code,
-                            twitchAuthMessage(response.body),
-                            HELIX_EXPECTED_CODES,
-                        )
-                    } else {
-                        AppLog.w(TAG, "subscription failed HTTP ${response.code}")
-                    }
-                }
-                read
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: IOException) {
-                AppLog.w(TAG, "subscription failed ${error.javaClass.simpleName}")
-                UserSubscriptionRead.Unavailable
-            }
-        }
-    }
-
-    suspend fun readOwnFollow(accessToken: String, userId: String, broadcasterId: String): OwnFollowRead {
-        if (userId.isBlank() || broadcasterId.isBlank()) return OwnFollowRead.Unavailable
-        return withContext(Dispatchers.IO) {
-            try {
-                val response = get(accessToken, ownFollowedAtUrl(userId, broadcasterId))
-                when (response.code) {
-                    in 200..299 -> {
-                        val atMillis = parseOwnFollowedAt(response.body, broadcasterId)
-                        if (atMillis == null) OwnFollowRead.NotFollowing else OwnFollowRead.Following(atMillis)
-                    }
-                    in 400..499 -> {
-                        AppLog.w(TAG, "own follow rejected HTTP ${response.code}")
-                        Diagnostics.reportHttp(
-                            TAG,
-                            "helix/channels/followed",
-                            response.code,
-                            twitchAuthMessage(response.body),
-                            HELIX_EXPECTED_CODES,
-                        )
-                        OwnFollowRead.Unavailable
-                    }
-                    else -> {
-                        AppLog.w(TAG, "own follow failed HTTP ${response.code}")
-                        OwnFollowRead.Unavailable
-                    }
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: IOException) {
-                AppLog.w(TAG, "own follow failed ${error.javaClass.simpleName}")
-                OwnFollowRead.Unavailable
             }
         }
     }
@@ -215,7 +155,7 @@ internal class FollowedChannelsRepository(
                 is FollowedRead.Ok -> FollowedChannelsResult.Unavailable
             }
         } catch (error: IOException) {
-            AppLog.w(TAG, "live follows failed ${error.javaClass.simpleName}")
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows failed ${error.javaClass.simpleName}")
             FollowedChannelsResult.Unavailable
         }
     }
@@ -227,27 +167,28 @@ internal class FollowedChannelsRepository(
     ): FollowedRead {
         val channels = mutableListOf<FollowedChannel>()
         var cursor: String? = null
-        repeat(FOLLOWED_PAGE_LIMIT) {
-            val response = get(accessToken, followedChannelsUrl(userId, cursor))
-            failureOf(response, "helix/channels/followed", checkScope = true)?.let { return FollowedRead.Failed(it) }
-            val page = parseFollowedPage(response.body) ?: return FollowedRead.Failed(FollowedChannelsResult.Unavailable)
+        var pages = 0
+        do {
+            val response = http.helixGet(followedChannelsUrl(userId, cursor), accessToken, clientId)
+            val failure = failureOf(response, "helix/channels/followed", checkScope = true)
+            val page = if (failure == null) parseFollowedPage(response.body) else null
+            if (page == null) return FollowedRead.Failed(failure ?: FollowedChannelsResult.Unavailable)
             channels += page.channels
-            val snapshot = channels.distinctBy { it.id }
-            onPage(snapshot)
-            val next = page.cursor
-            if (next.isNullOrBlank()) return FollowedRead.Ok(snapshot)
-            cursor = next
-        }
-        AppLog.w(TAG, "followed list truncated")
+            onPage(channels.distinctBy { it.id })
+            cursor = page.cursor?.takeUnless { it.isBlank() }
+            pages++
+        } while (cursor != null && pages < FOLLOWED_PAGE_LIMIT)
+        if (cursor != null) AppLog.w(FOLLOWED_CHANNELS_TAG, "followed list truncated")
         return FollowedRead.Ok(channels.distinctBy { it.id })
     }
 
     private fun readLiveResult(accessToken: String, userIds: List<String>): FollowedRead {
         val live = mutableMapOf<String, FollowedLive>()
         for (batch in userIds.chunked(FOLLOWED_PAGE_SIZE)) {
-            val response = get(accessToken, followedStreamsUrl(batch))
-            failureOf(response, "helix/streams", checkScope = false)?.let { return FollowedRead.Failed(it) }
-            val parsed = parseFollowedLive(response.body) ?: return FollowedRead.Failed(FollowedChannelsResult.Unavailable)
+            val response = http.helixGet(followedStreamsUrl(batch), accessToken, clientId)
+            val failure = failureOf(response, "helix/streams", checkScope = false)
+            val parsed = if (failure == null) parseFollowedLive(response.body) else null
+            if (parsed == null) return FollowedRead.Failed(failure ?: FollowedChannelsResult.Unavailable)
             live += parsed
         }
         return FollowedRead.OkLive(live)
@@ -258,37 +199,45 @@ internal class FollowedChannelsRepository(
         val collaborations = mutableMapOf<String, FollowedCollaboration>()
         val fetched = mutableSetOf<String>()
         for (batch in logins.distinct().chunked(FOLLOWED_PAGE_SIZE)) {
-            val request = twitchGqlRequest(lastBroadcastsQuery(batch)).build()
-            val body = try {
-                http.newCall(request).execute().use { response ->
-                    val text = response.body.string()
-                    Diagnostics.reportGql(TAG, "last broadcasts", response.code, text)
-                    if (response.code !in 200..299) {
-                        AppLog.w(TAG, "last broadcast failed HTTP ${response.code}")
-                        null
-                    } else {
-                        text
-                    }
-                }
-            } catch (error: IOException) {
-                AppLog.w(TAG, "last broadcast failed ${error.javaClass.simpleName}")
-                null
-            } ?: continue
-            val parsedDates = parseLastBroadcasts(body) ?: continue
-            val parsedCollaborations = parseFollowedCollaborations(body) ?: continue
-            dates += parsedDates
-            collaborations += parsedCollaborations
-            fetched += batch.map { it.lowercase() }
+            val body = lastBroadcastsBody(batch) ?: continue
+            val parsedDates = parseLastBroadcasts(body)
+            val parsedCollaborations = parseFollowedCollaborations(body)
+            if (parsedDates != null && parsedCollaborations != null) {
+                dates += parsedDates
+                collaborations += parsedCollaborations
+                fetched += batch.map { it.lowercase() }
+            }
         }
         return FollowedUserDetails(dates, collaborations, fetched)
+    }
+
+    /** The answer about the last broadcasts and shared streams of [logins]; null when it failed. */
+    private fun lastBroadcastsBody(logins: List<String>): String? {
+        val request = twitchGqlRequest(lastBroadcastsQuery(logins)).build()
+        return try {
+            http.newCall(request).execute().use { response ->
+                val text = response.body.string()
+                Diagnostics.reportGql(FOLLOWED_CHANNELS_TAG, "last broadcasts", response.code, text)
+                if (response.code !in HTTP_SUCCESS) {
+                    AppLog.w(FOLLOWED_CHANNELS_TAG, "last broadcast failed HTTP ${response.code}")
+                    null
+                } else {
+                    text
+                }
+            }
+        } catch (error: IOException) {
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "last broadcast failed ${error.javaClass.simpleName}")
+            null
+        }
     }
 
     private fun readAvatars(accessToken: String, userIds: List<String>): Map<String, String> {
         val avatars = mutableMapOf<String, String>()
         for (batch in userIds.chunked(FOLLOWED_PAGE_SIZE)) {
-            val response = get(accessToken, followedUsersUrl(batch))
-            if (failureOf(response, "helix/users", checkScope = false) != null) return avatars
-            val parsed = parseFollowedAvatars(response.body) ?: return avatars
+            val response = http.helixGet(followedUsersUrl(batch), accessToken, clientId)
+            val failed = failureOf(response, "helix/users", checkScope = false) != null
+            val parsed = if (failed) null else parseFollowedAvatars(response.body)
+            if (parsed == null) break
             avatars += parsed
         }
         return avatars
@@ -296,38 +245,30 @@ internal class FollowedChannelsRepository(
 
     private fun failureOf(response: HelixBody, endpoint: String, checkScope: Boolean): FollowedChannelsResult? {
         val code = response.code
-        if (code in 200..299) return null
+        if (code in HTTP_SUCCESS) return null
         if (checkScope && helixRejectsFollowScope(code, response.body)) {
-            AppLog.w(TAG, "follows rejected HTTP $code")
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "follows rejected HTTP $code")
             return FollowedChannelsResult.NeedsPermission
         }
-        if (code in 400..499) {
-            AppLog.w(TAG, "follows rejected HTTP $code")
-            Diagnostics.reportHttp(TAG, endpoint, code, twitchAuthMessage(response.body), HELIX_EXPECTED_CODES)
+        if (code in HTTP_CLIENT_ERROR) {
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "follows rejected HTTP $code")
+            Diagnostics.reportHttp(
+                FOLLOWED_CHANNELS_TAG,
+                endpoint,
+                code,
+                twitchAuthMessage(response.body),
+                HELIX_EXPECTED_CODES,
+            )
             return FollowedChannelsResult.Rejected
         }
-        AppLog.w(TAG, "follows failed HTTP $code")
+        AppLog.w(FOLLOWED_CHANNELS_TAG, "follows failed HTTP $code")
         return FollowedChannelsResult.Unavailable
     }
-
-    private fun get(accessToken: String, url: String): HelixBody {
-        val request = helixRequest(url, accessToken, clientId)
-            .build()
-        http.newCall(request).execute().use { response ->
-            return HelixBody(response.code, response.body.string(), response.header("Ratelimit-Reset"))
-        }
-    }
-
-    private data class HelixBody(val code: Int, val body: String, val rateLimitReset: String? = null)
 
     private sealed interface FollowedRead {
         data class Ok(val channels: List<FollowedChannel>) : FollowedRead
         data class OkLive(val live: Map<String, FollowedLive>) : FollowedRead
         data class Failed(val failure: FollowedChannelsResult) : FollowedRead
-    }
-
-    private companion object {
-        const val TAG = "FollowedChannels"
     }
 }
 

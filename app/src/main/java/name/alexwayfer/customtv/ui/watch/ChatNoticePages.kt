@@ -7,6 +7,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 internal val ChatNoticeDotGap = 12.dp
 internal val ChatNoticeDotBottomPadding = 8.dp
@@ -40,6 +41,10 @@ internal fun chatNoticeDotInset(
  */
 internal fun noticeGapAboveInset(ownGap: Dp, inset: Dp): Dp = (ownGap - inset).coerceAtLeast(0.dp)
 
+/** The page nearest to [scrollPx] in a row of pages [pageWidthPx] wide; the first while the row has no width. */
+internal fun chatNoticePageAt(scrollPx: Int, pageWidthPx: Int, lastIndex: Int): Int =
+    if (pageWidthPx <= 0) 0 else (scrollPx.toFloat() / pageWidthPx).roundToInt().coerceIn(0, lastIndex)
+
 /** The notice pages in their default order, which also breaks ties between arrivals. */
 internal enum class ChatNoticePage {
     Raid,
@@ -50,24 +55,12 @@ internal enum class ChatNoticePage {
     Pinned,
 }
 
-/** Timed notices come first: a raid, a hype train, a poll and a prediction, then gifts and the pin. */
-internal fun chatNoticePages(
-    hasPinned: Boolean,
-    hasRaid: Boolean,
-    hasCommunityGift: Boolean,
-    hasPoll: Boolean = false,
-    hasPrediction: Boolean = false,
-    hasHypeTrain: Boolean = false,
-): List<ChatNoticePage> {
-    return buildList {
-        if (hasRaid) add(ChatNoticePage.Raid)
-        if (hasHypeTrain) add(ChatNoticePage.HypeTrain)
-        if (hasPoll) add(ChatNoticePage.Poll)
-        if (hasPrediction) add(ChatNoticePage.Prediction)
-        if (hasCommunityGift) add(ChatNoticePage.CommunityGift)
-        if (hasPinned) add(ChatNoticePage.Pinned)
-    }
-}
+/**
+ * The [present] pages in the default order. Timed notices come first: a raid, a hype train, a poll and a prediction,
+ * then gifts and the pin.
+ */
+internal fun chatNoticePages(present: Set<ChatNoticePage>): List<ChatNoticePage> =
+    ChatNoticePage.entries.filter { it in present }
 
 /** What a page shows now: [key] names the item, and [live] says it arrived while chat was open. */
 internal data class ChatNoticeItem(val key: String, val live: Boolean)

@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.chat
 
 import androidx.compose.ui.graphics.Color
 import kotlin.math.absoluteValue
+import name.alexwayfer.customtv.data.textOrNull
 
 object IrcMessageParser {
     private val nameColors = listOf(
@@ -23,7 +24,7 @@ object IrcMessageParser {
     )
 
     fun parsePrivMsg(raw: String): ChatMessage? {
-        val parsed = parseLine(raw) ?: return null
+        val parsed = IrcLineParser.parse(raw) ?: return null
         if (parsed.command != "PRIVMSG") return null
         val text = parsed.trailing ?: return null
         val login = parsed.prefix
@@ -31,125 +32,69 @@ object IrcMessageParser {
             ?.removePrefix(":")
             ?.lowercase()
             .orEmpty()
-        val displayName = parsed.tags["display-name"]
-            ?.takeIf { it.isNotBlank() }
-            ?: login
-        val color = parseColor(parsed.tags["color"]) ?: nameColor(displayName.ifEmpty { login })
-        val id = parsed.tags["id"]?.takeIf { it.isNotBlank() }
-            ?: "${login}-${System.nanoTime()}"
-        val timestampMillis = parsed.tags["tmi-sent-ts"]?.toLongOrNull()
-            ?: System.currentTimeMillis()
+        val displayName = parsed.tag("display-name") ?: login
         val reply = parseReply(parsed.tags)
-        val action = stripCtcpAction(text)
-        var displayText = action.text
-        var emoteShift = action.prefixCodePoints
-        if (reply != null) {
-            val withoutMention = stripLeadingReplyMention(displayText, reply)
-            if (withoutMention.length != displayText.length) {
-                emoteShift += displayText.codePointCount(
-                    0,
-                    displayText.length - withoutMention.length,
-                )
-                displayText = withoutMention
-            }
-        }
-        val emotesTag = shiftEmoteTag(parsed.tags["emotes"].orEmpty(), emoteShift)
-        val gifsTag = shiftGifTag(parsed.tags["gifs"].orEmpty(), emoteShift)
-        val parts = parseEmotes(displayText, emotesTag, gifsTag).filterNot { part ->
+        val stripped = strippedPrivMsgText(text, reply)
+        val emotesTag = IrcEmoteParser.shiftEmoteTag(parsed.tags["emotes"].orEmpty(), stripped.emoteShift)
+        val gifsTag = IrcEmoteParser.shiftGifTag(parsed.tags["gifs"].orEmpty(), stripped.emoteShift)
+        val parts = IrcEmoteParser.parse(stripped.text, emotesTag, gifsTag).filterNot { part ->
             part is ChatPart.Text && part.text.isEmpty()
         }
-        val badges = parseBadges(parsed.tags["badges"])
-        val msgId = parsed.tags["msg-id"].orEmpty()
-        val rewardId = parsed.tags["custom-reward-id"]?.takeIf { it.isNotBlank() }
-        val eventKind = when {
-            msgId == "highlighted-message" -> ChatEventKind.Highlight
-            rewardId != null -> ChatEventKind.Reward
-            else -> ChatEventKind.Normal
-        }
+        val rewardId = parsed.tag("custom-reward-id")
         return ChatMessage(
-            id = id,
-            userId = parsed.tags["user-id"]?.takeIf { it.isNotBlank() },
+            id = parsed.tag("id") ?: "${login}-${System.nanoTime()}",
+            userId = parsed.tag("user-id"),
             userLogin = login,
             displayName = displayName,
-            color = color,
-            rawText = displayText,
+            color = parseColor(parsed.tags["color"]) ?: nameColor(displayName.ifEmpty { login }),
+            rawText = stripped.text,
             parts = parts,
-            timestampMillis = timestampMillis,
-            badges = badges,
-            eventKind = eventKind,
+            timestampMillis = parsed.sentAtMillis(),
+            badges = parseBadges(parsed.tags["badges"]),
+            eventKind = privMsgEventKind(parsed.tags["msg-id"].orEmpty(), rewardId),
             reply = reply,
             reward = rewardId?.let { ChatReward(id = it, title = "", cost = 0) },
-            isAction = action.isAction,
+            isAction = stripped.isAction,
             firstInChannel = parsed.tags["first-msg"] == "1",
             cheerBits = parsed.tags["bits"]?.toIntOrNull()?.takeIf { it > 0 },
         )
     }
 
     fun parseUserNotice(raw: String): ChatMessage? {
-        val parsed = parseLine(raw) ?: return null
+        val parsed = IrcLineParser.parse(raw) ?: return null
         if (parsed.command != "USERNOTICE") return null
         val msgId = parsed.tags["msg-id"].orEmpty()
         val text = parsed.trailing?.takeIf { it.isNotBlank() }
-        val login = parsed.tags["login"]
-            ?.takeIf { it.isNotBlank() }
-            ?.lowercase()
-            .orEmpty()
-        val displayName = parsed.tags["display-name"]
-            ?.takeIf { it.isNotBlank() }
-            ?: login
-        val watchStreak = parseWatchStreak(parsed.tags)
-        val raid = parseRaid(parsed.tags)
-        val communityGift = parseCommunityGift(parsed.tags)
-        val systemText = if (watchStreak != null) {
-            formatWatchStreakSystemText(displayName, watchStreak.consecutiveStreams)
-        } else {
-            parsed.tags["system-msg"]?.takeIf { it.isNotBlank() }
-        }
+        val login = parsed.tag("login")?.lowercase().orEmpty()
+        val displayName = parsed.tag("display-name") ?: login
+        val watchStreak = IrcUserNotice.watchStreak(parsed.tags)
+        val systemText = userNoticeSystemText(parsed, displayName, watchStreak)
         if (systemText == null && text == null) return null
-        val color = parseColor(parsed.tags["color"]) ?: nameColor(displayName.ifEmpty { login })
-        val id = parsed.tags["id"]?.takeIf { it.isNotBlank() }
-            ?: "usernotice-$msgId-${System.nanoTime()}"
-        val timestampMillis = parsed.tags["tmi-sent-ts"]?.toLongOrNull()
-            ?: System.currentTimeMillis()
-        val parts = if (text != null) {
-            parseEmotes(text, parsed.tags["emotes"].orEmpty(), parsed.tags["gifs"].orEmpty())
-        } else {
-            emptyList()
-        }
-        val eventKind = if (watchStreak != null) {
-            ChatEventKind.WatchStreak
-        } else {
-            userNoticeKind(msgId)
-        }
-        val accent = if (eventKind == ChatEventKind.Announcement) {
-            announcementColor(parsed.tags["msg-param-color"])
-        } else {
-            null
-        }
+        val eventKind = if (watchStreak != null) ChatEventKind.WatchStreak else IrcUserNotice.eventKind(msgId)
         return ChatMessage(
-            id = id,
-            userId = parsed.tags["user-id"]?.takeIf { it.isNotBlank() },
+            id = parsed.tag("id") ?: "usernotice-$msgId-${System.nanoTime()}",
+            userId = parsed.tag("user-id"),
             userLogin = login,
             displayName = displayName,
-            color = color,
+            color = parseColor(parsed.tags["color"]) ?: nameColor(displayName.ifEmpty { login }),
             rawText = listOfNotNull(systemText, text).joinToString(" "),
-            parts = parts,
-            timestampMillis = timestampMillis,
+            parts = text?.let {
+                IrcEmoteParser.parse(it, parsed.tags["emotes"].orEmpty(), parsed.tags["gifs"].orEmpty())
+            }.orEmpty(),
+            timestampMillis = parsed.sentAtMillis(),
             badges = parseBadges(parsed.tags["badges"]),
             eventKind = eventKind,
             systemText = systemText,
-            accentColor = accent,
+            accentColor = announcementAccent(parsed, eventKind),
             watchStreak = watchStreak,
-            raid = raid,
-            communityGift = communityGift,
-            primeSubscription = eventKind == ChatEventKind.Subscription &&
-                msgId in setOf("sub", "resub") &&
-                parsed.tags["msg-param-sub-plan"].equals("Prime", ignoreCase = true),
+            raid = IrcUserNotice.raid(parsed.tags),
+            communityGift = IrcUserNotice.communityGift(parsed.tags),
+            primeSubscription = isPrimeSubscription(parsed, eventKind, msgId),
         )
     }
 
     fun parseNotice(raw: String): ChatMessage? {
-        val parsed = parseLine(raw) ?: return null
+        val parsed = IrcLineParser.parse(raw) ?: return null
         if (parsed.command != "NOTICE") return null
         val text = parsed.trailing?.takeIf { it.isNotBlank() } ?: return null
         val msgId = parsed.tags["msg-id"].orEmpty()
@@ -170,7 +115,7 @@ object IrcMessageParser {
     }
 
     fun parseClearMsg(raw: String): ChatMessage? {
-        val parsed = parseLine(raw) ?: return null
+        val parsed = IrcLineParser.parse(raw) ?: return null
         if (parsed.command != "CLEARMSG") return null
         val targetId = parsed.tags["target-msg-id"]?.takeIf { it.isNotBlank() } ?: return null
         return ChatMessage(
@@ -189,7 +134,7 @@ object IrcMessageParser {
     }
 
     fun parseClearChat(raw: String): ChatMessage? {
-        val parsed = parseLine(raw) ?: return null
+        val parsed = IrcLineParser.parse(raw) ?: return null
         if (parsed.command != "CLEARCHAT") return null
         val login = parsed.trailing?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
         val timeoutSeconds = parsed.tags["ban-duration"]?.toLongOrNull()?.takeIf { it > 0 }
@@ -218,7 +163,7 @@ object IrcMessageParser {
             ?: login
         val body = tags["reply-parent-msg-body"].orEmpty()
         if (displayName.isBlank() && body.isBlank()) return null
-        val action = stripCtcpAction(body)
+        val action = IrcMessageText.stripCtcpAction(body)
         return ChatReply(
             parentMsgId = parentId,
             parentUserLogin = login,
@@ -228,22 +173,6 @@ object IrcMessageParser {
             threadParentMsgId = tags["reply-thread-parent-msg-id"].orEmpty(),
             threadParentUserLogin = tags["reply-thread-parent-user-login"].orEmpty(),
         )
-    }
-
-    internal fun stripCtcpAction(text: String): CtcpActionStrip {
-        return IrcMessageText.stripCtcpAction(text)
-    }
-
-    internal fun stripLeadingReplyMention(text: String, reply: ChatReply): String {
-        return IrcMessageText.stripLeadingReplyMention(text, reply)
-    }
-
-    internal fun shiftEmoteTag(emotesTag: String, shift: Int): String {
-        return IrcEmoteParser.shiftEmoteTag(emotesTag, shift)
-    }
-
-    internal fun shiftGifTag(gifsTag: String, shift: Int): String {
-        return IrcEmoteParser.shiftGifTag(gifsTag, shift)
     }
 
     fun parseBadges(raw: String?): List<ChatBadge> {
@@ -258,63 +187,67 @@ object IrcMessageParser {
         }
     }
 
-    fun parseLine(raw: String): IrcLine? {
-        return IrcLineParser.parse(raw)
-    }
-
-    fun parseEmotes(message: String, emotesTag: String, gifsTag: String = ""): List<ChatPart> {
-        return IrcEmoteParser.parse(message, emotesTag, gifsTag)
-    }
-
     fun nameColor(name: String): Color {
         val index = nameColorIndex(name.lowercase().hashCode(), nameColors.size)
         return nameColors[index]
-    }
-
-    private fun userNoticeKind(msgId: String): ChatEventKind {
-        return IrcUserNotice.eventKind(msgId)
-    }
-
-    internal fun parseWatchStreak(tags: Map<String, String>): ChatWatchStreak? {
-        return IrcUserNotice.watchStreak(tags)
-    }
-
-    internal fun parseRaid(tags: Map<String, String>): ChatRaid? {
-        return IrcUserNotice.raid(tags)
-    }
-
-    internal fun parseCommunityGift(tags: Map<String, String>): ChatCommunityGift? {
-        return IrcUserNotice.communityGift(tags)
-    }
-
-    internal fun formatWatchStreakSystemText(displayName: String, consecutiveStreams: Int): String {
-        return IrcUserNotice.watchStreakSystemText(displayName, consecutiveStreams)
-    }
-
-    internal fun announcementColor(raw: String?): Color {
-        return IrcUserNotice.announcementColor(raw)
     }
 
     private fun deletedByFromTags(tags: Map<String, String>): String? {
         val name = tags["deleted-by"]
             ?: tags["moderator-login"]
             ?: tags["moderator"]
-        return name?.takeIf { it.isNotBlank() && it != "null" }
+        return name.textOrNull()
     }
 
     private fun parseColor(raw: String?): Color? {
-        if (raw.isNullOrBlank() || !raw.startsWith('#') || raw.length != 7) return null
-        return try {
-            val r = raw.substring(1, 3).toInt(16)
-            val g = raw.substring(3, 5).toInt(16)
-            val b = raw.substring(5, 7).toInt(16)
-            Color(red = r, green = g, blue = b)
-        } catch (_: NumberFormatException) {
-            null
-        }
+        if (raw.isNullOrBlank() || !raw.startsWith('#')) return null
+        return opaqueArgbFromHex(raw)?.let { Color(it) }
     }
 
 }
+
+/** A tag's value, or null when it is missing or blank. */
+private fun IrcLine.tag(name: String): String? = tags[name]?.takeIf { it.isNotBlank() }
+
+/** When the server sent the line, or now for a line without the time. */
+private fun IrcLine.sentAtMillis(): Long = tags["tmi-sent-ts"]?.toLongOrNull() ?: System.currentTimeMillis()
+
+/** A message's text as shown, and how many code points its emote positions move by after what was cut. */
+private class StrippedText(val text: String, val emoteShift: Int, val isAction: Boolean)
+
+/** The text without the `/me` wrapping and, in a reply, without the leading mention of the parent's author. */
+private fun strippedPrivMsgText(text: String, reply: ChatReply?): StrippedText {
+    val action = IrcMessageText.stripCtcpAction(text)
+    val shown = reply?.let { IrcMessageText.stripLeadingReplyMention(action.text, it) } ?: action.text
+    val mentionCodePoints = action.text.codePointCount(0, action.text.length - shown.length)
+    return StrippedText(shown, action.prefixCodePoints + mentionCodePoints, action.isAction)
+}
+
+private fun privMsgEventKind(msgId: String, rewardId: String?): ChatEventKind = when {
+    msgId == "highlighted-message" -> ChatEventKind.Highlight
+    rewardId != null -> ChatEventKind.Reward
+    else -> ChatEventKind.Normal
+}
+
+/** The line Twitch writes for the event; a watch streak gets the app's own. */
+private fun userNoticeSystemText(parsed: IrcLine, displayName: String, watchStreak: ChatWatchStreak?): String? =
+    if (watchStreak != null) {
+        IrcUserNotice.watchStreakSystemText(displayName, watchStreak.consecutiveStreams)
+    } else {
+        parsed.tag("system-msg")
+    }
+
+private fun announcementAccent(parsed: IrcLine, eventKind: ChatEventKind): Color? =
+    if (eventKind == ChatEventKind.Announcement) {
+        IrcUserNotice.announcementColor(parsed.tags["msg-param-color"])
+    } else {
+        null
+    }
+
+private fun isPrimeSubscription(parsed: IrcLine, eventKind: ChatEventKind, msgId: String): Boolean =
+    eventKind == ChatEventKind.Subscription &&
+        msgId in setOf("sub", "resub") &&
+        parsed.tags["msg-param-sub-plan"].equals("Prime", ignoreCase = true)
 
 internal fun nameColorIndex(hash: Int, paletteSize: Int): Int {
     if (paletteSize <= 0) return 0

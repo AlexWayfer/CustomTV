@@ -132,8 +132,15 @@ internal enum class ChatterFollowSource {
     None,
 }
 
-internal fun chatterFollowSource(ownCard: Boolean, chatterUserId: String?, moderatesChannel: Boolean): ChatterFollowSource =
+/** The channel's owner cannot follow their own channel, so their card has no follow row, whoever opens it. */
+internal fun chatterFollowSource(
+    ownCard: Boolean,
+    chatterUserId: String?,
+    broadcasterId: String,
+    moderatesChannel: Boolean,
+): ChatterFollowSource =
     when {
+        chatterUserId == broadcasterId -> ChatterFollowSource.None
         ownCard -> ChatterFollowSource.Own
         !chatterUserId.isNullOrBlank() && moderatesChannel -> ChatterFollowSource.Moderator
         else -> ChatterFollowSource.None

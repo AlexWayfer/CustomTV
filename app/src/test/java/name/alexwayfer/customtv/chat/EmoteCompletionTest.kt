@@ -136,7 +136,8 @@ class EmoteCompletionTest {
                 withoutColon = true,
             ),
         )
-        assertEquals("Kap", emoteQueryAtCursor("привет :Kap", cursor = "привет :Kap".length, withoutColon = true)?.text)
+        val withColon = "привет :Kap"
+        assertEquals("Kap", emoteQueryAtCursor(withColon, cursor = withColon.length, withoutColon = true)?.text)
     }
 
     @Test

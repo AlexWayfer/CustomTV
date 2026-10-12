@@ -97,9 +97,8 @@ class RaidPubSubTest {
     fun aRaidFrameWithoutATargetIsIgnored() {
         assertNull(
             parseRaidPubSubFrame(
-                """
-                {"type":"MESSAGE","data":{"topic":"raid.9","message":"{\"type\":\"raid_go_v2\",\"raid\":{\"id\":\"raid-1\"}}"}}
-                """.trimIndent(),
+                """{"type":"MESSAGE","data":{"topic":"raid.9","message":""" +
+                    """"{\"type\":\"raid_go_v2\",\"raid\":{\"id\":\"raid-1\"}}"}}""",
                 nowMillis = 0L,
             ),
         )

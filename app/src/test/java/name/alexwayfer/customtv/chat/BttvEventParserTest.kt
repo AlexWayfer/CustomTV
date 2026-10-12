@@ -9,7 +9,15 @@ class BttvEventParserTest {
     fun parseCreate() {
         val message = BttvEventParser.parseFrame(
             """
-            {"name":"emote_create","data":{"channel":"twitch:1","emote":{"id":"abc","code":"catJAM","imageType":"gif","user":{"id":"u","name":"editor","displayName":"Editor"}}}}
+            {"name":"emote_create","data":{
+              "channel":"twitch:1",
+              "emote":{
+                "id":"abc",
+                "code":"catJAM",
+                "imageType":"gif",
+                "user":{"id":"u","name":"editor","displayName":"Editor"}
+              }
+            }}
             """.trimIndent(),
         )!!
         val change = message.emoteChange!!
@@ -38,7 +46,10 @@ class BttvEventParserTest {
     fun parseUpdateAsRename() {
         val message = BttvEventParser.parseFrame(
             """
-            {"name":"emote_update","data":{"channel":"twitch:1","emote":{"id":"abc","code":"catJAM2","user":{"displayName":"Editor"}}}}
+            {"name":"emote_update","data":{
+              "channel":"twitch:1",
+              "emote":{"id":"abc","code":"catJAM2","user":{"displayName":"Editor"}}
+            }}
             """.trimIndent(),
         )!!
         val change = message.emoteChange!!

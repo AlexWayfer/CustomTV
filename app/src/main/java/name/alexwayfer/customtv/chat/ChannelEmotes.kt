@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import name.alexwayfer.customtv.data.BttvRepository
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
+import name.alexwayfer.customtv.data.EmoteSourceCache
 import name.alexwayfer.customtv.data.FfzRepository
 import name.alexwayfer.customtv.data.SevenTvRepository
 import kotlin.time.Duration.Companion.seconds
@@ -33,14 +34,15 @@ internal class ChannelEmotes(
     private var channel: String? = null
     private var sources = emoteSources(null)
     private var job: Job? = null
+    private val liveChanges = LiveEmoteChanges(_sevenTv, _bttv)
 
     /** Shows the cached emotes of [channel] at once, then loads the enabled sources. */
     fun open(channel: String) {
         this.channel = channel
         val cachedId = ChannelAvatarRepository.cached(channel)?.id
-        _sevenTv.value = SevenTvRepository.cached(cachedId).takeIf { sources.sevenTv }.orEmpty()
-        _ffz.value = FfzRepository.cached(cachedId).takeIf { sources.ffz }.orEmpty()
-        _bttv.value = BttvRepository.cached(cachedId).takeIf { sources.bttv }.orEmpty()
+        _sevenTv.value = SevenTvRepository.emotes.cached(cachedId).takeIf { sources.sevenTv }.orEmpty()
+        _ffz.value = FfzRepository.emotes.cached(cachedId).takeIf { sources.ffz }.orEmpty()
+        _bttv.value = BttvRepository.emotes.cached(cachedId).takeIf { sources.bttv }.orEmpty()
         load(channel, forceRefresh = false)
     }
 
@@ -66,9 +68,9 @@ internal class ChannelEmotes(
     private fun ready(channelId: String?): Boolean = emoteSourcesReady(
         channelId = channelId,
         sources = sources,
-        sevenTvLoaded = SevenTvRepository.isLoaded(channelId),
-        ffzLoaded = FfzRepository.isLoaded(channelId),
-        bttvLoaded = BttvRepository.isLoaded(channelId),
+        sevenTvLoaded = SevenTvRepository.emotes.isLoaded(channelId),
+        ffzLoaded = FfzRepository.emotes.isLoaded(channelId),
+        bttvLoaded = BttvRepository.emotes.isLoaded(channelId),
     )
 
     private fun load(channel: String, forceRefresh: Boolean) {
@@ -78,75 +80,50 @@ internal class ChannelEmotes(
 
     private suspend fun loadRounds(channel: String, forceRefresh: Boolean) {
         var backoff = 2.seconds
-        repeat(LOAD_ROUNDS) { round ->
-            if (!isOpen(channel)) return
-            val force = forceRefresh && round == 0
-            val cachedId = ChannelAvatarRepository.cached(channel)?.id
-            val channelId = supervisorScope {
-                val profile = async {
-                    if (cachedId != null && !force && round == 0) {
-                        cachedId
-                    } else {
-                        resultUnlessCancelled { ChannelAvatarRepository.refresh(channel) }.getOrNull()?.id
-                            ?: ChannelAvatarRepository.cached(channel)?.id
-                            ?: cachedId
-                    }
-                }
-                if (cachedId == null && !force) {
-                    apply(channel, null, forceRefresh = false)
-                }
-                profile.await()
+        for (round in 0 until LOAD_ROUNDS) {
+            if (!isOpen(channel) || loadRound(channel, round, forceRefresh)) break
+            if (round < LOAD_ROUNDS - 1) {
+                delay(backoff)
+                backoff *= 2
             }
-            apply(channel, channelId, force)
-            if (!isOpen(channel)) return
-            if (ready(channelId)) return
-            if (round == LOAD_ROUNDS - 1) return
-            delay(backoff)
-            backoff *= 2
         }
+    }
+
+    /** One load of [channel]'s emotes; true when nothing is left to try again, or the channel closed. */
+    private suspend fun loadRound(channel: String, round: Int, forceRefresh: Boolean): Boolean {
+        val force = forceRefresh && round == 0
+        val cachedId = ChannelAvatarRepository.cached(channel)?.id
+        val channelId = supervisorScope {
+            val profile = async {
+                if (cachedId != null && !force && round == 0) {
+                    cachedId
+                } else {
+                    loadResult { ChannelAvatarRepository.refresh(channel) }.getOrNull()?.id
+                        ?: ChannelAvatarRepository.cached(channel)?.id
+                        ?: cachedId
+                }
+            }
+            if (cachedId == null && !force) {
+                apply(channel, null, forceRefresh = false)
+            }
+            profile.await()
+        }
+        apply(channel, channelId, force)
+        return !isOpen(channel) || ready(channelId)
     }
 
     private suspend fun apply(channel: String, channelId: String?, forceRefresh: Boolean) {
         val enabled = sources
+        val open = { isOpen(channel) }
         supervisorScope {
             if (enabled.sevenTv) {
-                launch {
-                    resultUnlessCancelled { SevenTvRepository.restore(channelId) }.getOrNull()
-                        ?.let { if (isOpen(channel)) _sevenTv.value = it }
-                    val emotes = resultUnlessCancelled {
-                        SevenTvRepository.forTwitchUser(channelId, forceRefresh)
-                    }.getOrNull() ?: return@launch
-                    if (!isOpen(channel)) return@launch
-                    if (emoteLoadPublishes(emotes.size, SevenTvRepository.isLoaded(channelId))) {
-                        _sevenTv.value = emotes
-                    }
-                }
+                launch { loadEmoteSource(SevenTvRepository.emotes, channelId, forceRefresh, open, _sevenTv) }
             }
             if (enabled.ffz) {
-                launch {
-                    resultUnlessCancelled { FfzRepository.restore(channelId) }.getOrNull()
-                        ?.let { if (isOpen(channel)) _ffz.value = it }
-                    val emotes = resultUnlessCancelled {
-                        FfzRepository.forTwitchUser(channelId, forceRefresh)
-                    }.getOrNull() ?: return@launch
-                    if (!isOpen(channel)) return@launch
-                    if (emoteLoadPublishes(emotes.size, FfzRepository.isLoaded(channelId))) {
-                        _ffz.value = emotes
-                    }
-                }
+                launch { loadEmoteSource(FfzRepository.emotes, channelId, forceRefresh, open, _ffz) }
             }
             if (enabled.bttv) {
-                launch {
-                    resultUnlessCancelled { BttvRepository.restore(channelId) }.getOrNull()
-                        ?.let { if (isOpen(channel)) _bttv.value = it }
-                    val emotes = resultUnlessCancelled {
-                        BttvRepository.forTwitchUser(channelId, forceRefresh)
-                    }.getOrNull() ?: return@launch
-                    if (!isOpen(channel)) return@launch
-                    if (emoteLoadPublishes(emotes.size, BttvRepository.isLoaded(channelId))) {
-                        _bttv.value = emotes
-                    }
-                }
+                launch { loadEmoteSource(BttvRepository.emotes, channelId, forceRefresh, open, _bttv) }
             }
         }
         if (isOpen(channel)) onChannelResolved(channelId)
@@ -156,84 +133,26 @@ internal class ChannelEmotes(
 
     /** Applies a 7TV or BTTV emote change from the live event socket. Null hides the event line. */
     fun applyLiveChange(channelId: String, message: ChatMessage, change: ChatEmoteChange): ChatMessage? =
-        when (change.platform) {
-            EmotePlatform.SevenTv -> applySevenTvChange(channelId, message, change)
-            EmotePlatform.Bttv -> applyBttvChange(channelId, message, change)
-            EmotePlatform.Ffz -> message
-        }
-
-    private fun applySevenTvChange(
-        channelId: String,
-        message: ChatMessage,
-        change: ChatEmoteChange,
-    ): ChatMessage {
-        val maps = when (change.action) {
-            EmoteChangeAction.Added -> {
-                val emote = change.emote ?: return message
-                SevenTvRepository.addChannelEmote(channelId, change.emoteName, emote)
-            }
-            EmoteChangeAction.Removed -> {
-                SevenTvRepository.removeChannelEmote(channelId, change.emoteName)
-            }
-            EmoteChangeAction.Renamed -> {
-                val oldName = change.previousName ?: return message
-                val emote = change.emote ?: return message
-                SevenTvRepository.renameChannelEmote(channelId, oldName, change.emoteName, emote)
-            }
-        }
-        maps?.let { _sevenTv.value = it }
-        return message
-    }
-
-    private fun applyBttvChange(
-        channelId: String,
-        message: ChatMessage,
-        change: ChatEmoteChange,
-    ): ChatMessage? {
-        return when (change.action) {
-            EmoteChangeAction.Added -> {
-                val emote = change.emote ?: return message
-                BttvRepository.addChannelEmote(channelId, change.emoteName, emote)
-                    ?.let { _bttv.value = it }
-                message
-            }
-            EmoteChangeAction.Removed -> {
-                val resolvedName = change.emoteName.ifBlank {
-                    change.emoteId
-                        ?.let { BttvRepository.channelEmoteNameById(channelId, it) }
-                        .orEmpty()
-                }
-                val cachedEmote = resolvedName.takeIf { it.isNotBlank() }
-                    ?.let { BttvRepository.channelEmote(channelId, it) }
-                val maps = if (resolvedName.isNotBlank()) {
-                    BttvRepository.removeChannelEmote(channelId, resolvedName)
-                } else {
-                    change.emoteId?.let { BttvRepository.removeChannelEmoteById(channelId, it)?.second }
-                }
-                maps?.let { _bttv.value = it }
-                resolveBttvRemovalMessage(message, resolvedName, cachedEmote)
-            }
-            EmoteChangeAction.Renamed -> {
-                val emote = change.emote ?: return message
-                val oldName = change.previousName
-                    ?: change.emoteId?.let { BttvRepository.channelEmoteNameById(channelId, it) }
-                if (oldName != null && oldName == change.emoteName) {
-                    BttvRepository.addChannelEmote(channelId, change.emoteName, emote)
-                        ?.let { _bttv.value = it }
-                    return null
-                }
-                val maps = if (oldName != null) {
-                    BttvRepository.renameChannelEmote(channelId, oldName, change.emoteName, emote)
-                } else {
-                    BttvRepository.addChannelEmote(channelId, change.emoteName, emote)
-                }
-                maps?.let { _bttv.value = it }
-                resolveBttvRenameMessage(message, oldName)
-            }
-        }
-    }
+        liveChanges.apply(channelId, message, change)
 
     private companion object {
         const val LOAD_ROUNDS = 3
     }
+}
+
+/**
+ * Shows what the last start kept of one source for the channel, then the network's answer once it is complete enough;
+ * nothing lands in [target] after the channel closed.
+ */
+private suspend fun loadEmoteSource(
+    cache: EmoteSourceCache,
+    channelId: String?,
+    forceRefresh: Boolean,
+    isOpen: () -> Boolean,
+    target: MutableStateFlow<Map<String, SevenTvEmote>>,
+) {
+    loadResult { cache.restore(channelId) }.getOrNull()?.let { if (isOpen()) target.value = it }
+    val emotes = loadResult { cache.forTwitchUser(channelId, forceRefresh) }.getOrNull() ?: return
+    if (!isOpen()) return
+    if (emoteLoadPublishes(emotes.size, cache.isLoaded(channelId))) target.value = emotes
 }

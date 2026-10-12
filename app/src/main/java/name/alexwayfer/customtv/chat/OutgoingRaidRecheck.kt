@@ -3,11 +3,14 @@ package name.alexwayfer.customtv.chat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import name.alexwayfer.customtv.data.HTTP_SUCCESS
 import name.alexwayfer.customtv.data.sharedHttpClient
+import name.alexwayfer.customtv.data.text
 import name.alexwayfer.customtv.data.twitchGqlRequest
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import okhttp3.OkHttpClient
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -34,7 +37,8 @@ internal fun recheckOutgoingRaid(current: OutgoingRaid?, lookup: RaidLookup, now
     return when (lookup) {
         RaidLookup.Failed -> current
         // Gone after the countdown ended: it went while the socket was down. Gone before: canceled.
-        RaidLookup.None -> if (nowMillis >= current.goAtMillis) current.copy(leaving = true, goAtMillis = nowMillis) else null
+        RaidLookup.None ->
+            if (nowMillis >= current.goAtMillis) current.copy(leaving = true, goAtMillis = nowMillis) else null
         is RaidLookup.Active -> current.copy(
             id = lookup.id,
             targetLogin = lookup.targetLogin,
@@ -46,17 +50,17 @@ internal fun recheckOutgoingRaid(current: OutgoingRaid?, lookup: RaidLookup, now
 }
 
 internal fun parseRaidLookup(body: String): RaidLookup {
-    val root = runCatching { JSONObject(body) }.getOrNull() ?: return RaidLookup.Failed
+    val root = body.toJsonObjectOrNull() ?: return RaidLookup.Failed
     val user = root.optJSONObject("data")?.optJSONObject("user") ?: return RaidLookup.Failed
     val raid = user.optJSONObject("raid") ?: return RaidLookup.None
     val target = raid.optJSONObject("targetChannel") ?: return RaidLookup.Failed
-    val id = text(raid, "id") ?: return RaidLookup.Failed
-    val login = text(target, "login")?.lowercase() ?: return RaidLookup.Failed
+    val id = raid.text("id") ?: return RaidLookup.Failed
+    val login = target.text("login")?.lowercase() ?: return RaidLookup.Failed
     return RaidLookup.Active(
         id = id,
         targetLogin = login,
-        targetDisplayName = text(target, "displayName") ?: login,
-        targetAvatarUrl = text(target, "profileImageURL"),
+        targetDisplayName = target.text("displayName") ?: login,
+        targetAvatarUrl = target.text("profileImageURL"),
         viewerCount = raid.optInt("viewerCount", 0).coerceAtLeast(0),
     )
 }
@@ -83,7 +87,7 @@ internal object OutgoingRaidLookup {
             http.newCall(twitchGqlRequest(payload.toString()).build()).execute().use { response ->
                 val body = response.body.string()
                 Diagnostics.reportGql(TAG, "raid", response.code, body)
-                if (response.code !in 200..299) {
+                if (response.code !in HTTP_SUCCESS) {
                     AppLog.w(TAG, "raid lookup failed HTTP ${response.code}")
                     return@withContext RaidLookup.Failed
                 }
@@ -97,6 +101,3 @@ internal object OutgoingRaidLookup {
         }
     }
 }
-
-private fun text(obj: JSONObject, key: String): String? =
-    obj.optString(key).takeIf { it.isNotBlank() && it != "null" }

@@ -48,7 +48,11 @@ internal sealed interface ChatCompletion {
 }
 
 /** Matching commands win over nicks, and nicks over emotes; nothing to offer closes the list. */
-internal fun chatCompletion(commands: List<ChatCommand>, nicks: List<ChatNick>, emotes: List<PickerEmote>): ChatCompletion? = when {
+internal fun chatCompletion(
+    commands: List<ChatCommand>,
+    nicks: List<ChatNick>,
+    emotes: List<PickerEmote>,
+): ChatCompletion? = when {
     commands.isNotEmpty() -> ChatCompletion.Commands(commands)
     nicks.isNotEmpty() -> ChatCompletion.Nicks(nicks)
     emotes.isNotEmpty() -> ChatCompletion.Emotes(emotes)
@@ -88,8 +92,10 @@ internal fun ChatCompletionPanel(
                     onPick = onPickCommand,
                     modifier = listModifier,
                 )
-                is ChatCompletion.Nicks -> NickCompletionList(nicks = set.nicks, onPick = onPickNick, modifier = listModifier)
-                is ChatCompletion.Emotes -> EmoteCompletionList(emotes = set.emotes, onPick = onPickEmote, modifier = listModifier)
+                is ChatCompletion.Nicks ->
+                    NickCompletionList(nicks = set.nicks, onPick = onPickNick, modifier = listModifier)
+                is ChatCompletion.Emotes ->
+                    EmoteCompletionList(emotes = set.emotes, onPick = onPickEmote, modifier = listModifier)
                 null -> Unit
             }
         }
@@ -202,7 +208,8 @@ internal fun ChatFieldEndIconContent(icon: ChatFieldEndIcon) {
                 stringResource(R.string.chat_send),
                 tint = TwitchPurple,
             )
-            ChatFieldEndIcon.Menu -> Icon(Icons.Filled.MoreVert, stringResource(R.string.chat_menu), tint = TwitchTextSecondary)
+            ChatFieldEndIcon.Menu ->
+                Icon(Icons.Filled.MoreVert, stringResource(R.string.chat_menu), tint = TwitchTextSecondary)
         }
     }
 }

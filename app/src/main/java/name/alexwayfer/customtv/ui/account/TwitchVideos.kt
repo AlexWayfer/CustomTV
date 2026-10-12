@@ -1,15 +1,21 @@
 package name.alexwayfer.customtv.ui.account
 
 import java.io.IOException
-import java.time.Instant
-import java.util.concurrent.TimeUnit
+import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChannelProfileParser
+import name.alexwayfer.customtv.data.HTTP_CLIENT_ERROR
+import name.alexwayfer.customtv.data.HTTP_SUCCESS
 import name.alexwayfer.customtv.data.gqlFailureCause
+import name.alexwayfer.customtv.data.instantMillisOrNull
+import name.alexwayfer.customtv.data.objects
 import name.alexwayfer.customtv.data.sharedHttpClient
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
+import name.alexwayfer.customtv.data.trimmedText
 import name.alexwayfer.customtv.data.twitchGqlRequest
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
@@ -42,8 +48,8 @@ internal data class ChannelRecordingsPage(
  */
 internal class ChannelRecordingsRepository(
     private val http: OkHttpClient = sharedHttpClient.newBuilder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10.seconds)
+        .readTimeout(10.seconds)
         .build(),
 ) {
     /** Null when Twitch did not answer or refused the request. */
@@ -62,13 +68,13 @@ internal class ChannelRecordingsRepository(
                     val body = response.body.string()
                     Diagnostics.reportGql(TAG, "videos", response.code, body)
                     when (response.code) {
-                        in 200..299 -> parseChannelRecordings(body).also { page ->
+                        in HTTP_SUCCESS -> parseChannelRecordings(body).also { page ->
                             when {
                                 page == null -> AppLog.w(TAG, "videos unreadable: ${gqlFailureCause(body)}")
                                 page.videos.isEmpty() -> AppLog.i(TAG, "videos empty for channel $channelLogin")
                             }
                         }
-                        in 400..499 -> {
+                        in HTTP_CLIENT_ERROR -> {
                             AppLog.w(TAG, "videos rejected HTTP ${response.code}")
                             null
                         }
@@ -103,7 +109,7 @@ internal class ChannelRecordingsRepository(
  * left out the videos, could not be read.
  */
 internal fun parseChannelRecordings(body: String): ChannelRecordingsPage? {
-    val json = runCatching { JSONObject(body) }.getOrNull() ?: return null
+    val json = body.toJsonObjectOrNull() ?: return null
     val data = json.optJSONObject("data") ?: return null
     val user = data.optJSONObject("user")
     val edges = user?.optJSONObject("videos")?.optJSONArray("edges")
@@ -113,14 +119,13 @@ internal fun parseChannelRecordings(body: String): ChannelRecordingsPage? {
     }
     val videos = mutableListOf<TwitchVideo>()
     val chapters = mutableMapOf<String, VodCategories>()
-    for (index in 0 until edges.length()) {
-        val node = edges.optJSONObject(index)?.optJSONObject("node") ?: continue
-        val id = text(node, "id") ?: continue
+    for (node in edges.objects().mapNotNull { it.optJSONObject("node") }) {
+        val id = node.trimmedText("id") ?: continue
         val publishedAt = instant(node, "publishedAt")
         videos += TwitchVideo(
             id = id,
-            title = text(node, "title").orEmpty(),
-            thumbnailUrl = text(node, "previewThumbnailURL"),
+            title = node.trimmedText("title").orEmpty(),
+            thumbnailUrl = node.trimmedText("previewThumbnailURL"),
             startedAtMillis = instant(node, "createdAt") ?: publishedAt,
             publishedAtMillis = publishedAt,
             viewCount = node.optLong("viewCount").coerceAtLeast(0L),
@@ -141,16 +146,13 @@ private fun suggestedChannels(user: JSONObject?): List<ChannelProfile> {
         ?: return emptyList()
     return (0 until edges.length()).mapNotNull { index ->
         val node = edges.optJSONObject(index)?.optJSONObject("node") ?: return@mapNotNull null
-        val login = text(node, "login") ?: return@mapNotNull null
+        val login = node.trimmedText("login") ?: return@mapNotNull null
         ChannelProfileParser.parseUser(node, login).profile
     }
 }
 
-private fun text(json: JSONObject, key: String): String? =
-    json.optString(key).trim().takeIf { it.isNotEmpty() && it != "null" }
-
 private fun instant(json: JSONObject, key: String): Long? =
-    text(json, key)?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+    json.trimmedText(key)?.let(::instantMillisOrNull)
 
 internal fun twitchVideoDurationLabel(seconds: Long): String {
     val safe = seconds.coerceAtLeast(0L)
@@ -158,9 +160,9 @@ internal fun twitchVideoDurationLabel(seconds: Long): String {
     val minutes = (safe % 3_600L) / 60L
     val remainingSeconds = safe % 60L
     return if (hours > 0L) {
-        "%d:%02d:%02d".format(hours, minutes, remainingSeconds)
+        "%d:%02d:%02d".format(Locale.ROOT, hours, minutes, remainingSeconds)
     } else {
-        "%d:%02d".format(minutes, remainingSeconds)
+        "%d:%02d".format(Locale.ROOT, minutes, remainingSeconds)
     }
 }
 

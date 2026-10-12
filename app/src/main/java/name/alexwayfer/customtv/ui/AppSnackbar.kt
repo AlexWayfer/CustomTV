@@ -11,11 +11,8 @@ import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,16 +20,6 @@ import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
-
-/**
- * Where the app's snackbar goes over the full screen player: lifted [px] off the bottom over its control bar, and
- * [overPlayer], centered on the whole screen and kept between the player's corner buttons.
- */
-@Stable
-internal class SnackbarLift {
-    var px: () -> Int by mutableStateOf({ 0 })
-    var overPlayer by mutableStateOf(false)
-}
 
 internal val LocalSnackbarLift = staticCompositionLocalOf<SnackbarLift?> { null }
 

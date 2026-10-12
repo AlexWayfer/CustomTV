@@ -37,7 +37,9 @@ internal fun showDiagnosticNotification(context: Context, headlines: List<String
         DIAGNOSTIC_NOTIFICATION_ID,
         appNotificationBuilder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.resources.getQuantityString(R.plurals.diagnostics_title, headlines.size, headlines.size))
+            .setContentTitle(
+                context.resources.getQuantityString(R.plurals.diagnostics_title, headlines.size, headlines.size),
+            )
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText((listOf(text) + headlines).joinToString("\n")))
             .setContentIntent(send)

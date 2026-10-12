@@ -5,19 +5,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerVerticalDragTest {
+    private val minimizeOnly = PlayerSwipeRules(touchSlop = 8, canMinimize = true, canExpand = false)
+
     @Test
     fun downwardSwipeOnScrollableSettingsDoesNotMinimize() {
-        assertFalse(shouldStartPlayerVerticalDrag(40f, 0f, 8, canMinimize = true, canExpand = false, touchOnScrollableContent = true))
+        assertFalse(shouldStartPlayerVerticalDrag(40f, 0f, minimizeOnly, touchOnScrollableContent = true))
     }
 
     @Test
     fun downwardSwipeOnVideoStillMinimizes() {
-        assertTrue(shouldStartPlayerVerticalDrag(40f, 0f, 8, canMinimize = true, canExpand = false, touchOnScrollableContent = false))
+        assertTrue(shouldStartPlayerVerticalDrag(40f, 0f, minimizeOnly, touchOnScrollableContent = false))
     }
 
     @Test
     fun upwardSwipeOnVideoStillExpands() {
-        assertTrue(shouldStartPlayerVerticalDrag(-40f, 0f, 8, canMinimize = false, canExpand = true, touchOnScrollableContent = false))
+        assertTrue(
+            shouldStartPlayerVerticalDrag(
+                -40f,
+                0f,
+                PlayerSwipeRules(touchSlop = 8, canMinimize = false, canExpand = true),
+                touchOnScrollableContent = false,
+            ),
+        )
     }
 
     @Test
@@ -26,9 +35,7 @@ class PlayerVerticalDragTest {
             shouldStartPlayerVerticalDrag(
                 40f,
                 0f,
-                8,
-                canMinimize = true,
-                canExpand = false,
+                minimizeOnly,
                 touchOnScrollableContent = false,
                 startsInStatusBarZone = true,
             ),

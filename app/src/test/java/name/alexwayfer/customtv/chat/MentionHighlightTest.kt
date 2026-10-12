@@ -42,14 +42,13 @@ class MentionHighlightTest {
         text: String,
         replyLogin: String? = null,
         kind: ChatEventKind = ChatEventKind.Normal,
-    ) = ChatMessage(
-        id = "1",
-        userLogin = login,
-        displayName = login,
+    ) = testChatMessage(
+        text = text,
+        login = login,
         color = Color.Unspecified,
-        rawText = text,
         parts = emptyList(),
         timestampMillis = 0L,
+    ).copy(
         eventKind = kind,
         reply = replyLogin?.let { parent ->
             ChatReply(

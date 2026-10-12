@@ -63,7 +63,7 @@ internal fun AppUpdateBlock(release: AppRelease, download: AppUpdateDownload) {
                 is AppUpdateAction.Download -> Column {
                     SmallButton(
                         text = stringResource(R.string.app_update_download, version),
-                        onClick = { TelegramSession.downloadUpdate(release.fileId) },
+                        onClick = { TelegramSession.download.start(release.fileId) },
                         modifier = Modifier.padding(top = 8.dp),
                     )
                     UpdateError(action.error)

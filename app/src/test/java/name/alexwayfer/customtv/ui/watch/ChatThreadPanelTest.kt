@@ -8,10 +8,12 @@ class ChatThreadPanelTest {
     fun aJustOpenedPanelTakesNoHeight() = assertEquals(0, threadPanelShownHeightPx(300, dragPx = 0f, reveal = 0f))
 
     @Test
-    fun halfwayOpenThePanelTakesHalfItsHeight() = assertEquals(150, threadPanelShownHeightPx(300, dragPx = 0f, reveal = 0.5f))
+    fun halfwayOpenThePanelTakesHalfItsHeight() =
+        assertEquals(150, threadPanelShownHeightPx(300, dragPx = 0f, reveal = 0.5f))
 
     @Test
-    fun anOpenPanelDraggedDownLosesTheDraggedHeight() = assertEquals(200, threadPanelShownHeightPx(300, dragPx = 100f, reveal = 1f))
+    fun anOpenPanelDraggedDownLosesTheDraggedHeight() =
+        assertEquals(200, threadPanelShownHeightPx(300, dragPx = 100f, reveal = 1f))
 
     @Test
     fun aDragPastThePanelLeavesNothing() = assertEquals(0, threadPanelShownHeightPx(300, dragPx = 500f, reveal = 1f))

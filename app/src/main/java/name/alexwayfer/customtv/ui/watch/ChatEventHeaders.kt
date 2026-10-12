@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -21,7 +22,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatRaid
-import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import java.text.NumberFormat
 
 @Composable
@@ -51,48 +51,44 @@ internal fun ChatRaidLine(
         timestampSize,
     ) {
         buildAnnotatedString {
-            if (timestampText != null) {
-                withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = timestampSize)) {
-                    append(timestampText)
-                    append(" ")
-                }
-            }
+            appendChatTimestamp(timestampText, timestampSize)
             if (raid.canceled || raid.created) {
                 withStyle(SpanStyle(color = Color.White, fontSize = textSize)) {
                     append(if (raid.canceled) canceledLabel else createdLabel)
                 }
             } else {
-                withStyle(
-                    SpanStyle(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = textSize,
-                    ),
-                ) {
-                    append(countLabel)
-                }
-                withStyle(SpanStyle(color = Color.White, fontSize = textSize)) {
-                    append(" ")
-                    append(fromLabel)
-                    append(" ")
-                }
-                withStyle(
-                    SpanStyle(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = textSize,
-                    ),
-                ) {
-                    append(raid.fromDisplayName)
-                }
-                withStyle(SpanStyle(color = Color.White, fontSize = textSize)) {
-                    append(" ")
-                    append(joinedLabel)
-                }
+                appendRaidArrival(countLabel, fromLabel, raid.fromDisplayName, joinedLabel, textSize)
             }
         }
     }
     Text(text = annotated, lineHeight = lineHeight)
+}
+
+/** "[count] [from] [channel] [joined]": the numbers and the raiding channel in bold. */
+private fun AnnotatedString.Builder.appendRaidArrival(
+    countLabel: String,
+    fromLabel: String,
+    fromDisplayName: String,
+    joinedLabel: String,
+    textSize: TextUnit,
+) {
+    val plain = SpanStyle(color = Color.White, fontSize = textSize)
+    val bold = plain.copy(fontWeight = FontWeight.Bold)
+    withStyle(bold) {
+        append(countLabel)
+    }
+    withStyle(plain) {
+        append(" ")
+        append(fromLabel)
+        append(" ")
+    }
+    withStyle(bold) {
+        append(fromDisplayName)
+    }
+    withStyle(plain) {
+        append(" ")
+        append(joinedLabel)
+    }
 }
 
 @Composable

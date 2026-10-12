@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.ui.account
 
 import java.net.URI
+import java.net.URISyntaxException
 
 internal enum class ProfileLinkMark {
     Link,
@@ -21,8 +22,11 @@ internal enum class ProfileLinkMark {
 internal fun profileLinkMark(name: String?, url: String): ProfileLinkMark {
     val fromName = markForName(name)
     if (fromName != ProfileLinkMark.Link) return fromName
-    val host = runCatching { URI(url).host }.getOrNull()?.lowercase()?.removePrefix("www.")
-        ?: return ProfileLinkMark.Link
+    val host = try {
+        URI(url).host
+    } catch (_: URISyntaxException) {
+        null
+    }?.lowercase()?.removePrefix("www.") ?: return ProfileLinkMark.Link
     return markForHost(host) ?: markForLabel(host.substringBefore('.'))
 }
 
@@ -31,7 +35,8 @@ private val nameWord = Regex("""[\p{L}\p{N}]+""")
 private val nameWordMarks = listOf(
     ProfileLinkMark.Steam to setOf("steam", "стим"),
     ProfileLinkMark.Boosty to setOf("boosty", "бусти"),
-    ProfileLinkMark.Telegram to setOf("telegram", "telega", "tg", "тг", "телеграм", "телеграмм", "телега"),
+    ProfileLinkMark.Telegram to
+        setOf("telegram", "telega", "tg", "тг", "телеграм", "телеграмм", "телега"),
 )
 
 private fun markForName(name: String?): ProfileLinkMark {

@@ -9,7 +9,7 @@ class ChatNoticePagesTest {
     fun aPinAndARaidAreSeparatePagesWithTheRaidFirst() {
         assertEquals(
             listOf(ChatNoticePage.Raid, ChatNoticePage.Pinned),
-            chatNoticePages(hasPinned = true, hasRaid = true, hasCommunityGift = false),
+            chatNoticePages(setOf(ChatNoticePage.Pinned, ChatNoticePage.Raid)),
         )
     }
 
@@ -17,7 +17,7 @@ class ChatNoticePagesTest {
     fun aPinAloneIsTheOnlyPage() {
         assertEquals(
             listOf(ChatNoticePage.Pinned),
-            chatNoticePages(hasPinned = true, hasRaid = false, hasCommunityGift = false),
+            chatNoticePages(setOf(ChatNoticePage.Pinned)),
         )
     }
 
@@ -25,7 +25,7 @@ class ChatNoticePagesTest {
     fun aRaidAloneIsTheOnlyPage() {
         assertEquals(
             listOf(ChatNoticePage.Raid),
-            chatNoticePages(hasPinned = false, hasRaid = true, hasCommunityGift = false),
+            chatNoticePages(setOf(ChatNoticePage.Raid)),
         )
     }
 
@@ -33,7 +33,7 @@ class ChatNoticePagesTest {
     fun neitherNoticeProducesNoPages() {
         assertEquals(
             emptyList<ChatNoticePage>(),
-            chatNoticePages(hasPinned = false, hasRaid = false, hasCommunityGift = false),
+            chatNoticePages(emptySet()),
         )
     }
 
@@ -41,7 +41,7 @@ class ChatNoticePagesTest {
     fun aCommunityGiftSitsBetweenTheRaidAndPinnedMessage() {
         assertEquals(
             listOf(ChatNoticePage.Raid, ChatNoticePage.CommunityGift, ChatNoticePage.Pinned),
-            chatNoticePages(hasPinned = true, hasRaid = true, hasCommunityGift = true),
+            chatNoticePages(setOf(ChatNoticePage.Pinned, ChatNoticePage.CommunityGift, ChatNoticePage.Raid)),
         )
     }
 
@@ -56,11 +56,13 @@ class ChatNoticePagesTest {
                 ChatNoticePage.Pinned,
             ),
             chatNoticePages(
-                hasPinned = true,
-                hasRaid = true,
-                hasCommunityGift = true,
-                hasPoll = true,
-                hasPrediction = true,
+                setOf(
+                    ChatNoticePage.Pinned,
+                    ChatNoticePage.Raid,
+                    ChatNoticePage.CommunityGift,
+                    ChatNoticePage.Poll,
+                    ChatNoticePage.Prediction,
+                ),
             ),
         )
     }
@@ -69,7 +71,7 @@ class ChatNoticePagesTest {
     fun aPredictionAloneIsTheOnlyPage() {
         assertEquals(
             listOf(ChatNoticePage.Prediction),
-            chatNoticePages(hasPinned = false, hasRaid = false, hasCommunityGift = false, hasPrediction = true),
+            chatNoticePages(setOf(ChatNoticePage.Prediction)),
         )
     }
 
@@ -130,9 +132,13 @@ class ChatNoticePagesTest {
             ),
         )
         val pages = listOf(ChatNoticePage.HypeTrain, ChatNoticePage.Prediction)
-        assertEquals(listOf(ChatNoticePage.Prediction, ChatNoticePage.HypeTrain), orderedChatNoticePages(pages, prediction))
+        assertEquals(
+            listOf(ChatNoticePage.Prediction, ChatNoticePage.HypeTrain),
+            orderedChatNoticePages(pages, prediction),
+        )
 
-        val sameLevel = nextChatNoticeArrivals(prediction, prediction.byPage.mapValues { ChatNoticeItem(it.value.key, true) })
+        val sameItems = prediction.byPage.mapValues { ChatNoticeItem(it.value.key, true) }
+        val sameLevel = nextChatNoticeArrivals(prediction, sameItems)
         assertEquals(prediction, sameLevel)
 
         val levelUp = nextChatNoticeArrivals(
@@ -142,7 +148,10 @@ class ChatNoticePagesTest {
                 ChatNoticePage.Prediction to ChatNoticeItem("next prediction", live = true),
             ),
         )
-        assertEquals(listOf(ChatNoticePage.HypeTrain, ChatNoticePage.Prediction), orderedChatNoticePages(pages, levelUp))
+        assertEquals(
+            listOf(ChatNoticePage.HypeTrain, ChatNoticePage.Prediction),
+            orderedChatNoticePages(pages, levelUp),
+        )
     }
 
     @Test
@@ -161,6 +170,16 @@ class ChatNoticePagesTest {
         assertEquals(25.dp, chatNoticeDotInset())
         assertEquals(14.dp, chatNoticeDotInset(gapAboveDots = 1.dp))
     }
+
+    @Test
+    fun aScrollSettlesOnTheNearestPageWithinTheRow() {
+        assertEquals(0, chatNoticePageAt(scrollPx = 40, pageWidthPx = 100, lastIndex = 2))
+        assertEquals(1, chatNoticePageAt(scrollPx = 60, pageWidthPx = 100, lastIndex = 2))
+        assertEquals(2, chatNoticePageAt(scrollPx = 900, pageWidthPx = 100, lastIndex = 2))
+    }
+
+    @Test
+    fun aRowWithoutWidthShowsTheFirstPage() = assertEquals(0, chatNoticePageAt(250, pageWidthPx = 0, lastIndex = 2))
 
     @Test
     fun aSinglePageKeepsItsOwnGap() = assertEquals(10.dp, noticeGapAboveInset(10.dp, inset = 0.dp))

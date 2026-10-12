@@ -2,7 +2,6 @@ package name.alexwayfer.customtv.data
 
 import android.content.Context
 import android.util.AtomicFile
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -14,6 +13,7 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -37,7 +37,11 @@ internal object ProfileDetailsRepository {
     fun start(context: Context) {
         val stored = AtomicFile(File(context.cacheDir, "profile_details.json")).also { file = it }
         scope.launch {
-            val read = runCatching { stored.readFully().toString(Charsets.UTF_8) }.getOrNull() ?: return@launch
+            val read = try {
+                stored.readFully().toString(Charsets.UTF_8)
+            } catch (_: IOException) {
+                return@launch
+            }
             val kept = parseStoredProfiles(read)
             synchronized(this@ProfileDetailsRepository) {
                 // A profile loaded while the file was read is newer than its stored copy.
@@ -80,9 +84,7 @@ internal object ProfileDetailsRepository {
                     details.links == null -> AppLog.w(TAG, "profile links unavailable: ${gqlFailureCause(body)}")
                 }
             }
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
+        } catch (error: IOException) {
             AppLog.w(TAG, "profile details failed: ${error.javaClass.simpleName}")
             null
         }
@@ -95,14 +97,14 @@ internal object ProfileDetailsRepository {
             writeLock.withLock {
                 val output = try {
                     target.startWrite()
-                } catch (error: Exception) {
+                } catch (error: IOException) {
                     AppLog.w(TAG, "profile cache write failed: ${error.javaClass.simpleName}")
                     return@withLock
                 }
                 try {
                     output.write(profilesJson(entries).toByteArray(Charsets.UTF_8))
                     target.finishWrite(output)
-                } catch (error: Exception) {
+                } catch (error: IOException) {
                     target.failWrite(output)
                     AppLog.w(TAG, "profile cache write failed: ${error.javaClass.simpleName}")
                 }

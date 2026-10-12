@@ -2,13 +2,6 @@ package name.alexwayfer.customtv.chat
 
 import name.alexwayfer.customtv.data.AppSettings
 
-/** Third-party emote sources the settings turn on. A source that is off is not loaded. */
-internal data class EmoteSources(
-    val sevenTv: Boolean,
-    val ffz: Boolean,
-    val bttv: Boolean,
-)
-
 internal fun emoteSources(settings: AppSettings?): EmoteSources {
     val current = settings ?: AppSettings()
     return EmoteSources(

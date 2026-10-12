@@ -13,7 +13,14 @@ class ChatterCardTest {
     @Test
     fun profileReadsAvatarAndAccountCreated() {
         val profile = parseProfileDetails(
-            """{"data":{"user":{"login":"heatlee","displayName":"HeatLee","profileImageURL":"https://example/avatar.png","createdAt":"2015-07-21T00:00:00Z"}}}""",
+            """
+            {"data":{"user":{
+              "login":"heatlee",
+              "displayName":"HeatLee",
+              "profileImageURL":"https://example/avatar.png",
+              "createdAt":"2015-07-21T00:00:00Z"
+            }}}
+            """.trimIndent(),
             fallbackLogin = "heatlee",
         )?.toChatterProfile()
 
@@ -27,7 +34,15 @@ class ChatterCardTest {
     @Test
     fun headerUsesTheProfileBannerAndIgnoresTheOfflineImage() {
         val profile = parseProfileDetails(
-            """{"data":{"user":{"login":"heatlee","displayName":"HeatLee","offlineImageURL":"https://example/offline.png","bannerImageURL":"https://example/banner.png","createdAt":"2015-07-21T00:00:00Z"}}}""",
+            """
+            {"data":{"user":{
+              "login":"heatlee",
+              "displayName":"HeatLee",
+              "offlineImageURL":"https://example/offline.png",
+              "bannerImageURL":"https://example/banner.png",
+              "createdAt":"2015-07-21T00:00:00Z"
+            }}}
+            """.trimIndent(),
             fallbackLogin = "heatlee",
         )?.toChatterProfile()
 
@@ -37,7 +52,17 @@ class ChatterCardTest {
     @Test
     fun profileReadsUserIdAboutAndSocials() {
         val profile = parseProfileDetails(
-            """{"data":{"user":{"id":"123","login":"heatlee","description":"  Hi there  ","channel":{"socialMedias":[{"name":"twitter","title":"Twitter","url":"https://twitter.com/heatlee"},{"name":"website","title":"Broken","url":"ftp://example"}]}}}}""",
+            """
+            {"data":{"user":{
+              "id":"123",
+              "login":"heatlee",
+              "description":"  Hi there  ",
+              "channel":{"socialMedias":[
+                {"name":"twitter","title":"Twitter","url":"https://twitter.com/heatlee"},
+                {"name":"website","title":"Broken","url":"ftp://example"}
+              ]}
+            }}}
+            """.trimIndent(),
             fallbackLogin = "heatlee",
         )?.toChatterProfile()
 

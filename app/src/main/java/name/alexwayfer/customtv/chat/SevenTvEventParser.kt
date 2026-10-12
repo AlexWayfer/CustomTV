@@ -1,17 +1,22 @@
 package name.alexwayfer.customtv.chat
 
+import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
 import name.alexwayfer.customtv.data.SevenTvRepository
+import name.alexwayfer.customtv.data.objects
+import name.alexwayfer.customtv.data.text
 import org.json.JSONArray
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
 
 internal object SevenTvEventParser {
     fun parseFrame(text: String): SevenTvFrame {
-        val json = runCatching { JSONObject(text) }.getOrNull() ?: return SevenTvFrame.Ignore
+        val json = text.toJsonObjectOrNull() ?: return SevenTvFrame.Ignore
         return when (json.optInt("op", -1)) {
             OP_DISPATCH -> SevenTvFrame.Dispatch(parseDispatch(json))
             OP_HELLO -> {
                 val interval = json.optJSONObject("d")?.optLong("heartbeat_interval") ?: 25_000L
-                SevenTvFrame.Hello(heartbeatMs = interval.coerceAtLeast(5_000L))
+                SevenTvFrame.Hello(heartbeatMs = interval.coerceAtLeast(MIN_HEARTBEAT_MILLIS))
             }
             OP_RECONNECT -> SevenTvFrame.Reconnect
             else -> SevenTvFrame.Ignore
@@ -30,41 +35,46 @@ internal object SevenTvEventParser {
         parseChanged(body.optJSONArray("pushed"), valueKey = "value")
             .forEach { change ->
                 messages += emoteChangeMessage(
-                    platform = EmotePlatform.SevenTv,
-                    action = EmoteChangeAction.Added,
-                    actorName = actorName,
-                    emoteName = change.name,
-                    emote = change.emote,
-                    emoteId = change.emote?.id,
+                    ChatEmoteChange(
+                        platform = EmotePlatform.SevenTv,
+                        action = EmoteChangeAction.Added,
+                        actorName = actorName,
+                        emoteName = change.name,
+                        emote = change.emote,
+                        emoteId = change.emote?.id,
+                    ),
                     timestampMillis = timestamp,
                 )
             }
         parseChanged(body.optJSONArray("pulled"), valueKey = "old_value")
             .forEach { change ->
                 messages += emoteChangeMessage(
-                    platform = EmotePlatform.SevenTv,
-                    action = EmoteChangeAction.Removed,
-                    actorName = actorName,
-                    emoteName = change.name,
-                    emote = change.emote,
-                    emoteId = change.emote?.id,
+                    ChatEmoteChange(
+                        platform = EmotePlatform.SevenTv,
+                        action = EmoteChangeAction.Removed,
+                        actorName = actorName,
+                        emoteName = change.name,
+                        emote = change.emote,
+                        emoteId = change.emote?.id,
+                    ),
                     timestampMillis = timestamp,
                 )
             }
         val updated = body.optJSONArray("updated") ?: return messages
-        for (index in 0 until updated.length()) {
-            val item = updated.optJSONObject(index) ?: continue
+        for (item in updated.objects()) {
             val oldChange = parseValue(item.optJSONObject("old_value"))
             val newChange = parseValue(item.optJSONObject("value")) ?: continue
             if (oldChange != null && oldChange.name != newChange.name) {
                 messages += emoteChangeMessage(
-                    platform = EmotePlatform.SevenTv,
-                    action = EmoteChangeAction.Renamed,
-                    actorName = actorName,
-                    emoteName = newChange.name,
-                    previousName = oldChange.name,
-                    emote = newChange.emote,
-                    emoteId = newChange.emote?.id,
+                    ChatEmoteChange(
+                        platform = EmotePlatform.SevenTv,
+                        action = EmoteChangeAction.Renamed,
+                        actorName = actorName,
+                        emoteName = newChange.name,
+                        previousName = oldChange.name,
+                        emote = newChange.emote,
+                        emoteId = newChange.emote?.id,
+                    ),
                     timestampMillis = timestamp,
                 )
             }
@@ -88,22 +98,20 @@ internal object SevenTvEventParser {
         if (parsed != null) {
             return ParsedEmote(parsed.first, parsed.second)
         }
-        val name = value.optString("name").takeIf { it.isNotBlank() && it != "null" } ?: return null
+        val name = value.text("name") ?: return null
         return ParsedEmote(name, null)
     }
 
-    private fun actorDisplayName(actor: JSONObject?): String {
-        return actor?.optString("display_name")?.takeIf { it.isNotBlank() && it != "null" }
-            ?: actor?.optString("username")?.takeIf { it.isNotBlank() && it != "null" }
-            ?: "Unknown"
-    }
+    private fun actorDisplayName(actor: JSONObject?): String =
+        actor?.text("display_name") ?: actor?.text("username") ?: "Unknown"
 
     private fun eventTimestamp(json: JSONObject): Long {
         val raw = json.optLong("t")
+        // A timestamp of today has 19 digits in nanoseconds, 13 in milliseconds, and 10 in seconds.
         return when {
-            raw > 10_000_000_000_000_000L -> raw / 1_000_000L
-            raw > 1_000_000_000_000L -> raw
-            raw > 1_000_000_000L -> raw * 1_000L
+            raw > NANOS_FROM -> raw.nanoseconds.inWholeMilliseconds
+            raw > MILLIS_FROM -> raw
+            raw > SECONDS_FROM -> raw.seconds.inWholeMilliseconds
             else -> System.currentTimeMillis()
         }
     }
@@ -116,6 +124,12 @@ internal object SevenTvEventParser {
     private const val OP_DISPATCH = 0
     private const val OP_HELLO = 1
     private const val OP_RECONNECT = 4
+
+    private const val MIN_HEARTBEAT_MILLIS = 5_000L
+
+    private const val NANOS_FROM = 10_000_000_000_000_000L
+    private const val MILLIS_FROM = 1_000_000_000_000L
+    private const val SECONDS_FROM = 1_000_000_000L
 }
 
 internal sealed interface SevenTvFrame {

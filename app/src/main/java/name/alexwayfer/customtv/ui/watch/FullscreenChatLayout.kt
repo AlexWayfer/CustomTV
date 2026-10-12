@@ -79,22 +79,32 @@ internal data class FullscreenPlacement(
     val chatTopInset: Int = 0,
 )
 
+/** The keyboard's height, and how far it has come up, from 0 to 1. */
+internal data class FullscreenKeyboard(val heightPx: Int = 0, val progress: Float = 0f)
+
+/**
+ * What an overlaid chat keeps clear of: the player's control bar, [controlBarShown] from 0 to 1, and [chatEdgePx]
+ * from the area's top and bottom.
+ */
+internal data class FullscreenChatInsets(
+    val controlBarPx: Int,
+    val controlBarShown: Float = 1f,
+    val chatEdgePx: Int = 0,
+)
+
 /**
  * At rest the video is centered in the player's part of the area, and an overlaid chat takes the full height but
- * [chatEdgePx] above and below, rising above the control bar as it shows ([controlBarShown] from 0 to 1). With the
- * keyboard up the video shrinks into the top corner away from the chat, to the room above the keyboard and no wider
- * than leaves the chat its usual width; the chat takes the rest of the width. Between the two, [keyboardProgress]
- * moves everything along with the keyboard.
+ * its edge gap above and below, rising above the control bar as it shows. With the [keyboard] up the video shrinks
+ * into the top corner away from the chat, to the room above the keyboard and no wider than leaves the chat its usual
+ * width; the chat takes the rest of the width. Between the two, the keyboard's progress moves everything along with
+ * it.
  */
 internal fun fullscreenPlacement(
     bounds: FullscreenChatBounds?,
     areaWidthPx: Int,
     areaHeightPx: Int,
-    keyboardHeightPx: Int,
-    keyboardProgress: Float,
-    controlBarPx: Int,
-    controlBarShown: Float = 1f,
-    chatEdgePx: Int = 0,
+    keyboard: FullscreenKeyboard,
+    insets: FullscreenChatInsets,
 ): FullscreenPlacement {
     val area = areaWidthPx.coerceAtLeast(0)
     val height = areaHeightPx.coerceAtLeast(0)
@@ -113,17 +123,18 @@ internal fun fullscreenPlacement(
         chatX = bounds?.chatX ?: 0,
         chatWidth = bounds?.chatWidth ?: 0,
         chatBottomInset = if (bounds?.overPlayer == true) {
-            val shown = controlBarShown.coerceIn(0f, 1f)
-            val edge = chatEdgePx.coerceAtLeast(0)
-            (edge + (controlBarPx.coerceAtLeast(0) - edge) * shown).roundToInt()
+            val shown = insets.controlBarShown.coerceIn(0f, 1f)
+            val edge = insets.chatEdgePx.coerceAtLeast(0)
+            (edge + (insets.controlBarPx.coerceAtLeast(0) - edge) * shown).roundToInt()
         } else {
             0
         },
-        chatTopInset = if (bounds?.overPlayer == true) chatEdgePx.coerceAtLeast(0) else 0,
+        chatTopInset = if (bounds?.overPlayer == true) insets.chatEdgePx.coerceAtLeast(0) else 0,
     )
-    val progress = keyboardProgress.coerceIn(0f, 1f)
-    if (bounds == null || progress == 0f || videoWidth == 0 || videoHeight == 0) return rest
-    val room = (height - keyboardHeightPx).coerceAtLeast(0)
+    val progress = keyboard.progress.coerceIn(0f, 1f)
+    val noVideo = videoWidth == 0 || videoHeight == 0
+    if (bounds == null || progress == 0f || noVideo) return rest
+    val room = (height - keyboard.heightPx).coerceAtLeast(0)
     val widthForVideo = (area - bounds.chatWidth).coerceAtLeast(0)
     val keyboardScale = minOf(1f, room.toFloat() / videoHeight, widthForVideo.toFloat() / videoWidth)
     val shownWidth = (videoWidth * keyboardScale).roundToInt()
@@ -139,44 +150,6 @@ internal fun fullscreenPlacement(
         chatBottomInset = lerp(rest.chatBottomInset, 0),
         chatTopInset = lerp(rest.chatTopInset, 0),
     )
-}
-
-/**
- * How tall the keyboard is when fully open: its target while it opens or stays, and the remembered height while it
- * closes, when the target is already zero. Zero once it is gone.
- */
-internal fun fullscreenKeyboardHeightPx(imePx: Int, targetPx: Int, rememberedPx: Int): Int = when {
-    targetPx > 0 -> maxOf(targetPx, imePx)
-    imePx > 0 -> maxOf(rememberedPx, imePx)
-    else -> 0
-}
-
-/**
- * What the layout takes for the keyboard, as its current and target heights: the keyboard itself, or while the emote
- * picker takes its place ([pickerPx] above zero), the picker. It is as tall as the keyboard was in this orientation,
- * so the video and the chat keep the size they had with the keyboard.
- */
-internal fun fullscreenComposerHeightsPx(imePx: Int, imeTargetPx: Int, pickerPx: Int): Pair<Int, Int> =
-    if (pickerPx <= 0) imePx to imeTargetPx else pickerPx to pickerPx
-
-/**
- * Where the panel under the video starts while the emote picker takes the keyboard's place, so the space the
- * keyboard would cover beside the chat looks like part of the picker; null without the picker.
- */
-internal fun fullscreenPickerFillTopPx(areaHeightPx: Int, pickerPx: Int): Int? =
-    if (pickerPx > 0) (areaHeightPx - pickerPx).coerceAtLeast(0) else null
-
-/** The keyboard's full height between layout passes, so a closing keyboard knows how far it has gone. */
-internal class FullscreenKeyboardMemory {
-    private var heightPx = 0
-
-    /** The keyboard's full height and how far it is open, from 0 to 1; the emote picker counts as the keyboard. */
-    fun measure(imePx: Int, imeTargetPx: Int, pickerPx: Int): Pair<Int, Float> {
-        val (currentPx, targetPx) = fullscreenComposerHeightsPx(imePx, imeTargetPx, pickerPx)
-        heightPx = fullscreenKeyboardHeightPx(currentPx, targetPx, heightPx)
-        val progress = if (heightPx > 0) currentPx.toFloat() / heightPx else 0f
-        return heightPx to progress
-    }
 }
 
 /**
@@ -264,16 +237,6 @@ private class BottomPartShape(private val heightPx: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
         Outline.Rectangle(Rect(0f, (size.height - heightPx).coerceAtLeast(0f), size.width, size.height))
 }
-
-/**
- * How opaque the message bar and its field are: see-through like the rest of a chat laid over the video, and solid
- * once the keyboard or the emote picker opens and the chat moves beside the video.
- */
-internal fun chatInputBarAlpha(overVideo: Boolean, composerOpen: Boolean): Float =
-    if (overVideo && !composerOpen) FULLSCREEN_OVERLAY_CHAT_ALPHA else 1f
-
-/** A chat laid over the video has no message bar; it unfolds while the keyboard or the emote picker is open. */
-internal fun chatInputBarFolded(overVideo: Boolean, composerOpen: Boolean): Boolean = overVideo && !composerOpen
 
 /**
  * A chat laid over the video keeps clear of the screen's top and bottom, with every corner rounded; a column chat

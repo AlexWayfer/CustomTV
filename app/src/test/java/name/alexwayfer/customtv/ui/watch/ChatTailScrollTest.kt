@@ -80,68 +80,23 @@ class ChatTailScrollTest {
         assertEquals(0, chatTailOverflow(lastVisibleIndex = 3, totalItems = 5, itemEnd = 900, viewportEnd = 780))
     }
 
+    /** [chatTailGrowthToFollow] for a chat at the live edge, still, caught up, whose tail grew by 120 px. */
+    private fun growth(
+        stickToBottom: Boolean = true,
+        scrolling: Boolean = false,
+        tailCaughtUp: Boolean = true,
+        pinnedOverflow: Int = 0,
+        overflow: Int = 120,
+    ) = chatTailGrowthToFollow(stickToBottom, scrolling, tailCaughtUp, pinnedOverflow, overflow)
+
     @Test
     fun aPreviewThatGrowsTheLiveEdgeIsFollowedAndATallArrivalIsNot() {
-        assertEquals(
-            120,
-            chatTailGrowthToFollow(
-                stickToBottom = true,
-                scrolling = false,
-                tailCaughtUp = true,
-                pinnedOverflow = 0,
-                overflow = 120,
-            ),
-        )
-        assertEquals(
-            0,
-            chatTailGrowthToFollow(
-                stickToBottom = true,
-                scrolling = false,
-                tailCaughtUp = true,
-                pinnedOverflow = 0,
-                overflow = 1,
-            ),
-        )
-        assertEquals(
-            0,
-            chatTailGrowthToFollow(
-                stickToBottom = true,
-                scrolling = false,
-                tailCaughtUp = true,
-                pinnedOverflow = 800,
-                overflow = 920,
-            ),
-        )
-        assertEquals(
-            0,
-            chatTailGrowthToFollow(
-                stickToBottom = false,
-                scrolling = false,
-                tailCaughtUp = true,
-                pinnedOverflow = 0,
-                overflow = 120,
-            ),
-        )
-        assertEquals(
-            0,
-            chatTailGrowthToFollow(
-                stickToBottom = true,
-                scrolling = true,
-                tailCaughtUp = true,
-                pinnedOverflow = 0,
-                overflow = 120,
-            ),
-        )
-        assertEquals(
-            0,
-            chatTailGrowthToFollow(
-                stickToBottom = true,
-                scrolling = false,
-                tailCaughtUp = false,
-                pinnedOverflow = 0,
-                overflow = 120,
-            ),
-        )
+        assertEquals(120, growth())
+        assertEquals(0, growth(overflow = 1))
+        assertEquals(0, growth(pinnedOverflow = 800, overflow = 920))
+        assertEquals(0, growth(stickToBottom = false))
+        assertEquals(0, growth(scrolling = true))
+        assertEquals(0, growth(tailCaughtUp = false))
     }
 
     @Test

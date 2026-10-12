@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -9,63 +8,31 @@ import org.junit.Test
 import java.time.Instant
 
 class PinnedChatParserTest {
+    /** A PubSub pin of CoolUser's message with an emote, by ModUser. */
+    private val pinMessage = """
+        {"type":"pin-message","data":{"id":"pin-1","ends_at":"2026-09-18T21:00:00.000Z",
+        "pinned_by":{"login":"moduser","display_name":"ModUser"},
+        "message":{"id":"msg-1","sent_at":"2026-09-18T20:58:00.000Z",
+        "sender":{"id":"4242","login":"cooluser","display_name":"CoolUser","chat_color":"#FF4500"},
+        "content":{"text":"Hello Kappa","fragments":[{"text":"Hello "},
+        {"text":"Kappa","emoticon":{"emoticonID":"25"}}]}}}}
+    """.trimIndent()
+
+    /** GQL's pin of the streamer's message, by a moderator, with both their badges. */
+    private val gqlPinnedBody = """
+        {"data":{"channel":{"pinnedChatMessages":{"edges":[{"node":{"id":"pin-gql","endsAt":null,
+        "pinnedBy":{"login":"moduser","displayName":"ModUser","displayBadges":[{"setID":"moderator","version":"1"}]},
+        "pinnedMessage":{"id":"msg-gql","sentAt":"2026-09-18T20:00:00.000Z",
+        "sender":{"id":"99","login":"streamer","displayName":"Streamer","chatColor":"#1E90FF",
+        "displayBadges":[{"setID":"broadcaster","version":"1"}]},
+        "content":{"text":"Be right back","fragments":[{"text":"Be right back"}]}}}}]}}}}
+    """.trimIndent()
+
     @Test
     fun parsePinMessageWithEmoteFragment() {
-        val inner = JSONObject()
-            .put("type", "pin-message")
-            .put(
-                "data",
-                JSONObject()
-                    .put("id", "pin-1")
-                    .put("ends_at", "2026-09-18T21:00:00.000Z")
-                    .put(
-                        "pinned_by",
-                        JSONObject()
-                            .put("login", "moduser")
-                            .put("display_name", "ModUser"),
-                    )
-                    .put(
-                        "message",
-                        JSONObject()
-                            .put("id", "msg-1")
-                            .put("sent_at", "2026-09-18T20:58:00.000Z")
-                            .put(
-                                "sender",
-                                JSONObject()
-                                    .put("id", "4242")
-                                    .put("login", "cooluser")
-                                    .put("display_name", "CoolUser")
-                                    .put("chat_color", "#FF4500"),
-                            )
-                            .put(
-                                "content",
-                                JSONObject()
-                                    .put("text", "Hello Kappa")
-                                    .put(
-                                        "fragments",
-                                        JSONArray()
-                                            .put(JSONObject().put("text", "Hello "))
-                                            .put(
-                                                JSONObject()
-                                                    .put("text", "Kappa")
-                                                    .put(
-                                                        "emoticon",
-                                                        JSONObject().put("emoticonID", "25"),
-                                                    ),
-                                            ),
-                                    ),
-                            ),
-                    ),
-            )
-            .toString()
         val frame = JSONObject()
             .put("type", "MESSAGE")
-            .put(
-                "data",
-                JSONObject()
-                    .put("topic", "pinned-chat-updates-v1.117474239")
-                    .put("message", inner),
-            )
+            .put("data", JSONObject().put("topic", "pinned-chat-updates-v1.117474239").put("message", pinMessage))
             .toString()
         val update = PinnedChatParser.parseFrame(frame) as PinnedChatUpdate.Set
         assertEquals("pin-1", update.pin.pinId)
@@ -117,76 +84,7 @@ class PinnedChatParserTest {
 
     @Test
     fun parseGqlPinnedMessage() {
-        val body = JSONObject()
-            .put(
-                "data",
-                JSONObject().put(
-                    "channel",
-                    JSONObject().put(
-                        "pinnedChatMessages",
-                        JSONObject().put(
-                            "edges",
-                            JSONArray().put(
-                                JSONObject().put(
-                                    "node",
-                                    JSONObject()
-                                        .put("id", "pin-gql")
-                                        .put("endsAt", JSONObject.NULL)
-                                        .put(
-                                            "pinnedBy",
-                                            JSONObject()
-                                                .put("login", "moduser")
-                                                .put("displayName", "ModUser")
-                                                .put(
-                                                    "displayBadges",
-                                                    JSONArray().put(
-                                                        JSONObject()
-                                                            .put("setID", "moderator")
-                                                            .put("version", "1"),
-                                                    ),
-                                                ),
-                                        )
-                                        .put(
-                                            "pinnedMessage",
-                                            JSONObject()
-                                                .put("id", "msg-gql")
-                                                .put("sentAt", "2026-09-18T20:00:00.000Z")
-                                                .put(
-                                                    "sender",
-                                                    JSONObject()
-                                                        .put("id", "99")
-                                                        .put("login", "streamer")
-                                                        .put("displayName", "Streamer")
-                                                        .put("chatColor", "#1E90FF")
-                                                        .put(
-                                                            "displayBadges",
-                                                            JSONArray().put(
-                                                                JSONObject()
-                                                                    .put("setID", "broadcaster")
-                                                                    .put("version", "1"),
-                                                            ),
-                                                        ),
-                                                )
-                                                .put(
-                                                    "content",
-                                                    JSONObject()
-                                                        .put("text", "Be right back")
-                                                        .put(
-                                                            "fragments",
-                                                            JSONArray().put(
-                                                                JSONObject().put("text", "Be right back"),
-                                                            ),
-                                                        ),
-                                                ),
-                                        ),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
-            )
-            .toString()
-        val pin = PinnedChatParser.parseGqlBody(body)!!
+        val pin = checkNotNull(PinnedChatParser.parseGqlBody(gqlPinnedBody))
         assertEquals("pin-gql", pin.pinId)
         assertEquals("ModUser", pin.pinnedBy?.displayName)
         assertEquals(listOf(ChatBadge("moderator", "1")), pin.pinnedBy?.badges)

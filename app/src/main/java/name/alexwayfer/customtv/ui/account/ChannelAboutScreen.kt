@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.FlowRow
@@ -130,8 +131,6 @@ private fun ChannelAboutContent(
     firstTabRequest: Int = 0,
     canWhisper: Boolean = false,
 ) {
-    val context = LocalContext.current
-    val aboutBrowserHeightPx = aboutBrowserSheetHeightPx(LocalWindowInfo.current.containerSize.height)
     BackHandler(enabled = backEnabled, onBack = onLeave)
     var viewportPx by remember { mutableIntStateOf(0) }
     var contentPx by remember { mutableIntStateOf(0) }
@@ -156,13 +155,7 @@ private fun ChannelAboutContent(
                 .verticalScroll(scrollState)
                 .onSizeChanged { contentPx = it.height },
         ) {
-            // The gray fill holds the banner's place, so the profile does not jump when the image arrives.
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(about.bannerUrl).crossfade(true).build(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth().height(BannerHeight).background(TwitchSurfaceAlt),
-                contentScale = ContentScale.Crop,
-            )
+            ProfileBanner(about.bannerUrl)
             Column(
                 modifier = Modifier
                     .onSizeChanged { detailsPx = it.height }
@@ -172,68 +165,110 @@ private fun ChannelAboutContent(
             ) {
                 // The sticky header lies over this room while it is open.
                 Spacer(Modifier.height(with(density) { (stickyHeaderPx - headerTopPx).coerceAtLeast(0).toDp() }))
-                about.description?.let { description ->
-                    Text(
-                        text = description,
-                        modifier = Modifier.padding(top = 16.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
-                if (about.links.isNotEmpty()) {
-                    FlowRow(
-                        modifier = Modifier.padding(top = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        about.links.forEach { link -> ProfileLink(link) { openProfileLink(context, link.url) } }
-                    }
-                }
+                ProfileDescription(about.description, about.links)
                 ChannelProfileTabs(
                     channelLogin = about.login,
                     backEnabled = backEnabled,
                     onOpenChannel = onOpenChannel,
                     onOpenVideo = onOpenVideo,
                     firstTabRequest = firstTabRequest,
-                    aboutContent = {
-                        ChannelAboutPanels(
-                            userId = about.userId,
-                            onOpenOnTwitch = { openTwitchAboutInBrowser(context, about.login, aboutBrowserHeightPx) },
-                        )
-                    },
+                    aboutContent = { ChannelAboutTab(about) },
                     minHeight = tabsMinHeight,
                     tabRowPin = { profileTabRowPinPx(scrollState.value, barPx, tabRowTopPx) },
                     modifier = Modifier.padding(top = 16.dp).onSizeChanged { tabsPx = it.height },
                 )
             }
         }
-        val typography = MaterialTheme.typography
-        ProfileStickyHeader(
-            headerTop = BannerHeight - AvatarOverlap,
-            barNameScale = typography.titleLarge.fontSize.value / typography.headlineSmall.fontSize.value,
-            roomForMenu = onLogOut != null || canWhisper,
+        ProfileOverlay(
+            about = about,
+            onLogOut = onLogOut,
+            canWhisper = canWhisper,
             scroll = { scrollState.value },
-            avatar = { ProfileHeaderAvatar(about.login, about.displayName, about.avatarUrl) },
-            name = { ProfileHeaderName(about.displayName) },
-            details = {
-                ProfileHeaderDetails(about.login, about.displayName, about.followerCount, about.lastLiveMillis)
-            },
-            modifier = Modifier.onSizeChanged { stickyHeaderPx = it.height },
+            onStickyHeaderHeight = { stickyHeaderPx = it },
         )
-        onLogOut?.let { logOut ->
-            AccountMenu(
-                onLogOut = logOut,
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-            )
+    }
+}
+
+/** The About tab: Twitch's panels of the channel, and its About page on twitch.tv. */
+@Composable
+private fun ChannelAboutTab(about: ChannelAbout) {
+    val context = LocalContext.current
+    val aboutBrowserHeightPx = aboutBrowserSheetHeightPx(LocalWindowInfo.current.containerSize.height)
+    ChannelAboutPanels(
+        userId = about.userId,
+        onOpenOnTwitch = { openTwitchAboutInBrowser(context, about.login, aboutBrowserHeightPx) },
+    )
+}
+
+/** The gray fill holds the banner's place, so the profile does not jump when the image arrives. */
+@Composable
+private fun ProfileBanner(url: String?) {
+    AsyncImage(
+        model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
+        contentDescription = null,
+        modifier = Modifier.fillMaxWidth().height(BannerHeight).background(TwitchSurfaceAlt),
+        contentScale = ContentScale.Crop,
+    )
+}
+
+/** The channel's own description and links. */
+@Composable
+private fun ProfileDescription(description: String?, links: List<TwitchProfileLink>) {
+    val context = LocalContext.current
+    description?.let {
+        Text(
+            text = it,
+            modifier = Modifier.padding(top = 16.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+    if (links.isNotEmpty()) {
+        FlowRow(
+            modifier = Modifier.padding(top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            links.forEach { link -> ProfileLink(link) { openProfileLink(context, link.url) } }
         }
-        if (canWhisper) {
-            ChannelProfileMenu(
-                login = about.login,
-                displayName = about.displayName,
-                userId = about.userId,
-                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-            )
-        }
+    }
+}
+
+/** What stays over the scrolled profile: the header that sticks once scrolled, and the menu at the top end. */
+@Composable
+private fun BoxScope.ProfileOverlay(
+    about: ChannelAbout,
+    onLogOut: (() -> Unit)?,
+    canWhisper: Boolean,
+    scroll: () -> Int,
+    onStickyHeaderHeight: (Int) -> Unit,
+) {
+    val typography = MaterialTheme.typography
+    ProfileStickyHeader(
+        headerTop = BannerHeight - AvatarOverlap,
+        barNameScale = typography.titleLarge.fontSize.value / typography.headlineSmall.fontSize.value,
+        roomForMenu = onLogOut != null || canWhisper,
+        scroll = scroll,
+        avatar = { ProfileHeaderAvatar(about.login, about.displayName, about.avatarUrl) },
+        name = { ProfileHeaderName(about.displayName) },
+        details = {
+            ProfileHeaderDetails(about.login, about.displayName, about.followerCount, about.lastLiveMillis)
+        },
+        modifier = Modifier.onSizeChanged { onStickyHeaderHeight(it.height) },
+    )
+    onLogOut?.let { logOut ->
+        AccountMenu(
+            onLogOut = logOut,
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+        )
+    }
+    if (canWhisper) {
+        ChannelProfileMenu(
+            login = about.login,
+            displayName = about.displayName,
+            userId = about.userId,
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
+        )
     }
 }
 

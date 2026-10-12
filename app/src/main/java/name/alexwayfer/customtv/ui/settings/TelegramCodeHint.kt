@@ -53,7 +53,7 @@ internal fun TelegramCodeHint(code: TelegramCodeInfo?, busy: Boolean, resending:
             exit = shrinkVertically() + fadeOut(),
         ) {
             TextButton(
-                onClick = TelegramSession::resendCode,
+                onClick = TelegramSession.login::resendCode,
                 modifier = Modifier.padding(horizontal = 4.dp),
                 enabled = !busy,
             ) {

@@ -26,12 +26,13 @@ import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
 /**
  * Waits for the login in the browser. The page can close without telling the app, such as a plain browser tab, so
- * the page can be opened again or the login dropped from here. [pageReady] is false while the login link loads.
+ * the page can be opened again or the login dropped from here. [reopenShown] follows [loginReopenShown]: the button
+ * stays hidden while the page covers the app and once the login is approved.
  * Back drops the login too: left to the system, it would close the app and end the login unseen.
  */
 @Composable
 internal fun AccountLoginScreen(
-    pageReady: Boolean,
+    reopenShown: Boolean,
     onReopen: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -51,7 +52,7 @@ internal fun AccountLoginScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
         AnimatedVisibility(
-            visible = pageReady,
+            visible = reopenShown,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {

@@ -12,7 +12,7 @@ internal fun MentionSettings(settings: AppSettings, viewModel: SettingsViewModel
         label = stringResource(R.string.highlight_mentions),
         hint = stringResource(R.string.highlight_mentions_hint),
         checked = settings.highlightMentions,
-        onCheckedChange = viewModel::setHighlightMentions,
+        onCheckedChange = viewModel.mentions::setHighlightMentions,
     )
     MentionAlertSettings(settings, viewModel)
 }

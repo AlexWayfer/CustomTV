@@ -2,8 +2,16 @@ package name.alexwayfer.customtv.data
 
 import name.alexwayfer.customtv.chat.FollowForChatMode
 
-/** Whether the user follows the open channel, as far as the app knows. */
-internal enum class ChannelFollowStatus { Unknown, Following, NotFollowing }
+/** Whether the user follows the open channel, as far as the app knows; their own channel has nothing to follow. */
+internal enum class ChannelFollowStatus { Unknown, Following, NotFollowing, OwnChannel }
+
+/** The heart shows only once the follow is known, and never on the user's own channel. */
+internal val ChannelFollowStatus.showsFollowButton: Boolean
+    get() = this == ChannelFollowStatus.Following || this == ChannelFollowStatus.NotFollowing
+
+/** The open channel is the signed-in user's own, compared by ID. */
+internal fun isOwnChannel(channelId: String, ownUserId: String?): Boolean =
+    !ownUserId.isNullOrBlank() && channelId.trim() == ownUserId.trim()
 
 /**
  * Home's follows list answers without a request. A request is needed only while that list is

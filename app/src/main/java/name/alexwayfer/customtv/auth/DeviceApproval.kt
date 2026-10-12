@@ -1,8 +1,8 @@
 package name.alexwayfer.customtv.auth
 
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import java.io.IOException
 
 internal sealed interface DeviceApproval {
     data class Approved(val tokens: TwitchTokens) : DeviceApproval
@@ -23,35 +23,52 @@ internal suspend fun awaitDeviceApproval(
 ): DeviceApproval {
     val deadline = nowMillis() + login.expiresInSeconds * 1000L
     var completedPolls = 0
-    while (nowMillis() < deadline) {
+    var outcome: DeviceApproval? = null
+    while (outcome == null && nowMillis() < deadline) {
         wait(devicePollDelayMillis(completedPolls, login.intervalSeconds))
         if (nowMillis() >= deadline) break
-        val grant = try {
-            poll(login.deviceCode)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
-            if (!devicePollKeepsWaiting(error)) throw error
-            log("device poll failed ${error.javaClass.simpleName}")
-            continue
-        }
-        completedPolls += 1
-        when (grant) {
-            DeviceGrant.Pending -> Unit
-            DeviceGrant.SlowDown -> log("device poll slow down")
-            is DeviceGrant.Unavailable -> log("device poll server HTTP ${grant.httpCode}")
-            DeviceGrant.Denied -> {
-                log("device login denied")
-                return DeviceApproval.Failed
-            }
-            DeviceGrant.Expired -> {
-                log("device login expired")
-                return DeviceApproval.TimedOut
-            }
-            DeviceGrant.Failed -> return DeviceApproval.Failed
-            is DeviceGrant.Approved -> return DeviceApproval.Approved(grant.tokens)
+        val grant = pollDevice(poll, login.deviceCode, log)
+        if (grant != null) {
+            completedPolls += 1
+            outcome = deviceGrantOutcome(grant, log)
         }
     }
-    log("device login expired")
-    return DeviceApproval.TimedOut
+    if (outcome == null) log("device login expired")
+    return outcome ?: DeviceApproval.TimedOut
+}
+
+/** One poll; null after a network error, which keeps waiting. */
+private suspend fun pollDevice(
+    poll: suspend (deviceCode: String) -> DeviceGrant,
+    deviceCode: String,
+    log: (String) -> Unit,
+): DeviceGrant? = try {
+    poll(deviceCode)
+} catch (error: IOException) {
+    if (!devicePollKeepsWaiting(error)) throw error
+    log("device poll failed ${error.javaClass.simpleName}")
+    null
+}
+
+/** How the login ends on [grant], or null while it keeps waiting. */
+private fun deviceGrantOutcome(grant: DeviceGrant, log: (String) -> Unit): DeviceApproval? = when (grant) {
+    DeviceGrant.Pending -> null
+    DeviceGrant.SlowDown -> {
+        log("device poll slow down")
+        null
+    }
+    is DeviceGrant.Unavailable -> {
+        log("device poll server HTTP ${grant.httpCode}")
+        null
+    }
+    DeviceGrant.Denied -> {
+        log("device login denied")
+        DeviceApproval.Failed
+    }
+    DeviceGrant.Expired -> {
+        log("device login expired")
+        DeviceApproval.TimedOut
+    }
+    DeviceGrant.Failed -> DeviceApproval.Failed
+    is DeviceGrant.Approved -> DeviceApproval.Approved(grant.tokens)
 }

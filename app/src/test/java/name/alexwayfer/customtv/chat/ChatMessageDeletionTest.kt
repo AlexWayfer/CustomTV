@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -79,13 +78,5 @@ class ChatMessageDeletionTest {
         assertEquals("2d 3h", formatTimeoutDuration(2 * 86_400L + 3 * 3_600L))
     }
 
-    private fun message(id: String, login: String) = ChatMessage(
-        id = id,
-        userLogin = login,
-        displayName = login,
-        color = Color.White,
-        rawText = "text",
-        parts = listOf(ChatPart.Text("text")),
-        timestampMillis = 1L,
-    )
+    private fun message(id: String, login: String) = testChatMessage(id, login = login)
 }

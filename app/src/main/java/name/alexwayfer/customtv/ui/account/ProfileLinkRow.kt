@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.auth.TWITCH_AUTH_TAG
 import name.alexwayfer.customtv.auth.TwitchProfileLink
 import name.alexwayfer.customtv.diagnostics.AppLog
 
@@ -63,8 +64,7 @@ internal fun openProfileLink(context: Context, url: String) {
     try {
         context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        AppLog.w(TAG, "profile link unavailable")
+        AppLog.w(TWITCH_AUTH_TAG, "profile link unavailable")
     }
 }
 
-private const val TAG = "TwitchAuth"

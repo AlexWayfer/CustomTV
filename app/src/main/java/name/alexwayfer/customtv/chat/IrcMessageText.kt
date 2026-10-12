@@ -25,16 +25,16 @@ internal object IrcMessageText {
             .map { it.trim() }
             .filter { it.isNotEmpty() }
             .distinctBy { it.lowercase() }
-        for (name in names) {
-            val prefix = "@$name"
-            if (!text.startsWith(prefix, ignoreCase = true)) continue
-            val after = prefix.length
-            if (after < text.length && !text[after].isWhitespace()) continue
-            var end = after
-            while (end < text.length && text[end].isWhitespace()) end++
-            return text.substring(end)
-        }
-        return text
+        val name = names.firstOrNull { leadsWithMention(text, it) } ?: return text
+        var end = name.length + 1
+        while (end < text.length && text[end].isWhitespace()) end++
+        return text.substring(end)
+    }
+
+    /** Whether [text] starts with `@name` as a whole word. */
+    private fun leadsWithMention(text: String, name: String): Boolean {
+        val after = name.length + 1
+        return text.startsWith("@$name", ignoreCase = true) && (after >= text.length || text[after].isWhitespace())
     }
 
     private const val CTCP_SOH = '\u0001'

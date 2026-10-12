@@ -40,7 +40,7 @@ class MentionSoundTest {
     @Test
     fun playbackStopsWhenTheSoundFinishesOrReachesFourSeconds() {
         assertFalse(mentionSoundStillPlaying(elapsedMs = 500, playing = false))
-        assertFalse(mentionSoundStillPlaying(elapsedMs = MentionSoundLimitMs, playing = true))
+        assertFalse(mentionSoundStillPlaying(elapsedMs = MENTION_SOUND_LIMIT_MS, playing = true))
     }
 
     @Test

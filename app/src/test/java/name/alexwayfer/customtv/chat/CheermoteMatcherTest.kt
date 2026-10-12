@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-import androidx.compose.ui.graphics.Color
 import name.alexwayfer.customtv.data.CheermoteRepository
 import name.alexwayfer.customtv.data.CheermoteTier
 import org.json.JSONObject
@@ -40,19 +39,21 @@ class CheermoteMatcherTest {
 
     @Test
     fun readsAnimatedDarkImagesFromTwitchCatalog() {
-        val payload = JSONObject("""{"data":{"user":{"cheer":{"emotes":[{"prefix":"Cheer","tiers":[{"bits":100,"images":[{"theme":"DARK","isAnimated":true,"dpiScale":2,"url":"https://example.com/cheer.gif"}]}]}]}}}}""")
+        val payload = JSONObject(
+            """
+            {"data":{"user":{"cheer":{"emotes":[
+              {"prefix":"Cheer","tiers":[
+                {"bits":100,"images":[
+                  {"theme":"DARK","isAnimated":true,"dpiScale":2,"url":"https://example.com/cheer.gif"}
+                ]}
+              ]}
+            ]}}}}
+            """.trimIndent(),
+        )
 
         assertEquals("https://example.com/cheer.gif", CheermoteRepository.parse(payload)["cheer"]?.single()?.imageUrl)
     }
 
-    private fun message(text: String, bits: Int?) = ChatMessage(
-        id = "1",
-        userLogin = "viewer",
-        displayName = "Viewer",
-        color = Color.White,
-        rawText = text,
-        parts = listOf(ChatPart.Text(text)),
-        timestampMillis = 1,
-        cheerBits = bits,
-    )
+    private fun message(text: String, bits: Int?) =
+        testChatMessage(text = text, displayName = "Viewer").copy(cheerBits = bits)
 }

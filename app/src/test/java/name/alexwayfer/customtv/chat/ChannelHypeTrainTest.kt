@@ -34,7 +34,7 @@ class ChannelHypeTrainTest {
 
     @Test
     fun progressionMovesTheLevelAndKeepsTheColorOfTheShownTrain() {
-        val start = (HypeTrainParser.parseFrame(frame("hype-train-start", START), NOW) as HypeTrainEvent.Execution).train
+        val start = started(START)
         val progress = HypeTrainParser.parseFrame(
             frame(
                 "hype-train-progression",
@@ -53,7 +53,7 @@ class ChannelHypeTrainTest {
 
     @Test
     fun aConductorUpdateReplacesTheConductorOfTheSameCurrency() {
-        val start = (HypeTrainParser.parseFrame(frame("hype-train-start", START_WITH_CONDUCTOR), NOW) as HypeTrainEvent.Execution).train
+        val start = started(START_WITH_CONDUCTOR)
         val update = HypeTrainParser.parseFrame(
             frame(
                 "hype-train-conductor-update",
@@ -83,14 +83,15 @@ class ChannelHypeTrainTest {
         assertEquals(listOf(HypeTrainEmote("e9", "ConfettiHype")), shown.rewards)
         assertEquals("EB0400", shown.colorHex)
 
-        val running = (HypeTrainParser.parseFrame(frame("hype-train-start", START), NOW) as HypeTrainEvent.Execution).train
+        val running = started(START)
         assertEquals(running, applyHypeTrainEvent(running, approaching))
     }
 
     @Test
     fun theEndOfTheShownTrainKeepsItsLastLevelAndAnotherTrainsEndIsIgnored() {
-        val running = (HypeTrainParser.parseFrame(frame("hype-train-start", START), NOW) as HypeTrainEvent.Execution).train
-        val end = HypeTrainParser.parseFrame(frame("hype-train-end", """{"id":"t1","ending_reason":"COMPLETED"}"""), NOW)!!
+        val running = started(START)
+        val endFrame = frame("hype-train-end", """{"id":"t1","ending_reason":"COMPLETED"}""")
+        val end = HypeTrainParser.parseFrame(endFrame, NOW)!!
 
         val ended = applyHypeTrainEvent(running, end)!!
         assertEquals(HypeTrainPhase.Ended, ended.phase)
@@ -100,7 +101,7 @@ class ChannelHypeTrainTest {
 
     @Test
     fun anEndedTrainHidesAfterAMinuteAndAnApproachWhenItsTimeRunsOut() {
-        val running = (HypeTrainParser.parseFrame(frame("hype-train-start", START), NOW) as HypeTrainEvent.Execution).train
+        val running = started(START)
         assertNull(hypeTrainHidesAfter(running, NOW))
         assertEquals(1.minutes, hypeTrainHidesAfter(running.copy(phase = HypeTrainPhase.Ended), NOW)!!)
         val approaching = running.copy(phase = HypeTrainPhase.Approaching, endsAtMillis = NOW + 30_000L)
@@ -111,10 +112,23 @@ class ChannelHypeTrainTest {
     fun gqlExecutionUsesTheRemainingSeconds() {
         val train = HypeTrainParser.execution(
             JSONObject(
-                """{"id":"t2","updatedAt":"2026-09-29T18:02:09Z","expiresAt":"2026-09-29T18:07:09Z","endedAt":null,
-                  "config":{"primaryHexColor":null},"progress":{"goal":5000,"progression":4000,"total":4000,
-                  "remainingSeconds":88,"level":{"value":1,"goal":5000,"rewards":[{"emote":{"id":"e2","token":"Hype"}}]}},
-                  "conductors":[{"source":"BITS","user":{"login":"a","displayName":"A"}}]}""",
+                """
+                {
+                  "id":"t2",
+                  "updatedAt":"2026-09-29T18:02:09Z",
+                  "expiresAt":"2026-09-29T18:07:09Z",
+                  "endedAt":null,
+                  "config":{"primaryHexColor":null},
+                  "progress":{
+                    "goal":5000,
+                    "progression":4000,
+                    "total":4000,
+                    "remainingSeconds":88,
+                    "level":{"value":1,"goal":5000,"rewards":[{"emote":{"id":"e2","token":"Hype"}}]}
+                  },
+                  "conductors":[{"source":"BITS","user":{"login":"a","displayName":"A"}}]
+                }
+                """.trimIndent(),
             ),
             NOW,
         )!!
@@ -143,7 +157,9 @@ class ChannelHypeTrainTest {
         assertEquals("00CCFF", single.colorHex)
 
         val list = HypeTrainParser.gqlApproaching(
-            JSONObject("""{"goal":3,"expiresAt":"2026-09-29T19:03:16Z","eventsRemaining":[{"events":2},{"events":1}]}"""),
+            JSONObject(
+                """{"goal":3,"expiresAt":"2026-09-29T19:03:16Z","eventsRemaining":[{"events":2},{"events":1}]}""",
+            ),
             now,
         )
         assertEquals(1, list?.eventsToStart)
@@ -162,16 +178,55 @@ class ChannelHypeTrainTest {
         )
         .toString()
 
+    private fun started(data: String): ChannelHypeTrain =
+        (HypeTrainParser.parseFrame(frame("hype-train-start", data), NOW) as HypeTrainEvent.Execution).train
+
     private companion object {
         const val NOW = 1_000_000L
-        const val START = """{"__typename":"HypeTrainExecution","id":"t1","startedAt":"2026-09-29T17:50:25Z",
-            "expiresAt":"2026-09-29T17:55:25Z","updatedAt":"2026-09-29T17:50:25Z","endedAt":null,
-            "progress":{"goal":1800,"progression":900,"total":2500,"level":{"value":2,"goal":3400,
-            "rewards":[{"__typename":"HypeTrainEmoteReward","id":"e1","type":"EMOTE","emote":{"id":"e1","token":"KittyHype"}}]}},
-            "conductors":[],"config":{"willUseCreatorColor":true,"primaryHexColor":"00CCFF"}}"""
-        const val START_WITH_CONDUCTOR = """{"id":"t1","expiresAt":"2026-09-29T17:56:35Z","updatedAt":"2026-09-29T17:51:35Z",
-            "endedAt":null,"progress":{"goal":2100,"progression":100,"total":3500,"level":{"value":3,"goal":5500,"rewards":[]}},
-            "conductors":[{"source":"SUBS","user":{"id":"606686045","displayName":"pumi1986","login":"pumi1986"}}],
-            "config":{"primaryHexColor":null}}"""
+        const val START = """
+            {
+              "__typename":"HypeTrainExecution",
+              "id":"t1",
+              "startedAt":"2026-09-29T17:50:25Z",
+              "expiresAt":"2026-09-29T17:55:25Z",
+              "updatedAt":"2026-09-29T17:50:25Z",
+              "endedAt":null,
+              "progress":{
+                "goal":1800,
+                "progression":900,
+                "total":2500,
+                "level":{
+                  "value":2,
+                  "goal":3400,
+                  "rewards":[
+                    {
+                      "__typename":"HypeTrainEmoteReward",
+                      "id":"e1",
+                      "type":"EMOTE",
+                      "emote":{"id":"e1","token":"KittyHype"}
+                    }
+                  ]
+                }
+              },
+              "conductors":[],
+              "config":{"willUseCreatorColor":true,"primaryHexColor":"00CCFF"}
+            }
+        """
+        const val START_WITH_CONDUCTOR = """
+            {
+              "id":"t1",
+              "expiresAt":"2026-09-29T17:56:35Z",
+              "updatedAt":"2026-09-29T17:51:35Z",
+              "endedAt":null,
+              "progress":{
+                "goal":2100,
+                "progression":100,
+                "total":3500,
+                "level":{"value":3,"goal":5500,"rewards":[]}
+              },
+              "conductors":[{"source":"SUBS","user":{"id":"606686045","displayName":"pumi1986","login":"pumi1986"}}],
+              "config":{"primaryHexColor":null}
+            }
+        """
     }
 }

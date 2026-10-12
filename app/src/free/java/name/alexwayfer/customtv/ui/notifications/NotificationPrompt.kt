@@ -56,7 +56,10 @@ import name.alexwayfer.customtv.data.NotificationPromptStore
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
-/** Offers update and crash notifications on Home while they are off, until Not now or a refusal answers it; turning them on later clears that answer. */
+/**
+ * Offers update and crash notifications on Home while they are off, until Not now or a refusal answers it; turning
+ * them on later clears that answer.
+ */
 @Composable
 internal fun HomeNotificationPrompt() {
     val context = LocalContext.current
@@ -96,7 +99,9 @@ private fun NotificationPromptVisibility(visible: Boolean, content: @Composable 
     }
 }
 
-/** Home: the text with both actions centered below it. Settings, with [onDismiss] null: Enable at the end of the text. */
+/**
+ * Home: the text with both actions centered below it. Settings, with [onDismiss] null: Enable at the end of the text.
+ */
 @Composable
 private fun NotificationPromptCard(
     onEnable: () -> Unit,
@@ -185,7 +190,7 @@ private fun rememberNotificationEnabler(firstAsk: Boolean, onRefused: () -> Unit
         if (granted) return@rememberLauncherForActivityResult
         val refusal = notificationPermissionRefusal(
             firstAsk = firstAsk,
-            showRationale = Build.VERSION.SDK_INT >= 33 && activity != null &&
+            showRationale = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && activity != null &&
                 ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS),
         )
         when (refusal) {
@@ -194,21 +199,23 @@ private fun rememberNotificationEnabler(firstAsk: Boolean, onRefused: () -> Unit
         }
     }
     return NotificationEnabler(enabled) {
-        if (
-            Build.VERSION.SDK_INT >= 33 &&
+        val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPromptAction(
                 permissionNeeded = ContextCompat.checkSelfPermission(
                     context,
                     Manifest.permission.POST_NOTIFICATIONS,
                 ) != PackageManager.PERMISSION_GRANTED,
                 firstAsk = firstAsk,
-                showRationale = Build.VERSION.SDK_INT >= 33 && activity != null &&
+                showRationale = activity != null &&
                     ActivityCompat.shouldShowRequestPermissionRationale(
                         activity,
                         Manifest.permission.POST_NOTIFICATIONS,
                     ),
-            ) == NotificationPromptAction.RequestPermission
-        ) {
+            )
+        } else {
+            null
+        }
+        if (action == NotificationPromptAction.RequestPermission) {
             permission.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             openNotificationSettings(context)

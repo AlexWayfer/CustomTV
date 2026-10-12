@@ -65,7 +65,8 @@ class PollVotingTest {
 
     @Test
     fun aRefusedVoteOverAnEarlierOneSaysAlreadyVoted() {
-        assertEquals(PollVoteStatus.AlreadyVoted, pollVoteStatus(voting(selected = "b", voted = "a", alreadyVoted = true)))
+        val refused = voting(selected = "b", voted = "a", alreadyVoted = true)
+        assertEquals(PollVoteStatus.AlreadyVoted, pollVoteStatus(refused))
     }
 
     @Test

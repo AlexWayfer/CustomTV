@@ -50,29 +50,35 @@ internal fun tapSeekOffset(offsetSeconds: Double, side: TapSide, startSeconds: D
     return if (durationSeconds > 0) offset.coerceAtMost(durationSeconds - startSeconds) else offset
 }
 
+/** The recording the taps seek in, and the player's chrome they show or hide. */
+internal data class TapSeekPlayer(
+    val positionSeconds: () -> Double,
+    val durationSeconds: () -> Long,
+    val controlsVisible: () -> Boolean,
+    val seek: (seconds: Double) -> Unit,
+    /** A tap that toggles the chrome and the controls, given whether the controls show now. */
+    val chromeTap: (controlsVisible: Boolean) -> Unit,
+    /** The series after each seeking tap, and null once it ends. */
+    val onSeries: (TapSeekSeries?) -> Unit,
+)
+
 /**
- * Taps on a recording's video: a single one shows or hides the controls through [chromeTap], a quick second one on a
- * side starts seeking back or forward with the controls up. While the series shows, taps on either side change it.
+ * Taps on a recording's video: a single one shows or hides the controls through [TapSeekPlayer.chromeTap], a quick
+ * second one on a side starts seeking back or forward with the controls up. While the series shows, taps on either
+ * side change it.
  */
 internal class RecordingTapSeek(
     private val handler: Handler,
     private val doubleTapTimeoutMs: Long,
     private val now: () -> Long,
-    private val positionSeconds: () -> Double,
-    private val durationSeconds: () -> Long,
-    private val controlsVisible: () -> Boolean,
-    private val seek: (seconds: Double) -> Unit,
-    /** A tap that toggles the chrome and the controls, given whether the controls show now. */
-    private val chromeTap: (controlsVisible: Boolean) -> Unit,
-    /** The series after each seeking tap, and null once it ends. */
-    private val onSeries: (TapSeekSeries?) -> Unit,
+    private val player: TapSeekPlayer,
 ) {
     private var lastSide: TapSide? = null
     private var lastTapAt = 0L
     private var seriesRunning = false
     private var seriesStartSeconds = 0.0
     private var seriesOffsetSeconds = 0.0
-    private val pendingHide = Runnable { chromeTap(controlsVisible()) }
+    private val pendingHide = Runnable { player.chromeTap(player.controlsVisible()) }
     private val seriesEnd = Runnable { endSeries() }
 
     fun onTap(x: Float, width: Float) {
@@ -85,25 +91,26 @@ internal class RecordingTapSeek(
         if (seeks) {
             if (!seriesRunning) {
                 seriesRunning = true
-                seriesStartSeconds = positionSeconds()
+                seriesStartSeconds = player.positionSeconds()
                 seriesOffsetSeconds = 0.0
             }
-            seriesOffsetSeconds = tapSeekOffset(seriesOffsetSeconds, side, seriesStartSeconds, durationSeconds())
-            seek(seriesStartSeconds + seriesOffsetSeconds)
-            onSeries(TapSeekSeries(seriesOffsetSeconds.roundToInt()))
+            seriesOffsetSeconds =
+                tapSeekOffset(seriesOffsetSeconds, side, seriesStartSeconds, player.durationSeconds())
+            player.seek(seriesStartSeconds + seriesOffsetSeconds)
+            player.onSeries(TapSeekSeries(seriesOffsetSeconds.roundToInt()))
             handler.removeCallbacks(seriesEnd)
             handler.postDelayed(seriesEnd, TAP_SEEK_HOLD_MS)
             // The controls stay up with the time they show; reported hidden, the tap only brings them up.
-            if (!controlsVisible()) chromeTap(false)
+            if (!player.controlsVisible()) player.chromeTap(false)
             return
         }
         // A tap in the middle ends the series at once.
         endSeries()
-        val visible = controlsVisible()
+        val visible = player.controlsVisible()
         if (firstTapWaits(visible, side)) {
             handler.postDelayed(pendingHide, doubleTapTimeoutMs)
         } else {
-            chromeTap(visible)
+            player.chromeTap(visible)
         }
     }
 
@@ -117,7 +124,7 @@ internal class RecordingTapSeek(
         handler.removeCallbacks(seriesEnd)
         if (!seriesRunning) return
         seriesRunning = false
-        onSeries(null)
+        player.onSeries(null)
     }
 }
 

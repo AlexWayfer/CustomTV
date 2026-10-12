@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpSize
@@ -89,35 +90,7 @@ internal fun SettingsStepSlider(
                     .fillMaxWidth()
                     .height(16.dp),
             ) {
-                val y = center.y
-                val thumbX = size.width * sliderState.coercedValueAsFraction
-                val gap = 8.dp.toPx()
-                val stroke = 6.dp.toPx()
-                fun drawSegment(from: Float, to: Float, active: Boolean) {
-                    if (to - from < 1f) return
-                    drawLine(
-                        color = if (active) TwitchPurple else TwitchDivider,
-                        start = Offset(from, y),
-                        end = Offset(to, y),
-                        strokeWidth = stroke,
-                        cap = StrokeCap.Round,
-                    )
-                }
-                drawSegment(0f, thumbX - gap, active = true)
-                drawSegment(thumbX + gap, size.width, active = false)
-                if (sliderState.steps > 0) {
-                    val tickCount = sliderState.steps + 2
-                    val tickRadius = stroke / 2f
-                    for (index in 0 until tickCount) {
-                        val x = size.width * index / (sliderState.steps + 1)
-                        if (abs(x - thumbX) < gap) continue
-                        drawCircle(
-                            color = if (x < thumbX) TwitchDivider else TwitchPurple,
-                            radius = tickRadius,
-                            center = Offset(x, y),
-                        )
-                    }
-                }
+                drawStepTrack(sliderState.coercedValueAsFraction, sliderState.steps)
             }
         },
         modifier = Modifier
@@ -125,6 +98,39 @@ internal fun SettingsStepSlider(
             .padding(horizontal = 8.dp)
             .semantics { contentDescription = title },
     )
+}
+
+/** The track on both sides of the thumb, with a gap around it, and a dot for each step away from the thumb. */
+private fun DrawScope.drawStepTrack(fraction: Float, steps: Int) {
+    val y = center.y
+    val thumbX = size.width * fraction
+    val gap = 8.dp.toPx()
+    val stroke = 6.dp.toPx()
+    fun drawSegment(from: Float, to: Float, active: Boolean) {
+        if (to - from < 1f) return
+        drawLine(
+            color = if (active) TwitchPurple else TwitchDivider,
+            start = Offset(from, y),
+            end = Offset(to, y),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+    drawSegment(0f, thumbX - gap, active = true)
+    drawSegment(thumbX + gap, size.width, active = false)
+    if (steps > 0) {
+        val tickCount = steps + 2
+        val tickRadius = stroke / 2f
+        for (index in 0 until tickCount) {
+            val x = size.width * index / (steps + 1)
+            if (abs(x - thumbX) < gap) continue
+            drawCircle(
+                color = if (x < thumbX) TwitchDivider else TwitchPurple,
+                radius = tickRadius,
+                center = Offset(x, y),
+            )
+        }
+    }
 }
 
 /** The drag position while dragging, then the released value until the saved [value] catches up. */

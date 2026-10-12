@@ -21,6 +21,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -59,41 +60,10 @@ internal fun ChatWatchStreakLine(
     val iconSize = chatDp(chatTextSize, 12, 14)
     val annotated = remember(timestampText, name, body, pointsLabel, textSize, timestampSize) {
         buildAnnotatedString {
-            if (timestampText != null) {
-                withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = timestampSize)) {
-                    append(timestampText)
-                    append(" ")
-                }
-            }
+            appendChatTimestamp(timestampText, timestampSize)
             appendInlineContent("streak", "streak")
-            val nameStart = body.indexOf(name, ignoreCase = true)
-            withStyle(
-                SpanStyle(
-                    color = TwitchTextSecondary,
-                    fontSize = textSize,
-                ),
-            ) {
-                append(" ")
-                if (nameStart < 0 || name.isBlank()) {
-                    append(body)
-                } else {
-                    append(body.substring(0, nameStart))
-                }
-            }
-            if (nameStart >= 0 && name.isNotBlank()) {
-                withStyle(
-                    SpanStyle(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = textSize,
-                    ),
-                ) {
-                    append(body.substring(nameStart, nameStart + name.length))
-                }
-                withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = textSize)) {
-                    append(body.substring(nameStart + name.length))
-                }
-            }
+            withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = textSize)) { append(" ") }
+            appendWithChatterName(body, name, Color.White, textSize)
             if (pointsLabel != null) {
                 append(" ")
                 appendInlineContent("points", "pts")
@@ -111,49 +81,7 @@ internal fun ChatWatchStreakLine(
         }
     }
     val inlineContent = remember(pointsIconUrl, iconSize, pointsLabel) {
-        buildMap {
-            put(
-                "streak",
-                InlineTextContent(
-                    Placeholder(1.em, 1.em, PlaceholderVerticalAlign.TextBottom),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_chat_watch_streak),
-                        contentDescription = null,
-                        tint = TwitchWatchStreak,
-                        modifier = Modifier.size(iconSize),
-                    )
-                },
-            )
-            if (pointsLabel != null) {
-                put(
-                    "points",
-                    InlineTextContent(
-                        Placeholder(1.em, 1.em, PlaceholderVerticalAlign.AboveBaseline),
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.BottomCenter,
-                        ) {
-                            if (!pointsIconUrl.isNullOrBlank()) {
-                                SharedEmoteImage(
-                                    url = pointsIconUrl,
-                                    contentDescription = null,
-                                    size = iconSize,
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_chat_channel_points),
-                                    contentDescription = null,
-                                    tint = TwitchTextSecondary,
-                                    modifier = Modifier.size(iconSize),
-                                )
-                            }
-                        }
-                    },
-                )
-            }
-        }
+        watchStreakInlineContent(pointsIconUrl, iconSize, withPoints = pointsLabel != null)
     }
     Text(
         text = annotated,
@@ -161,4 +89,53 @@ internal fun ChatWatchStreakLine(
         lineHeight = lineHeight,
         modifier = Modifier.padding(bottom = if (message.parts.isNotEmpty()) 2.dp else 0.dp),
     )
+}
+
+/** The streak's flame, and the channel points icon before the bonus [withPoints]: the channel's own or Twitch's. */
+private fun watchStreakInlineContent(
+    pointsIconUrl: String?,
+    iconSize: Dp,
+    withPoints: Boolean,
+): Map<String, InlineTextContent> = buildMap {
+    put(
+        "streak",
+        InlineTextContent(
+            Placeholder(1.em, 1.em, PlaceholderVerticalAlign.TextBottom),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_chat_watch_streak),
+                contentDescription = null,
+                tint = TwitchWatchStreak,
+                modifier = Modifier.size(iconSize),
+            )
+        },
+    )
+    if (withPoints) {
+        put(
+            "points",
+            InlineTextContent(
+                Placeholder(1.em, 1.em, PlaceholderVerticalAlign.AboveBaseline),
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    if (!pointsIconUrl.isNullOrBlank()) {
+                        SharedEmoteImage(
+                            url = pointsIconUrl,
+                            contentDescription = null,
+                            size = iconSize,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_chat_channel_points),
+                            contentDescription = null,
+                            tint = TwitchTextSecondary,
+                            modifier = Modifier.size(iconSize),
+                        )
+                    }
+                }
+            },
+        )
+    }
 }

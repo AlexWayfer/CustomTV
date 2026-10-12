@@ -29,12 +29,18 @@ class StreamChromeTapTest {
 
     @Test
     fun hiddenStreamControlsAreTappedToShow() {
-        assertEquals(PlayerControlsSync.Tap, playerControlsSync(recording = false, wanted = true, controlsVisible = false))
+        assertEquals(
+            PlayerControlsSync.Tap,
+            playerControlsSync(recording = false, wanted = true, controlsVisible = false),
+        )
     }
 
     @Test
     fun visibleStreamControlsAreTappedToHide() {
-        assertEquals(PlayerControlsSync.Tap, playerControlsSync(recording = false, wanted = false, controlsVisible = true))
+        assertEquals(
+            PlayerControlsSync.Tap,
+            playerControlsSync(recording = false, wanted = false, controlsVisible = true),
+        )
     }
 
     @Test
@@ -55,8 +61,14 @@ class StreamChromeTapTest {
 
     @Test
     fun controlsAlreadyInTheWantedStateAreLeftAlone() {
-        assertEquals(PlayerControlsSync.None, playerControlsSync(recording = false, wanted = true, controlsVisible = true))
-        assertEquals(PlayerControlsSync.None, playerControlsSync(recording = true, wanted = false, controlsVisible = false))
+        assertEquals(
+            PlayerControlsSync.None,
+            playerControlsSync(recording = false, wanted = true, controlsVisible = true),
+        )
+        assertEquals(
+            PlayerControlsSync.None,
+            playerControlsSync(recording = true, wanted = false, controlsVisible = false),
+        )
     }
 
     @Test
@@ -79,6 +91,52 @@ class StreamChromeTapTest {
     fun aStreamTapAlwaysReachesThePage() {
         assertFalse(playerTapStaysOffPage(recording = false, touchOnVideo = true))
         assertFalse(playerTapStaysOffPage(recording = false, touchOnVideo = false))
+    }
+
+    @Test
+    fun aTapWhereOnlyTheAppTakesTapsIsTheApps() {
+        assertEquals(PlayerTouchEnd.AppTap, playerTouchEnd(withinTapSlop = true, offPage = true, onDisclosure = false))
+    }
+
+    @Test
+    fun aSmearedTouchOnARecordingsVideoIsDroppedSoItDoesNotPause() {
+        assertEquals(
+            PlayerTouchEnd.Dropped,
+            playerTouchEnd(withinTapSlop = false, offPage = true, onDisclosure = false),
+        )
+    }
+
+    @Test
+    fun aTapOnAButtonReachesThePageAndTheChromeFollows() {
+        assertEquals(
+            PlayerTouchEnd.PageTap,
+            playerTouchEnd(withinTapSlop = true, offPage = false, onDisclosure = false),
+        )
+    }
+
+    @Test
+    fun aTapOnTheAudiencePlaqueIsThePagesAloneAndKeepsTheChrome() {
+        assertEquals(
+            PlayerTouchEnd.DisclosureTap,
+            playerTouchEnd(withinTapSlop = true, offPage = false, onDisclosure = true),
+        )
+    }
+
+    @Test
+    fun aSmearedTouchOffTheVideoReachesThePageAsItIs() {
+        assertEquals(
+            PlayerTouchEnd.PageTouch,
+            playerTouchEnd(withinTapSlop = false, offPage = false, onDisclosure = false),
+        )
+        assertEquals(
+            PlayerTouchEnd.PageTouch,
+            playerTouchEnd(withinTapSlop = false, offPage = false, onDisclosure = true),
+        )
+    }
+
+    @Test
+    fun aTapOnThePlaqueOfTheMiniPlayerExpandsIt() {
+        assertEquals(PlayerTouchEnd.AppTap, playerTouchEnd(withinTapSlop = true, offPage = true, onDisclosure = true))
     }
 
     @Test
@@ -108,44 +166,72 @@ class StreamChromeTapTest {
     @Test
     fun aCollapsedHeaderHasNoTimer() {
         assertFalse(
-            headerCollapseTimerRuns(headerExpanded = false, minimizeControl = false, held = false, videoLoading = false),
+            headerCollapseTimerRuns(
+                headerExpanded = false,
+                minimizeControl = false,
+                held = false,
+                videoLoading = false,
+            ),
         )
+    }
+
+    @Test
+    fun aShrinkingPlayerHidesTheChrome() {
+        assertEquals(ShrinkChrome.Hide, chromeOnPlayerShrink(shrunk = true, wasShrunk = false))
+    }
+
+    @Test
+    fun aPlayerBackToFullSizeShowsTheWholeChrome() {
+        assertEquals(ShrinkChrome.Show, chromeOnPlayerShrink(shrunk = false, wasShrunk = true))
+    }
+
+    @Test
+    fun aPlayerMovingBetweenTheCornerAndPictureInPictureKeepsTheChromeHidden() {
+        assertEquals(ShrinkChrome.Hide, chromeOnPlayerShrink(shrunk = true, wasShrunk = true))
+    }
+
+    @Test
+    fun aFullPlayerThatStaysFullLeavesTheChromeAlone() {
+        assertEquals(ShrinkChrome.Keep, chromeOnPlayerShrink(shrunk = false, wasShrunk = false))
     }
 
     @Test
     fun controlsAppearingOnTheirOwnExpandTheCollapsedHeader() {
-        assertTrue(
-            controlsShowChrome(controlsVisible = true, headerExpanded = false, minimizeControl = false, minimized = false),
-        )
+        assertTrue(showsChrome())
     }
 
     @Test
     fun controlsAppearingAddTheMinimizeButtonToARevealedHeader() {
-        assertTrue(
-            controlsShowChrome(controlsVisible = true, headerExpanded = true, minimizeControl = false, minimized = false),
-        )
+        assertTrue(showsChrome(headerExpanded = true))
     }
 
     @Test
     fun controlsAppearingLeaveTheShownChromeAlone() {
-        assertFalse(
-            controlsShowChrome(controlsVisible = true, headerExpanded = true, minimizeControl = true, minimized = false),
-        )
+        assertFalse(showsChrome(headerExpanded = true, minimizeControl = true))
     }
 
     @Test
     fun controlsAppearingInTheMiniPlayerDoNotExpandTheHeader() {
-        assertFalse(
-            controlsShowChrome(controlsVisible = true, headerExpanded = false, minimizeControl = false, minimized = true),
-        )
+        assertFalse(showsChrome(minimized = true))
     }
 
     @Test
     fun hidingControlsDoNotExpandTheHeader() {
-        assertFalse(
-            controlsShowChrome(controlsVisible = false, headerExpanded = false, minimizeControl = false, minimized = false),
-        )
+        assertFalse(showsChrome(controlsVisible = false))
     }
+
+    /** [controlsShowChrome] for controls that appear over a collapsed header in the full player. */
+    private fun showsChrome(
+        controlsVisible: Boolean = true,
+        headerExpanded: Boolean = false,
+        minimizeControl: Boolean = false,
+        minimized: Boolean = false,
+    ) = controlsShowChrome(
+        controlsVisible = controlsVisible,
+        headerExpanded = headerExpanded,
+        minimizeControl = minimizeControl,
+        minimized = minimized,
+    )
 
     @Test
     fun visiblePlayerControlsKeepTheHeaderExpandedAfterTheTimer() {
@@ -158,13 +244,18 @@ class StreamChromeTapTest {
     }
 
     @Test
-    fun anOpenComposerKeepsTheExpandedStreamInfoCollapsed() {
-        assertFalse(streamInfoExpandedUnderPlayer(headerExpanded = true, composerOpen = true))
+    fun anOpenComposerHidesTheStreamInfo() {
+        assertFalse(streamInfoShownUnderPlayer(fullscreen = false, composerOpen = true))
     }
 
     @Test
-    fun theStreamInfoExpandsWithTheChromeWhileTheComposerIsClosed() {
-        assertTrue(streamInfoExpandedUnderPlayer(headerExpanded = true, composerOpen = false))
-        assertFalse(streamInfoExpandedUnderPlayer(headerExpanded = false, composerOpen = false))
+    fun theStreamInfoShowsUnderThePlayerWhileTheComposerIsClosed() {
+        assertTrue(streamInfoShownUnderPlayer(fullscreen = false, composerOpen = false))
+    }
+
+    @Test
+    fun aFullScreenPlayerHidesTheStreamInfo() {
+        assertFalse(streamInfoShownUnderPlayer(fullscreen = true, composerOpen = false))
+        assertFalse(streamInfoShownUnderPlayer(fullscreen = true, composerOpen = true))
     }
 }

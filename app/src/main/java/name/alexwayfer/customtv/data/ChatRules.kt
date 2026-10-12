@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.data
 
 import org.json.JSONObject
 import java.security.MessageDigest
+import java.util.Locale
 
 /**
  * A channel's non-blank chat rules from its GQL `user`, empty when it has none, or null when the
@@ -22,5 +23,5 @@ internal fun chatRulesFingerprint(rules: List<String>): String {
         digest.update(rule.toByteArray(Charsets.UTF_8))
         digest.update(0)
     }
-    return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    return digest.digest().joinToString("") { byte -> "%02x".format(Locale.ROOT, byte) }
 }

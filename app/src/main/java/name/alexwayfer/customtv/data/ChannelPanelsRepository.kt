@@ -1,11 +1,11 @@
 package name.alexwayfer.customtv.data
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -54,9 +54,7 @@ internal object ChannelPanelsRepository {
             }
             kept[userId] = panels
             ChannelPanelsLoad.Loaded(panels)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
+        } catch (error: IOException) {
             AppLog.w(TAG, "channel panels failed: ${error.javaClass.simpleName}")
             ChannelPanelsLoad.Failed
         }

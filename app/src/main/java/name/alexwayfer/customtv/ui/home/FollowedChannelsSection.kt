@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -73,74 +74,87 @@ internal fun FollowedChannelsSection(
                     }
                 }
             } else {
-                val listState = rememberLazyListState()
-                var keepTop by rememberSaveable { mutableStateOf(true) }
-                LaunchedEffect(channels) {
-                    if (keepTop) listState.scrollToItem(0)
-                }
-                LaunchedEffect(scrollToTop) {
-                    if (scrollToTop?.take() == null) return@LaunchedEffect
-                    listState.animateScrollToItem(0)
-                    keepTop = followedListKeepsTop(
-                        listState.firstVisibleItemIndex,
-                        listState.firstVisibleItemScrollOffset,
-                    )
-                }
-                LaunchedEffect(listState) {
-                    listState.interactionSource.interactions.collect { interaction ->
-                        if (interaction is DragInteraction.Start) keepTop = false
-                        if (interaction is DragInteraction.Stop || interaction is DragInteraction.Cancel) {
-                            snapshotFlow { listState.isScrollInProgress }.first { !it }
-                            keepTop = followedListKeepsTop(
-                                listState.firstVisibleItemIndex,
-                                listState.firstVisibleItemScrollOffset,
-                            )
-                        }
-                    }
-                }
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    state = listState,
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    val sections = followedSections(channels)
-                    if (sections.live.isNotEmpty()) {
-                        sectionStickyHeader(
-                            key = LIVE_HEADER_KEY,
-                            text = R.string.following_live_now,
-                            onHeight = { headerHeightPx = it },
-                        )
-                        items(sections.live, key = { it.id }) { channel ->
-                            FollowedLiveChannelRow(
-                                channel = channel,
-                                modifier = Modifier.animateItem(),
-                                onWatch = { onOpen(channel.login, true) },
-                            )
-                        }
-                    }
-                    if (sections.offline.isNotEmpty()) {
-                        // The gap between the sections is its own item, so the stuck header has no empty band above.
-                        if (sections.live.isNotEmpty()) {
-                            item(key = OFFLINE_GAP_KEY) {
-                                Spacer(Modifier.animateItem().height(OFFLINE_GAP))
-                            }
-                        }
-                        sectionStickyHeader(
-                            key = OFFLINE_HEADER_KEY,
-                            text = R.string.following_offline,
-                            onHeight = { headerHeightPx = it },
-                        )
-                        items(sections.offline, key = { it.id }) { channel ->
-                            FollowedOfflineChannelRow(
-                                channel = channel,
-                                modifier = Modifier.animateItem(),
-                                onWatch = { onOpen(channel.login, false) },
-                            )
-                        }
-                    }
-                }
+                FollowedChannelList(channels, scrollToTop, onOpen, onHeaderHeight = { headerHeightPx = it })
             }
+        }
+    }
+}
+
+/**
+ * The live and the offline channels under their titles. The list stays at its top as it changes while the viewer
+ * left it there, and keeps its place once they scroll away.
+ */
+@Composable
+private fun FollowedChannelList(
+    channels: List<FollowedChannel>,
+    scrollToTop: OneShotRequest<Unit>?,
+    onOpen: (login: String, live: Boolean) -> Unit,
+    onHeaderHeight: (Int) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    var keepTop by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(channels) {
+        if (keepTop) listState.scrollToItem(0)
+    }
+    LaunchedEffect(scrollToTop) {
+        if (scrollToTop?.take() == null) return@LaunchedEffect
+        listState.animateScrollToItem(0)
+        keepTop = followedListKeepsTop(
+            listState.firstVisibleItemIndex,
+            listState.firstVisibleItemScrollOffset,
+        )
+    }
+    LaunchedEffect(listState) {
+        listState.interactionSource.interactions.collect { interaction ->
+            if (interaction is DragInteraction.Start) keepTop = false
+            if (interaction is DragInteraction.Stop || interaction is DragInteraction.Cancel) {
+                snapshotFlow { listState.isScrollInProgress }.first { !it }
+                keepTop = followedListKeepsTop(
+                    listState.firstVisibleItemIndex,
+                    listState.firstVisibleItemScrollOffset,
+                )
+            }
+        }
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        state = listState,
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        followedChannelRows(followedSections(channels), onOpen, onHeaderHeight)
+    }
+}
+
+private fun LazyListScope.followedChannelRows(
+    sections: FollowedSections,
+    onOpen: (login: String, live: Boolean) -> Unit,
+    onHeaderHeight: (Int) -> Unit,
+) {
+    if (sections.live.isNotEmpty()) {
+        sectionStickyHeader(key = LIVE_HEADER_KEY, text = R.string.following_live_now, onHeight = onHeaderHeight)
+        items(sections.live, key = { it.id }) { channel ->
+            FollowedLiveChannelRow(
+                channel = channel,
+                modifier = Modifier.animateItem(),
+                onWatch = { onOpen(channel.login, true) },
+            )
+        }
+    }
+    if (sections.offline.isNotEmpty()) {
+        // The gap between the sections is its own item, so the stuck header has no empty band above.
+        if (sections.live.isNotEmpty()) {
+            item(key = OFFLINE_GAP_KEY) {
+                Spacer(Modifier.animateItem().height(OFFLINE_GAP))
+            }
+        }
+        sectionStickyHeader(key = OFFLINE_HEADER_KEY, text = R.string.following_offline, onHeight = onHeaderHeight)
+        items(sections.offline, key = { it.id }) { channel ->
+            FollowedOfflineChannelRow(
+                channel = channel,
+                modifier = Modifier.animateItem(),
+                onWatch = { onOpen(channel.login, false) },
+            )
         }
     }
 }

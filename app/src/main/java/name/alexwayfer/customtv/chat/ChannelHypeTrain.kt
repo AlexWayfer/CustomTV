@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.chat
 
-import java.time.Instant
+import name.alexwayfer.customtv.data.instantMillisOrNull
+import name.alexwayfer.customtv.data.trimmedText
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.roundToInt
@@ -118,7 +119,7 @@ internal object HypeTrainParser {
                 ?.let(HypeTrainEvent::Execution)
             "hype-train-progression" -> progress(data, nowMillis)
             "hype-train-conductor-update" -> conductor(data)
-            "hype-train-end" -> jsonText(data, "id")?.let(HypeTrainEvent::End)
+            "hype-train-end" -> data.trimmedText("id")?.let(HypeTrainEvent::End)
             else -> null
         }
     }
@@ -130,24 +131,24 @@ internal object HypeTrainParser {
      */
     fun execution(json: JSONObject?, nowMillis: Long): ChannelHypeTrain? {
         if (json == null) return null
-        val id = jsonText(json, "id") ?: return null
+        val id = json.trimmedText("id") ?: return null
         val progress = json.optJSONObject("progress") ?: return null
         val level = progress.optJSONObject("level")
         val remainingMillis = if (progress.has("remainingSeconds")) {
             progress.optLong("remainingSeconds").coerceAtLeast(0L) * 1_000L
         } else {
-            val expires = instant(jsonText(json, "expiresAt"))
-            val updated = instant(jsonText(json, "updatedAt"))
+            val expires = instant(json.trimmedText("expiresAt"))
+            val updated = instant(json.trimmedText("updatedAt"))
             if (expires != null && updated != null) (expires - updated).coerceAtLeast(0L) else 0L
         }
         return ChannelHypeTrain(
             id = id,
-            phase = if (jsonText(json, "endedAt") != null) HypeTrainPhase.Ended else HypeTrainPhase.Active,
+            phase = if (json.trimmedText("endedAt") != null) HypeTrainPhase.Ended else HypeTrainPhase.Active,
             level = level?.optInt("value") ?: 0,
             progress = progress.optInt("progression").coerceAtLeast(0),
             goal = progress.optInt("goal").coerceAtLeast(0),
             endsAtMillis = nowMillis + remainingMillis,
-            colorHex = jsonText(json.optJSONObject("config"), "primaryHexColor"),
+            colorHex = json.optJSONObject("config")?.trimmedText("primaryHexColor"),
             conductors = conductors(json.optJSONArray("conductors")),
             rewards = rewards(level?.optJSONArray("rewards")),
         )
@@ -159,16 +160,18 @@ internal object HypeTrainParser {
      */
     fun gqlApproaching(json: JSONObject?, nowMillis: Long): ChannelHypeTrain? {
         if (json == null) return null
-        val endsAt = instant(jsonText(json, "expiresAt"))?.takeIf { it > nowMillis } ?: return null
+        val endsAt = instant(json.trimmedText("expiresAt"))?.takeIf { it > nowMillis } ?: return null
         val remaining = json.optJSONArray("eventsRemaining")
-            ?.let { list -> (0 until list.length()).mapNotNull { list.optJSONObject(it)?.optInt("events") }.minOrNull() }
+            ?.let { list ->
+                (0 until list.length()).mapNotNull { list.optJSONObject(it)?.optInt("events") }.minOrNull()
+            }
             ?: json.optJSONObject("eventsRemaining")?.optInt("events")
             ?: json.optInt("goal")
         val event = HypeTrainEvent.Approaching(
             eventsRemaining = remaining,
             endsAtMillis = endsAt,
             rewards = rewards(json.optJSONArray("levelOneRewards")),
-            colorHex = jsonText(json, "creatorColor"),
+            colorHex = json.trimmedText("creatorColor"),
         )
         return applyHypeTrainEvent(null, event)
     }
@@ -181,12 +184,12 @@ internal object HypeTrainParser {
             eventsRemaining = events,
             endsAtMillis = nowMillis + seconds * 1_000L,
             rewards = rewards(data.optJSONArray("level_one_rewards")),
-            colorHex = jsonText(data, "creator_color"),
+            colorHex = data.trimmedText("creator_color"),
         )
     }
 
     private fun progress(data: JSONObject, nowMillis: Long): HypeTrainEvent.Progress? {
-        val id = jsonText(data, "id") ?: return null
+        val id = data.trimmedText("id") ?: return null
         val progress = data.optJSONObject("progress") ?: return null
         val level = progress.optJSONObject("level")
         return HypeTrainEvent.Progress(
@@ -200,10 +203,10 @@ internal object HypeTrainParser {
     }
 
     private fun conductor(data: JSONObject): HypeTrainEvent.Conductor? {
-        val source = jsonText(data, "source") ?: return null
-        val id = jsonText(data, "id")?.removeSuffix("-$source") ?: return null
+        val source = data.trimmedText("source") ?: return null
+        val id = data.trimmedText("id")?.removeSuffix("-$source") ?: return null
         val user = data.optJSONObject("user") ?: return null
-        val name = jsonText(user, "display_name") ?: jsonText(user, "login") ?: return null
+        val name = user.trimmedText("display_name") ?: user.trimmedText("login") ?: return null
         return HypeTrainEvent.Conductor(id, HypeTrainConductor(source, name))
     }
 
@@ -211,9 +214,9 @@ internal object HypeTrainParser {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
             val conductor = array.optJSONObject(index) ?: return@mapNotNull null
-            val source = jsonText(conductor, "source") ?: return@mapNotNull null
+            val source = conductor.trimmedText("source") ?: return@mapNotNull null
             val user = conductor.optJSONObject("user")
-            val name = jsonText(user, "displayName") ?: jsonText(user, "login") ?: return@mapNotNull null
+            val name = user?.trimmedText("displayName") ?: user?.trimmedText("login") ?: return@mapNotNull null
             HypeTrainConductor(source, name)
         }
     }
@@ -223,14 +226,16 @@ internal object HypeTrainParser {
         if (array == null) return emptyList()
         return (0 until array.length()).mapNotNull { index ->
             val reward = array.optJSONObject(index) ?: return@mapNotNull null
-            val emote = reward.optJSONObject("emote") ?: reward.takeIf { it.optString("type") == "EMOTE" }
-            val id = jsonText(emote, "id") ?: return@mapNotNull null
-            HypeTrainEmote(id, jsonText(emote, "token").orEmpty())
+            val emote = reward.optJSONObject("emote")
+                ?: reward.takeIf { it.optString("type") == "EMOTE" }
+                ?: return@mapNotNull null
+            val id = emote.trimmedText("id") ?: return@mapNotNull null
+            HypeTrainEmote(id, emote.trimmedText("token").orEmpty())
         }
     }
 
     private fun instant(raw: String?): Long? =
-        raw?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+        raw?.let(::instantMillisOrNull)
 }
 
 private const val APPROACHING_ID = "approaching"

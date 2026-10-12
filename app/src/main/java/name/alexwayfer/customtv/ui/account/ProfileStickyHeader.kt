@@ -68,7 +68,11 @@ internal fun ProfileStickyHeader(
     Layout(
         contents = listOf({ Box(Modifier.background(barColor)) }, details, avatar, name),
         modifier = modifier,
-    ) { (barMeasurables, detailsMeasurables, avatarMeasurables, nameMeasurables), constraints ->
+    ) { measurables, constraints ->
+        val barMeasurables = measurables[0]
+        val detailsMeasurables = measurables[1]
+        val avatarMeasurables = measurables[2]
+        val nameMeasurables = measurables[3]
         val width = constraints.maxWidth
         val barPx = ProfileBarHeight.roundToPx()
         val headerTopPx = headerTop.roundToPx()

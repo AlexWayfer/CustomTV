@@ -1,15 +1,18 @@
 package name.alexwayfer.customtv.data
 
+/** Slow uses before the tip for an action the user repeats often. */
+private const val REPEATED_SLOW_USES = 3
+
 /**
  * A one-time tip about a gesture, due once the user has done the same thing the slower way [slowUsesBeforeHint] times
  * without ever using the gesture. [key] names its values in the stored hints.
  */
 internal enum class GestureHint(val key: String, val slowUsesBeforeHint: Int) {
-    Reply("reply", 3),
+    Reply("reply", REPEATED_SLOW_USES),
     RemoveRecent("remove_recent", 1),
-    Minimize("minimize", 3),
-    EnterFullscreen("enter_fullscreen", 3),
-    ExitFullscreen("exit_fullscreen", 3),
+    Minimize("minimize", REPEATED_SLOW_USES),
+    EnterFullscreen("enter_fullscreen", REPEATED_SLOW_USES),
+    ExitFullscreen("exit_fullscreen", REPEATED_SLOW_USES),
     FullscreenChatSide("fullscreen_chat_side", 1),
     FullscreenChatHide("fullscreen_chat_hide", 1),
 }

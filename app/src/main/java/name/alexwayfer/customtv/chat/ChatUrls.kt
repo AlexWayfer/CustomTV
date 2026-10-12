@@ -1,18 +1,11 @@
 package name.alexwayfer.customtv.chat
 
-data class ChatUrlSpan(
-    val start: Int,
-    val endExclusive: Int,
-    val raw: String,
-    val href: String,
-)
-
 fun findChatUrls(text: String): List<ChatUrlSpan> {
     if (text.isEmpty()) return emptyList()
     val spans = mutableListOf<ChatUrlSpan>()
     for (match in CHAT_URL_REGEX.findAll(text)) {
         val raw = trimTrailingUrlPunctuation(match.value)
-        if (raw.isEmpty()) continue
+        // An empty link has no address either.
         val href = normalizeChatUrl(raw) ?: continue
         val start = match.range.first
         spans += ChatUrlSpan(
@@ -53,25 +46,28 @@ private fun isBareDomain(host: String): Boolean {
 
 private fun trimTrailingUrlPunctuation(raw: String): String {
     var end = raw.length
-    while (end > 0) {
-        when (raw[end - 1]) {
-            '.', ',', ';', ':', '!', '?' -> end--
-            ')' -> {
-                val slice = raw.substring(0, end)
-                if (slice.count { it == '(' } < slice.count { it == ')' }) end-- else break
-            }
-            ']' -> {
-                val slice = raw.substring(0, end)
-                if (slice.count { it == '[' } < slice.count { it == ']' }) end-- else break
-            }
-            else -> break
-        }
-    }
+    while (end > 0 && trailsUrl(raw, end)) end--
     return raw.substring(0, end)
 }
 
+/** Whether the character before [end] closes the sentence around a link rather than belonging to it. */
+private fun trailsUrl(raw: String, end: Int): Boolean = when (raw[end - 1]) {
+    '.', ',', ';', ':', '!', '?' -> true
+    ')' -> unbalanced(raw, end, '(', ')')
+    ']' -> unbalanced(raw, end, '[', ']')
+    else -> false
+}
+
+/** Whether the first [end] characters of [raw] close more brackets than they open. */
+private fun unbalanced(raw: String, end: Int, open: Char, close: Char): Boolean {
+    val slice = raw.substring(0, end)
+    return slice.count { it == open } < slice.count { it == close }
+}
+
 private val CHAT_URL_REGEX = Regex(
-    """(?i)(?<![\p{L}\p{N}_@])(?:(?:https?://|www\.)[^\s<>\[\]"']+|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?::[0-9]{1,5})?(?:[/?#][^\s<>\[\]"']*)?)""",
+    // A link with a scheme or `www.`, or a bare domain with an optional port and path.
+    """(?i)(?<![\p{L}\p{N}_@])(?:(?:https?://|www\.)[^\s<>\[\]"']+|""" +
+        """(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?::[0-9]{1,5})?(?:[/?#][^\s<>\[\]"']*)?)""",
 )
 
 private val BARE_DOMAIN_REGEX = Regex(

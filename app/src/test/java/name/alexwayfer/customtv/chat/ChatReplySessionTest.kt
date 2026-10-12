@@ -71,6 +71,31 @@ class ChatReplySessionTest {
     }
 
     @Test
+    fun theThreadMarksOnlyTheChosenReplyTarget() {
+        val session = ChatReplySession(
+            starterId = starterId,
+            targetId = childId,
+            entries = listOf(entry(starterId), entry(childId), entry(otherId)),
+        )
+        assertTrue(replySessionMarksTarget(session, childId))
+        assertFalse(replySessionMarksTarget(session, starterId))
+        assertFalse(replySessionMarksTarget(session, otherId))
+    }
+
+    @Test
+    fun aCancelledReplyMarksTheStarter() {
+        val session = replySessionCancelsToStarter(
+            ChatReplySession(
+                starterId = starterId,
+                targetId = childId,
+                entries = listOf(entry(starterId), entry(childId)),
+            ),
+        )
+        assertTrue(replySessionMarksTarget(session, starterId))
+        assertFalse(replySessionMarksTarget(session, childId))
+    }
+
+    @Test
     fun aNoticeCannotBeRepliedTo() {
         val notice = message(starterId, "host").copy(notice = ChatNotice.Welcome)
         assertNull(replySessionFor(notice, listOf(notice)))
@@ -161,16 +186,14 @@ class ChatReplySessionTest {
         assertFalse(threadReplyHidesChrome(replying = false, composerOpen = true))
     }
 
-    private fun message(id: String, login: String, reply: ChatReply? = null) = ChatMessage(
-        id = id,
-        userLogin = login,
-        displayName = login,
+    private fun message(id: String, login: String, reply: ChatReply? = null) = testChatMessage(
+        id,
+        "hi",
+        login = login,
         color = Color.Unspecified,
-        rawText = "hi",
         parts = emptyList(),
         timestampMillis = 10,
-        reply = reply,
-    )
+    ).copy(reply = reply)
 
     private fun entry(id: String, body: String = "hi", timestampMillis: Long = 10) = ChatThreadEntry(
         id = id,

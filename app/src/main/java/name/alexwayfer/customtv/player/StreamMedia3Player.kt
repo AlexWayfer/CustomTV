@@ -21,6 +21,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChannelProfile
 
@@ -54,12 +55,12 @@ internal class StreamMedia3Player(
 
     override fun getState(): State {
         val target = target
-        val bound = target != null && StreamPlayback.isBound()
-        val playbackConfirmed = bound && StreamPlayback.isPlaybackConfirmed()
+        val bound = target != null && StreamPlayback.isBound
+        val playbackConfirmed = bound && StreamPlayback.isPlaybackConfirmed
         val playWhenReady = playbackConfirmed && !StreamPlayback.userPaused
         val playbackState = when {
             !playbackConfirmed -> STATE_IDLE
-            StreamPlayback.isBuffering() -> STATE_BUFFERING
+            StreamPlayback.isBuffering -> STATE_BUFFERING
             else -> STATE_READY
         }
         return State.Builder()
@@ -71,7 +72,7 @@ internal class StreamMedia3Player(
                     setPlaylist(listOf(mediaItemData(target)))
                     setCurrentMediaItemIndex(0)
                     if (target is TwitchPlaybackTarget.Video) {
-                        setContentPositionMs(PositionSupplier { StreamPlayback.positionMs() })
+                        setContentPositionMs(PositionSupplier { StreamPlayback.positionMs })
                     }
                 }
             }
@@ -79,21 +80,20 @@ internal class StreamMedia3Player(
     }
 
     private fun mediaItemData(target: TwitchPlaybackTarget): MediaItemData {
+        val artwork = MediaArtwork(artworkUri, artworkData)
         val metadata = when (target) {
             is TwitchPlaybackTarget.Channel -> streamMediaMetadata(
                 channel = target.login,
                 displayName = streamMediaTitle(target.login, displayName),
                 appName = appName,
                 categoryName = categoryName,
-                artworkUri = artworkUri,
-                artworkData = artworkData,
+                artwork = artwork,
             )
             is TwitchPlaybackTarget.Video -> recordingMediaMetadata(
                 title = target.title,
                 channel = target.channel,
                 displayName = displayName,
-                artworkUri = artworkUri,
-                artworkData = artworkData,
+                artwork = artwork,
             )
         }
         val mediaItem = MediaItem.Builder()
@@ -106,10 +106,10 @@ internal class StreamMedia3Player(
         when (target) {
             is TwitchPlaybackTarget.Channel -> builder.setIsDynamic(true)
             is TwitchPlaybackTarget.Video -> {
-                val durationMs = recordingDurationMs(target.durationSeconds, StreamPlayback.positionMs())
+                val durationMs = recordingDurationMs(target.durationSeconds, StreamPlayback.positionMs)
                 builder
                     .setIsSeekable(true)
-                    .setDurationUs(durationMs?.let { it * 1_000L } ?: C.TIME_UNSET)
+                    .setDurationUs(durationMs?.milliseconds?.inWholeMicroseconds ?: C.TIME_UNSET)
             }
         }
         return builder.build()

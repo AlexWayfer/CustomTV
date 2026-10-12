@@ -4,7 +4,9 @@ import androidx.compose.runtime.Composable
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettings
 
-/** AI chatter portraits are a Premium feature: the free settings have no page for them, so this title is never shown. */
+/**
+ * AI chatter portraits are a Premium feature: the free settings have no page for them, so this title is never shown.
+ */
 internal val ChatterPortraitSettingsTitle = R.string.settings
 
 @Suppress("unused")

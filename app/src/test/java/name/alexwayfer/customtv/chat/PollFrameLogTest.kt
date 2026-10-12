@@ -20,9 +20,8 @@ class PollFrameLogTest {
 
     @Test
     fun anUpdateOfThatPollAfterTheIntervalIsLogged() {
-        assertTrue(
-            logged(POLL_UPDATE, "p1", nowMillis = 1_000 + POLL_UPDATE_LOG_INTERVAL_MILLIS, lastPollId = "p1", lastAtMillis = 1_000),
-        )
+        val nowMillis = 1_000 + POLL_UPDATE_LOG_INTERVAL_MILLIS
+        assertTrue(logged(POLL_UPDATE, "p1", nowMillis = nowMillis, lastPollId = "p1", lastAtMillis = 1_000))
     }
 
     @Test

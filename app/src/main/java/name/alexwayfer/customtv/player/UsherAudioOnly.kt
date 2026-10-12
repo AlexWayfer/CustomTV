@@ -3,6 +3,9 @@ package name.alexwayfer.customtv.player
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import java.io.IOException
+import name.alexwayfer.customtv.data.HTTP_FORBIDDEN
+import name.alexwayfer.customtv.data.HTTP_NOT_FOUND
+import name.alexwayfer.customtv.data.HTTP_REDIRECT
 import name.alexwayfer.customtv.data.sharedHttpClient
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
@@ -25,13 +28,19 @@ internal object UsherAudioOnly {
             }
             val response = sharedHttpClient.newCall(builder.build()).execute()
             // A WebResourceResponse refuses redirect codes and an empty reason; OkHttp follows redirects anyway.
-            if (response.code in 300..399) {
+            if (response.code in HTTP_REDIRECT) {
                 response.close()
                 return null
             }
             AppLog.i(PLAYER_LOG_TAG, "Playlist with sound only allowed, HTTP ${response.code}")
             // 403 and 404 are routine: a subscriber-only or ended stream; the player shows those itself.
-            Diagnostics.reportHttp("UsherAudioOnly", "usher master playlist", response.code, "", setOf(403, 404))
+            Diagnostics.reportHttp(
+                "UsherAudioOnly",
+                "usher master playlist",
+                response.code,
+                "",
+                setOf(HTTP_FORBIDDEN, HTTP_NOT_FOUND),
+            )
             val contentType = response.header("Content-Type") ?: "application/vnd.apple.mpegurl"
             val headers = response.headers.toMultimap()
                 .filterKeys { name -> name.lowercase() !in DROPPED_HEADERS }

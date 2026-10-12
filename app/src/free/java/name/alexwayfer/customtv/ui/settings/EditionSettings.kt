@@ -63,6 +63,19 @@ internal fun PremiumFeatureList(
 
 @Composable
 private fun PremiumFeatureLines(style: TextStyle, lineSpacing: Dp, featureIndent: Dp) {
+    PremiumMainFeatures(style, lineSpacing, featureIndent)
+    ExperimentalHeading(style, lineSpacing)
+    PremiumExperimentalFeatures(style, lineSpacing, featureIndent)
+    PremiumLine(
+        text = stringResource(R.string.premium_and_more),
+        style = style,
+        lineSpacing = lineSpacing,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+}
+
+@Composable
+private fun PremiumMainFeatures(style: TextStyle, lineSpacing: Dp, featureIndent: Dp) {
     PremiumBullet(
         icon = painterResource(R.drawable.ic_history),
         text = stringResource(R.string.premium_feature_past_broadcasts),
@@ -98,7 +111,11 @@ private fun PremiumFeatureLines(style: TextStyle, lineSpacing: Dp, featureIndent
         lineSpacing = lineSpacing,
         indent = featureIndent,
     )
-    ExperimentalHeading(style, lineSpacing)
+}
+
+/** The features that rely on the experimental login, under their heading. */
+@Composable
+private fun PremiumExperimentalFeatures(style: TextStyle, lineSpacing: Dp, featureIndent: Dp) {
     PremiumBullet(
         icon = rememberVectorPainter(Icons.Outlined.Email),
         text = stringResource(R.string.premium_feature_whispers),
@@ -119,12 +136,6 @@ private fun PremiumFeatureLines(style: TextStyle, lineSpacing: Dp, featureIndent
         style = style,
         lineSpacing = lineSpacing,
         indent = featureIndent,
-    )
-    PremiumLine(
-        text = stringResource(R.string.premium_and_more),
-        style = style,
-        lineSpacing = lineSpacing,
-        modifier = Modifier.padding(top = 8.dp),
     )
 }
 

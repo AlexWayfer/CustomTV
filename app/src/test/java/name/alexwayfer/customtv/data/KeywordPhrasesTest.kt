@@ -38,7 +38,15 @@ class KeywordPhrasesTest {
         assertEquals(listOf(raid, gg), decodeKeywordPhrases(stored))
         assertEquals(
             listOf(gg),
-            decodeKeywordPhrases("""[{"text":"gg","wholeWord":false},{"text":"","wholeWord":true},{"text":"GG","wholeWord":true}]"""),
+            decodeKeywordPhrases(
+                """
+                [
+                  {"text":"gg","wholeWord":false},
+                  {"text":"","wholeWord":true},
+                  {"text":"GG","wholeWord":true}
+                ]
+                """.trimIndent(),
+            ),
         )
         assertEquals(emptyList<KeywordPhrase>(), decodeKeywordPhrases(null))
         assertEquals(emptyList<KeywordPhrase>(), decodeKeywordPhrases("not json"))

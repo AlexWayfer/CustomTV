@@ -1,11 +1,27 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.ui.graphics.Color
-import name.alexwayfer.customtv.chat.ChatMessage
+import name.alexwayfer.customtv.chat.testChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ChatAppendAnimationTest {
+    @Test
+    fun `a following chat on a shown screen scrolls to new rows`() {
+        assertEquals(true, chatScrollsToNewRows(following = true, catchingUp = false, resumed = true, touching = false))
+    }
+
+    @Test
+    fun `a finger on the list keeps new rows waiting`() {
+        assertEquals(false, chatScrollsToNewRows(following = true, catchingUp = false, resumed = true, touching = true))
+    }
+
+    @Test
+    fun `a chat that stays put, jumps, or is hidden does not scroll to new rows`() {
+        assertEquals(false, chatScrollsToNewRows(following = false, catchingUp = false, resumed = true, false))
+        assertEquals(false, chatScrollsToNewRows(following = true, catchingUp = true, resumed = true, false))
+        assertEquals(false, chatScrollsToNewRows(following = true, catchingUp = false, resumed = false, false))
+    }
+
     @Test
     fun manualArrivalAtBottomRestartsObserverEvenIfAlreadyFollowing() {
         assertEquals(true, restartEntranceAfterManualScroll(userInput = true, canScrollForward = false))
@@ -53,7 +69,10 @@ class ChatAppendAnimationTest {
             "three",
             entranceCursorAfterScrollingDown(messages, previousTailMessageId = "three", lastVisibleMessageId = "two"),
         )
-        assertEquals("two", entranceCursorAfterScrollingDown(messages, previousTailMessageId = null, lastVisibleMessageId = "two"))
+        assertEquals(
+            "two",
+            entranceCursorAfterScrollingDown(messages, previousTailMessageId = null, lastVisibleMessageId = "two"),
+        )
         assertEquals(6, firstEntranceIndex(firstNewIndex = 2, lastFullyVisibleIndex = 5))
         assertEquals(2, firstEntranceIndex(firstNewIndex = 2, lastFullyVisibleIndex = 1))
         assertEquals(2, firstEntranceIndex(firstNewIndex = 2, lastFullyVisibleIndex = null))
@@ -91,19 +110,21 @@ class ChatAppendAnimationTest {
 
     @Test
     fun timelineSeekJumpsDirectlyToLatestReplayMessage() {
-        assertEquals(ChatReturnScroll.Stay, timelineJumpScroll(generation = 0, handledGeneration = 0, messageCount = 20_000))
+        assertEquals(
+            ChatReturnScroll.Stay,
+            timelineJumpScroll(generation = 0, handledGeneration = 0, messageCount = 20_000),
+        )
         assertEquals(ChatReturnScroll.Stay, timelineJumpScroll(generation = 1, handledGeneration = 0, messageCount = 0))
-        assertEquals(ChatReturnScroll.JumpToEnd, timelineJumpScroll(generation = 1, handledGeneration = 0, messageCount = 20_000))
-        assertEquals(ChatReturnScroll.Stay, timelineJumpScroll(generation = 1, handledGeneration = 1, messageCount = 20_001))
+        assertEquals(
+            ChatReturnScroll.JumpToEnd,
+            timelineJumpScroll(generation = 1, handledGeneration = 0, messageCount = 20_000),
+        )
+        assertEquals(
+            ChatReturnScroll.Stay,
+            timelineJumpScroll(generation = 1, handledGeneration = 1, messageCount = 20_001),
+        )
     }
 
-    private fun message(id: String) = ChatMessage(
-        id = id,
-        userLogin = "viewer",
-        displayName = "Viewer",
-        color = Color.White,
-        rawText = id,
-        parts = emptyList(),
-        timestampMillis = 0L,
-    )
+    private fun message(id: String) =
+        testChatMessage(id, id, displayName = "Viewer", parts = emptyList(), timestampMillis = 0L)
 }

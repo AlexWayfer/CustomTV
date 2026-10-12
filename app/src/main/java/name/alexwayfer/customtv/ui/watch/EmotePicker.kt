@@ -41,23 +41,22 @@ import name.alexwayfer.customtv.chat.ChannelEmoteSource
 import name.alexwayfer.customtv.chat.EmotePickerKind
 import name.alexwayfer.customtv.chat.EmotePickerPlace
 import name.alexwayfer.customtv.chat.EmotePickerSection
+import name.alexwayfer.customtv.chat.EmoteSources
+import name.alexwayfer.customtv.chat.GlobalEmoteSource
 import name.alexwayfer.customtv.chat.PickerEmote
 import name.alexwayfer.customtv.chat.SevenTvEmote
+import name.alexwayfer.customtv.chat.TwitchCatalogEmote
 import name.alexwayfer.customtv.chat.emotePickerSections
 import name.alexwayfer.customtv.data.BttvRepository
 import name.alexwayfer.customtv.data.FfzRepository
 import name.alexwayfer.customtv.data.SevenTvRepository
 import name.alexwayfer.customtv.data.TwitchEmoteCatalogRepository
+import name.alexwayfer.customtv.data.UserTwitchEmotes
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
-
-internal data class EmotePickerCatalog(
-    val ready: Boolean,
-    val sections: List<EmotePickerSection>,
-)
 
 @Composable
 internal fun rememberEmotePickerSections(
@@ -95,56 +94,63 @@ internal fun rememberEmotePickerSections(
             return@LaunchedEffect
         }
         val ownId = ownUserId?.takeIf { it.isNotBlank() && it != channelId }
-        val token = accessToken()?.takeIf { it.isNotBlank() }
-        val clientId = BuildConfig.TWITCH_CLIENT_ID
-        val channelTwitch = if (token != null && !channelId.isNullOrBlank()) {
-            TwitchEmoteCatalogRepository.channelEmotes(clientId, token, channelId)
-        } else {
-            emptyList()
-        }
-        val ownTwitch = if (token != null && ownId != null) {
-            TwitchEmoteCatalogRepository.channelEmotes(clientId, token, ownId)
-        } else {
-            emptyList()
-        }
-        val globalTwitch = if (token != null) {
-            TwitchEmoteCatalogRepository.globalEmotes(clientId, token)
-        } else {
-            emptyList()
-        }
-        val personalTwitch = if (token != null && !ownUserId.isNullOrBlank()) {
-            TwitchEmoteCatalogRepository.userEmotes(clientId, token, ownUserId)
-        } else {
-            null
-        }
+        val twitch = loadPickerTwitchEmotes(accessToken()?.takeIf { it.isNotBlank() }, channelId, ownId, ownUserId)
         sections = emotePickerSections(
             channel = ChannelEmoteSource(
                 label = channelLabel,
-                twitch = channelTwitch,
-                sevenTv = SevenTvRepository.cachedChannel(channelId),
-                bttv = BttvRepository.cachedChannel(channelId),
-                ffz = FfzRepository.cachedChannel(channelId),
+                twitch = twitch.channel,
+                sevenTv = SevenTvRepository.emotes.cachedChannel(channelId),
+                bttv = BttvRepository.emotes.cachedChannel(channelId),
+                ffz = FfzRepository.emotes.cachedChannel(channelId),
             ),
             own = ownId?.let {
                 ChannelEmoteSource(
                     label = ownLabel?.ifBlank { null } ?: it,
-                    twitch = ownTwitch,
+                    twitch = twitch.own,
                 )
             },
-            globalTwitch = globalTwitch,
-            globalSevenTv = SevenTvRepository.cachedGlobal(),
-            globalBttv = BttvRepository.cachedGlobal(),
-            globalFfz = FfzRepository.cachedGlobal(),
-            sevenTvEnabled = sevenTvEnabled,
-            bttvEnabled = bttvEnabled,
-            ffzEnabled = ffzEnabled,
-            personalSmilies = personalTwitch?.smilies.orEmpty(),
-            turboTwitch = personalTwitch?.turbo.orEmpty(),
-            unlockedTwitch = personalTwitch?.unlocked.orEmpty(),
+            global = GlobalEmoteSource(
+                twitch = twitch.global,
+                sevenTv = SevenTvRepository.emotes.cachedGlobal(),
+                bttv = BttvRepository.emotes.cachedGlobal(),
+                ffz = FfzRepository.emotes.cachedGlobal(),
+            ),
+            sources = EmoteSources(sevenTv = sevenTvEnabled, ffz = ffzEnabled, bttv = bttvEnabled),
+            personal = twitch.personal,
         )
         ready = true
     }
     return EmotePickerCatalog(ready, sections)
+}
+
+/** The Twitch emotes the picker shows, read with the viewer's token; none without one. */
+private class PickerTwitchEmotes(
+    val channel: List<TwitchCatalogEmote> = emptyList(),
+    val own: List<TwitchCatalogEmote> = emptyList(),
+    val global: List<TwitchCatalogEmote> = emptyList(),
+    val personal: UserTwitchEmotes? = null,
+)
+
+private suspend fun loadPickerTwitchEmotes(
+    token: String?,
+    channelId: String?,
+    ownId: String?,
+    ownUserId: String?,
+): PickerTwitchEmotes {
+    if (token == null) return PickerTwitchEmotes()
+    val clientId = BuildConfig.TWITCH_CLIENT_ID
+    return PickerTwitchEmotes(
+        channel = if (!channelId.isNullOrBlank()) {
+            TwitchEmoteCatalogRepository.channelEmotes(clientId, token, channelId)
+        } else {
+            emptyList()
+        },
+        own = ownId?.let { TwitchEmoteCatalogRepository.channelEmotes(clientId, token, it) }.orEmpty(),
+        global = TwitchEmoteCatalogRepository.globalEmotes(clientId, token),
+        personal = ownUserId?.takeIf { it.isNotBlank() }?.let {
+            TwitchEmoteCatalogRepository.userEmotes(clientId, token, it)
+        },
+    )
 }
 
 @Composable

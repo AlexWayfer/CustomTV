@@ -14,8 +14,18 @@ class OwnMessageHoldTest {
         val rows = ownMessageHoldRows(
             notification(
                 "channel.chat.user_message_hold",
-                """{"user_id":"1","user_login":"me","user_name":"Me","message_id":"m-1",
-                   "message":{"text":"hi Kappa","fragments":[{"type":"text","text":"hi "},{"type":"emote","text":"Kappa","emote":{"id":"25"}}]}}""",
+                """
+                {
+                  "user_id":"1",
+                  "user_login":"me",
+                  "user_name":"Me",
+                  "message_id":"m-1",
+                  "message":{"text":"hi Kappa","fragments":[
+                    {"type":"text","text":"hi "},
+                    {"type":"emote","text":"Kappa","emote":{"id":"25"}}
+                  ]}
+                }
+                """.trimIndent(),
             ),
             emptyMap(),
             7L,
@@ -63,7 +73,8 @@ class OwnMessageHoldTest {
                 0L,
             ).isEmpty(),
         )
-        assertTrue(ownMessageHoldRows(notification("automod.message.hold", """{"message_id":"m-1"}"""), emptyMap(), 0L).isEmpty())
+        val automod = notification("automod.message.hold", """{"message_id":"m-1"}""")
+        assertTrue(ownMessageHoldRows(automod, emptyMap(), 0L).isEmpty())
         assertTrue(ownMessageHoldRows("not json", emptyMap(), 0L).isEmpty())
     }
 

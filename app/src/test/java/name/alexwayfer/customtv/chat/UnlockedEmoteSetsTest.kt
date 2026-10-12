@@ -27,7 +27,8 @@ class UnlockedEmoteSetsTest {
             listOf("TwitchHypeTrain", "ow_esports", "StreamWithPride", "streamerluv", "Haha", "Unlocked"),
             groups.map { it.title },
         )
-        assertEquals(listOf("PrideCute", "PrideWave"), groups.first { it.title == "StreamWithPride" }.emotes.map { it.name })
+        val pride = groups.first { it.title == "StreamWithPride" }
+        assertEquals(listOf("PrideCute", "PrideWave"), pride.emotes.map { it.name })
         assertEquals(listOf("NasaSparkle", "SirPrise"), groups.first { it.title == "Unlocked" }.emotes.map { it.name })
         assertNull(unlockedEmoteSet("subscriptions", "QuinSub"))
         assertNull(unlockedEmoteSet("follower", "FollowEmote"))

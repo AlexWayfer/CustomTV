@@ -24,7 +24,9 @@ internal class RememberedKeyboardHeight(private val store: KeyboardHeightStore) 
     val memory = KeyboardHeightMemory()
     var saved by mutableStateOf<KeyboardHeights?>(null)
 
-    /** Call before the picker opens: heights of a keyboard the user has since switched away from would size it wrong. */
+    /**
+     * Call before the picker opens: heights of a keyboard the user has since switched away from would size it wrong.
+     */
     fun useCurrentKeyboard() {
         val id = store.currentKeyboardId()
         if (memory.useKeyboard(id)) AppLog.i(KEYBOARD_HEIGHT_TAG, "Keyboard is $id, heights dropped")

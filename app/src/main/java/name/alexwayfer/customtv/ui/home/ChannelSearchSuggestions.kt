@@ -2,11 +2,34 @@ package name.alexwayfer.customtv.ui.home
 
 import name.alexwayfer.customtv.channel.normalizeChannelInput
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.ChannelSearchHit
 import name.alexwayfer.customtv.data.FollowedChannel
+import name.alexwayfer.customtv.data.channelSearchExtras
 
 // The empty field is a hint of whom to watch, not a second list of the follows.
 /** How many followed channels an empty search field suggests, the live ones first; all live ones show even past it. */
 internal const val EMPTY_SEARCH_FOLLOWED = 10
+
+/** What the search suggests, in its order: the recents, then the follows, then the channels Twitch found. */
+internal data class ChannelSearchMatches(
+    val history: List<String>,
+    val followed: List<FollowedChannel>,
+    val found: List<ChannelSearchHit>,
+)
+
+/** The suggestions for the [query]: each list leaves out the channels an earlier one already shows. */
+internal fun channelSearchMatches(
+    history: List<String>,
+    profiles: Map<String, ChannelProfile>,
+    followed: List<FollowedChannel>,
+    searchHits: List<ChannelSearchHit>,
+    query: String,
+): ChannelSearchMatches {
+    val historyMatches = channelSearchSuggestions(history, profiles, query)
+    val followedMatches = followedSearchSuggestions(followed, historyMatches, query)
+    val found = channelSearchExtras(historyMatches + followedMatches.map { it.login }, searchHits)
+    return ChannelSearchMatches(historyMatches, followedMatches, found)
+}
 
 /** Whether a channel the app knows matches the typed text: the start of its login or of its display name. */
 internal fun channelMatchesSearch(login: String, displayName: String?, normalizedQuery: String): Boolean =

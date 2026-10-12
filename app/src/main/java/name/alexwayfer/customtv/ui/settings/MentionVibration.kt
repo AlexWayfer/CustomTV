@@ -2,37 +2,40 @@ package name.alexwayfer.customtv.ui.settings
 
 import android.app.ActivityManager.RunningAppProcessInfo
 
-internal const val MentionVibrationMinMs = 100
-internal const val MentionVibrationMaxMs = 800
-internal const val MentionVibrationStepMs = 100
+internal const val MENTION_VIBRATION_MIN_MS = 100
+internal const val MENTION_VIBRATION_MAX_MS = 800
+internal const val MENTION_VIBRATION_STEP_MS = 100
 
-internal const val MentionVibrationMinPercent = 10
-internal const val MentionVibrationMaxPercent = 100
-internal const val MentionVibrationPercentStep = 10
+internal const val MENTION_VIBRATION_MIN_PERCENT = 10
+internal const val MENTION_VIBRATION_MAX_PERCENT = 100
+internal const val MENTION_VIBRATION_PERCENT_STEP = 10
 
 internal fun mentionVibrationMs(stored: Int): Int =
-    discreteStep(stored, MentionVibrationMinMs, MentionVibrationMaxMs, MentionVibrationStepMs)
+    discreteStep(stored, MENTION_VIBRATION_MIN_MS, MENTION_VIBRATION_MAX_MS, MENTION_VIBRATION_STEP_MS)
 
 internal fun mentionVibrationSliderSteps(): Int =
-    discreteSliderSteps(MentionVibrationMinMs, MentionVibrationMaxMs, MentionVibrationStepMs)
+    discreteSliderSteps(MENTION_VIBRATION_MIN_MS, MENTION_VIBRATION_MAX_MS, MENTION_VIBRATION_STEP_MS)
 
 internal fun mentionVibrationPercent(stored: Int): Int =
     discreteStep(
         stored,
-        MentionVibrationMinPercent,
-        MentionVibrationMaxPercent,
-        MentionVibrationPercentStep,
+        MENTION_VIBRATION_MIN_PERCENT,
+        MENTION_VIBRATION_MAX_PERCENT,
+        MENTION_VIBRATION_PERCENT_STEP,
     )
 
 internal fun mentionVibrationPercentSteps(): Int =
     discreteSliderSteps(
-        MentionVibrationMinPercent,
-        MentionVibrationMaxPercent,
-        MentionVibrationPercentStep,
+        MENTION_VIBRATION_MIN_PERCENT,
+        MENTION_VIBRATION_MAX_PERCENT,
+        MENTION_VIBRATION_PERCENT_STEP,
     )
 
 internal fun mentionVibrationAmplitude(percent: Int): Int =
-    mentionVibrationPercent(percent) * 255 / 100
+    mentionVibrationPercent(percent) * MAX_VIBRATION_AMPLITUDE / 100
+
+/** The strongest amplitude `VibrationEffect.createOneShot` takes. */
+private const val MAX_VIBRATION_AMPLITUDE = 255
 
 /**
  * Android 13+ drops a vibration without a usage from a process below foreground-service importance, the

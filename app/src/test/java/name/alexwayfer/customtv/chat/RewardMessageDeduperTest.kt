@@ -11,20 +11,16 @@ class RewardMessageDeduperTest {
         val pubSub = rewardMessage(
             id = "reward-redemption-1",
             text = "coin",
-            color = Color(0xFF00FF00),
             title = "АТАКА ГИГАНТОВ",
             prompt = "FFZ:GE",
-        )
+        ).copy(color = Color(0xFF00FF00))
         val afterPubSub = RewardMessageDeduper.apply(emptyList(), pubSub, maxMessages = 50)
         assertTrue(afterPubSub.messages.isEmpty())
         assertEquals(1, afterPubSub.pending.size)
 
-        val irc = rewardMessage(
-            id = "irc-uuid",
-            text = "coin",
+        val irc = rewardMessage(id = "irc-uuid", text = "coin", title = "").copy(
             color = Color(0xFF8A2BE2),
             badges = listOf(ChatBadge("broadcaster", "1")),
-            title = "",
             timestampMillis = pubSub.timestampMillis + 250,
         )
         val afterIrc = RewardMessageDeduper.apply(
@@ -46,18 +42,12 @@ class RewardMessageDeduperTest {
 
     @Test
     fun pubSubOnlyEnrichesExistingIrcAndDoesNotReplaceIt() {
-        val irc = rewardMessage(
-            id = "irc-uuid",
-            text = "coin",
+        val irc = rewardMessage(id = "irc-uuid", text = "coin", title = "").copy(
             color = Color(0xFFFF4500),
             badges = listOf(ChatBadge("moderator", "1")),
-            title = "",
         )
-        val pubSub = rewardMessage(
-            id = "reward-redemption-1",
-            text = "coin",
+        val pubSub = rewardMessage(id = "reward-redemption-1", text = "coin", title = "АТАКА ГИГАНТОВ").copy(
             color = Color(0xFF00FF00),
-            title = "АТАКА ГИГАНТОВ",
             timestampMillis = irc.timestampMillis + 400,
         )
         val result = RewardMessageDeduper.apply(listOf(irc), pubSub, maxMessages = 50)
@@ -71,12 +61,8 @@ class RewardMessageDeduperTest {
 
     @Test
     fun stillShowsPubSubWhenThereIsNoChatText() {
-        val pubSub = rewardMessage(
-            id = "reward-redemption-1",
-            text = "",
-            color = Color(0xFF00FF00),
-            title = "Posture Check",
-        )
+        val pubSub = rewardMessage(id = "reward-redemption-1", text = "", title = "Posture Check")
+            .copy(color = Color(0xFF00FF00))
         val result = RewardMessageDeduper.apply(emptyList(), pubSub, maxMessages = 50)
         assertEquals(1, result.messages.size)
         assertEquals("reward-redemption-1", result.messages.single().id)
@@ -94,7 +80,8 @@ class RewardMessageDeduperTest {
 
     @Test
     fun aLiveMessageTheHistoryAlreadyShowsIsNotAddedAgain() {
-        val fromHistory = rewardMessage(id = "irc-1", text = "Kappa").copy(eventKind = ChatEventKind.Normal, reward = null)
+        val fromHistory =
+            rewardMessage(id = "irc-1", text = "Kappa").copy(eventKind = ChatEventKind.Normal, reward = null)
         val result = RewardMessageDeduper.apply(listOf(fromHistory), fromHistory, maxMessages = 50)
         assertEquals(listOf(fromHistory), result.messages)
         assertEquals(null, result.colorSource)
@@ -107,24 +94,16 @@ class RewardMessageDeduperTest {
         assertEquals(listOf(fromHistory), result.messages)
     }
 
-    private fun rewardMessage(
-        id: String,
-        text: String,
-        color: Color = Color.White,
-        badges: List<ChatBadge> = emptyList(),
-        title: String = "Giant",
-        prompt: String? = null,
-        timestampMillis: Long = 1_700_000_000_000L,
-    ): ChatMessage {
+    /** A white redemption by AlexWayfer without badges; a test changes the rest of the message with `copy`. */
+    private fun rewardMessage(id: String, text: String, title: String = "Giant", prompt: String? = null): ChatMessage {
         return ChatMessage(
             id = id,
             userLogin = "alexwayfer",
             displayName = "AlexWayfer",
-            color = color,
+            color = Color.White,
             rawText = text,
             parts = if (text.isBlank()) emptyList() else listOf(ChatPart.Text(text)),
-            timestampMillis = timestampMillis,
-            badges = badges,
+            timestampMillis = 1_700_000_000_000L,
             eventKind = ChatEventKind.Reward,
             reward = ChatReward(
                 id = "giants",

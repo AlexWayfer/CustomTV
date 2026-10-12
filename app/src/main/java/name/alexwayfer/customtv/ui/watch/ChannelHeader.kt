@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import name.alexwayfer.customtv.data.ChannelFollowStatus
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.showsFollowButton
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
 import name.alexwayfer.customtv.ui.components.collapsibleTextMaxLines
 import name.alexwayfer.customtv.ui.components.revealLines
@@ -98,89 +100,111 @@ internal fun StreamInfoPanel(
                 Column(modifier = Modifier.headerRevealUp { sizeProgress.value }) {
                     // The trailing action takes room from the name and the title; the tags run under it.
                     Row {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = displayName,
-                                modifier = Modifier.clickable(role = Role.Button, onClick = onOpenProfile),
-                                color = TwitchText,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            title?.let { title ->
-                                Text(text = title, color = TwitchText, fontSize = 13.sp)
-                            }
-                        }
+                        HeaderNameAndTitle(displayName, title, onOpenProfile, Modifier.weight(1f))
                         trailingAction()
                     }
-                    if (tags.isNotEmpty()) {
-                        FlowRow(
-                            modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            tags.forEach { tag ->
-                                Text(
-                                    text = tag,
-                                    color = TwitchText,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    lineHeight = 20.sp,
-                                    style = TextStyle(
-                                        lineHeightStyle = LineHeightStyle(
-                                            alignment = LineHeightStyle.Alignment.Center,
-                                            trim = LineHeightStyle.Trim.None,
-                                        ),
-                                    ),
-                                    modifier = Modifier
-                                        .background(
-                                            Color.White.copy(alpha = 0.15f),
-                                            RoundedCornerShape(percent = 50),
-                                        )
-                                        .padding(horizontal = 8.dp),
-                                )
-                            }
-                        }
-                    }
+                    if (tags.isNotEmpty()) StreamTags(tags)
                 }
             }
             // Baselines line up, so with a category over several lines the meta stays beside its first line.
             Row(modifier = Modifier.fillMaxWidth().padding(top = 2.dp)) {
-                val bottomLabel = categoryName ?: displayName.takeIf { !showExpandedContent }
-                // A recording's category changes with its chapters: the old one fades out as the new one
-                // fades in, and the row takes the new height at the panel's own pace.
-                AnimatedContent(
-                    targetState = bottomLabel,
-                    modifier = Modifier
-                        .weight(1f, fill = bottomLabel != null)
-                        .alignByBaseline(),
-                    transitionSpec = {
-                        (HeaderFadeIn togetherWith HeaderFadeOut).using(
-                            SizeTransform { _, _ -> tween(HEADER_SIZE_MS, easing = HeaderEmphasizedDecelerate) },
-                        )
-                    },
-                    label = "headerBottomLabel",
-                ) { label ->
-                    if (label == null) return@AnimatedContent
-                    // Every line stays laid out while the panel moves, and the panel's progress reveals them
-                    // from the first line down, so a closing panel cuts them off as it shrinks, not at once.
-                    var firstLineBottomPx by remember { mutableIntStateOf(0) }
-                    Text(
-                        text = label,
-                        color = TwitchTextSecondary,
-                        fontSize = 12.sp,
-                        maxLines = collapsibleTextMaxLines(showExpandedContent),
-                        overflow = TextOverflow.Ellipsis,
-                        onTextLayout = { layout -> firstLineBottomPx = layout.getLineBottom(0).roundToInt() },
-                        modifier = Modifier
-                            .revealLines({ firstLineBottomPx }, { sizeProgress.value })
-                            .padding(end = 8.dp),
-                    )
-                }
+                HeaderBottomLabel(
+                    label = categoryName ?: displayName.takeIf { !showExpandedContent },
+                    expanded = showExpandedContent,
+                    progress = { sizeProgress.value },
+                )
                 Box(modifier = Modifier.alignByBaseline()) { meta() }
             }
         }
+    }
+}
+
+@Composable
+private fun HeaderNameAndTitle(
+    displayName: String,
+    title: String?,
+    onOpenProfile: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = displayName,
+            modifier = Modifier.clickable(role = Role.Button, onClick = onOpenProfile),
+            color = TwitchText,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        title?.let { streamTitle ->
+            Text(text = streamTitle, color = TwitchText, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun StreamTags(tags: List<String>) {
+    FlowRow(
+        modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        tags.forEach { tag ->
+            Text(
+                text = tag,
+                color = TwitchText,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 20.sp,
+                style = TextStyle(
+                    lineHeightStyle = LineHeightStyle(
+                        alignment = LineHeightStyle.Alignment.Center,
+                        trim = LineHeightStyle.Trim.None,
+                    ),
+                ),
+                modifier = Modifier
+                    .background(
+                        Color.White.copy(alpha = 0.15f),
+                        RoundedCornerShape(percent = 50),
+                    )
+                    .padding(horizontal = 8.dp),
+            )
+        }
+    }
+}
+
+/** The category under the title, or the name in the collapsed panel; [progress] is the panel's opening. */
+@Composable
+private fun RowScope.HeaderBottomLabel(label: String?, expanded: Boolean, progress: () -> Float) {
+    // A recording's category changes with its chapters: the old one fades out as the new one
+    // fades in, and the row takes the new height at the panel's own pace.
+    AnimatedContent(
+        targetState = label,
+        modifier = Modifier
+            .weight(1f, fill = label != null)
+            .alignByBaseline(),
+        transitionSpec = {
+            (HeaderFadeIn togetherWith HeaderFadeOut).using(
+                SizeTransform { _, _ -> tween(HEADER_SIZE_MS, easing = HeaderEmphasizedDecelerate) },
+            )
+        },
+        label = "headerBottomLabel",
+    ) { shownLabel ->
+        if (shownLabel == null) return@AnimatedContent
+        // Every line stays laid out while the panel moves, and the panel's progress reveals them
+        // from the first line down, so a closing panel cuts them off as it shrinks, not at once.
+        var firstLineBottomPx by remember { mutableIntStateOf(0) }
+        Text(
+            text = shownLabel,
+            color = TwitchTextSecondary,
+            fontSize = 12.sp,
+            maxLines = collapsibleTextMaxLines(expanded),
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { layout -> firstLineBottomPx = layout.getLineBottom(0).roundToInt() },
+            modifier = Modifier
+                .revealLines({ firstLineBottomPx }, progress)
+                .padding(end = 8.dp),
+        )
     }
 }
 
@@ -220,7 +244,7 @@ internal fun ChannelHeader(
             // The heart shows once the follow is known, and the bell beside it only while the channel is followed.
             Row {
                 AnimatedVisibility(
-                    visible = followStatus != ChannelFollowStatus.Unknown,
+                    visible = followStatus.showsFollowButton,
                     enter = HeaderFadeIn + expandIn(
                         tween(HEADER_SIZE_MS, easing = HeaderEmphasizedDecelerate),
                         expandFrom = Alignment.TopEnd,

@@ -17,7 +17,9 @@ data class ChatModerationNotice(
     val fromIrc: Boolean = false,
 )
 
-/** A moderator warned a chatter, or the chatter acknowledged a warning. Only the channel's moderators learn of either. */
+/**
+ * A moderator warned a chatter, or the chatter acknowledged a warning. Only the channel's moderators learn of either.
+ */
 data class ChatWarningNotice(
     val targetName: String,
     val acknowledged: Boolean,

@@ -48,8 +48,16 @@ class VodChaptersTest {
             {"data":{"video":{
               "game":{"displayName":"Just Chatting"},
               "moments":{"edges":[
-                {"node":{"positionMilliseconds":0,"description":"Just Chatting","details":{"__typename":"GameChangeMomentDetails","game":{"displayName":"Just Chatting"}}}},
-                {"node":{"positionMilliseconds":4447000,"description":"Grand Theft Auto V","details":{"__typename":"GameChangeMomentDetails","game":{"displayName":"Grand Theft Auto V"}}}}
+                {"node":{
+                  "positionMilliseconds":0,
+                  "description":"Just Chatting",
+                  "details":{"__typename":"GameChangeMomentDetails","game":{"displayName":"Just Chatting"}}
+                }},
+                {"node":{
+                  "positionMilliseconds":4447000,
+                  "description":"Grand Theft Auto V",
+                  "details":{"__typename":"GameChangeMomentDetails","game":{"displayName":"Grand Theft Auto V"}}
+                }}
               ]}
             }}}
             """.trimIndent(),

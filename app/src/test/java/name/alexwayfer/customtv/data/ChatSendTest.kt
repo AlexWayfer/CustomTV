@@ -30,7 +30,9 @@ class ChatSendTest {
 
     @Test
     fun aDroppedMessageKeepsTheDropCodeAndReason() {
-        val body = """{"data":[{"message_id":"m1","is_sent":false,"drop_reason":{"code":"msg_rejected","message":"no"}}]}"""
+        val body = """
+            {"data":[{"message_id":"m1","is_sent":false,"drop_reason":{"code":"msg_rejected","message":"no"}}]}
+        """.trimIndent()
         assertEquals(ChatSendResult.Dropped("msg_rejected", "no"), parseChatSendResponse(200, body))
     }
 

@@ -85,10 +85,16 @@ internal object IrcUserNotice {
     }
 
     fun announcementColor(raw: String?): Color = when (raw?.uppercase()) {
-        "BLUE" -> Color(0xFF00D6D6)
-        "GREEN" -> Color(0xFF00DB84)
-        "ORANGE" -> Color(0xFFFFB31A)
-        "PURPLE" -> Color(0xFFBF94FF)
-        else -> Color(0xFFADADB8)
+        "BLUE" -> AnnouncementBlue
+        "GREEN" -> AnnouncementGreen
+        "ORANGE" -> AnnouncementOrange
+        "PURPLE" -> AnnouncementPurple
+        else -> AnnouncementGray
     }
 }
+
+private val AnnouncementBlue = Color(0xFF00D6D6)
+private val AnnouncementGreen = Color(0xFF00DB84)
+private val AnnouncementOrange = Color(0xFFFFB31A)
+private val AnnouncementPurple = Color(0xFFBF94FF)
+private val AnnouncementGray = Color(0xFFADADB8)

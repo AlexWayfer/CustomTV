@@ -8,7 +8,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +20,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.chat.chatTextSizeFromStored
 import name.alexwayfer.customtv.chat.smoothChatScrollFromStored
 import name.alexwayfer.customtv.diagnostics.AppLog
+import java.io.IOException
 
 private val Context.chatSettingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "chat_settings",
@@ -102,9 +102,7 @@ class ChatSettingsStore(context: Context) {
             scope.launch {
                 try {
                     store.settings.collect { current.value = it }
-                } catch (failure: CancellationException) {
-                    throw failure
-                } catch (failure: Exception) {
+                } catch (failure: IOException) {
                     AppLog.w(TAG, "settings restore failed: ${failure.javaClass.simpleName}")
                 }
             }

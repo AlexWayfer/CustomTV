@@ -37,7 +37,10 @@ class ChatCommandCompletionTest {
 
     @Test
     fun pickingACommandAddsASpaceAndPutsTheCursorAfterIt() {
-        assertEquals(NickCompletionEdit("/user ", 6), textWithCompletedCommand("/us", 3, ChatCommand.User, maxLength = 500))
+        assertEquals(
+            NickCompletionEdit("/user ", 6),
+            textWithCompletedCommand("/us", 3, ChatCommand.User, maxLength = 500),
+        )
     }
 
     @Test

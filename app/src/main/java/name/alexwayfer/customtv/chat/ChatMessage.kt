@@ -264,8 +264,8 @@ internal fun formatTimeoutDuration(seconds: Long): String {
     }
 }
 
-sealed class ChatPart {
-    data class Text(val text: String) : ChatPart()
+sealed interface ChatPart {
+    data class Text(val text: String) : ChatPart
     data class Emote(
         val name: String,
         val url: String,
@@ -273,13 +273,16 @@ sealed class ChatPart {
         val overlays: List<Emote> = emptyList(),
         val effects: EmoteEffects = EmoteEffects(),
         val modifiers: List<EmoteModifier> = emptyList(),
-    ) : ChatPart()
+    ) : ChatPart
     data class Gif(
         val name: String,
         val url: String,
-        val aspectRatio: Float = 16f / 9f,
-    ) : ChatPart()
+        val aspectRatio: Float = GIF_ASPECT_RATIO,
+    ) : ChatPart
 }
+
+/** The shape a GIF holds until its size is known. */
+private const val GIF_ASPECT_RATIO = 16f / 9f
 
 data class EmoteModifier(
     val name: String,
@@ -322,7 +325,7 @@ data class ChatEmoteChange(
     val platform: EmotePlatform,
     val action: EmoteChangeAction,
     val actorName: String,
-    val actorColor: Color,
+    val actorColor: Color = Color.Unspecified,
     val emoteName: String,
     val previousName: String? = null,
     val emote: SevenTvEmote? = null,

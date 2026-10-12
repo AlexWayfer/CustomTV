@@ -1,6 +1,47 @@
 package name.alexwayfer.customtv.chat
 
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+
+private const val MAX_NICK_COLORS = 800
+
+/** The chat colors of the chatters seen in the open channel, for rows that arrive without their own. */
+internal class ParticipantColors {
+    private val _colors = MutableStateFlow<Map<String, Color>>(emptyMap())
+    val colors: StateFlow<Map<String, Color>> = _colors
+
+    fun clear() {
+        _colors.value = emptyMap()
+    }
+
+    fun remember(message: ChatMessage) {
+        _colors.update { current ->
+            rememberParticipantColor(current, message, MAX_NICK_COLORS)
+        }
+    }
+
+    /** A reward row from PubSub takes the color its chatter has in chat. */
+    fun paintReward(message: ChatMessage): ChatMessage {
+        if (message.eventKind != ChatEventKind.Reward) return message
+        if (!RewardMessageDeduper.isPubSub(message)) return message
+        val known = known(message.displayName, message.userLogin) ?: return message
+        return message.copy(color = known)
+    }
+
+    fun resolveEmoteActor(message: ChatMessage): ChatMessage {
+        val change = message.emoteChange ?: return message
+        return resolveEmoteActorColor(
+            message,
+            known(change.actorName, message.userLogin),
+        )
+    }
+
+    private fun known(actorName: String, login: String): Color? {
+        return knownParticipantColor(_colors.value, actorName, login)
+    }
+}
 
 internal fun rememberParticipantColor(
     colors: Map<String, Color>,

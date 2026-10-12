@@ -11,7 +11,7 @@ import name.alexwayfer.customtv.data.chatMessageToSend
  * opens the keyboard once when composing starts. An offer that is not composing may put [prefill] in the field once,
  * such as an unlocked emote, and hears through [onPlainSent] that a plain message went out.
  */
-internal class ChatShareOffer(
+internal data class ChatShareOffer(
     val note: @Composable () -> Unit,
     val composing: Boolean,
     val focusRequest: OneShotRequest<Unit>?,

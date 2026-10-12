@@ -57,11 +57,10 @@ internal class TwitchLoginService : Service() {
             }
             try {
                 ContextCompat.startForegroundService(context, intent)
-            } catch (error: Exception) {
-                AppLog.w(TAG, "login stay awake failed ${error.javaClass.simpleName}")
+            } catch (error: IllegalStateException) {
+                // Android 12 and later refuse a foreground service started from the background.
+                AppLog.w(TWITCH_AUTH_TAG, "login stay awake failed ${error.javaClass.simpleName}")
             }
         }
-
-        private const val TAG = "TwitchAuth"
     }
 }

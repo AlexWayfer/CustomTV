@@ -30,13 +30,6 @@ class MentionArrivalTest {
         assertTrue(newMentionArrived(setOf("old"), listOf(seen, fresh), "alex", "Alex"))
     }
 
-    private fun chat(id: String, text: String) = ChatMessage(
-        id = id,
-        userLogin = id,
-        displayName = id,
-        color = Color.Unspecified,
-        rawText = text,
-        parts = emptyList(),
-        timestampMillis = 0L,
-    )
+    private fun chat(id: String, text: String) =
+        testChatMessage(id, text, login = id, color = Color.Unspecified, parts = emptyList(), timestampMillis = 0L)
 }

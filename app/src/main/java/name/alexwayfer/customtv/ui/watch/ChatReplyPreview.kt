@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +35,17 @@ import name.alexwayfer.customtv.ui.components.revealLines
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import kotlin.math.roundToInt
 
+/**
+ * The message a chat row replies to, unfolded to all its lines while [expanded]. [onFoldChange] reports while it
+ * folds or unfolds, from the composition that starts it, before its first frame changes the row's size.
+ */
 @Composable
 internal fun ChatReplyPreview(
     reply: ChatReply,
     chatTextSize: Int,
     meMessageItalic: Boolean,
     expanded: Boolean,
+    onFoldChange: (Boolean) -> Unit,
 ) {
     val textSize = chatSp(chatTextSize, 12, 14)
     val iconSize = chatDp(chatTextSize, 12, 14)
@@ -49,6 +55,7 @@ internal fun ChatReplyPreview(
     val transition = updateTransition(expanded, label = "replyPreview")
     val progress by transition.animateFloat({ CardFoldSpring }, label = "replyPreviewLines") { if (it) 1f else 0f }
     val allLines = transition.currentState || transition.targetState
+    SideEffect { onFoldChange(transition.currentState != transition.targetState) }
     var firstLineBottomPx by remember { mutableIntStateOf(0) }
     Row(
         verticalAlignment = Alignment.Top,
@@ -60,10 +67,7 @@ internal fun ChatReplyPreview(
             tint = TwitchTextSecondary,
             modifier = Modifier
                 .size(iconSize)
-                .offset {
-                    val y = ((textHeightPx - iconHeightPx) / 2).coerceAtLeast(0)
-                    IntOffset(0, y)
-                },
+                .offset { IntOffset(0, ((textHeightPx - iconHeightPx) / 2).coerceAtLeast(0)) },
         )
         Text(
             text = remember(reply, textSize, meMessageItalic) {

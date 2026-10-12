@@ -10,7 +10,9 @@ data class ChatRaider(
     val sourceDisplayName: String?,
 )
 
-/** Messages of chatters who came with a raid, by Twitch message ID. Empty unless the user moderates the open channel. */
+/**
+ * Messages of chatters who came with a raid, by Twitch message ID. Empty unless the user moderates the open channel.
+ */
 object ChatRaiders {
     private val _byMessageId = MutableStateFlow<Map<String, ChatRaider>>(emptyMap())
     val byMessageId: StateFlow<Map<String, ChatRaider>> = _byMessageId

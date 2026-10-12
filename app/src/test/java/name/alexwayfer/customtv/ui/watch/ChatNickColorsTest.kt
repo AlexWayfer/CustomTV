@@ -1,8 +1,8 @@
 package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.ui.graphics.Color
-import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatPart
+import name.alexwayfer.customtv.chat.testChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -46,12 +46,11 @@ class ChatNickColorsTest {
         assertEquals(mapOf("somebody" to Color.Blue, "quiet" to Color.Green), chatNickColorsFor(message, known))
     }
 
-    private fun message(vararg parts: ChatPart) = ChatMessage(
-        id = "id",
-        userLogin = "author",
+    private fun message(vararg parts: ChatPart) = testChatMessage(
+        "id",
+        "",
+        login = "author",
         displayName = "Author",
-        color = Color.White,
-        rawText = "",
         parts = parts.toList(),
         timestampMillis = 0L,
     )

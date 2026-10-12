@@ -8,14 +8,14 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -23,47 +23,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withLink
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import name.alexwayfer.customtv.R
-import name.alexwayfer.customtv.channel.displayNameLoginSuffix
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatPart
 import name.alexwayfer.customtv.chat.ReadableChatColor
-import name.alexwayfer.customtv.chat.flaggedTermRanges
 import name.alexwayfer.customtv.chat.formatTimeoutDuration
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 import name.alexwayfer.customtv.ui.components.revealLines
 import kotlin.math.roundToInt
-import name.alexwayfer.customtv.ui.theme.ChatFlaggedTerm
-import name.alexwayfer.customtv.ui.theme.ChatLink
 import name.alexwayfer.customtv.ui.theme.TwitchBg
-import name.alexwayfer.customtv.ui.theme.TwitchText
-import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
 internal val LocalOnChatLinkClick = compositionLocalOf<(String) -> Unit> { {} }
+
+/** The link whose menu is open, with its range in the message text to place the menu by. */
+private data class ChatLinkMenuTarget(val url: String, val start: Int, val end: Int)
 
 @Composable
 internal fun ChatUserMessage(
@@ -95,46 +81,71 @@ internal fun ChatUserMessage(
     val nickColors by remember(message, allNickColors) {
         derivedStateOf { chatNickColorsFor(message, allNickColors.value) }
     }
-    val actionItalic = message.isAction && meMessageItalic
-    val actionColor = message.isAction && !meMessageItalic
-    val bodyColor = if (actionColor) nickColor else TwitchText
-    val bodyFontStyle = if (actionItalic) FontStyle.Italic else FontStyle.Normal
-    val inlineContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
-    val emoteHeightSp = with(LocalDensity.current) { emoteSize.toSp() }
     val emoteAspects = message.parts.mapNotNull { part ->
         if (part is ChatPart.Emote) stackedEmoteSlotAspect(part) else null
     }
-    val gifs = message.parts.filterIsInstance<ChatPart.Gif>()
-    val deletedNote = when {
-        !message.deleted -> null
-        message.timeoutSeconds != null -> stringResource(
-            R.string.chat_timed_out,
-            formatTimeoutDuration(message.timeoutSeconds),
-        )
-        message.banned -> stringResource(R.string.chat_banned)
-        else -> message.deletedBy?.takeIf { it.isNotBlank() }
-            ?.let { stringResource(R.string.chat_deleted_by, it) }
-            ?: stringResource(R.string.chat_deleted)
+    val deletedNote = chatDeletedNote(message)
+    val preview = remember { ChatPartPreview() }
+    val actions = chatMessageTextActions(message, badgeUrls, onEmoteLongClick, preview)
+    val look = ChatMessageLook(
+        nickColor = nickColor,
+        actionItalic = message.isAction && meMessageItalic,
+        actionColor = message.isAction && !meMessageItalic,
+        sizes = chatTextSizes(textSize, timestampSize, emoteSize, badgeSize),
+        badgeUrls = badgeUrls,
+        chatterLabels = LocalChatterLabels.current,
+        nickColors = nickColors,
+        readableColors = readableColors,
+        enableLinks = enableLinks,
+        includeAuthor = includeAuthor,
+        timestampText = timestampText,
+    )
+    val inlineContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
+    val annotated = remember(message, look, deletedNote, emoteAspects) {
+        chatMessageText(message, look, deletedNote, inlineContent, actions)
     }
-    val bodyDecoration = if (message.deleted) TextDecoration.LineThrough else TextDecoration.None
+    Column(modifier.fillMaxWidth()) {
+        ChatMessageTextWithLinks(
+            text = annotated,
+            inlineContent = inlineContent,
+            lines = ChatTextLines(lineHeight, maxLines, overflow, foldProgress),
+            onSelectMessage = onEmoteLongClick,
+            onOpenLink = actions.openLink,
+        )
+        val gifs = message.parts.filterIsInstance<ChatPart.Gif>()
+        ChatMessageGifs(gifs, visible = showGifs && gifs.isNotEmpty(), gifSize, actions)
+        ChatPartPreviews(preview, onDismiss = actions.closePreview)
+    }
+}
+
+/** Why a deleted message is gone: a timeout, a ban, or who deleted it. Null while it stands. */
+@Composable
+private fun chatDeletedNote(message: ChatMessage): String? = when {
+    !message.deleted -> null
+    message.timeoutSeconds != null -> stringResource(
+        R.string.chat_timed_out,
+        formatTimeoutDuration(message.timeoutSeconds),
+    )
+    message.banned -> stringResource(R.string.chat_banned)
+    else -> message.deletedBy?.takeIf { it.isNotBlank() }
+        ?.let { stringResource(R.string.chat_deleted_by, it) }
+        ?: stringResource(R.string.chat_deleted)
+}
+
+/** The message's actions; each reads the latest handler the chat provides when it runs. */
+@Composable
+private fun chatMessageTextActions(
+    message: ChatMessage,
+    badgeUrls: Map<String, String>,
+    onSelectMessage: (() -> Unit)?,
+    preview: ChatPartPreview,
+): ChatMessageTextActions {
     val onChatLinkClick = rememberUpdatedState(LocalOnChatLinkClick.current)
-    val onEmoteLongClickState = rememberUpdatedState(onEmoteLongClick)
+    val onSelectMessageState = rememberUpdatedState(onSelectMessage)
     val openChatterCardState = rememberUpdatedState(LocalOpenChatterCard.current)
     val sheetKeyboardState = rememberUpdatedState(LocalSheetKeyboard.current)
-    val chatterLabels = LocalChatterLabels.current
-    val badgeSlotWidth = with(LocalDensity.current) { (badgeSize + BadgeGap).toSp() }
-    val badgeSlotHeight = with(LocalDensity.current) { badgeSize.toSp() }
-    var previewEmote by remember { mutableStateOf<ChatPart.Emote?>(null) }
-    var previewGif by remember { mutableStateOf<ChatPart.Gif?>(null) }
-    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val annotated = remember(
-        message, nickColor, timestampText, textSize, timestampSize, emoteSize, emoteHeightSp,
-        badgeSize, badgeSlotWidth, badgeSlotHeight, badgeUrls, chatterLabels, emoteAspects, deletedNote,
-        bodyDecoration, actionItalic, actionColor,
-        bodyColor, bodyFontStyle, nickColors, readableColors, includeAuthor, enableLinks,
-    ) {
-        inlineContent.clear()
-        val openAuthor = {
+    return ChatMessageTextActions(
+        openAuthor = {
             if (message.userLogin.isNotBlank()) {
                 openChatterCardState.value(
                     ChatterCardRequest(
@@ -147,248 +158,161 @@ internal fun ChatUserMessage(
                     ),
                 )
             }
-        }
-        buildAnnotatedString {
-            if (includeAuthor) {
-                if (timestampText != null) {
-                    withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = timestampSize)) {
-                        append(timestampText)
-                        append(" ")
-                    }
-                }
-                message.badges.forEachIndexed { index, badge ->
-                    val url = badgeUrls[badge.key] ?: return@forEachIndexed
-                    val key = "badge_$index"
-                    appendInlineContent(key, badge.setId)
-                    inlineContent[key] = badgeInlineContent(
-                        model = url,
-                        contentDescription = badge.setId,
-                        badgeSize = badgeSize,
-                        slotWidth = badgeSlotWidth,
-                        slotHeight = badgeSlotHeight,
-                        onClick = openAuthor,
+        },
+        longClick = { onSelectMessageState.value?.invoke() },
+        openLink = { href -> onChatLinkClick.value(href) },
+        openEmote = { emote -> sheetKeyboardState.value.open { preview.emote = emote } },
+        openGif = { gif -> sheetKeyboardState.value.open { preview.gif = gif } },
+        closePreview = { sheetKeyboardState.value.onDismiss() },
+    )
+}
+
+/** How the message's lines are laid out; a folding card cuts them off from the bottom by [foldProgress]. */
+private data class ChatTextLines(
+    val lineHeight: TextUnit,
+    val maxLines: Int,
+    val overflow: TextOverflow,
+    val foldProgress: (() -> Float)?,
+)
+
+/** The message's text, with touch targets over its author and links and the menu of a held link. */
+@Composable
+private fun ChatMessageTextWithLinks(
+    text: AnnotatedString,
+    inlineContent: Map<String, InlineTextContent>,
+    lines: ChatTextLines,
+    onSelectMessage: (() -> Unit)?,
+    onOpenLink: (String) -> Unit,
+) {
+    var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    var menuLink by remember { mutableStateOf<ChatLinkMenuTarget?>(null) }
+    val context = LocalContext.current
+    Box {
+        Text(
+            text = text,
+            inlineContent = inlineContent,
+            lineHeight = lines.lineHeight,
+            maxLines = lines.maxLines,
+            overflow = lines.overflow,
+            onTextLayout = { textLayout = it },
+            // A folding card lays every line out and cuts them off from the bottom as it closes.
+            modifier = lines.foldProgress?.let { progress ->
+                Modifier.revealLines({ textLayout?.getLineBottom(0)?.roundToInt() ?: 0 }, progress)
+            } ?: Modifier,
+            style = LocalTextStyle.current.copy(
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.None,
+                ),
+            ),
+        )
+        Box(Modifier.matchParentSize()) {
+            textLayout?.takeIf { layoutTextMatches(it.layoutInput.text, text) }?.let { layout ->
+                ChatLinkTouchTargets(text, layout, onSelectMessage, onLinkMenu = { menuLink = it })
+                menuLink?.let { target ->
+                    ChatLinkMenuPopup(
+                        layout = layout,
+                        start = target.start,
+                        end = target.end,
+                        onOpen = {
+                            menuLink = null
+                            onOpenLink(target.url)
+                        },
+                        onCopy = {
+                            context.copyChatText(target.url)
+                            menuLink = null
+                        },
+                        onDismiss = { menuLink = null },
                     )
-                }
-                appendChatterLabelBadges(
-                    message.userId,
-                    badgeSize,
-                    badgeSlotWidth,
-                    badgeSlotHeight,
-                    chatterLabels,
-                    inlineContent,
-                    onClick = openAuthor,
-                )
-                val authorLinkStyle = SpanStyle(
-                    color = nickColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = textSize,
-                    textDecoration = TextDecoration.None,
-                )
-                withLink(
-                    LinkAnnotation.Clickable(
-                        tag = "author",
-                        styles = TextLinkStyles(
-                            style = authorLinkStyle,
-                            focusedStyle = authorLinkStyle,
-                            hoveredStyle = authorLinkStyle,
-                            pressedStyle = authorLinkStyle,
-                        ),
-                        linkInteractionListener = { openAuthor() },
-                    ),
-                ) { append(message.displayName) }
-                displayNameLoginSuffix(message.displayName, message.userLogin)?.let { suffix ->
-                    withStyle(
-                        SpanStyle(
-                            color = nickColor,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = textSize,
-                        ),
-                    ) { append(suffix) }
-                }
-                withStyle(
-                    SpanStyle(
-                        color = if (message.isAction) nickColor else Color.White,
-                        fontSize = textSize,
-                    ),
-                ) { append(if (message.isAction) " " else ": ") }
-            }
-            val bodyStart = length
-            message.parts.forEachIndexed { index, part ->
-                when (part) {
-                    is ChatPart.Text -> {
-                        if (isWhitespaceBetweenEmotes(message.parts, index)) {
-                            val nextEmote = message.parts[index + 1] as ChatPart.Emote
-                            val gapKey = "emote_gap_$index"
-                            appendInlineContent(gapKey, " ")
-                            inlineContent[gapKey] = InlineTextContent(
-                                Placeholder(
-                                    emoteGapWidth(part, nextEmote).em,
-                                    emoteHeightSp,
-                                    PlaceholderVerticalAlign.TextCenter,
-                                ),
-                            ) { Box(Modifier.fillMaxSize()) }
-                        } else {
-                            appendChatTextWithLinks(
-                                text = part.text,
-                                bodyStyle = SpanStyle(
-                                    color = bodyColor,
-                                    fontSize = textSize,
-                                    fontStyle = bodyFontStyle,
-                                    textDecoration = bodyDecoration,
-                                ),
-                                linkStyle = SpanStyle(
-                                    color = ChatLink,
-                                    fontSize = textSize,
-                                    fontStyle = bodyFontStyle,
-                                    textDecoration = if (message.deleted) {
-                                        TextDecoration.combine(
-                                            listOf(TextDecoration.Underline, TextDecoration.LineThrough),
-                                        )
-                                    } else {
-                                        TextDecoration.Underline
-                                    },
-                                ),
-                                nickColors = nickColors,
-                                readableColors = readableColors,
-                                enableLinks = enableLinks,
-                                onClick = { href -> onChatLinkClick.value(href) },
-                            )
-                        }
-                    }
-                    is ChatPart.Emote -> {
-                        val emoteKey = "emote_$index"
-                        val emoteAspect = resolvedEmoteAspectRatio(part.url, part.aspectRatio)
-                        val slotAspect = stackedEmoteSlotAspect(part)
-                        appendInlineContent(emoteKey, part.name)
-                        inlineContent[emoteKey] = InlineTextContent(
-                            Placeholder(
-                                emoteHeightSp * slotAspect,
-                                emoteHeightSp,
-                                PlaceholderVerticalAlign.TextCenter,
-                            ),
-                        ) {
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .combinedClickable(
-                                        hapticFeedbackEnabled = false,
-                                        onLongClick = { onEmoteLongClickState.value?.invoke() },
-                                        onClick = { sheetKeyboardState.value.open { previewEmote = part } },
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                ChatEmoteEffectImage(
-                                    url = part.url,
-                                    contentDescription = part.name,
-                                    size = emoteSize,
-                                    aspectRatio = emoteAspect,
-                                    effects = part.effects,
-                                )
-                                part.overlays.forEach { overlay ->
-                                    ChatEmoteEffectImage(
-                                        url = overlay.url,
-                                        contentDescription = null,
-                                        size = emoteSize,
-                                        aspectRatio = resolvedEmoteAspectRatio(
-                                            overlay.url,
-                                            overlay.aspectRatio,
-                                        ),
-                                        effects = overlay.effects,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    is ChatPart.Gif -> Unit
-                }
-            }
-            val flaggedTerms = message.moderationHold?.flaggedTerms.orEmpty()
-            if (flaggedTerms.isNotEmpty()) {
-                val body = toAnnotatedString().text
-                flaggedTermRanges(body, flaggedTerms, from = bodyStart).forEach { range ->
-                    addStyle(SpanStyle(background = ChatFlaggedTerm), range.first, range.last + 1)
-                }
-            }
-            if (deletedNote != null) {
-                withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = textSize)) {
-                    append(" ")
-                    append(deletedNote)
                 }
             }
         }
     }
-    Column(modifier.fillMaxWidth()) {
-        Box {
-            Text(
-                text = annotated,
-                inlineContent = inlineContent,
-                lineHeight = lineHeight,
-                maxLines = maxLines,
-                overflow = overflow,
-                onTextLayout = { textLayout = it },
-                // A folding card lays every line out and cuts them off from the bottom as it closes.
-                modifier = foldProgress?.let { progress ->
-                    Modifier.revealLines({ textLayout?.getLineBottom(0)?.roundToInt() ?: 0 }, progress)
-                } ?: Modifier,
-                style = LocalTextStyle.current.copy(
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.None,
-                    ),
-                ),
-            )
-            Box(Modifier.matchParentSize()) {
-                textLayout?.takeIf { it.layoutInput.text == annotated }?.let { layout ->
-                    annotated.getLinkAnnotations(0, annotated.length).forEach { range ->
-                        val link = range.item as? LinkAnnotation.Clickable
-                        if (link?.tag == "author") {
-                            ChatAuthorTouchTarget(
-                                layout = layout,
-                                start = range.start,
-                                end = range.end,
-                                onClick = { link.linkInteractionListener?.onClick(link) },
-                                onLongClick = onEmoteLongClick,
-                            )
-                        }
+}
+
+/** A touch target over each name and link: holding a link opens its menu, holding a name selects the message. */
+@Composable
+private fun ChatLinkTouchTargets(
+    text: AnnotatedString,
+    layout: TextLayoutResult,
+    onSelectMessage: (() -> Unit)?,
+    onLinkMenu: (ChatLinkMenuTarget) -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    text.getLinkAnnotations(0, text.length).forEach { range ->
+        val link = range.item
+        val longPress = chatLinkLongPress(link) ?: return@forEach
+        ChatAuthorTouchTarget(
+            layout = layout,
+            start = range.start,
+            end = range.end,
+            onClick = { link.linkInteractionListener?.onClick(link) },
+            onLongClick = when (longPress) {
+                ChatLinkLongPress.SelectMessage -> onSelectMessage
+                is ChatLinkLongPress.LinkMenu -> {
+                    {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onLinkMenu(ChatLinkMenuTarget(longPress.url, range.start, range.end))
                     }
                 }
+            },
+        )
+    }
+}
+
+/** The message's GIFs under its text: a tap previews one, and holding it selects the message. */
+@Composable
+private fun ColumnScope.ChatMessageGifs(
+    gifs: List<ChatPart.Gif>,
+    visible: Boolean,
+    gifSize: Dp,
+    actions: ChatMessageTextActions,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        Column {
+            gifs.forEach { gif ->
+                SharedEmoteImage(
+                    url = gif.url,
+                    contentDescription = gif.name,
+                    size = gifSize,
+                    aspectRatio = resolvedEmoteAspectRatio(gif.url, gif.aspectRatio),
+                    modifier = Modifier
+                        .padding(start = 8.dp, top = 4.dp)
+                        .combinedClickable(
+                            hapticFeedbackEnabled = false,
+                            onLongClick = actions.longClick,
+                            onClick = { actions.openGif(gif) },
+                        ),
+                )
             }
         }
-        AnimatedVisibility(
-            visible = showGifs && gifs.isNotEmpty(),
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column {
-                gifs.forEach { gif ->
-                    SharedEmoteImage(
-                        url = gif.url,
-                        contentDescription = gif.name,
-                        size = gifSize,
-                        aspectRatio = resolvedEmoteAspectRatio(gif.url, gif.aspectRatio),
-                        modifier = Modifier
-                            .padding(start = 8.dp, top = 4.dp)
-                            .combinedClickable(
-                                hapticFeedbackEnabled = false,
-                                onLongClick = { onEmoteLongClickState.value?.invoke() },
-                                onClick = { sheetKeyboardState.value.open { previewGif = gif } },
-                            ),
-                    )
-                }
-            }
-        }
-        previewEmote?.let { emote ->
-            ChatEmotePreview(emote = emote, onDismiss = {
-                previewEmote = null
-                sheetKeyboardState.value.onDismiss()
-            })
-        }
-        previewGif?.let { gif ->
-            ChatGifPreview(gif = gif, onDismiss = {
-                previewGif = null
-                sheetKeyboardState.value.onDismiss()
-            })
-        }
+    }
+}
+
+/** The emote or GIF of the message shown large. */
+@Stable
+private class ChatPartPreview {
+    var emote by mutableStateOf<ChatPart.Emote?>(null)
+    var gif by mutableStateOf<ChatPart.Gif?>(null)
+}
+
+@Composable
+private fun ChatPartPreviews(preview: ChatPartPreview, onDismiss: () -> Unit) {
+    preview.emote?.let { emote ->
+        ChatEmotePreview(emote = emote, onDismiss = {
+            preview.emote = null
+            onDismiss()
+        })
+    }
+    preview.gif?.let { gif ->
+        ChatGifPreview(gif = gif, onDismiss = {
+            preview.gif = null
+            onDismiss()
+        })
     }
 }
 

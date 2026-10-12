@@ -10,7 +10,9 @@ internal const val PREMIUM_SWITCH_URL_USD = "https://t.me/tribute/app?startapp=s
 /** SIM countries that see the Premium price in rubles; everyone else, and a device without a SIM, sees dollars. */
 private val rubleCountries = setOf("ru", "by")
 
-/** The Premium purchase in the currency for the SIM's country; a dual-SIM value such as `ru,` counts by its first SIM. */
+/**
+ * The Premium purchase in the currency for the SIM's country; a dual-SIM value such as `ru,` counts by its first SIM.
+ */
 internal fun premiumSwitchUrl(simCountryIso: String?): String {
     val country = simCountryIso?.substringBefore(',')?.trim()?.lowercase()
     return if (country in rubleCountries) PREMIUM_SWITCH_URL_RUB else PREMIUM_SWITCH_URL_USD

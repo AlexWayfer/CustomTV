@@ -22,7 +22,11 @@ object CheermoteRepository {
         val key = channel.lowercase()
         cached(key)?.let { return@withContext it }
         val body = JSONObject()
-            .put("query", $$"query($login:String!){user(login:$login){id cheer{emotes{prefix tiers{bits images{theme isAnimated dpiScale url}}}}}}")
+            .put(
+                "query",
+                $$"query($login:String!){user(login:$login)" +
+                    "{id cheer{emotes{prefix tiers{bits images{theme isAnimated dpiScale url}}}}}}",
+            )
             .put("variables", JSONObject().put("login", key))
             .toString()
         val request = twitchGqlRequest(body).build()
@@ -31,8 +35,7 @@ object CheermoteRepository {
             Diagnostics.reportGql("Cheermotes", "cheermotes", response.code, text)
             if (!response.isSuccessful) return@use emptyMap()
             val json = JSONObject(text)
-            json.optJSONObject("data")?.optJSONObject("user")?.optString("id")
-                ?.takeIf { it.isNotBlank() && it != "null" }
+            json.optJSONObject("data")?.optJSONObject("user")?.text("id")
                 ?.let { userId -> AssetFiles.write(AssetFiles.channel(userId, FILE), text) }
             parse(json)
         }
@@ -54,30 +57,25 @@ object CheermoteRepository {
         val emotes = json.optJSONObject("data")?.optJSONObject("user")
             ?.optJSONObject("cheer")?.optJSONArray("emotes") ?: return emptyMap()
         val result = linkedMapOf<String, List<CheermoteTier>>()
-        for (index in 0 until emotes.length()) {
-            val item = emotes.optJSONObject(index) ?: continue
+        for (item in emotes.objects()) {
             val prefix = item.optString("prefix").takeIf { it.isNotBlank() } ?: continue
-            val tiers = item.optJSONArray("tiers") ?: continue
-            val mapped = mutableListOf<CheermoteTier>()
-            for (tierIndex in 0 until tiers.length()) {
-                val tier = tiers.optJSONObject(tierIndex) ?: continue
-                val bits = tier.optInt("bits")
-                if (bits <= 0) continue
-                val images = tier.optJSONArray("images") ?: continue
-                var url: String? = null
-                for (imageIndex in 0 until images.length()) {
-                    val image = images.optJSONObject(imageIndex) ?: continue
-                    if (image.optString("theme") == "DARK" && image.optBoolean("isAnimated") &&
-                        image.optDouble("dpiScale") == 2.0
-                    ) {
-                        url = image.optString("url").takeIf { it.startsWith("https://") }
-                        break
-                    }
-                }
-                if (url != null) mapped += CheermoteTier(bits, url)
-            }
-            if (mapped.isNotEmpty()) result[prefix.lowercase()] = mapped.sortedBy { it.minBits }
+            val tiers = item.optJSONArray("tiers")?.objects()?.mapNotNull(::parseTier).orEmpty()
+            if (tiers.isNotEmpty()) result[prefix.lowercase()] = tiers.sortedBy { it.minBits }
         }
         return result
     }
+
+    /** A tier with its animated picture for the dark theme at twice the size; one without it is dropped. */
+    private fun parseTier(tier: JSONObject): CheermoteTier? {
+        val bits = tier.optInt("bits").takeIf { it > 0 } ?: return null
+        val url = tier.optJSONArray("images")?.objects()
+            ?.firstOrNull(::isDarkAnimatedDoubleImage)
+            ?.optString("url")
+            ?.takeIf { it.startsWith("https://") }
+            ?: return null
+        return CheermoteTier(bits, url)
+    }
+
+    private fun isDarkAnimatedDoubleImage(image: JSONObject): Boolean =
+        image.optString("theme") == "DARK" && image.optBoolean("isAnimated") && image.optDouble("dpiScale") == 2.0
 }

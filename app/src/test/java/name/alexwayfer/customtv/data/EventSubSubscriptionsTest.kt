@@ -6,47 +6,79 @@ import org.junit.Test
 
 class EventSubSubscriptionsTest {
     @Test
+    fun aSubscriptionBodyNamesTheBroadcasterAndTheSocketSession() {
+        val body = eventSubSubscriptionBody(
+            EventSubRequest("token", "123", userId = "456", "session", EventSubType("stream.online", "1")),
+        )
+        assertEquals("stream.online", body.getString("type"))
+        assertEquals("1", body.getString("version"))
+        assertEquals("123", body.getJSONObject("condition").getString("broadcaster_user_id"))
+        assertEquals(false, body.getJSONObject("condition").has("user_id"))
+        assertEquals("websocket", body.getJSONObject("transport").getString("method"))
+        assertEquals("session", body.getJSONObject("transport").getString("session_id"))
+    }
+
+    @Test
+    fun aUserSubscriptionBodyNamesTheUserToo() {
+        val body = eventSubSubscriptionBody(
+            EventSubRequest("token", "123", userId = "456", "session", OWN_MESSAGE_HOLD_EVENTSUB_TYPES.first()),
+        )
+        assertEquals("456", body.getJSONObject("condition").getString("user_id"))
+    }
+
+    @Test
     fun forbiddenModeratorSubscriptionMeansNotAModeratorAndKeepsTheSocket() {
-        assertEquals(EventSubSubscribeOutcome.NotModerator, eventSubSubscribeOutcome(403, EventSubCondition.Moderator, "a", "a"))
+        assertEquals(EventSubSubscribeOutcome.NotModerator, outcome(403, EventSubCondition.Moderator))
     }
 
     @Test
     fun forbiddenStreamStatusSubscriptionIsARejectedLogin() {
-        assertEquals(EventSubSubscribeOutcome.LoginRejected, eventSubSubscribeOutcome(403, EventSubCondition.Broadcaster, "a", "a"))
+        assertEquals(EventSubSubscribeOutcome.LoginRejected, outcome(403, EventSubCondition.Broadcaster))
     }
 
     @Test
     fun forbiddenOwnMessageSubscriptionIsRejectedWithoutClosingTheSocket() {
-        assertEquals(EventSubSubscribeOutcome.Rejected, eventSubSubscribeOutcome(403, EventSubCondition.User, "a", "a"))
+        assertEquals(EventSubSubscribeOutcome.Rejected, outcome(403, EventSubCondition.User))
     }
 
     @Test
     fun expiredLoginIsRejectedForEitherKind() {
-        assertEquals(EventSubSubscribeOutcome.LoginRejected, eventSubSubscribeOutcome(401, EventSubCondition.Moderator, "a", "a"))
-        assertEquals(EventSubSubscribeOutcome.LoginRejected, eventSubSubscribeOutcome(401, EventSubCondition.Broadcaster, "a", "a"))
+        assertEquals(EventSubSubscribeOutcome.LoginRejected, outcome(401, EventSubCondition.Moderator))
+        assertEquals(EventSubSubscribeOutcome.LoginRejected, outcome(401, EventSubCondition.Broadcaster))
     }
 
     @Test
     fun repeatedModeratorSubscriptionCountsAsSubscribed() {
-        assertEquals(EventSubSubscribeOutcome.Subscribed, eventSubSubscribeOutcome(409, EventSubCondition.Moderator, "a", "a"))
-        assertEquals(EventSubSubscribeOutcome.Rejected, eventSubSubscribeOutcome(409, EventSubCondition.Broadcaster, "a", "a"))
+        assertEquals(EventSubSubscribeOutcome.Subscribed, outcome(409, EventSubCondition.Moderator))
+        assertEquals(EventSubSubscribeOutcome.Rejected, outcome(409, EventSubCondition.Broadcaster))
     }
 
     @Test
     fun answerForAClosedSessionIsOutdated() {
-        assertEquals(EventSubSubscribeOutcome.Outdated, eventSubSubscribeOutcome(400, EventSubCondition.Broadcaster, "a", "b"))
-        assertEquals(EventSubSubscribeOutcome.Outdated, eventSubSubscribeOutcome(400, EventSubCondition.Moderator, "a", null))
+        assertEquals(
+            EventSubSubscribeOutcome.Outdated,
+            outcome(400, EventSubCondition.Broadcaster, currentSession = "b"),
+        )
+        assertEquals(
+            EventSubSubscribeOutcome.Outdated,
+            outcome(400, EventSubCondition.Moderator, currentSession = null),
+        )
     }
 
     @Test
     fun serverErrorFailsWithoutRejecting() {
-        assertEquals(EventSubSubscribeOutcome.Failed, eventSubSubscribeOutcome(503, EventSubCondition.Moderator, "a", "a"))
-        assertEquals(EventSubSubscribeOutcome.Subscribed, eventSubSubscribeOutcome(202, EventSubCondition.Moderator, "a", "a"))
+        assertEquals(EventSubSubscribeOutcome.Failed, outcome(503, EventSubCondition.Moderator))
+        assertEquals(EventSubSubscribeOutcome.Subscribed, outcome(202, EventSubCondition.Moderator))
     }
 
     @Test
     fun readsTheSubscriptionTypeOfTheRequestedMessageKind() {
-        val revocation = """{"metadata":{"message_type":"revocation"},"payload":{"subscription":{"type":"automod.message.hold","status":"authorization_revoked"}}}"""
+        val revocation = """
+            {
+              "metadata":{"message_type":"revocation"},
+              "payload":{"subscription":{"type":"automod.message.hold","status":"authorization_revoked"}}
+            }
+        """.trimIndent()
         assertEquals("automod.message.hold", eventSubMessageSubscriptionType(revocation, "revocation"))
         assertNull(eventSubMessageSubscriptionType(revocation, "notification"))
         assertNull(eventSubMessageSubscriptionType("not json", "revocation"))
@@ -55,26 +87,47 @@ class EventSubSubscriptionsTest {
     @Test
     fun aRefusalForTheSocketLimitIsToldApartFromOtherRefusals() {
         val limit = "number of websocket transports limit exceeded"
-        assertEquals(EventSubSubscribeOutcome.TransportLimit, eventSubSubscribeOutcome(429, EventSubCondition.Broadcaster, "a", "a", limit))
-        assertEquals(EventSubSubscribeOutcome.Rejected, eventSubSubscribeOutcome(429, EventSubCondition.Broadcaster, "a", "a", "cost exceeded"))
-        assertEquals(EventSubSubscribeOutcome.Rejected, eventSubSubscribeOutcome(400, EventSubCondition.Broadcaster, "a", "a", limit))
+        assertEquals(
+            EventSubSubscribeOutcome.TransportLimit,
+            outcome(429, EventSubCondition.Broadcaster, message = limit),
+        )
+        assertEquals(
+            EventSubSubscribeOutcome.Rejected,
+            outcome(429, EventSubCondition.Broadcaster, message = "cost exceeded"),
+        )
+        assertEquals(EventSubSubscribeOutcome.Rejected, outcome(400, EventSubCondition.Broadcaster, message = limit))
     }
 
     @Test
     fun aSocketLimitAnswerForAnEndedSessionIsOutdated() {
+        val limit = "number of websocket transports limit exceeded"
         assertEquals(
             EventSubSubscribeOutcome.Outdated,
-            eventSubSubscribeOutcome(429, EventSubCondition.Broadcaster, "old", "new", "number of websocket transports limit exceeded"),
+            eventSubSubscribeOutcome(429, EventSubCondition.Broadcaster, "old", "new", limit),
         )
     }
 
     @Test
     fun theWelcomeNamesTheKeepaliveTimeout() {
-        val welcome = """{"metadata":{"message_type":"session_welcome"},"payload":{"session":{"id":"s","keepalive_timeout_seconds":10}}}"""
+        val welcome = """
+            {
+              "metadata":{"message_type":"session_welcome"},
+              "payload":{"session":{"id":"s","keepalive_timeout_seconds":10}}
+            }
+        """.trimIndent()
         assertEquals(10L, eventSubKeepaliveSeconds(welcome))
         assertNull(eventSubKeepaliveSeconds("""{"metadata":{"message_type":"session_keepalive"},"payload":{}}"""))
-        assertNull(eventSubKeepaliveSeconds("""{"metadata":{"message_type":"session_welcome"},"payload":{"session":{"id":"s"}}}"""))
+        val withoutTimeout = """{"metadata":{"message_type":"session_welcome"},"payload":{"session":{"id":"s"}}}"""
+        assertNull(eventSubKeepaliveSeconds(withoutTimeout))
     }
+
+    /** [eventSubSubscribeOutcome] for an answer to the session that is still current. */
+    private fun outcome(
+        httpCode: Int,
+        condition: EventSubCondition,
+        currentSession: String? = "a",
+        message: String = "",
+    ) = eventSubSubscribeOutcome(httpCode, condition, "a", currentSession, message)
 
     @Test
     fun aSocketLimitRetryWaitsAKeepaliveTimeoutAndThenTwiceAsLongEachTime() {

@@ -34,13 +34,11 @@ class CopyableAuthorTextTest {
         assertNull(message.copyableTextWithAuthor("21:04"))
     }
 
-    private fun message(displayName: String, text: String) = ChatMessage(
-        id = "1",
-        userLogin = "alice",
+    private fun message(displayName: String, text: String) = testChatMessage(
+        text = text,
+        login = "alice",
         displayName = displayName,
         color = Color.Unspecified,
-        rawText = text,
-        parts = listOf(ChatPart.Text(text)),
         timestampMillis = 0L,
     )
 }

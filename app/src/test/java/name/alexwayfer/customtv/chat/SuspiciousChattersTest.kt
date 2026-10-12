@@ -15,7 +15,8 @@ class SuspiciousChattersTest {
 
     @Test
     fun noStatusRemovesTheMark() {
-        assertEquals(emptyMap<String, LowTrustStatus>(), suspiciousChattersAfter(mapOf("1" to LowTrustStatus.Monitored), "1", null))
+        val monitored = mapOf("1" to LowTrustStatus.Monitored)
+        assertEquals(emptyMap<String, LowTrustStatus>(), suspiciousChattersAfter(monitored, "1", null))
     }
 
     @Test

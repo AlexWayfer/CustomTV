@@ -23,8 +23,8 @@ internal fun chatNickColorsFor(message: ChatMessage, nickColors: Map<String, Col
     val found = mutableMapOf<String, Color>()
     for (part in message.parts) {
         if (part !is ChatPart.Text) continue
-        for ((_, _, _, key) in findChatNicks(part.text, nickColors.keys)) {
-            nickColors[key]?.let { found[key] = it }
+        for (nick in findChatNicks(part.text, nickColors.keys)) {
+            nickColors[nick.key]?.let { found[nick.key] = it }
         }
     }
     return found

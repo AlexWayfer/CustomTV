@@ -30,14 +30,13 @@ internal data class UserTwitchEmotePage(
 )
 
 internal fun parseUserEmotePage(body: String): UserTwitchEmotePage? {
-    val root = runCatching { JSONObject(body) }.getOrNull() ?: return null
+    val root = body.toJsonObjectOrNull() ?: return null
     val data = root.optJSONArray("data") ?: return null
     val smilies = mutableListOf<TwitchCatalogEmote>()
     val turbo = mutableListOf<TwitchCatalogEmote>()
     val unlocked = mutableListOf<UnlockedSourceEmote>()
     val typeCounts = linkedMapOf<String, Int>()
-    for (index in 0 until data.length()) {
-        val item = data.optJSONObject(index) ?: continue
+    for (item in data.objects()) {
         val type = item.optString("emote_type").ifBlank { "unknown" }
         typeCounts[type] = typeCounts.getOrDefault(type, 0) + 1
         val emote = helixEmote(item, TwitchEmoteGroup.Global) ?: continue
@@ -48,34 +47,30 @@ internal fun parseUserEmotePage(body: String): UserTwitchEmotePage? {
                 unlocked.add(UnlockedSourceEmote(emote.name, emote.url, type))
         }
     }
-    val cursor = root.optJSONObject("pagination")?.optString("cursor")
-        ?.takeIf { it.isNotBlank() && it != "null" }
+    val cursor = root.optJSONObject("pagination")?.text("cursor")
     return UserTwitchEmotePage(smilies, turbo, cursor, typeCounts, unlocked)
 }
 
 internal fun parseHelixEmotes(body: String, global: Boolean): List<TwitchCatalogEmote>? {
-    val data = runCatching { JSONObject(body) }.getOrNull()?.optJSONArray("data") ?: return null
+    val data = body.toJsonObjectOrNull()?.optJSONArray("data") ?: return null
     return buildList {
-        for (index in 0 until data.length()) {
-            val item = data.optJSONObject(index) ?: continue
-            val group = if (global) {
-                TwitchEmoteGroup.Global
-            } else {
-                when (item.optString("emote_type")) {
-                    "follower" -> TwitchEmoteGroup.Follower
-                    "subscriptions" -> TwitchEmoteGroup.Subscriptions
-                    else -> continue
-                }
-            }
-            val emote = helixEmote(item, group) ?: continue
-            add(emote)
+        for (item in data.objects()) {
+            val group = if (global) TwitchEmoteGroup.Global else channelEmoteGroup(item.optString("emote_type"))
+            group?.let { helixEmote(item, it) }?.let(::add)
         }
     }
 }
 
+/** A channel's own emote groups; other emote types the channel answer lists are not shown. */
+private fun channelEmoteGroup(type: String): TwitchEmoteGroup? = when (type) {
+    "follower" -> TwitchEmoteGroup.Follower
+    "subscriptions" -> TwitchEmoteGroup.Subscriptions
+    else -> null
+}
+
 private fun helixEmote(item: JSONObject, group: TwitchEmoteGroup): TwitchCatalogEmote? {
-    val name = item.optString("name").takeIf { it.isNotBlank() && it != "null" } ?: return null
-    val id = item.optString("id").takeIf { it.isNotBlank() && it != "null" } ?: return null
+    val name = item.text("name") ?: return null
+    val id = item.text("id") ?: return null
     val formats = item.optJSONArray("format")
     var animated = false
     if (formats != null) {
@@ -112,6 +107,75 @@ internal data class UserTwitchEmotes(
     val unlocked: List<UnlockedSourceEmote> = emptyList(),
 )
 
+/** How Helix answered one page of the user's emotes. */
+internal sealed interface UserEmotePageAnswer {
+    class Ready(val parsed: UserTwitchEmotePage, val body: String) : UserEmotePageAnswer
+    data object Unavailable : UserEmotePageAnswer
+    data object Rejected : UserEmotePageAnswer
+}
+
+/** What the pages of the user's emotes gave. */
+internal sealed interface UserEmotePages {
+    /**
+     * Read to the last page, or to the page limit when not [complete]: the emotes, the pages' [bodies] to keep, and
+     * the emotes counted by type for the log.
+     */
+    data class Read(
+        val emotes: UserTwitchEmotes,
+        val pages: Int,
+        val bodies: List<String>,
+        val typeCounts: Map<String, Int>,
+        val complete: Boolean,
+    ) : UserEmotePages
+
+    /** A page did not answer: what the pages before it gave, which is not kept. */
+    data class Unavailable(val partial: UserTwitchEmotes) : UserEmotePages
+
+    /** Twitch refused a page; on the first one the user has no emotes to show. */
+    data class Rejected(val firstPage: Boolean) : UserEmotePages
+}
+
+/**
+ * Reads the user's emotes page by page through [fetch], which takes the cursor of the page, until a page names no
+ * next one or one already read, or until [maxPages].
+ */
+internal fun readUserEmotePages(maxPages: Int, fetch: (cursor: String?) -> UserEmotePageAnswer): UserEmotePages {
+    val smilies = mutableListOf<TwitchCatalogEmote>()
+    val turbo = mutableListOf<TwitchCatalogEmote>()
+    val unlocked = mutableListOf<UnlockedSourceEmote>()
+    val typeCounts = linkedMapOf<String, Int>()
+    val bodies = mutableListOf<String>()
+    val seenCursors = HashSet<String>()
+    var cursor: String? = null
+    var pages = 0
+    var result: UserEmotePages? = null
+    while (result == null && pages < maxPages) {
+        pages++
+        result = when (val page = fetch(cursor)) {
+            UserEmotePageAnswer.Unavailable -> UserEmotePages.Unavailable(UserTwitchEmotes(smilies, turbo, unlocked))
+            UserEmotePageAnswer.Rejected -> UserEmotePages.Rejected(firstPage = pages == 1)
+            is UserEmotePageAnswer.Ready -> {
+                bodies += page.body
+                smilies += page.parsed.smilies
+                turbo += page.parsed.turbo
+                unlocked += page.parsed.unlocked
+                page.parsed.typeCounts.forEach { (type, count) ->
+                    typeCounts[type] = typeCounts.getOrDefault(type, 0) + count
+                }
+                val next = page.parsed.cursor
+                if (next.isNullOrBlank() || !seenCursors.add(next)) {
+                    UserEmotePages.Read(UserTwitchEmotes(smilies, turbo, unlocked), pages, bodies, typeCounts, true)
+                } else {
+                    cursor = next
+                    null
+                }
+            }
+        }
+    }
+    return result
+        ?: UserEmotePages.Read(UserTwitchEmotes(smilies, turbo, unlocked), pages, bodies, typeCounts, complete = false)
+}
+
 internal object TwitchEmoteCatalogRepository {
     private val http = sharedHttpClient.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -130,14 +194,24 @@ internal object TwitchEmoteCatalogRepository {
         broadcasterId: String,
     ): List<TwitchCatalogEmote> {
         if (broadcasterId.isBlank()) return emptyList()
-        channels[broadcasterId]?.let { return it }
+        return channels[broadcasterId] ?: loadChannelEmotes(clientId, accessToken, broadcasterId)
+    }
+
+    /** The set the last start kept answers at once, and the network refreshes it quietly. */
+    private suspend fun loadChannelEmotes(
+        clientId: String,
+        accessToken: String,
+        broadcasterId: String,
+    ): List<TwitchCatalogEmote> {
         val file = AssetFiles.channel(broadcasterId, FILE)
         val url = CHANNEL_URL.toHttpUrl().newBuilder()
             .addQueryParameter("broadcaster_id", broadcasterId)
             .build()
             .toString()
         val fetch: suspend () -> List<TwitchCatalogEmote>? = {
-            load(clientId, accessToken, url, global = false, file) { parsed -> channels[broadcasterId] = parsed }
+            load(clientId, accessToken, HelixEmoteList(url, global = false, file)) { parsed ->
+                channels[broadcasterId] = parsed
+            }
         }
         val stored = withContext(Dispatchers.IO) { EmoteHttp.stored(file) { parseHelixEmotes(it, global = false) } }
         if (stored != null) {
@@ -151,7 +225,10 @@ internal object TwitchEmoteCatalogRepository {
     /** The user's own emotes. The set the last start kept answers at once, and the network refreshes it quietly. */
     suspend fun userEmotes(clientId: String, accessToken: String, userId: String): UserTwitchEmotes {
         if (userId.isBlank()) return EMPTY_USER
-        users[userId]?.let { return it }
+        return users[userId] ?: loadUserEmotes(clientId, accessToken, userId)
+    }
+
+    private suspend fun loadUserEmotes(clientId: String, accessToken: String, userId: String): UserTwitchEmotes {
         val stored = withContext(Dispatchers.IO) {
             EmoteHttp.stored(AssetFiles.user(userId), ::parseStoredUserEmotes)
         }
@@ -165,71 +242,48 @@ internal object TwitchEmoteCatalogRepository {
 
     private suspend fun fetchUserEmotes(clientId: String, accessToken: String, userId: String): UserTwitchEmotes {
         return withContext(Dispatchers.IO) {
-            val smilies = mutableListOf<TwitchCatalogEmote>()
-            val turbo = mutableListOf<TwitchCatalogEmote>()
-            val unlocked = mutableListOf<UnlockedSourceEmote>()
-            val typeCounts = linkedMapOf<String, Int>()
-            val bodies = JSONArray()
-            val seenCursors = HashSet<String>()
-            var cursor: String? = null
-            var pages = 0
-            while (pages < MAX_USER_PAGES) {
-                pages++
+            val result = readUserEmotePages(MAX_USER_PAGES) { cursor ->
                 val url = USER_URL.toHttpUrl().newBuilder()
                     .addQueryParameter("user_id", userId)
                     .apply { if (!cursor.isNullOrBlank()) addQueryParameter("after", cursor) }
                     .build()
                     .toString()
-                when (val page = fetchUserPage(clientId, accessToken, url)) {
-                    UserPage.Unavailable -> return@withContext UserTwitchEmotes(smilies, turbo, unlocked)
-                    UserPage.Rejected -> {
-                        if (pages == 1) users[userId] = EMPTY_USER
-                        return@withContext users[userId] ?: EMPTY_USER
-                    }
-                    is UserPage.Ready -> {
-                        bodies.put(page.body)
-                        smilies += page.parsed.smilies
-                        turbo += page.parsed.turbo
-                        unlocked += page.parsed.unlocked
-                        page.parsed.typeCounts.forEach { (type, count) ->
-                            typeCounts[type] = typeCounts.getOrDefault(type, 0) + count
-                        }
-                        val next = page.parsed.cursor
-                        if (next.isNullOrBlank() || !seenCursors.add(next)) {
-                            rememberUserEmotes(userId, pages, smilies, turbo, unlocked, typeCounts)
-                            AssetFiles.write(AssetFiles.user(userId), bodies.toString())
-                            return@withContext users.getValue(userId)
-                        }
-                        cursor = next
-                    }
+                fetchUserPage(clientId, accessToken, url)
+            }
+            when (result) {
+                is UserEmotePages.Unavailable -> result.partial
+                is UserEmotePages.Rejected -> {
+                    if (result.firstPage) users[userId] = EMPTY_USER
+                    users[userId] ?: EMPTY_USER
+                }
+                is UserEmotePages.Read -> {
+                    if (!result.complete) AppLog.w(TAG, "user emotes stopped after ${result.pages} pages")
+                    rememberUserEmotes(userId, result.pages, result.emotes, result.typeCounts)
+                    AssetFiles.write(AssetFiles.user(userId), JSONArray(result.bodies).toString())
+                    users.getValue(userId)
                 }
             }
-            AppLog.w(TAG, "user emotes stopped after $pages pages")
-            rememberUserEmotes(userId, pages, smilies, turbo, unlocked, typeCounts)
-            AssetFiles.write(AssetFiles.user(userId), bodies.toString())
-            users.getValue(userId)
         }
     }
 
-    private fun rememberUserEmotes(
-        userId: String,
-        pages: Int,
-        smilies: List<TwitchCatalogEmote>,
-        turbo: List<TwitchCatalogEmote>,
-        unlocked: List<UnlockedSourceEmote>,
-        typeCounts: Map<String, Int>,
-    ) {
+    private fun rememberUserEmotes(userId: String, pages: Int, emotes: UserTwitchEmotes, typeCounts: Map<String, Int>) {
         val kinds = typeCounts.entries.joinToString(" ") { (type, count) -> "$type=$count" }
-        AppLog.i(TAG, "user emotes pages=$pages smilies=${smilies.size} turbo=${turbo.size} $kinds")
-        users[userId] = UserTwitchEmotes(smilies, turbo, unlocked)
+        AppLog.i(TAG, "user emotes pages=$pages smilies=${emotes.smilies.size} turbo=${emotes.turbo.size} $kinds")
+        users[userId] = emotes
     }
 
-    suspend fun globalEmotes(clientId: String, accessToken: String): List<TwitchCatalogEmote> {
-        globals?.let { return it }
+    suspend fun globalEmotes(clientId: String, accessToken: String): List<TwitchCatalogEmote> =
+        globals ?: loadGlobalEmotes(clientId, accessToken)
+
+    private suspend fun loadGlobalEmotes(clientId: String, accessToken: String): List<TwitchCatalogEmote> {
         val fetch: suspend () -> List<TwitchCatalogEmote>? = {
-            load(clientId, accessToken, GLOBAL_URL, global = true, GLOBAL_FILE) { parsed -> globals = parsed }
+            load(clientId, accessToken, HelixEmoteList(GLOBAL_URL, global = true, GLOBAL_FILE)) { parsed ->
+                globals = parsed
+            }
         }
-        val stored = withContext(Dispatchers.IO) { EmoteHttp.stored(GLOBAL_FILE) { parseHelixEmotes(it, global = true) } }
+        val stored = withContext(Dispatchers.IO) {
+            EmoteHttp.stored(GLOBAL_FILE) { parseHelixEmotes(it, global = true) }
+        }
         if (stored != null) {
             synchronized(this) { if (globals == null) globals = stored }
             scope.launch { fetch() }
@@ -238,22 +292,23 @@ internal object TwitchEmoteCatalogRepository {
         return fetch() ?: globals.orEmpty()
     }
 
+    /** A Helix emote list: where it loads from, whether it is the global set, and the file that keeps it. */
+    private data class HelixEmoteList(val url: String, val global: Boolean, val file: String)
+
     private suspend fun load(
         clientId: String,
         accessToken: String,
-        url: String,
-        global: Boolean,
-        file: String,
+        list: HelixEmoteList,
         store: (List<TwitchCatalogEmote>) -> Unit,
     ): List<TwitchCatalogEmote>? = withContext(Dispatchers.IO) {
         val fetched = try {
-            val request = helixRequest(url, accessToken, clientId)
+            val request = helixRequest(list.url, accessToken, clientId)
                 .build()
             http.newCall(request).execute().use { response ->
                 val body = response.body.string()
                 when (response.code) {
-                    in 200..299 -> parseHelixEmotes(body, global)?.also { AssetFiles.write(file, body) }
-                    in 400..499 -> {
+                    in HTTP_SUCCESS -> parseHelixEmotes(body, list.global)?.also { AssetFiles.write(list.file, body) }
+                    in HTTP_CLIENT_ERROR -> {
                         AppLog.w(TAG, "emotes rejected HTTP ${response.code}")
                         Diagnostics.reportHttp(
                             TAG,
@@ -278,18 +333,18 @@ internal object TwitchEmoteCatalogRepository {
         fetched
     }
 
-    private fun fetchUserPage(clientId: String, accessToken: String, url: String): UserPage {
+    private fun fetchUserPage(clientId: String, accessToken: String, url: String): UserEmotePageAnswer {
         return try {
             val request = helixRequest(url, accessToken, clientId)
                 .build()
             http.newCall(request).execute().use { response ->
                 val body = response.body.string()
                 when (response.code) {
-                    in 200..299 -> {
+                    in HTTP_SUCCESS -> {
                         val parsed = parseUserEmotePage(body)
-                        if (parsed == null) UserPage.Unavailable else UserPage.Ready(parsed, body)
+                        if (parsed == null) UserEmotePageAnswer.Unavailable else UserEmotePageAnswer.Ready(parsed, body)
                     }
-                    401, 403 -> {
+                    HTTP_UNAUTHORIZED, HTTP_FORBIDDEN -> {
                         AppLog.w(TAG, "user emotes rejected HTTP ${response.code}")
                         Diagnostics.reportHttp(
                             TAG,
@@ -298,9 +353,9 @@ internal object TwitchEmoteCatalogRepository {
                             twitchAuthMessage(body),
                             HELIX_EXPECTED_CODES,
                         )
-                        UserPage.Unavailable
+                        UserEmotePageAnswer.Unavailable
                     }
-                    in 400..499 -> {
+                    in HTTP_CLIENT_ERROR -> {
                         AppLog.w(TAG, "user emotes rejected HTTP ${response.code}")
                         Diagnostics.reportHttp(
                             TAG,
@@ -309,24 +364,18 @@ internal object TwitchEmoteCatalogRepository {
                             twitchAuthMessage(body),
                             HELIX_EXPECTED_CODES,
                         )
-                        UserPage.Rejected
+                        UserEmotePageAnswer.Rejected
                     }
                     else -> {
                         AppLog.w(TAG, "user emotes failed HTTP ${response.code}")
-                        UserPage.Unavailable
+                        UserEmotePageAnswer.Unavailable
                     }
                 }
             }
         } catch (error: IOException) {
             AppLog.w(TAG, "user emotes failed ${error.javaClass.simpleName}")
-            UserPage.Unavailable
+            UserEmotePageAnswer.Unavailable
         }
-    }
-
-    private sealed interface UserPage {
-        class Ready(val parsed: UserTwitchEmotePage, val body: String) : UserPage
-        data object Unavailable : UserPage
-        data object Rejected : UserPage
     }
 
     private const val TAG = "TwitchEmotes"

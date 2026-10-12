@@ -9,6 +9,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.delay
@@ -45,44 +47,55 @@ internal fun ChatEmoteEffectImage(
             }
         }
     }
-    // Only the color effects read the clock during composition; motion reads it in the layer below.
-    val colorFilter = when {
-        effects.cursed -> ColorFilter.colorMatrix(cursedColorMatrix())
-        effects.hyperRed -> ColorFilter.tint(Color(0xFFFF2020), BlendMode.Modulate)
-        effects.rainbow -> ColorFilter.tint(
-            Color.hsv(effectPhase(frameTimeNanos, 2_000) * 360f, 0.9f, 1f),
-            BlendMode.Modulate,
-        )
-        effects.party -> ColorFilter.colorMatrix(partyColorMatrix(effectPhase(frameTimeNanos, 1_500)))
-        else -> null
-    }
     SharedEmoteImage(
         url = url,
         contentDescription = contentDescription,
         size = size,
         aspectRatio = aspectRatio,
-        colorFilter = colorFilter,
-        modifier = Modifier.graphicsLayer {
-            val hyperShake = FFZ_HYPER_SHAKE.frameAt(effectPhase(frameTimeNanos, 100))
-            val bttvShake = BTTV_SHAKE.frameAt(effectPhase(frameTimeNanos, 500), stepped = true)
-            val jam = FFZ_JAM.frameAt(effectPhase(frameTimeNanos, 600))
-            val bounce = FFZ_BOUNCE.frameAt(effectPhase(frameTimeNanos, 500))
-            val motion = when {
-                effects.hyperShake -> hyperShake
-                effects.shake -> bttvShake
-                effects.jam -> jam
-                else -> MotionFrame()
-            }
-            val bounceScaleX = if (effects.bounce) bounce.scaleX else 1f
-            val bounceScaleY = if (effects.bounce) bounce.scaleY else 1f
-            scaleX = (if (effects.flipX) -1f else 1f) * effects.widthMultiplier * bounceScaleX
-            scaleY = (if (effects.flipY) -1f else 1f) * bounceScaleY
-            rotationZ = effects.rotationDegrees + if (effects.jam) jam.rotationDegrees else 0f
-            translationX = motion.x
-            translationY = motion.y
-            transformOrigin = if (effects.bounce) androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f) else androidx.compose.ui.graphics.TransformOrigin.Center
-        },
+        // Only the color effects read the clock during composition; motion reads it in the layer below.
+        colorFilter = emoteEffectColorFilter(effects, frameTimeNanos),
+        modifier = Modifier.graphicsLayer { applyEmoteMotion(effects, frameTimeNanos) },
     )
+}
+
+private fun emoteEffectColorFilter(effects: EmoteEffects, frameTimeNanos: Long): ColorFilter? = when {
+    effects.cursed -> ColorFilter.colorMatrix(cursedColorMatrix())
+    effects.hyperRed -> ColorFilter.tint(HyperRedTint, BlendMode.Modulate)
+    effects.rainbow -> ColorFilter.tint(
+        Color.hsv(effectPhase(frameTimeNanos, RAINBOW_CYCLE_MILLIS) * FULL_TURN_DEGREES, RAINBOW_SATURATION, 1f),
+        BlendMode.Modulate,
+    )
+    effects.party -> ColorFilter.colorMatrix(partyColorMatrix(effectPhase(frameTimeNanos, PARTY_CYCLE_MILLIS)))
+    else -> null
+}
+
+private val HyperRedTint = Color(0xFFFF2020)
+
+/** The rainbow goes once around the hue circle in this time; the party colors take a little less. */
+private const val RAINBOW_CYCLE_MILLIS = 2_000L
+private const val PARTY_CYCLE_MILLIS = 1_500L
+private const val FULL_TURN_DEGREES = 360f
+private const val RAINBOW_SATURATION = 0.9f
+
+private fun GraphicsLayerScope.applyEmoteMotion(effects: EmoteEffects, frameTimeNanos: Long) {
+    val hyperShake = FFZ_HYPER_SHAKE.frameAt(effectPhase(frameTimeNanos, 100))
+    val bttvShake = BTTV_SHAKE.frameAt(effectPhase(frameTimeNanos, 500), stepped = true)
+    val jam = FFZ_JAM.frameAt(effectPhase(frameTimeNanos, 600))
+    val bounce = FFZ_BOUNCE.frameAt(effectPhase(frameTimeNanos, 500))
+    val motion = when {
+        effects.hyperShake -> hyperShake
+        effects.shake -> bttvShake
+        effects.jam -> jam
+        else -> MotionFrame()
+    }
+    val bounceScaleX = if (effects.bounce) bounce.scaleX else 1f
+    val bounceScaleY = if (effects.bounce) bounce.scaleY else 1f
+    scaleX = (if (effects.flipX) -1f else 1f) * effects.widthMultiplier * bounceScaleX
+    scaleY = (if (effects.flipY) -1f else 1f) * bounceScaleY
+    rotationZ = effects.rotationDegrees + if (effects.jam) jam.rotationDegrees else 0f
+    translationX = motion.x
+    translationY = motion.y
+    transformOrigin = if (effects.bounce) BottomCenterOrigin else TransformOrigin.Center
 }
 
 private fun effectPhase(frameTimeNanos: Long, durationMillis: Long): Float {
@@ -150,13 +163,18 @@ private val FFZ_BOUNCE = MotionFrames(listOf(
     MotionFrame(scaleX = .8f, scaleY = 1f),
 ))
 
+/** A bouncing emote squashes against the bottom of its line. */
+private val BottomCenterOrigin = TransformOrigin(TransformOrigin.Center.pivotFractionX, 1f)
+
 // CSS grayscale(1) brightness(0.7) contrast(2.5): 1.75 * luma - 191.25.
-private fun cursedColorMatrix(): ColorMatrix = ColorMatrix(floatArrayOf(
+private val CURSED_COLOR_VALUES = floatArrayOf(
     .37205f, 1.2516f, .12635f, 0f, -191.25f,
     .37205f, 1.2516f, .12635f, 0f, -191.25f,
     .37205f, 1.2516f, .12635f, 0f, -191.25f,
     0f, 0f, 0f, 1f, 0f,
-))
+)
+
+private fun cursedColorMatrix(): ColorMatrix = ColorMatrix(CURSED_COLOR_VALUES.copyOf())
 
 // CSS filter order in BTTV: sepia(0.5) hue-rotate(0..360deg) saturate(2.5).
 private fun partyColorMatrix(phase: Float): ColorMatrix {
@@ -185,19 +203,25 @@ private fun partyColorMatrix(phase: Float): ColorMatrix {
         .213f - .213f * saturation, .715f + .285f * saturation, .072f - .072f * saturation,
         .213f - .213f * saturation, .715f - .715f * saturation, .072f + .928f * saturation,
     )
-    val colors = multiplyColors(saturated, multiplyColors(hue, sepia))
-    return ColorMatrix(floatArrayOf(
-        colors[0], colors[1], colors[2], 0f, 0f,
-        colors[3], colors[4], colors[5], 0f, 0f,
-        colors[6], colors[7], colors[8], 0f, 0f,
-        0f, 0f, 0f, 1f, 0f,
-    ))
+    return rgbColorMatrix(multiplyColors(saturated, multiplyColors(hue, sepia)))
 }
 
-private fun multiplyColors(left: FloatArray, right: FloatArray): FloatArray = FloatArray(9) { index ->
-    val row = index / 3
-    val column = index % 3
-    left[row * 3] * right[column] +
-        left[row * 3 + 1] * right[3 + column] +
-        left[row * 3 + 2] * right[6 + column]
+/** Red, green, and blue: the rows and columns of a color-only matrix. */
+private const val RGB = 3
+
+/** [rgb], a row-major RGB matrix, as a [ColorMatrix] that keeps alpha and adds no offset. */
+private fun rgbColorMatrix(rgb: FloatArray): ColorMatrix {
+    val matrix = ColorMatrix()
+    for (row in 0 until RGB) {
+        for (column in 0 until RGB) matrix[row, column] = rgb[row * RGB + column]
+    }
+    return matrix
+}
+
+private fun multiplyColors(left: FloatArray, right: FloatArray): FloatArray = FloatArray(RGB * RGB) { index ->
+    val row = index / RGB
+    val column = index % RGB
+    left[row * RGB] * right[column] +
+        left[row * RGB + 1] * right[RGB + column] +
+        left[row * RGB + 2] * right[2 * RGB + column]
 }

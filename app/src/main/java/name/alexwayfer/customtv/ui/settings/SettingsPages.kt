@@ -74,12 +74,15 @@ internal fun SettingsPage.titleRes(): Int = when (this) {
     SettingsPage.Gestures -> R.string.gestures
 }
 
+/** How far a page slides, as a share of its width. */
+private const val PAGE_SLIDE_SHARE = 0.25f
+
 /** A subpage slides in from the end and the list moves aside; going back reverses it. */
 internal fun AnimatedContentTransitionScope<SettingsPage>.settingsPageTransition(): ContentTransform {
     val forward = targetState != SettingsPage.Main
     val direction = if (forward) 1 else -1
-    return (slideInHorizontally { direction * it / 4 } + fadeIn()) togetherWith
-        (slideOutHorizontally { -direction * it / 4 } + fadeOut())
+    return (slideInHorizontally { (direction * it * PAGE_SLIDE_SHARE).toInt() } + fadeIn()) togetherWith
+        (slideOutHorizontally { (-direction * it * PAGE_SLIDE_SHARE).toInt() } + fadeOut())
 }
 
 /** A row in the main settings list that opens a subpage, with an outlined [icon] for the page. */
@@ -105,8 +108,8 @@ internal fun Modifier.settingsScrollAnchor(anchor: SettingsScrollAnchor): Modifi
     onPlaced { anchor.top = it.positionInParent().y.roundToInt() }
 
 /**
- * A scrolling settings page. When Settings opened at [scrollTo], it scrolls to the block marked with the anchor once that
- * block is placed, then reports [onScrolled].
+ * A scrolling settings page. When Settings opened at [scrollTo], it scrolls to the block marked with the anchor once
+ * that block is placed, then reports [onScrolled].
  */
 @Composable
 internal fun SettingsPageColumn(

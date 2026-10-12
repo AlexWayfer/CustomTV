@@ -113,31 +113,7 @@ internal fun ChatRulesSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .semantics(mergeDescendants = true) { heading() },
-        ) {
-            ChannelAvatar(
-                channel = channelLogin,
-                profile = ChannelAvatarRepository.cached(channelLogin),
-                size = 48.dp,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-            Column {
-                Text(
-                    text = channelName,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.chat_rules_title),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            }
-        }
+        ChatRulesHeader(channelLogin, channelName)
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
@@ -166,6 +142,35 @@ internal fun ChatRulesSheet(
             ) {
                 Text(stringResource(R.string.chat_rules_confirm))
             }
+        }
+    }
+}
+
+@Composable
+private fun ChatRulesHeader(channelLogin: String, channelName: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .semantics(mergeDescendants = true) { heading() },
+    ) {
+        ChannelAvatar(
+            channel = channelLogin,
+            profile = ChannelAvatarRepository.cached(channelLogin),
+            size = 48.dp,
+            modifier = Modifier.clearAndSetSemantics {},
+        )
+        Column {
+            Text(
+                text = channelName,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.chat_rules_title),
+                style = MaterialTheme.typography.titleLarge,
+            )
         }
     }
 }

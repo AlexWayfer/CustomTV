@@ -19,15 +19,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatMessage
-import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
 @Composable
 internal fun ChatSubscriptionLine(
@@ -54,34 +50,8 @@ internal fun ChatSubscriptionLine(
     ) {
         buildAnnotatedString {
             appendInlineContent("subscription", "sub")
-            if (timestampText != null) {
-                withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = timestampSize)) {
-                    append(timestampText)
-                    append(" ")
-                }
-            }
-            val nameStart = text.indexOf(message.displayName, ignoreCase = true)
-            if (nameStart < 0 || message.displayName.isBlank()) {
-                withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = textSize)) {
-                    append(text)
-                }
-                return@buildAnnotatedString
-            }
-            withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = textSize)) {
-                append(text.substring(0, nameStart))
-            }
-            withStyle(
-                SpanStyle(
-                    color = nickColor,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = textSize,
-                ),
-            ) {
-                append(text.substring(nameStart, nameStart + message.displayName.length))
-            }
-            withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = textSize)) {
-                append(text.substring(nameStart + message.displayName.length))
-            }
+            appendChatTimestamp(timestampText, timestampSize)
+            appendWithChatterName(text, message.displayName, nickColor, textSize)
         }
     }
     Text(

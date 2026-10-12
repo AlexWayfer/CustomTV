@@ -10,18 +10,19 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONArray
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
+
+private val PUBSUB_PING_INTERVAL = 60.seconds
 
 class TwitchPubSubClient(
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .pingInterval(30, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .build(),
+    private val client: OkHttpClient = pushSocketHttpClient(),
 ) {
     private val _messages = MutableSharedFlow<ChatMessage>(
         extraBufferCapacity = 64,
@@ -83,7 +84,8 @@ class TwitchPubSubClient(
         val normalized = channelId.trim()
         if (normalized.isEmpty()) return
         val token = authToken?.takeIf { it.isNotBlank() }
-        if (this.channelId == normalized && this.authToken == token && webSocket != null && !closedByUser) return
+        val sameLogin = this.channelId == normalized && this.authToken == token
+        if (sameLogin && webSocket != null && !closedByUser) return
         closedByUser = false
         this.channelId = normalized
         this.authToken = token
@@ -164,8 +166,8 @@ class TwitchPubSubClient(
                             webSocket.send("""{"type":"PING"}""")
                         }
                     },
-                    60,
-                    60,
+                    PUBSUB_PING_INTERVAL.inWholeSeconds,
+                    PUBSUB_PING_INTERVAL.inWholeSeconds,
                     TimeUnit.SECONDS,
                 )
             } catch (_: RejectedExecutionException) {
@@ -175,7 +177,7 @@ class TwitchPubSubClient(
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             if (webSocket != this@TwitchPubSubClient.webSocket) return
-            val type = runCatching { JSONObject(text).optString("type") }.getOrNull()
+            val type = text.toJsonObjectOrNull()?.optString("type")
             when (type) {
                 "PING" -> webSocket.send("""{"type":"PONG"}""")
                 "RECONNECT" -> {
@@ -183,32 +185,10 @@ class TwitchPubSubClient(
                     reconnect()
                 }
                 "RESPONSE" -> {
-                    val error = runCatching { JSONObject(text).optString("error") }.getOrNull().orEmpty()
+                    val error = text.toJsonObjectOrNull()?.optString("error").orEmpty()
                     if (error.isNotBlank()) AppLog.w(TAG, "pubsub listen rejected $error")
                 }
-                "MESSAGE" -> {
-                    val topic = runCatching {
-                        JSONObject(text).optJSONObject("data")?.optString("topic").orEmpty()
-                    }.getOrDefault("")
-                    when {
-                        topic.startsWith("pinned-chat-updates-v1.") ->
-                            PinnedChatParser.parseFrame(text)?.let { _pins.tryEmit(it) }
-                        topic.startsWith("raid.") ->
-                            parseRaidPubSubFrame(text, System.currentTimeMillis())?.let { _raids.tryEmit(it) }
-                        topic.startsWith("polls.") -> {
-                            val poll = ChannelPollParser.parseFrame(text, System.currentTimeMillis())
-                            logPollFrame(text, poll)
-                            poll?.let { _polls.tryEmit(it) }
-                        }
-                        topic.startsWith("predictions-channel-v1.") ->
-                            ChannelPredictionParser.parseFrame(text, System.currentTimeMillis())
-                                ?.let { _predictions.tryEmit(it) }
-                        topic.startsWith("hype-train-events-v2.") ->
-                            HypeTrainParser.parseFrame(text, System.currentTimeMillis())?.let { _hypeTrains.tryEmit(it) }
-                        else ->
-                            ChannelPointsPubSubParser.parseFrame(text)?.let { _messages.tryEmit(it) }
-                    }
-                }
+                "MESSAGE" -> dispatchMessage(text)
             }
         }
 
@@ -227,6 +207,30 @@ class TwitchPubSubClient(
             if (webSocket != this@TwitchPubSubClient.webSocket) return
             AppLog.w(TAG, "pubsub failed ${t.javaClass.simpleName}")
             handleDisconnect()
+        }
+    }
+
+    /** Hands a `MESSAGE` frame to the flow of its topic; any other topic carries a channel points redemption. */
+    private fun dispatchMessage(text: String) {
+        val topic = text.toJsonObjectOrNull()?.optJSONObject("data")?.optString("topic").orEmpty()
+        when {
+            topic.startsWith("pinned-chat-updates-v1.") ->
+                PinnedChatParser.parseFrame(text)?.let { _pins.tryEmit(it) }
+            topic.startsWith("raid.") ->
+                parseRaidPubSubFrame(text, System.currentTimeMillis())?.let { _raids.tryEmit(it) }
+            topic.startsWith("polls.") -> {
+                val poll = ChannelPollParser.parseFrame(text, System.currentTimeMillis())
+                logPollFrame(text, poll)
+                poll?.let { _polls.tryEmit(it) }
+            }
+            topic.startsWith("predictions-channel-v1.") ->
+                ChannelPredictionParser.parseFrame(text, System.currentTimeMillis())
+                    ?.let { _predictions.tryEmit(it) }
+            topic.startsWith("hype-train-events-v2.") ->
+                HypeTrainParser.parseFrame(text, System.currentTimeMillis())
+                    ?.let { _hypeTrains.tryEmit(it) }
+            else ->
+                ChannelPointsPubSubParser.parseFrame(text)?.let { _messages.tryEmit(it) }
         }
     }
 

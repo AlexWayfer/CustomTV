@@ -6,11 +6,6 @@ import coil.request.ImageRequest
 import name.alexwayfer.customtv.data.FollowedChannel
 import name.alexwayfer.customtv.player.StreamMediaArtwork
 
-internal data class FollowedSections(
-    val live: List<FollowedChannel>,
-    val offline: List<FollowedChannel>,
-)
-
 /** Live channels and offline ones, each in the list's order. */
 internal fun followedSections(channels: List<FollowedChannel>): FollowedSections {
     val (live, offline) = channels.partition { it.isLive }

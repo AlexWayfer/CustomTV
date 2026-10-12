@@ -3,6 +3,20 @@ package name.alexwayfer.customtv.ui.watch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+// A minimized player dragged up stays in the corner unless it rises past this, or is flung up faster.
+private const val STAY_MINIMIZED_PROGRESS = 0.55f
+private const val EXPAND_FLING_VELOCITY = 2800f
+
+// A mini player swiped aside closes past this share of its width, or when flung that way faster.
+private const val CLOSE_SWIPE_SHARE = 0.38f
+private const val CLOSE_FLING_VELOCITY = 1100f
+
+/** The share of its width a swiped mini player goes before it is gone from sight. */
+private const val SWIPE_FADE_SHARE = 0.45f
+
+/** A player this close to the corner is expanded by a tap. */
+private const val TAP_EXPANDS_PROGRESS = 0.85f
+
 internal data class MiniPlayerBounds(
     val x: Int,
     val y: Int,
@@ -37,7 +51,7 @@ internal fun shouldStayMinimized(
     velocityY: Float,
     startedMinimized: Boolean,
 ): Boolean = if (startedMinimized) {
-    progress > 0.55f && velocityY > -2800f
+    progress > STAY_MINIMIZED_PROGRESS && velocityY > -EXPAND_FLING_VELOCITY
 } else {
     progress > MINIMIZE_DRAG_PROGRESS || velocityY > MINIMIZE_FLING_VELOCITY
 }
@@ -55,12 +69,12 @@ internal fun shouldCloseMiniPlayer(
 ): Boolean {
     val range = playerWidthPx.coerceAtLeast(1f)
     val sameDirection = offsetX * velocityX > 0f
-    return abs(offsetX) > range * 0.38f ||
-        (sameDirection && abs(velocityX) > 1100f)
+    return abs(offsetX) > range * CLOSE_SWIPE_SHARE ||
+        (sameDirection && abs(velocityX) > CLOSE_FLING_VELOCITY)
 }
 
 internal fun miniPlayerSwipeAlpha(offsetX: Float, playerWidthPx: Float): Float =
-    (1f - abs(offsetX) / (playerWidthPx * 0.45f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+    (1f - abs(offsetX) / (playerWidthPx * SWIPE_FADE_SHARE).coerceAtLeast(1f)).coerceIn(0f, 1f)
 
 internal fun miniPlayerVisualState(
     progress: Float,
@@ -76,24 +90,32 @@ internal fun miniPlayerVisualState(
     )
 }
 
+/**
+ * The mini player's width and its gap from the screen's edges, and the system bars the player keeps clear of: the
+ * full one sits under the status bar, the mini one above the navigation bar.
+ */
+internal data class MiniPlayerDock(
+    val miniWidthPx: Float,
+    val miniPaddingPx: Float,
+    val statusBarTopPx: Float,
+    val navigationBarBottomPx: Float,
+)
+
 internal fun miniPlayerBounds(
     fullWidthPx: Float,
     fullHeightPx: Float,
-    miniWidthPx: Float,
-    miniPaddingPx: Float,
-    statusBarTopPx: Float,
-    navigationBarBottomPx: Float,
+    dock: MiniPlayerDock,
     progress: Float,
 ): MiniPlayerBounds {
     fun lerp(start: Float, stop: Float): Float = start * (1f - progress) + stop * progress
 
-    val miniHeightPx = miniWidthPx * 9f / 16f
-    val width = lerp(fullWidthPx, miniWidthPx).roundToInt()
+    val miniHeightPx = dock.miniWidthPx * 9f / 16f
+    val width = lerp(fullWidthPx, dock.miniWidthPx).roundToInt()
     val height = (width * 9f / 16f).roundToInt()
-    val x = (fullWidthPx - lerp(0f, miniPaddingPx) - width).roundToInt()
+    val x = (fullWidthPx - lerp(0f, dock.miniPaddingPx) - width).roundToInt()
     val y = lerp(
-        statusBarTopPx,
-        fullHeightPx - navigationBarBottomPx - miniPaddingPx - miniHeightPx,
+        dock.statusBarTopPx,
+        fullHeightPx - dock.navigationBarBottomPx - dock.miniPaddingPx - miniHeightPx,
     ).roundToInt()
     return MiniPlayerBounds(x = x, y = y, width = width, height = height)
 }
@@ -103,7 +125,7 @@ internal fun miniPlayerBounds(
  * on to the player, so it does not toggle the player's own controls on the way.
  */
 internal fun playerTapExpands(inPictureInPicture: Boolean, compactSettled: Boolean, progress: Float): Boolean =
-    !inPictureInPicture && (compactSettled || progress > 0.85f)
+    !inPictureInPicture && (compactSettled || progress > TAP_EXPANDS_PROGRESS)
 
 /**
  * The player's controls hide as soon as a full player starts into the corner, not once it gets there. A mini player

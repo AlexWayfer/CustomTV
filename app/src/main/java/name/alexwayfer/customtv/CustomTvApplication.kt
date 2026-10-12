@@ -27,8 +27,13 @@ import name.alexwayfer.customtv.data.RecentChannelsStore
 import name.alexwayfer.customtv.data.StreamStartAlertsController
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
+import name.alexwayfer.customtv.telegram.TelegramConfig
 import name.alexwayfer.customtv.telegram.TelegramSession
 import name.alexwayfer.customtv.update.scheduleAppUpdateChecks
+
+/** The share of the app's memory that decoded images may hold. */
+private const val IMAGE_MEMORY_CACHE_SHARE = 0.15
+private const val IMAGE_DISK_CACHE_BYTES = 64L * 1024 * 1024
 
 class CustomTvApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -51,13 +56,15 @@ class CustomTvApplication : Application() {
         if (BuildConfig.TELEGRAM_API_HASH.isNotBlank()) {
             TelegramSession.start(
                 this,
-                BuildConfig.TELEGRAM_API_ID,
-                BuildConfig.TELEGRAM_API_HASH,
-                BuildConfig.TELEGRAM_OPEN_CHAT_ID,
-                BuildConfig.TELEGRAM_OPEN_TOPIC_ID,
-                BuildConfig.TELEGRAM_PREMIUM_CHAT_ID,
-                BuildConfig.TELEGRAM_PREMIUM_TOPIC_ID,
-                BuildConfig.PREMIUM,
+                TelegramConfig(
+                    apiId = BuildConfig.TELEGRAM_API_ID,
+                    apiHash = BuildConfig.TELEGRAM_API_HASH,
+                    openChatId = BuildConfig.TELEGRAM_OPEN_CHAT_ID,
+                    openTopicId = BuildConfig.TELEGRAM_OPEN_TOPIC_ID,
+                    premiumChatId = BuildConfig.TELEGRAM_PREMIUM_CHAT_ID,
+                    premiumTopicId = BuildConfig.TELEGRAM_PREMIUM_TOPIC_ID,
+                    premiumEdition = BuildConfig.PREMIUM,
+                ),
             )
             scheduleAppUpdateChecks(this)
         }
@@ -73,13 +80,13 @@ class CustomTvApplication : Application() {
                 }
                 .memoryCache {
                     MemoryCache.Builder(this)
-                        .maxSizePercent(0.15)
+                        .maxSizePercent(IMAGE_MEMORY_CACHE_SHARE)
                         .build()
                 }
                 .diskCache {
                     DiskCache.Builder()
                         .directory(cacheDir.resolve("coil_avatars"))
-                        .maxSizeBytes(64L * 1024 * 1024)
+                        .maxSizeBytes(IMAGE_DISK_CACHE_BYTES)
                         .build()
                 }
                 .build(),

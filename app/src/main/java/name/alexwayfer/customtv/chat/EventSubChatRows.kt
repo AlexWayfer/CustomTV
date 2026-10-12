@@ -4,15 +4,15 @@ import androidx.compose.ui.graphics.Color
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** A chat row built from an EventSub chat message, for messages that IRC does not deliver. */
+/** A chat row built from an EventSub event's chat `message`, for messages that IRC does not deliver. */
 internal fun eventSubChatRow(
     id: String,
     event: JSONObject,
-    message: JSONObject,
     kind: ChatEventKind,
     knownColors: Map<String, Color>,
     timestampMillis: Long,
 ): ChatMessage? {
+    val message = event.optJSONObject("message") ?: return null
     val login = event.eventSubText("user_login")?.lowercase() ?: return null
     val displayName = event.eventSubText("user_name") ?: login
     val parts = eventSubMessageParts(message.optJSONArray("fragments"), message.optString("text"))

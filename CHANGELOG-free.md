@@ -1,10 +1,34 @@
 # CustomTV (free version)
 
+## v1.7.0 (2026-10-13)
+
+*   Add a long-press menu to links in chat
+*   Open the message menu with a long press on badges
+*   Mark the reply target in the thread
+*   Unfold a selected reply upward at the bottom of the chat
+*   Pause chat auto-scroll while you touch a message or its menu is open
+*   Keep the keyboard up under the message and link menus
+*   Hide the stream info while the keyboard is open
+*   Lower the chat message field and the thread header
+*   Show a spinner and retry while the player recovers from an error
+*   Retry loading the followed channels and warn when the list is out of date
+*   Vibrate on pull to refresh
+*   Show the latest found version when no update is found
+*   Show the button that reopens the login page only after you return to the app
+*   Hide the follow button on your own channel
+*   Fix the audience plaque overlapping the player's buttons
+*   Fix taps around the audience plaque pausing a recording
+*   Fix long presses and swipes on messages in an active chat
+*   Fix the stream info opening without the player controls after picture-in-picture
+*   Fix a message being sent to another channel after a raid
+*   Fix the updates check hanging until the app restarts
+
 ## v1.6.0 (2026-10-10)
 
 *   Add a sleep timer that closes the player
 *   Add icons to the settings
 *   Report chatters and channels on Twitch
+*   Show a moderator's warning in the chat
 *   Put a circle under the reply swipe arrow
 *   Enter picture-in-picture when another app opens from a notification
 *   Support phones with 32-bit Android

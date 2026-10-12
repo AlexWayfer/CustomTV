@@ -104,13 +104,17 @@ private fun keepTwitchEmote(
     val existingTier = tierByKey[key]
     val existing = chosen[key]
     val betterImage = existing != null && smileyImageRank(emote) > smileyImageRank(existing)
-    if (existingTier == null || tier > existingTier || (tier == existingTier && betterImage)) {
+    val sameTierBetterImage = tier == existingTier && betterImage
+    if (existingTier == null || tier > existingTier || sameTierBetterImage) {
         chosen[key] = named
         tierByKey[key] = tier
     }
 }
 
+/** Puts an `emotesv2_` image ahead of any older one, whatever the length of their IDs. */
+private const val EMOTES_V2_RANK = 100
+
 private fun smileyImageRank(emote: TwitchCatalogEmote): Int {
     val id = emote.url.substringAfter("/emoticons/v2/", "").substringBefore("/")
-    return id.length + if (id.startsWith("emotesv2_")) 100 else 0
+    return id.length + if (id.startsWith("emotesv2_")) EMOTES_V2_RANK else 0
 }

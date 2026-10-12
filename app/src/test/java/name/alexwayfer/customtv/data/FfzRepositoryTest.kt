@@ -38,7 +38,13 @@ class FfzRepositoryTest {
     @Test
     fun parseRoomBadgesFallsBackToSingleModeratorUrl() {
         val badges = FfzRepository.parseRoomBadges(
-            """{"room": {"moderator_badge": "https://cdn.frankerfacez.com/room-badge/mod/id/1/v/a/1", "mod_urls": null, "vip_badge": null}}""",
+            """
+            {"room": {
+              "moderator_badge": "https://cdn.frankerfacez.com/room-badge/mod/id/1/v/a/1",
+              "mod_urls": null,
+              "vip_badge": null
+            }}
+            """.trimIndent(),
         )
 
         assertEquals(mapOf("moderator/1" to "https://cdn.frankerfacez.com/room-badge/mod/id/1/v/a/1"), badges)
@@ -53,64 +59,65 @@ class FfzRepositoryTest {
         assertEquals(emptyMap<String, String>(), badges)
     }
 
+    /** FFZ's global sets: a hidden emote, one with two scales, a hidden modifier, and one outside the defaults. */
+    private val globalBody = """
+        {
+          "default_sets": [3],
+          "sets": {
+            "3": {
+              "emoticons": [
+                {
+                  "name": "ZrehplaR",
+                  "hidden": true,
+                  "modifier": false,
+                  "width": 32,
+                  "height": 32,
+                  "urls": { "1": "https://cdn.frankerfacez.com/emote/hidden/1" }
+                },
+                {
+                  "name": "OMEGALUL",
+                  "hidden": false,
+                  "modifier": false,
+                  "width": 32,
+                  "height": 32,
+                  "urls": {
+                    "1": "https://cdn.frankerfacez.com/emote/omega/1",
+                    "2": "https://cdn.frankerfacez.com/emote/omega/2"
+                  }
+                },
+                {
+                  "name": "ffzW",
+                  "hidden": true,
+                  "modifier": true,
+                  "modifier_flags": 9,
+                  "width": 32,
+                  "height": 32,
+                  "animated": {
+                    "2": "https://cdn.frankerfacez.com/emote/ffzw/animated/2"
+                  },
+                  "urls": { "2": "https://cdn.frankerfacez.com/emote/ffzw/2" }
+                }
+              ]
+            },
+            "99": {
+              "emoticons": [
+                {
+                  "name": "notInDefault",
+                  "hidden": false,
+                  "modifier": false,
+                  "width": 32,
+                  "height": 32,
+                  "urls": { "1": "https://cdn.frankerfacez.com/emote/other/1" }
+                }
+              ]
+            }
+          }
+        }
+    """.trimIndent()
+
     @Test
     fun parseGlobalUsesDefaultSetsSkipsHiddenAndPrefersAnimatedScale() {
-        val emotes = FfzRepository.parseGlobal(
-            """
-            {
-              "default_sets": [3],
-              "sets": {
-                "3": {
-                  "emoticons": [
-                    {
-                      "name": "ZrehplaR",
-                      "hidden": true,
-                      "modifier": false,
-                      "width": 32,
-                      "height": 32,
-                      "urls": { "1": "https://cdn.frankerfacez.com/emote/hidden/1" }
-                    },
-                    {
-                      "name": "OMEGALUL",
-                      "hidden": false,
-                      "modifier": false,
-                      "width": 32,
-                      "height": 32,
-                      "urls": {
-                        "1": "https://cdn.frankerfacez.com/emote/omega/1",
-                        "2": "https://cdn.frankerfacez.com/emote/omega/2"
-                      }
-                    },
-                    {
-                      "name": "ffzW",
-                      "hidden": true,
-                      "modifier": true,
-                      "modifier_flags": 9,
-                      "width": 32,
-                      "height": 32,
-                      "animated": {
-                        "2": "https://cdn.frankerfacez.com/emote/ffzw/animated/2"
-                      },
-                      "urls": { "2": "https://cdn.frankerfacez.com/emote/ffzw/2" }
-                    }
-                  ]
-                },
-                "99": {
-                  "emoticons": [
-                    {
-                      "name": "notInDefault",
-                      "hidden": false,
-                      "modifier": false,
-                      "width": 32,
-                      "height": 32,
-                      "urls": { "1": "https://cdn.frankerfacez.com/emote/other/1" }
-                    }
-                  ]
-                }
-              }
-            }
-            """.trimIndent(),
-        )
+        val emotes = FfzRepository.parseGlobal(globalBody)
         assertNull(emotes["ZrehplaR"])
         assertNull(emotes["notInDefault"])
         assertEquals("https://cdn.frankerfacez.com/emote/omega/2", emotes.getValue("OMEGALUL").url)
@@ -120,7 +127,7 @@ class FfzRepositoryTest {
             emotes.getValue("ffzW").url,
         )
         assertFalse(emotes.getValue("ffzW").overlay)
-        assertEquals(2f, emotes.getValue("ffzW").effects!!.widthMultiplier, 0.001f)
+        assertEquals(2f, checkNotNull(emotes.getValue("ffzW").effects).widthMultiplier, 0.001f)
     }
 
     @Test

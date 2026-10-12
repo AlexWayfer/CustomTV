@@ -1,7 +1,6 @@
 package name.alexwayfer.customtv.data
 
 import name.alexwayfer.customtv.auth.httpUrl
-import org.json.JSONObject
 
 /** One About panel a channel set up: any of a title, an image that may link somewhere, and Markdown text. */
 internal data class ChannelPanel(
@@ -26,7 +25,7 @@ internal const val CHANNEL_PANELS_QUERY =
  * nothing to show is skipped.
  */
 internal fun parseChannelPanels(body: String): ChannelPanels? {
-    val user = runCatching { JSONObject(body) }.getOrNull()
+    val user = body.toJsonObjectOrNull()
         ?.optJSONObject("data")
         ?.optJSONObject("user")
         ?: return null
@@ -44,14 +43,9 @@ internal fun parseChannelPanels(body: String): ChannelPanels? {
             title = item.text("title"),
             imageUrl = httpUrl(item.optString("imageURL")),
             linkUrl = httpUrl(item.optString("linkURL")),
-            description = item.text("description")?.trim()?.takeIf { it.isNotEmpty() },
+            description = item.trimmedText("description"),
         )
         panel.takeIf { it.title != null || it.imageUrl != null || it.description != null }
     }
     return ChannelPanels(panels, extensions)
-}
-
-private fun JSONObject.text(name: String): String? {
-    if (!has(name) || isNull(name)) return null
-    return optString(name).takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
 }

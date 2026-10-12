@@ -30,58 +30,58 @@ class ChannelProfileParserTest {
         assertNull(parsed.profile.viewerCount)
     }
 
+    /** A live channel in a collaboration, with its own and the shared viewers, tags, and rewards. */
+    private val liveProfileBody = """
+        {"data":{"user":{
+          "id":"42",
+          "login":"Streamer",
+          "displayName":"Streamer",
+          "profileImageURL":"https://avatar",
+          "primaryColorHex":"#111111",
+          "stream":{
+            "title":"Live title",
+            "createdAt":"2025-01-02T03:04:05Z",
+            "archiveVideo":{"id":"video-42"},
+            "viewersCount":100,
+            "collaborationViewersCount":250,
+            "game":{"name":"Game"},
+            "freeformTags":[
+              {"name":"English"},
+              {"name":" "},
+              {"name":"DropsEnabled"}
+            ]
+          },
+          "channel":{
+            "collaboration":{"collaborators":[
+              {"status":"ACTIVE","user":{"login":"Streamer"}},
+              {"status":"ACTIVE","user":{"login":"a"}},
+              {"status":"ACTIVE","user":{"login":"b"}},
+              {"status":"INVITED","user":{"login":"c"}},
+              {"status":"ACTIVE","user":{"login":"d"}},
+              {"status":"ACTIVE","user":{"login":"e"}}
+            ]},
+            "communityPointsSettings":{
+            "image":{"url":"https://points-1.png"},
+            "automaticRewards":[{
+              "type":"SEND_HIGHLIGHTED_MESSAGE",
+              "defaultCost":300,
+              "backgroundColor":"#222222"
+            }],
+            "customRewards":[{
+              "id":"reward-1",
+              "title":"Reward",
+              "prompt":"Prompt",
+              "cost":500,
+              "backgroundColor":"#333333",
+              "defaultImage":{"url":"https://reward-1.png"}
+            }]
+          }}
+        }}}
+    """.trimIndent()
+
     @Test
     fun liveProfileKeepsOwnAndSharedViewerCountsSeparateAndParsesRewards() {
-        val parsed = ChannelProfileParser.parse(
-            body = """
-                {"data":{"user":{
-                  "id":"42",
-                  "login":"Streamer",
-                  "displayName":"Streamer",
-                  "profileImageURL":"https://avatar",
-                  "primaryColorHex":"#111111",
-                  "stream":{
-                    "title":"Live title",
-                    "createdAt":"2025-01-02T03:04:05Z",
-                    "archiveVideo":{"id":"video-42"},
-                    "viewersCount":100,
-                    "collaborationViewersCount":250,
-                    "game":{"name":"Game"},
-                    "freeformTags":[
-                      {"name":"English"},
-                      {"name":" "},
-                      {"name":"DropsEnabled"}
-                    ]
-                  },
-                  "channel":{
-                    "collaboration":{"collaborators":[
-                      {"status":"ACTIVE","user":{"login":"Streamer"}},
-                      {"status":"ACTIVE","user":{"login":"a"}},
-                      {"status":"ACTIVE","user":{"login":"b"}},
-                      {"status":"INVITED","user":{"login":"c"}},
-                      {"status":"ACTIVE","user":{"login":"d"}},
-                      {"status":"ACTIVE","user":{"login":"e"}}
-                    ]},
-                    "communityPointsSettings":{
-                    "image":{"url":"https://points-1.png"},
-                    "automaticRewards":[{
-                      "type":"SEND_HIGHLIGHTED_MESSAGE",
-                      "defaultCost":300,
-                      "backgroundColor":"#222222"
-                    }],
-                    "customRewards":[{
-                      "id":"reward-1",
-                      "title":"Reward",
-                      "prompt":"Prompt",
-                      "cost":500,
-                      "backgroundColor":"#333333",
-                      "defaultImage":{"url":"https://reward-1.png"}
-                    }]
-                  }}
-                }}}
-            """.trimIndent(),
-            requestedLogin = "ignored",
-        )!!
+        val parsed = checkNotNull(ChannelProfileParser.parse(body = liveProfileBody, requestedLogin = "ignored"))
 
         assertEquals("streamer", parsed.profile.login)
         assertTrue(parsed.profile.isLive)

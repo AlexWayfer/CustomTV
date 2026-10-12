@@ -22,9 +22,17 @@ class ProfileDetailsTest {
     fun oneAnswerFeedsTheCardAndTheProfile() {
         val details = parseProfileDetails(
             """
-            {"data":{"user":{"id":"7","login":"ada","displayName":"Ada","profileImageURL":"https://example/a.png",
-            "bannerImageURL":"https://example/b.png","description":" Hi ","createdAt":"2015-07-21T00:00:00Z",
-            "followers":{"totalCount":12},"channel":{"socialMedias":[{"name":"x","title":"X","url":"https://x.com/ada"}]}}}}
+            {"data":{"user":{
+              "id":"7",
+              "login":"ada",
+              "displayName":"Ada",
+              "profileImageURL":"https://example/a.png",
+              "bannerImageURL":"https://example/b.png",
+              "description":" Hi ",
+              "createdAt":"2015-07-21T00:00:00Z",
+              "followers":{"totalCount":12},
+              "channel":{"socialMedias":[{"name":"x","title":"X","url":"https://x.com/ada"}]}
+            }}}
             """.trimIndent(),
             fallbackLogin = "ada",
         )!!
@@ -50,7 +58,13 @@ class ProfileDetailsTest {
     @Test
     fun aLiveChannelHasNoLastLiveDate() {
         val details = parseProfileDetails(
-            """{"data":{"user":{"login":"ada","stream":{"id":"1"},"lastBroadcast":{"startedAt":"2023-08-08T00:00:00Z"}}}}""",
+            """
+            {"data":{"user":{
+              "login":"ada",
+              "stream":{"id":"1"},
+              "lastBroadcast":{"startedAt":"2023-08-08T00:00:00Z"}
+            }}}
+            """.trimIndent(),
             fallbackLogin = "ada",
         )!!
         assertNull(details.lastLiveMillis)

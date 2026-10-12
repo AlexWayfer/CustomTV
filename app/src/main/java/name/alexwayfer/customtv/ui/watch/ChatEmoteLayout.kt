@@ -3,7 +3,7 @@ package name.alexwayfer.customtv.ui.watch
 import name.alexwayfer.customtv.chat.ChatPart
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 
-internal const val EmoteGapEm = 0.18f
+internal const val EMOTE_GAP_EM = 0.18f
 
 internal fun isWhitespaceBetweenEmotes(parts: List<ChatPart>, index: Int): Boolean {
     val part = parts.getOrNull(index) as? ChatPart.Text ?: return false
@@ -33,5 +33,5 @@ internal fun stackedEmoteSlotAspect(
 )
 
 internal fun emoteGapWidth(part: ChatPart.Text, next: ChatPart.Emote): Float {
-    return if (part.text.all { it.isWhitespace() } && next.effects.removeSpaceBefore) 0f else EmoteGapEm
+    return if (part.text.all { it.isWhitespace() } && next.effects.removeSpaceBefore) 0f else EMOTE_GAP_EM
 }

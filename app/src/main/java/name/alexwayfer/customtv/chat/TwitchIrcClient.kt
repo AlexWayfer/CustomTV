@@ -14,6 +14,18 @@ import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
+/** The log tag of the chat connection. */
+internal const val CHAT_IRC_TAG = "ChatIrc"
+
+/** The commands that bring a chat row, each with its parser. */
+private val CHAT_LINE_PARSERS: Map<String, (String) -> ChatMessage?> = mapOf(
+    "PRIVMSG" to IrcMessageParser::parsePrivMsg,
+    "USERNOTICE" to IrcMessageParser::parseUserNotice,
+    "NOTICE" to IrcMessageParser::parseNotice,
+    "CLEARMSG" to IrcMessageParser::parseClearMsg,
+    "CLEARCHAT" to IrcMessageParser::parseClearChat,
+)
+
 class TwitchIrcClient(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .pingInterval(SOCKET_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -40,7 +52,7 @@ class TwitchIrcClient(
 
     fun connect(channelLogin: String) {
         val normalized = channelLogin.lowercase().removePrefix("#")
-        AppLog.i(TAG, "connect $normalized")
+        AppLog.i(CHAT_IRC_TAG, "connect $normalized")
         closedByUser = false
         val sameChannel = channel == normalized
         disconnectSocket()
@@ -51,14 +63,14 @@ class TwitchIrcClient(
     }
 
     fun pause() {
-        AppLog.i(TAG, "pause")
+        AppLog.i(CHAT_IRC_TAG, "pause")
         closedByUser = true
         disconnectSocket()
         _state.value = ChatConnectionState.Disconnected
     }
 
     fun disconnect() {
-        AppLog.i(TAG, "disconnect")
+        AppLog.i(CHAT_IRC_TAG, "disconnect")
         closedByUser = true
         channel = null
         disconnectSocket()
@@ -81,7 +93,7 @@ class TwitchIrcClient(
 
     private inner class SocketListener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            AppLog.i(TAG, "socket open")
+            AppLog.i(CHAT_IRC_TAG, "socket open")
             val nick = "justinfan${Random.nextInt(10_000, 99_999)}"
             webSocket.send("CAP REQ :twitch.tv/tags twitch.tv/commands")
             webSocket.send("PASS SCHMOOPIIE")
@@ -103,13 +115,13 @@ class TwitchIrcClient(
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (webSocket != this@TwitchIrcClient.webSocket) return
-            AppLog.i(TAG, "socket closed code=$code reason=$reason")
+            AppLog.i(CHAT_IRC_TAG, "socket closed code=$code reason=$reason")
             handleDisconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             if (webSocket != this@TwitchIrcClient.webSocket) return
-            AppLog.w(TAG, "socket failed", t)
+            AppLog.w(CHAT_IRC_TAG, "socket failed", t)
             handleDisconnect()
         }
     }
@@ -120,56 +132,41 @@ class TwitchIrcClient(
             webSocket.send(if (payload.isEmpty()) "PONG" else "PONG $payload")
             return
         }
-        val parsed = IrcMessageParser.parseLine(line) ?: return
+        val parsed = IrcLineParser.parse(line) ?: return
         when (parsed.command) {
             "001" -> {
                 val current = channel ?: return
-                AppLog.i(TAG, "registered, joining #$current")
+                AppLog.i(CHAT_IRC_TAG, "registered, joining #$current")
                 webSocket.send("JOIN #$current")
                 _state.value = ChatConnectionState.Connected
-            }
-            "PRIVMSG" -> {
-                IrcMessageParser.parsePrivMsg(line)?.let { _messages.tryEmit(it) }
-            }
-            "USERNOTICE" -> {
-                IrcMessageParser.parseUserNotice(line)?.let { _messages.tryEmit(it) }
-            }
-            "NOTICE" -> {
-                IrcMessageParser.parseNotice(line)?.let { _messages.tryEmit(it) }
-            }
-            "CLEARMSG" -> {
-                IrcMessageParser.parseClearMsg(line)?.let { _messages.tryEmit(it) }
-            }
-            "CLEARCHAT" -> {
-                IrcMessageParser.parseClearChat(line)?.let { _messages.tryEmit(it) }
             }
             "ROOMSTATE" -> {
                 _roomModes.value = chatRoomModesAfter(_roomModes.value, parsed.tags)
             }
             "RECONNECT" -> {
-                AppLog.i(TAG, "server requested reconnect")
+                AppLog.i(CHAT_IRC_TAG, "server requested reconnect")
                 _state.value = ChatConnectionState.Reconnecting
             }
+            else -> CHAT_LINE_PARSERS[parsed.command]?.invoke(line)?.let { _messages.tryEmit(it) }
         }
     }
 
     private fun handleDisconnect() {
         if (closedByUser) {
-            AppLog.i(TAG, "closed")
+            AppLog.i(CHAT_IRC_TAG, "closed")
             _state.value = ChatConnectionState.Disconnected
             return
         }
         if (channel != null) {
-            AppLog.i(TAG, "reconnecting")
+            AppLog.i(CHAT_IRC_TAG, "reconnecting")
             _state.value = ChatConnectionState.Reconnecting
         } else {
-            AppLog.i(TAG, "disconnected")
+            AppLog.i(CHAT_IRC_TAG, "disconnected")
             _state.value = ChatConnectionState.Disconnected
         }
     }
 
     private companion object {
-        const val TAG = "ChatIrc"
         const val SOCKET_TIMEOUT_SECONDS = 10L
         const val IRC_URL = "wss://irc-ws.chat.twitch.tv:443"
     }

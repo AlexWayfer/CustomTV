@@ -3,9 +3,6 @@ package name.alexwayfer.customtv.data
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** A word or phrase that alerts like a mention: anywhere in the text, or only as a whole word. */
-data class KeywordPhrase(val text: String, val wholeWord: Boolean)
-
 internal fun keywordPhrasesAfterAdd(
     current: List<KeywordPhrase>,
     typed: String,
@@ -38,7 +35,7 @@ internal fun encodeKeywordPhrases(phrases: List<KeywordPhrase>): String {
 /** A plain string is a phrase saved before the whole-word choice existed; it matched whole words. */
 internal fun decodeKeywordPhrases(raw: String?): List<KeywordPhrase> {
     if (raw.isNullOrBlank()) return emptyList()
-    val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
+    val array = raw.toJsonArrayOrNull() ?: return emptyList()
     var phrases = emptyList<KeywordPhrase>()
     for (index in 0 until array.length()) {
         val item = array.optJSONObject(index)

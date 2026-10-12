@@ -150,7 +150,12 @@ internal class PlayerFullscreen(
      * drag left it until the screen turns ([releaseDrag]); short of it, slides the player back. [onToggle] runs when
      * the drag enters full screen (true) or leaves it (false).
      */
-    fun dragEnd(offsetY: Float, velocityY: Float, screenHeightPx: Float, onToggle: (entering: Boolean) -> Unit): Boolean {
+    fun dragEnd(
+        offsetY: Float,
+        velocityY: Float,
+        screenHeightPx: Float,
+        onToggle: (entering: Boolean) -> Unit,
+    ): Boolean {
         val gesture = dragGesture
         dragGesture = FullscreenDrag.None
         if (!gesture.ownsDrag) return false
@@ -262,7 +267,9 @@ internal fun BoxScope.PlayerFullscreenButton(
     fullscreen: PlayerFullscreen,
     visible: Boolean,
     controlBarHeightPx: Int?,
-    /** In full screen, how far the controls show, from 0 to 1: the button goes down with the chat buttons as they hide. */
+    /**
+     * In full screen, how far the controls show, from 0 to 1: the button goes down with the chat buttons as they hide.
+     */
     raised: () -> Float,
 ) {
     val bottom = if (fullscreen.active) {
@@ -328,6 +335,9 @@ internal val PlayerButtonSize = 44.dp
 internal val TwitchControlBarHeight = 40.dp
 private val IconSize = 26.dp
 
-/** How far a recording's buttons stay above its time labels: the room around the icon, so the whole button clears them. */
+/**
+ * How far a recording's buttons stay above its time labels: the room around the icon, so the whole button clears
+ * them.
+ */
 internal val RecordingButtonsGap = (PlayerButtonSize - IconSize) / 2
 private val DragSettleTween = tween<Float>(durationMillis = 220, easing = FastOutSlowInEasing)

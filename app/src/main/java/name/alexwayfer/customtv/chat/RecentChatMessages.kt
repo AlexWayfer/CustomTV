@@ -1,10 +1,12 @@
 package name.alexwayfer.customtv.chat
 
+import name.alexwayfer.customtv.data.HTTP_SERVER_ERROR
 import name.alexwayfer.customtv.data.sharedHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.diagnostics.AppLog
 import okhttp3.Request
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -22,7 +24,7 @@ private val recentChatHttp = sharedHttpClient.newBuilder()
  * such as an unknown channel, would fail the same way again.
  */
 internal fun recentChatRetryable(httpCode: Int?, failure: Exception?): Boolean = when {
-    httpCode != null -> httpCode >= 500
+    httpCode != null -> httpCode >= HTTP_SERVER_ERROR.first
     else -> failure is IOException
 }
 
@@ -43,31 +45,40 @@ internal suspend fun loadRecentChatMessages(channel: String): RecentChatLoadResu
 
 private class RecentChatAttempt(val result: RecentChatLoadResult, val retryable: Boolean = false)
 
-private fun fetchRecentChat(request: Request, attempt: Int): RecentChatAttempt {
-    try {
-        recentChatHttp.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                AppLog.w(TAG, "recent messages failed status=${response.code} (attempt $attempt)")
-                return RecentChatAttempt(
-                    RecentChatLoadResult(failed = true),
-                    retryable = recentChatRetryable(response.code, null),
-                )
-            }
-            val root = JSONObject(response.body.string())
-            val raw = root.optJSONArray("messages") ?: return RecentChatAttempt(RecentChatLoadResult())
-            return RecentChatAttempt(RecentChatLoadResult(buildList {
-                for (index in 0 until raw.length()) {
-                    raw.optString(index).takeIf { it.isNotBlank() }
-                        ?.let(IrcMessageParser::parsePrivMsg)
-                        ?.let(::add)
-                }
-            }.sortedBy { it.timestampMillis }.takeLast(RECENT_MESSAGE_COUNT)))
+private fun fetchRecentChat(request: Request, attempt: Int): RecentChatAttempt = try {
+    recentChatHttp.newCall(request).execute().use { response ->
+        if (response.isSuccessful) {
+            RecentChatAttempt(RecentChatLoadResult(parseRecentChat(response.body.string())))
+        } else {
+            AppLog.w(TAG, "recent messages failed status=${response.code} (attempt $attempt)")
+            RecentChatAttempt(
+                RecentChatLoadResult(failed = true),
+                retryable = recentChatRetryable(response.code, null),
+            )
         }
-    } catch (failure: Exception) {
-        AppLog.w(TAG, "recent messages failed: ${failure.javaClass.simpleName} (attempt $attempt)")
-        return RecentChatAttempt(
-            RecentChatLoadResult(failed = true),
-            retryable = recentChatRetryable(null, failure),
-        )
     }
+} catch (failure: IOException) {
+    failedRecentChat(failure, attempt)
+} catch (failure: JSONException) {
+    failedRecentChat(failure, attempt)
+}
+
+private fun failedRecentChat(failure: Exception, attempt: Int): RecentChatAttempt {
+    AppLog.w(TAG, "recent messages failed: ${failure.javaClass.simpleName} (attempt $attempt)")
+    return RecentChatAttempt(
+        RecentChatLoadResult(failed = true),
+        retryable = recentChatRetryable(null, failure),
+    )
+}
+
+/** The latest messages of the answer, oldest first; none when it has no list. */
+private fun parseRecentChat(body: String): List<ChatMessage> {
+    val raw = JSONObject(body).optJSONArray("messages") ?: return emptyList()
+    return buildList {
+        for (index in 0 until raw.length()) {
+            raw.optString(index).takeIf { it.isNotBlank() }
+                ?.let(IrcMessageParser::parsePrivMsg)
+                ?.let(::add)
+        }
+    }.sortedBy { it.timestampMillis }.takeLast(RECENT_MESSAGE_COUNT)
 }

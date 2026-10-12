@@ -10,52 +10,43 @@ import org.junit.Test
 class FullscreenChatSwipeTest {
     @Test
     fun aChatOnTheLeftSwipedLeftPastAThirdHides() {
-        assertEquals(FullscreenChatSwipeOutcome.Hide, fullscreenChatSwipeOutcome(-301f, 0f, chatOnLeft = true, chatWidthPx = 900))
+        assertEquals(FullscreenChatSwipeOutcome.Hide, outcome(-301f, 0f, chatOnLeft = true))
     }
 
     @Test
     fun aChatOnTheLeftSwipedRightPastAThirdMovesAcross() {
-        assertEquals(
-            FullscreenChatSwipeOutcome.MoveAcross,
-            fullscreenChatSwipeOutcome(301f, 0f, chatOnLeft = true, chatWidthPx = 900),
-        )
+        assertEquals(FullscreenChatSwipeOutcome.MoveAcross, outcome(301f, 0f, chatOnLeft = true))
     }
 
     @Test
     fun aChatOnTheRightMirrorsTheDirections() {
-        assertEquals(FullscreenChatSwipeOutcome.Hide, fullscreenChatSwipeOutcome(301f, 0f, chatOnLeft = false, chatWidthPx = 900))
-        assertEquals(
-            FullscreenChatSwipeOutcome.MoveAcross,
-            fullscreenChatSwipeOutcome(-301f, 0f, chatOnLeft = false, chatWidthPx = 900),
-        )
+        assertEquals(FullscreenChatSwipeOutcome.Hide, outcome(301f, 0f, chatOnLeft = false))
+        assertEquals(FullscreenChatSwipeOutcome.MoveAcross, outcome(-301f, 0f, chatOnLeft = false))
     }
 
     @Test
     fun aShortSwipeSpringsBack() {
-        assertEquals(FullscreenChatSwipeOutcome.Stay, fullscreenChatSwipeOutcome(-299f, 0f, chatOnLeft = true, chatWidthPx = 900))
-        assertEquals(FullscreenChatSwipeOutcome.Stay, fullscreenChatSwipeOutcome(0f, 0f, chatOnLeft = true, chatWidthPx = 900))
+        assertEquals(FullscreenChatSwipeOutcome.Stay, outcome(-299f, 0f, chatOnLeft = true))
+        assertEquals(FullscreenChatSwipeOutcome.Stay, outcome(0f, 0f, chatOnLeft = true))
     }
 
     @Test
     fun aFlingCountsInTheDirectionTheChatMoved() {
-        assertEquals(FullscreenChatSwipeOutcome.Hide, fullscreenChatSwipeOutcome(-20f, -3201f, chatOnLeft = true, chatWidthPx = 900))
-        assertEquals(
-            FullscreenChatSwipeOutcome.MoveAcross,
-            fullscreenChatSwipeOutcome(20f, 3201f, chatOnLeft = true, chatWidthPx = 900),
-        )
+        assertEquals(FullscreenChatSwipeOutcome.Hide, outcome(-20f, -3201f, chatOnLeft = true))
+        assertEquals(FullscreenChatSwipeOutcome.MoveAcross, outcome(20f, 3201f, chatOnLeft = true))
     }
 
     @Test
     fun aFlingBackTowardWhereTheChatStartedDoesNotCount() {
-        assertEquals(FullscreenChatSwipeOutcome.Stay, fullscreenChatSwipeOutcome(-20f, 3201f, chatOnLeft = true, chatWidthPx = 900))
+        assertEquals(FullscreenChatSwipeOutcome.Stay, outcome(-20f, 3201f, chatOnLeft = true))
     }
 
     @Test
     fun theChatFollowsOutToItsWidthAndAcrossToTheOtherSide() {
-        assertEquals(-900f, fullscreenChatSwipeOffset(-2000f, chatOnLeft = true, chatWidthPx = 900, travelPx = 1350), 0.001f)
-        assertEquals(1350f, fullscreenChatSwipeOffset(2000f, chatOnLeft = true, chatWidthPx = 900, travelPx = 1350), 0.001f)
-        assertEquals(900f, fullscreenChatSwipeOffset(2000f, chatOnLeft = false, chatWidthPx = 900, travelPx = 1350), 0.001f)
-        assertEquals(-1350f, fullscreenChatSwipeOffset(-2000f, chatOnLeft = false, chatWidthPx = 900, travelPx = 1350), 0.001f)
+        assertEquals(-900f, swipeOffset(-2000f, chatOnLeft = true), 0.001f)
+        assertEquals(1350f, swipeOffset(2000f, chatOnLeft = true), 0.001f)
+        assertEquals(900f, swipeOffset(2000f, chatOnLeft = false), 0.001f)
+        assertEquals(-1350f, swipeOffset(-2000f, chatOnLeft = false), 0.001f)
     }
 
     @Test
@@ -98,10 +89,20 @@ class FullscreenChatSwipeTest {
 
     @Test
     fun theComingChatStaysOnceAThirdIsInOrItIsFlungIn() {
-        assertTrue(fullscreenChatRevealShows(FullscreenChatSide.Right, offsetX = 599f, velocityX = 0f, chatWidthPx = 900))
-        assertFalse(fullscreenChatRevealShows(FullscreenChatSide.Right, offsetX = 601f, velocityX = 0f, chatWidthPx = 900))
-        assertTrue(fullscreenChatRevealShows(FullscreenChatSide.Right, offsetX = 880f, velocityX = -3201f, chatWidthPx = 900))
-        assertFalse(fullscreenChatRevealShows(FullscreenChatSide.Left, offsetX = -880f, velocityX = -3201f, chatWidthPx = 900))
-        assertTrue(fullscreenChatRevealShows(FullscreenChatSide.Left, offsetX = -599f, velocityX = 0f, chatWidthPx = 900))
+        assertTrue(revealShows(FullscreenChatSide.Right, offsetX = 599f))
+        assertFalse(revealShows(FullscreenChatSide.Right, offsetX = 601f))
+        assertTrue(revealShows(FullscreenChatSide.Right, offsetX = 880f, velocityX = -3201f))
+        assertFalse(revealShows(FullscreenChatSide.Left, offsetX = -880f, velocityX = -3201f))
+        assertTrue(revealShows(FullscreenChatSide.Left, offsetX = -599f))
     }
+
+    // A chat 900 px wide, with 1350 px to travel across the screen.
+    private fun outcome(offsetX: Float, velocityX: Float, chatOnLeft: Boolean) =
+        fullscreenChatSwipeOutcome(offsetX, velocityX, chatOnLeft = chatOnLeft, chatWidthPx = 900)
+
+    private fun swipeOffset(dragX: Float, chatOnLeft: Boolean) =
+        fullscreenChatSwipeOffset(dragX, chatOnLeft = chatOnLeft, chatWidthPx = 900, travelPx = 1350)
+
+    private fun revealShows(side: FullscreenChatSide, offsetX: Float, velocityX: Float = 0f) =
+        fullscreenChatRevealShows(side, offsetX = offsetX, velocityX = velocityX, chatWidthPx = 900)
 }

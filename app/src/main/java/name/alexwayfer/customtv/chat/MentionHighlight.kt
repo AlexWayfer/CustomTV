@@ -29,17 +29,17 @@ internal fun ChatMessage.isMentionableChat(): Boolean {
 
 internal fun textContainsNick(text: String, nick: String): Boolean {
     if (nick.isBlank() || text.isBlank()) return false
-    var from = 0
-    while (from <= text.length - nick.length) {
-        val index = text.indexOf(nick, from, ignoreCase = true)
-        if (index < 0) return false
-        val beforeOk = index == 0 || !text[index - 1].isNickChar()
-        val end = index + nick.length
-        val afterOk = end == text.length || !text[end].isNickChar()
-        if (beforeOk && afterOk) return true
-        from = index + 1
-    }
-    return false
+    var index = text.indexOf(nick, 0, ignoreCase = true)
+    while (index >= 0 && !wordAt(text, index, nick.length)) index = text.indexOf(nick, index + 1, ignoreCase = true)
+    return index >= 0
+}
+
+/** Whether the [length] characters at [index] of [text] are a whole word, not a part of a longer nick. */
+private fun wordAt(text: String, index: Int, length: Int): Boolean {
+    val end = index + length
+    val beforeOk = index == 0 || !text[index - 1].isNickChar()
+    val afterOk = end == text.length || !text[end].isNickChar()
+    return beforeOk && afterOk
 }
 
 internal fun Char.isNickChar(): Boolean = this == '_' || isLetterOrDigit()

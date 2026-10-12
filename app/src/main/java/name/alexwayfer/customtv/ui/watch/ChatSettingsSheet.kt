@@ -10,6 +10,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.joinAll
@@ -72,10 +74,14 @@ internal fun ChatSettingsSheet(
     onDismiss: () -> Unit,
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
-    val context = LocalContext.current
-    var refreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val hideThen: (() -> Unit) -> Unit = { action ->
+        scope.launch {
+            sheetState.hide()
+            action()
+        }
+    }
     val scrollState = rememberScrollState()
     // A drag back up through the settings stops at the top; closing the sheet takes a new drag.
     val overscroll = rememberOverscrollEffect()
@@ -92,102 +98,121 @@ internal fun ChatSettingsSheet(
                 .verticalScroll(scrollState, overscrollEffect = overscroll)
                 .padding(bottom = 12.dp),
         ) {
-            Text(
-                text = stringResource(R.string.chat_menu),
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
-                style = MaterialTheme.typography.titleLarge,
+            ChatMenuTitle()
+            ChatBrowserRows(
+                channelLogin = channelLogin,
+                browserSheetHeightPx = browserSheetHeightPx,
+                loggedIn = onOpenOwnProfile != null,
+                onExperimentalLogin = { hideThen(onDismiss) },
             )
-            val browserRows = chatBrowserRows(experimentalLoginOffer(), loggedIn = onOpenOwnProfile != null)
-            AnimatedVisibility(visible = browserRows.openInBrowser, enter = expandVertically(), exit = shrinkVertically()) {
-                ChatSettingsRow(
-                    label = stringResource(R.string.open_chat_in_browser),
-                    supportingText = stringResource(R.string.open_chat_in_browser_hint),
-                    modifier = Modifier.clickable {
-                        openTwitchChatInBrowser(context, channelLogin, browserSheetHeightPx())
-                    },
-                )
+            onOpenOwnProfile?.let { open ->
+                ChatSettingsRow(stringResource(R.string.chat_own_profile), Modifier.clickable { hideThen(open) })
             }
-            AnimatedVisibility(visible = browserRows.experimentalLogin, enter = expandVertically(), exit = shrinkVertically()) {
-                ExperimentalLoginChatRow(
-                    onClick = {
-                        scope.launch {
-                            sheetState.hide()
-                            onDismiss()
-                        }
-                    },
-                )
+            onViewChatRules?.let { view ->
+                ChatSettingsRow(stringResource(R.string.view_chat_rules), Modifier.clickable { hideThen(view) })
             }
-            if (onOpenOwnProfile != null) {
-                ChatSettingsRow(
-                    label = stringResource(R.string.chat_own_profile),
-                    modifier = Modifier.clickable {
-                        scope.launch {
-                            sheetState.hide()
-                            onOpenOwnProfile()
-                        }
-                    },
-                )
-            }
-            if (onViewChatRules != null) {
-                ChatSettingsRow(
-                    label = stringResource(R.string.view_chat_rules),
-                    modifier = Modifier.clickable {
-                        scope.launch {
-                            sheetState.hide()
-                            onViewChatRules()
-                        }
-                    },
-                )
-            }
-            ChatSettingsToggle(
-                label = stringResource(R.string.readable_colors),
-                checked = readableColors,
-                onCheckedChange = onReadableColorsChange,
-            )
-            ChatSettingsToggle(
-                label = stringResource(R.string.timestamps),
-                checked = timestamps,
-                onCheckedChange = onTimestampsChange,
-            )
-            SettingsStepSlider(
-                title = stringResource(R.string.chat_text_size),
-                valueText = { it.toString() },
-                value = textSize,
-                valueRange = MIN_CHAT_TEXT_SIZE.toFloat()..MAX_CHAT_TEXT_SIZE.toFloat(),
-                steps = MAX_CHAT_TEXT_SIZE - MIN_CHAT_TEXT_SIZE - 1,
-                resolve = ::chatTextSizeFromStored,
-                onChange = onTextSizeChange,
-                onPreview = {},
-            )
+            ChatSettingsToggle(stringResource(R.string.readable_colors), readableColors, onReadableColorsChange)
+            ChatSettingsToggle(stringResource(R.string.timestamps), timestamps, onTimestampsChange)
+            ChatTextSizeSlider(textSize, onTextSizeChange)
             SmoothChatScrollSettings(
                 enabled = smoothChatScroll,
                 onChange = onSmoothChatScrollChange,
             )
-            ChatSettingsRow(
-                label = stringResource(R.string.refresh_emotes_and_labels),
-                modifier = Modifier.clickable {
-                    if (!refreshing) {
-                        refreshing = true
-                        scope.launch {
-                            try {
-                                joinAll(onRefreshEmotes(), onRefreshLabels())
-                            } finally {
-                                if (isActive) {
-                                    sheetState.hide()
-                                    onDismiss()
-                                }
-                            }
-                        }
-                    }
-                },
-                trailing = {
-                    AnimatedVisibility(visible = refreshing, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    }
+            RefreshEmotesRow(
+                scope = scope,
+                refresh = { listOf(onRefreshEmotes(), onRefreshLabels()) },
+                onRefreshed = {
+                    sheetState.hide()
+                    onDismiss()
                 },
             )
         }
     }
+}
+
+@Composable
+private fun ChatMenuTitle() {
+    Text(
+        text = stringResource(R.string.chat_menu),
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 20.dp),
+        style = MaterialTheme.typography.titleLarge,
+    )
+}
+
+@Composable
+private fun ChatTextSizeSlider(textSize: Int, onTextSizeChange: (Int) -> Unit) {
+    SettingsStepSlider(
+        title = stringResource(R.string.chat_text_size),
+        valueText = { it.toString() },
+        value = textSize,
+        valueRange = MIN_CHAT_TEXT_SIZE.toFloat()..MAX_CHAT_TEXT_SIZE.toFloat(),
+        steps = MAX_CHAT_TEXT_SIZE - MIN_CHAT_TEXT_SIZE - 1,
+        resolve = ::chatTextSizeFromStored,
+        onChange = onTextSizeChange,
+        onPreview = {},
+    )
+}
+
+/** Open chat in browser, or the offer of the experimental login that replaces it. */
+@Composable
+private fun ColumnScope.ChatBrowserRows(
+    channelLogin: String,
+    browserSheetHeightPx: () -> Int,
+    loggedIn: Boolean,
+    onExperimentalLogin: () -> Unit,
+) {
+    val context = LocalContext.current
+    val browserRows = chatBrowserRows(experimentalLoginOffer(), loggedIn = loggedIn)
+    AnimatedVisibility(
+        visible = browserRows.openInBrowser,
+        enter = expandVertically(),
+        exit = shrinkVertically(),
+    ) {
+        ChatSettingsRow(
+            label = stringResource(R.string.open_chat_in_browser),
+            supportingText = stringResource(R.string.open_chat_in_browser_hint),
+            modifier = Modifier.clickable {
+                openTwitchChatInBrowser(context, channelLogin, browserSheetHeightPx())
+            },
+        )
+    }
+    AnimatedVisibility(
+        visible = browserRows.experimentalLogin,
+        enter = expandVertically(),
+        exit = shrinkVertically(),
+    ) {
+        ExperimentalLoginChatRow(onClick = onExperimentalLogin)
+    }
+}
+
+/** Reloads the emotes and chatter labels, then closes the sheet; a second tap while it runs does nothing. */
+@Composable
+private fun RefreshEmotesRow(scope: CoroutineScope, refresh: () -> List<Job>, onRefreshed: suspend () -> Unit) {
+    var refreshing by remember { mutableStateOf(false) }
+    ChatSettingsRow(
+        label = stringResource(R.string.refresh_emotes_and_labels),
+        modifier = Modifier.clickable {
+            if (!refreshing) {
+                refreshing = true
+                scope.launch {
+                    try {
+                        refresh().joinAll()
+                    } finally {
+                        if (isActive) onRefreshed()
+                    }
+                }
+            }
+        },
+        trailing = {
+            AnimatedVisibility(
+                visible = refreshing,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut(),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            }
+        },
+    )
 }
 
 @Composable

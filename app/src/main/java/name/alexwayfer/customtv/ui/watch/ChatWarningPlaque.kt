@@ -131,7 +131,11 @@ private fun WarningSection(title: String, lines: List<String>) {
         )
         lines.forEach { line ->
             Row(modifier = Modifier.padding(top = 2.dp)) {
-                Text(text = "•", modifier = Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "•",
+                    modifier = Modifier.clearAndSetSemantics {},
+                    style = MaterialTheme.typography.bodyMedium,
+                )
                 Text(
                     text = line,
                     modifier = Modifier.padding(start = 8.dp),

@@ -40,18 +40,18 @@ internal fun downloadFraction(downloaded: Long, size: Long, expectedSize: Long):
     return (downloaded.toDouble() / total).toFloat().coerceIn(0f, 1f)
 }
 
-internal sealed class AppUpdateDownload {
-    data object Idle : AppUpdateDownload()
-    data class Running(val fileId: Int, val fraction: Float) : AppUpdateDownload()
-    data class Ready(val fileId: Int, val path: String) : AppUpdateDownload()
-    data class Failed(val fileId: Int, val message: UiText) : AppUpdateDownload()
+internal sealed interface AppUpdateDownload {
+    data object Idle : AppUpdateDownload
+    data class Running(val fileId: Int, val fraction: Float) : AppUpdateDownload
+    data class Ready(val fileId: Int, val path: String) : AppUpdateDownload
+    data class Failed(val fileId: Int, val message: UiText) : AppUpdateDownload
 }
 
-internal sealed class AppUpdateAction {
+internal sealed interface AppUpdateAction {
     /** [error] is why the last download of this release failed. */
-    data class Download(val error: UiText?) : AppUpdateAction()
-    data class Downloading(val fraction: Float) : AppUpdateAction()
-    data class Install(val path: String) : AppUpdateAction()
+    data class Download(val error: UiText?) : AppUpdateAction
+    data class Downloading(val fraction: Float) : AppUpdateAction
+    data class Install(val path: String) : AppUpdateAction
 }
 
 /** What the update block offers for [release]; a download of another file does not count. */

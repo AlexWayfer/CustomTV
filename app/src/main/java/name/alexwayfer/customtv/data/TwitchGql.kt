@@ -3,7 +3,6 @@ package name.alexwayfer.customtv.data
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
 
 private const val TWITCH_GQL_URL = "https://gql.twitch.tv/gql"
 private const val TWITCH_WEB_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
@@ -32,13 +31,13 @@ private val transientGqlErrors = listOf("service timeout", "service error", "ser
  * channel links: Twitch withholds `socialMedias` behind its integrity check from some networks and not others.
  */
 internal fun gqlErrorsToReport(body: String): List<String> {
-    val errors = runCatching { JSONObject(body) }.getOrNull()?.optJSONArray("errors") ?: return emptyList()
+    val errors = body.toJsonObjectOrNull()?.optJSONArray("errors") ?: return emptyList()
     return (0 until errors.length()).mapNotNull { index ->
         val error = errors.optJSONObject(index) ?: return@mapNotNull null
         val withheldLinks = error.optJSONObject("extensions")?.optString("code") == "IntegrityCheckFailed" &&
             error.optJSONArray("path")?.let { it.optString(it.length() - 1) } == "socialMedias"
         if (withheldLinks) return@mapNotNull null
-        error.optString("message").trim().takeIf { it.isNotEmpty() && it != "null" }
+        error.trimmedText("message")
     }.filterNot { message -> transientGqlErrors.any { message.contains(it, ignoreCase = true) } }.distinct()
 }
 
@@ -47,10 +46,10 @@ internal fun gqlErrorsToReport(body: String): List<String> {
  * "failed integrity check", or what is missing. Twitch answers these with HTTP 200.
  */
 internal fun gqlFailureCause(body: String): String {
-    val json = runCatching { JSONObject(body) }.getOrNull() ?: return "not JSON"
+    val json = body.toJsonObjectOrNull() ?: return "not JSON"
     val errors = json.optJSONArray("errors")
     val messages = (0 until (errors?.length() ?: 0)).mapNotNull { index ->
-        errors?.optJSONObject(index)?.optString("message")?.trim()?.takeIf { it.isNotEmpty() && it != "null" }
+        errors?.optJSONObject(index)?.trimmedText("message")
     }
     return when {
         messages.isNotEmpty() -> messages.joinToString("; ")

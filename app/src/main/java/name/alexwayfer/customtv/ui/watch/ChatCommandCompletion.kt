@@ -22,7 +22,12 @@ internal fun matchingChatCommands(query: String): List<ChatCommand> =
     ChatCommand.entries.filter { it.word.startsWith(query, ignoreCase = true) }
 
 /** [text] with its command word replaced by [command] and a space, with the cursor after that space. */
-internal fun textWithCompletedCommand(text: String, cursor: Int, command: ChatCommand, maxLength: Int): NickCompletionEdit? {
+internal fun textWithCompletedCommand(
+    text: String,
+    cursor: Int,
+    command: ChatCommand,
+    maxLength: Int,
+): NickCompletionEdit? {
     val query = chatCommandQueryAtCursor(text, cursor) ?: return null
     val rest = text.substring(query.end)
     val next = command.word + (if (rest.startsWith(' ')) rest else " $rest")

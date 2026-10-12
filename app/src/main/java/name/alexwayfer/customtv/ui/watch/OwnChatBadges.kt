@@ -42,19 +42,24 @@ internal fun rememberOwnChatBadges(
     val latestOwn by remember(selfLogin) {
         derivedStateOf { latestOwnChatMessage(currentMessages(), selfLogin.orEmpty()) }
     }
-    if (userId.isNullOrBlank()) return null
-    val badges = ownChatBadgesNow(loaded?.badges, loadedAtMillis, latestOwn)
-        ?: return null
+    val badges = if (userId.isNullOrBlank()) null else ownChatBadgesNow(loaded?.badges, loadedAtMillis, latestOwn)
     val loadedImageUrls = loaded?.imageUrls
     // The same instance while nothing changed: a new one on every chat message would make the callbacks that
     // capture it new too, and recompose the chat input with each message.
-    return remember(badges, badgeUrls, loadedImageUrls) {
-        OwnChatBadges(badges, badgeUrls + loadedImageUrls.orEmpty())
+    return badges?.let {
+        remember(it, badgeUrls, loadedImageUrls) {
+            OwnChatBadges(it, badgeUrls + loadedImageUrls.orEmpty())
+        }
     }
 }
 
 /** The signed-in user's own chatter card, with their badges in this channel once they are known. */
-internal fun ownChatterCardRequest(badges: OwnChatBadges?, login: String, displayName: String, userId: String?) = ChatterCardRequest(
+internal fun ownChatterCardRequest(
+    badges: OwnChatBadges?,
+    login: String,
+    displayName: String,
+    userId: String?,
+) = ChatterCardRequest(
     login = login,
     displayName = displayName.ifBlank { login },
     userId = userId,

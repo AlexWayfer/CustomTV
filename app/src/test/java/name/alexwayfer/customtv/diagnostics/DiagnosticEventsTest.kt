@@ -131,7 +131,8 @@ class DiagnosticEventsTest {
         val repeatedAfter = rejected(404, 500).copy(lastAtMillis = 3_000)
         val new = rejected(500, 4_000)
 
-        assertEquals(listOf(repeatedAfter, new), diagnosticEventsToSend(listOf(sent, repeatedAfter, new), sentAtMillis = 2_000))
+        val events = listOf(sent, repeatedAfter, new)
+        assertEquals(listOf(repeatedAfter, new), diagnosticEventsToSend(events, sentAtMillis = 2_000))
     }
 
     @Test

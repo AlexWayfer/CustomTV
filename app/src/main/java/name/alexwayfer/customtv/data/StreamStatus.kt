@@ -1,26 +1,5 @@
 package name.alexwayfer.customtv.data
 
-import org.json.JSONObject
-import java.time.Instant
-
-sealed interface StreamStatusEvent {
-    val login: String
-
-    data class Title(
-        override val login: String,
-        val title: String,
-        val categoryName: String?,
-    ) : StreamStatusEvent
-
-    data class Online(
-        override val login: String,
-        val startedAtMillis: Long?,
-    ) : StreamStatusEvent
-
-    data class Offline(
-        override val login: String,
-    ) : StreamStatusEvent
-}
 
 fun profileAfterStreamStatus(profile: ChannelProfile, event: StreamStatusEvent): ChannelProfile? {
     if (!profile.login.equals(event.login, ignoreCase = true)) return null
@@ -42,7 +21,7 @@ fun profileAfterStreamStatus(profile: ChannelProfile, event: StreamStatusEvent):
 }
 
 fun parseStreamStatusNotification(raw: String): StreamStatusEvent? {
-    val root = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+    val root = raw.toJsonObjectOrNull() ?: return null
     val metadata = root.optJSONObject("metadata") ?: return null
     if (metadata.optString("message_type") != "notification") return null
     val payload = root.optJSONObject("payload") ?: return null
@@ -59,7 +38,7 @@ fun parseStreamStatusNotification(raw: String): StreamStatusEvent? {
         "stream.online" -> StreamStatusEvent.Online(
             login = login,
             startedAtMillis = event.optString("started_at").trim().ifBlank { null }
-                ?.let { rawStarted -> runCatching { Instant.parse(rawStarted).toEpochMilli() }.getOrNull() },
+                ?.let(::instantMillisOrNull),
         )
         "stream.offline" -> StreamStatusEvent.Offline(login)
         else -> null
@@ -67,7 +46,7 @@ fun parseStreamStatusNotification(raw: String): StreamStatusEvent? {
 }
 
 fun eventSubSessionId(raw: String): String? {
-    val root = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+    val root = raw.toJsonObjectOrNull() ?: return null
     if (root.optJSONObject("metadata")?.optString("message_type") != "session_welcome") return null
     return root.optJSONObject("payload")
         ?.optJSONObject("session")

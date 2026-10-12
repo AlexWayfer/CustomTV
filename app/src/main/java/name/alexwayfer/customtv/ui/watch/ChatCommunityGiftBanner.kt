@@ -41,20 +41,7 @@ internal fun ChatCommunityGiftBanner(
 ) {
     val gift = message.communityGift ?: return
     val name = gift.gifterDisplayName ?: stringResource(R.string.chat_community_gift_anonymous)
-    val action = if (gift.tier == null) {
-        pluralStringResource(
-            R.plurals.chat_community_gift_subscriptions,
-            gift.count,
-            gift.count,
-        )
-    } else {
-        pluralStringResource(
-            R.plurals.chat_community_gift_tier_subscriptions,
-            gift.count,
-            gift.count,
-            gift.tier,
-        )
-    }
+    val action = communityGiftAction(gift.count, gift.tier)
     val cumulative = gift.cumulativeCount
         ?.takeIf { it >= gift.count }
         ?.let {
@@ -62,7 +49,6 @@ internal fun ChatCommunityGiftBanner(
         }
     val headerSize = chatSp(chatTextSize, 12, 14)
     val bodySize = chatSp(chatTextSize, 14, 16)
-    val hideLabel = stringResource(R.string.chat_community_gift_hide)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -71,36 +57,7 @@ internal fun ChatCommunityGiftBanner(
             .background(TwitchSurface)
             .blockChatTouches(),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 10.dp, end = 6.dp, top = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = null,
-                tint = TwitchPurple,
-                modifier = Modifier.size(chatDp(chatTextSize, 16, 18)),
-            )
-            Text(
-                text = stringResource(R.string.chat_community_gift),
-                color = TwitchTextSecondary,
-                fontSize = headerSize,
-                modifier = Modifier
-                    .padding(start = 6.dp)
-                    .weight(1f),
-            )
-            Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = hideLabel,
-                tint = TwitchTextSecondary,
-                modifier = Modifier
-                    .size(chatDp(chatTextSize, 28, 32))
-                    .clickable(onClick = onHide)
-                    .padding(6.dp),
-            )
-        }
+        CommunityGiftHeader(chatTextSize, onHide)
         Text(
             text = name,
             color = TwitchText,
@@ -126,4 +83,48 @@ internal fun ChatCommunityGiftBanner(
         }
         Spacer(Modifier.height(bottomInset + noticeGapAboveInset(10.dp, bottomInset)))
     }
+}
+
+/** The card's title with a star, and its hide button. */
+@Composable
+private fun CommunityGiftHeader(chatTextSize: Int, onHide: () -> Unit) {
+    val headerSize = chatSp(chatTextSize, 12, 14)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 10.dp, end = 6.dp, top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Star,
+            contentDescription = null,
+            tint = TwitchPurple,
+            modifier = Modifier.size(chatDp(chatTextSize, normal = 16, large = 18)),
+        )
+        Text(
+            text = stringResource(R.string.chat_community_gift),
+            color = TwitchTextSecondary,
+            fontSize = headerSize,
+            modifier = Modifier
+                .padding(start = 6.dp)
+                .weight(1f),
+        )
+        Icon(
+            imageVector = Icons.Filled.Close,
+            contentDescription = stringResource(R.string.chat_community_gift_hide),
+            tint = TwitchTextSecondary,
+            modifier = Modifier
+                .size(chatDp(chatTextSize, normal = 28, large = 32))
+                .clickable(onClick = onHide)
+                .padding(6.dp),
+        )
+    }
+}
+
+/** How many subscriptions were given, and of which tier when it is not the first. */
+@Composable
+private fun communityGiftAction(count: Int, tier: Int?): String = if (tier == null) {
+    pluralStringResource(R.plurals.chat_community_gift_subscriptions, count, count)
+} else {
+    pluralStringResource(R.plurals.chat_community_gift_tier_subscriptions, count, count, tier)
 }

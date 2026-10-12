@@ -1,8 +1,10 @@
 package name.alexwayfer.customtv.telegram
 
+import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.update.AppRelease
 import name.alexwayfer.customtv.update.AppUpdateDownload
+import name.alexwayfer.customtv.update.AppVersion
 
 internal enum class TelegramAuthSignal {
     WaitTdlibParameters,
@@ -52,11 +54,11 @@ internal fun telegramLoginStep(signal: TelegramAuthSignal): TelegramLoginStep = 
     -> TelegramLoginStep.Unsupported
 }
 
-internal sealed class TelegramHistoryRequest {
-    data object ChatMissing : TelegramHistoryRequest()
-    data object TopicMissing : TelegramHistoryRequest()
-    data class Topic(val topicId: Int) : TelegramHistoryRequest()
-    data object WholeChat : TelegramHistoryRequest()
+internal sealed interface TelegramHistoryRequest {
+    data object ChatMissing : TelegramHistoryRequest
+    data object TopicMissing : TelegramHistoryRequest
+    data class Topic(val topicId: Int) : TelegramHistoryRequest
+    data object WholeChat : TelegramHistoryRequest
 }
 
 internal fun telegramEditionGroupLink(
@@ -78,14 +80,20 @@ internal fun telegramHistoryRequest(chatId: Long, forum: Boolean, topicId: Int):
     else -> TelegramHistoryRequest.Topic(topicId)
 }
 
+/** A supergroup's chat ID is its channel ID with -100 in front: -100 followed by twelve digits. */
+private const val SUPERGROUP_ID_OFFSET = 1_000_000_000_000L
+
 internal fun telegramSupergroupLink(chatId: Long, topicId: Int): String? {
-    if (topicId <= 0 || chatId >= -1_000_000_000_000L) return null
-    val channelId = -chatId - 1_000_000_000_000L
+    if (topicId <= 0 || chatId >= -SUPERGROUP_ID_OFFSET) return null
+    val channelId = -chatId - SUPERGROUP_ID_OFFSET
     return "https://t.me/c/$channelId/$topicId"
 }
 
+/** TDLib's code for a request it refuses, as HTTP's Bad Request. */
+private const val TDLIB_BAD_REQUEST = 400
+
 internal fun telegramChatUnavailable(code: Int, message: String): Boolean {
-    if (code != 400) return false
+    if (code != TDLIB_BAD_REQUEST) return false
     val text = message.lowercase().replace('_', ' ')
     return text.contains("not found") || text.contains("not accessible")
 }
@@ -96,21 +104,32 @@ internal fun telegramAccountLabel(firstName: String, lastName: String, username:
     return listOfNotNull(name.takeIf { it.isNotEmpty() }, handle).joinToString(" ")
 }
 
-internal sealed class TelegramGroupState {
-    data object Checking : TelegramGroupState()
-    /** [update] is the newest posted release when it is newer than this build. */
-    data class Open(val update: AppRelease?) : TelegramGroupState()
-    data object Unavailable : TelegramGroupState()
-    data class Failed(val message: UiText) : TelegramGroupState()
-    data object NotConfigured : TelegramGroupState()
-    data object TopicNotConfigured : TelegramGroupState()
+/** The status of a check without an update: it names the newest version it read, so a working check shows. */
+internal fun telegramNoUpdateText(latest: AppVersion?): UiText = if (latest == null) {
+    UiText.Resource(R.string.telegram_no_new_versions)
+} else {
+    UiText.Resource(R.string.telegram_no_new_versions_latest, listOf(latest.toString()))
+}
+
+internal sealed interface TelegramGroupState {
+    data object Checking : TelegramGroupState
+    /**
+     * [update] is the newest posted release when it is newer than this build; [latest] is the newest posted
+     * version, newer or not, or null when no release was read.
+     */
+    data class Open(val update: AppRelease?, val latest: AppVersion? = null) : TelegramGroupState
+    data object Unavailable : TelegramGroupState
+    data class Failed(val message: UiText) : TelegramGroupState
+    data object NotConfigured : TelegramGroupState
+    data object TopicNotConfigured : TelegramGroupState
 }
 
 internal data class TelegramUiState(
     val step: TelegramLoginStep = TelegramLoginStep.Starting,
     val passwordHint: String? = null,
     /** Set while Telegram waits for the login code. */
-    val code: TelegramCodeInfo? = null,    val notice: String? = null,
+    val code: TelegramCodeInfo? = null,
+    val notice: String? = null,
     val registrationRejected: Boolean = false,
     /** The request Telegram is answering, so its button shows progress; null while none is out. */
     val request: TelegramRequest? = null,

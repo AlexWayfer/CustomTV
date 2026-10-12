@@ -7,7 +7,10 @@ class ChatNoticeFlingTest {
     @Test
     fun aHardFlingMovesOnlyToTheNextPageInItsDirection() {
         assertEquals(2, noticePageAfterFling(position = 1.1f, velocity = 9_000f, minFlingVelocity = 50f, pageCount = 5))
-        assertEquals(1, noticePageAfterFling(position = 1.9f, velocity = -9_000f, minFlingVelocity = 50f, pageCount = 5))
+        assertEquals(
+            1,
+            noticePageAfterFling(position = 1.9f, velocity = -9_000f, minFlingVelocity = 50f, pageCount = 5),
+        )
     }
 
     @Test

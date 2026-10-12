@@ -6,7 +6,6 @@ import name.alexwayfer.customtv.auth.parseProfileLinks
 import name.alexwayfer.customtv.chat.ChatterProfile
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.Instant
 
 /**
  * What a chatter card and a profile show about a Twitch user, from one GQL answer. [links] is null when Twitch
@@ -35,7 +34,7 @@ internal const val PROFILE_DETAILS_QUERY =
         "channel{socialMedias{name title url}}}}"
 
 internal fun parseProfileDetails(body: String, fallbackLogin: String): ProfileDetails? {
-    val user = runCatching { JSONObject(body) }.getOrNull()
+    val user = body.toJsonObjectOrNull()
         ?.optJSONObject("data")
         ?.optJSONObject("user")
         ?: return null
@@ -50,23 +49,16 @@ internal fun parseProfileDetails(body: String, fallbackLogin: String): ProfileDe
         displayName = user.text("displayName") ?: login,
         avatarUrl = user.text("profileImageURL"),
         bannerUrl = httpUrl(user.optString("bannerImageURL")),
-        description = user.text("description")?.trim()?.takeIf { it.isNotEmpty() },
-        followerCount = followers?.takeIf { !it.isNull("totalCount") }?.optInt("totalCount")?.takeIf { it >= 0 },
-        createdAtMillis = user.text("createdAt")?.let(::instantMillis),
+        description = user.trimmedText("description"),
+        followerCount = followers?.intOrNull("totalCount")?.takeIf { it >= 0 },
+        createdAtMillis = user.text("createdAt")?.let(::instantMillisOrNull),
         links = socialMedias?.let(::parseProfileLinks),
         lastLiveMillis = if (user.optJSONObject("stream") != null) {
             null
         } else {
-            user.optJSONObject("lastBroadcast")?.text("startedAt")?.let(::instantMillis)
+            user.optJSONObject("lastBroadcast")?.text("startedAt")?.let(::instantMillisOrNull)
         },
     )
-}
-
-private fun instantMillis(text: String): Long? = runCatching { Instant.parse(text).toEpochMilli() }.getOrNull()
-
-private fun JSONObject.text(name: String): String? {
-    if (!has(name) || isNull(name)) return null
-    return optString(name).takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
 }
 
 internal fun ProfileDetails.toChatterProfile(): ChatterProfile = ChatterProfile(
@@ -114,7 +106,9 @@ internal fun profilesJson(entries: List<ProfileDetails>): String = JSONArray().a
                     "links",
                     details.links?.let { links ->
                         JSONArray().apply {
-                            links.forEach { put(JSONObject().put("title", it.title).put("url", it.url).put("name", it.name)) }
+                            links.forEach {
+                                put(JSONObject().put("title", it.title).put("url", it.url).put("name", it.name))
+                            }
                         }
                     },
                 ),
@@ -123,7 +117,7 @@ internal fun profilesJson(entries: List<ProfileDetails>): String = JSONArray().a
 }.toString()
 
 internal fun parseStoredProfiles(raw: String): List<ProfileDetails> {
-    val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
+    val array = raw.toJsonArrayOrNull() ?: return emptyList()
     return (0 until array.length()).mapNotNull { index ->
         val item = array.optJSONObject(index) ?: return@mapNotNull null
         val userId = item.text("userId") ?: return@mapNotNull null
@@ -135,11 +129,9 @@ internal fun parseStoredProfiles(raw: String): List<ProfileDetails> {
             avatarUrl = item.text("avatarUrl"),
             bannerUrl = item.text("bannerUrl"),
             description = item.text("description"),
-            followerCount = item.takeIf { it.has("followerCount") && !it.isNull("followerCount") }?.optInt("followerCount"),
-            createdAtMillis = item.takeIf { it.has("createdAtMillis") && !it.isNull("createdAtMillis") }
-                ?.optLong("createdAtMillis"),
-            lastLiveMillis = item.takeIf { it.has("lastLiveMillis") && !it.isNull("lastLiveMillis") }
-                ?.optLong("lastLiveMillis"),
+            followerCount = item.intOrNull("followerCount"),
+            createdAtMillis = item.longOrNull("createdAtMillis"),
+            lastLiveMillis = item.longOrNull("lastLiveMillis"),
             links = item.optJSONArray("links")?.let { links ->
                 (0 until links.length()).mapNotNull { linkIndex ->
                     val link = links.optJSONObject(linkIndex) ?: return@mapNotNull null

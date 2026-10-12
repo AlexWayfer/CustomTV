@@ -17,11 +17,6 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 
-internal enum class PredictionOutcomeColor {
-    Blue,
-    Pink,
-}
-
 /** As on Twitch: of two outcomes the first is blue and the second pink; more outcomes are all blue. */
 internal fun predictionOutcomeColor(index: Int, count: Int): PredictionOutcomeColor =
     if (count == 2 && index == 1) PredictionOutcomeColor.Pink else PredictionOutcomeColor.Blue

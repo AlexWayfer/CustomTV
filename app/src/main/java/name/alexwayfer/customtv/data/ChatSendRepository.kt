@@ -11,13 +11,13 @@ import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 
 internal class ChatSendRepository(
     private val clientId: String,
     private val http: OkHttpClient = sharedHttpClient.newBuilder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10.seconds)
+        .readTimeout(10.seconds)
         .build(),
 ) {
     suspend fun send(
@@ -48,13 +48,14 @@ internal class ChatSendRepository(
                         is ChatSendResult.Dropped -> AppLog.w(TAG, "chat send dropped ${result.code}")
                         is ChatSendResult.Rejected -> {
                             AppLog.w(TAG, "chat send rejected HTTP ${response.code}")
-                            // The user reads 403 (not allowed to chat there) and 429 (their own pace); neither needs a fix.
+                            // The user reads 403 (not allowed to chat there) and 429 (their own pace); neither
+                            // needs a fix.
                             Diagnostics.reportHttp(
                                 TAG,
                                 "helix/chat/messages",
                                 response.code,
                                 twitchAuthMessage(body),
-                                setOf(401, 403, 429),
+                                setOf(HTTP_UNAUTHORIZED, HTTP_FORBIDDEN, HTTP_TOO_MANY_REQUESTS),
                             )
                         }
                         ChatSendResult.Unavailable -> AppLog.w(TAG, "chat send failed HTTP ${response.code}")

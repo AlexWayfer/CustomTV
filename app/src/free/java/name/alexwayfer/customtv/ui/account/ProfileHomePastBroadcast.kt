@@ -3,7 +3,7 @@ package name.alexwayfer.customtv.ui.account
 import androidx.compose.runtime.Composable
 
 /** Recordings play only in Premium, so the free Home does not offer one. */
-@Suppress("unused")
+@Suppress("unused", "FunctionOnlyReturningConstant")
 internal fun profileHomePastBroadcast(videos: List<TwitchVideo>): TwitchVideo? = null
 
 @Suppress("unused")

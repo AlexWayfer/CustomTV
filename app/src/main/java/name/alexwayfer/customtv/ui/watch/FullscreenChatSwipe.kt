@@ -81,11 +81,20 @@ internal fun fullscreenChatRevealSide(fingerX: Float): FullscreenChatSide =
 /** How far past its edge the coming chat still is: all its width at first, none once the finger has pulled it in. */
 internal fun fullscreenChatRevealOffset(side: FullscreenChatSide, fingerX: Float, chatWidthPx: Int): Float {
     val width = chatWidthPx.coerceAtLeast(0).toFloat()
-    return if (side == FullscreenChatSide.Right) (width + fingerX).coerceIn(0f, width) else (-width + fingerX).coerceIn(-width, 0f)
+    return if (side == FullscreenChatSide.Right) {
+        (width + fingerX).coerceIn(0f, width)
+    } else {
+        (-width + fingerX).coerceIn(-width, 0f)
+    }
 }
 
 /** The coming chat stays once a third of it is in or it is flung inward; else it slides back out. */
-internal fun fullscreenChatRevealShows(side: FullscreenChatSide, offsetX: Float, velocityX: Float, chatWidthPx: Int): Boolean {
+internal fun fullscreenChatRevealShows(
+    side: FullscreenChatSide,
+    offsetX: Float,
+    velocityX: Float,
+    chatWidthPx: Int,
+): Boolean {
     val inward = if (side == FullscreenChatSide.Right) -1f else 1f
     val shownPx = chatWidthPx - abs(offsetX)
     return shownPx > chatWidthPx * FULLSCREEN_CHAT_SWIPE_SHARE || velocityX * inward > MINIMIZE_FLING_VELOCITY
@@ -143,18 +152,13 @@ internal class FullscreenChatSwipeState(private val scope: CoroutineScope) {
         offsetX = fullscreenChatSwipeOffset(offsetX + deltaX, chatOnLeft, chatWidthPx, travelPx)
     }
 
-    /** Hides the chat or moves it across past the threshold, sliding it the rest of the way first; else springs back. */
-    fun release(
-        velocityX: Float,
-        chatOnLeft: Boolean,
-        chatWidthPx: Int,
-        travelPx: Int,
-        onHide: () -> Unit,
-        onMoveAcross: () -> Unit,
-    ) {
-        val outcome = fullscreenChatSwipeOutcome(offsetX, velocityX, chatOnLeft, chatWidthPx)
-        val outward = if (chatOnLeft) -chatWidthPx.toFloat() else chatWidthPx.toFloat()
-        val across = if (chatOnLeft) travelPx.toFloat() else -travelPx.toFloat()
+    /**
+     * Hides the chat or moves it across past the threshold, sliding it the rest of the way first; else springs back.
+     */
+    fun release(velocityX: Float, track: FullscreenChatSwipeTrack, onHide: () -> Unit, onMoveAcross: () -> Unit) {
+        val outcome = fullscreenChatSwipeOutcome(offsetX, velocityX, track.chatOnLeft, track.chatWidthPx)
+        val outward = if (track.chatOnLeft) -track.chatWidthPx.toFloat() else track.chatWidthPx.toFloat()
+        val across = if (track.chatOnLeft) track.travelPx.toFloat() else -track.travelPx.toFloat()
         settleJob = scope.launch {
             when (outcome) {
                 FullscreenChatSwipeOutcome.Stay -> slideTo(0f)
@@ -182,15 +186,16 @@ internal class FullscreenChatSwipeState(private val scope: CoroutineScope) {
     }
 }
 
+/** Where a swipe moves the full screen chat: its side, its width, and how far it travels to the other side. */
+internal data class FullscreenChatSwipeTrack(val chatOnLeft: Boolean, val chatWidthPx: Int, val travelPx: Int)
+
 /** Follows sideways swipes on the full screen chat and moves or fades it along. */
 internal fun Modifier.fullscreenChatSwipe(
     swipe: FullscreenChatSwipeState,
-    chatOnLeft: Boolean,
-    chatWidthPx: Int,
-    travelPx: Int,
+    track: FullscreenChatSwipeTrack,
     onHide: () -> Unit,
     onMoveAcross: () -> Unit,
-): Modifier = pointerInput(swipe, chatOnLeft, chatWidthPx, travelPx) {
+): Modifier = pointerInput(swipe, track.chatOnLeft, track.chatWidthPx, track.travelPx) {
     val velocity = VelocityTracker()
     try {
         detectHorizontalDragGestures(
@@ -198,9 +203,7 @@ internal fun Modifier.fullscreenChatSwipe(
             onDragEnd = {
                 swipe.release(
                     velocityX = velocity.calculateVelocity().x,
-                    chatOnLeft = chatOnLeft,
-                    chatWidthPx = chatWidthPx,
-                    travelPx = travelPx,
+                    track = track,
                     onHide = onHide,
                     onMoveAcross = onMoveAcross,
                 )
@@ -209,7 +212,7 @@ internal fun Modifier.fullscreenChatSwipe(
         ) { change, dragAmount ->
             velocity.addPosition(change.uptimeMillis, change.position)
             change.consume()
-            swipe.drag(dragAmount, chatOnLeft, chatWidthPx, travelPx)
+            swipe.drag(dragAmount, track.chatOnLeft, track.chatWidthPx, track.travelPx)
         }
     } catch (e: CancellationException) {
         swipe.cancel()
@@ -217,7 +220,7 @@ internal fun Modifier.fullscreenChatSwipe(
     }
 }.graphicsLayer {
     translationX = swipe.offsetX
-    alpha = fullscreenChatSwipeAlpha(swipe.offsetX, chatOnLeft, chatWidthPx)
+    alpha = fullscreenChatSwipeAlpha(swipe.offsetX, track.chatOnLeft, track.chatWidthPx)
 }
 
 /** The share of the chat's width a swipe takes to hide or move it. */

@@ -7,30 +7,45 @@ import android.view.View
 import android.view.ViewGroup
 import kotlin.math.abs
 
+/** [VelocityTracker] units for a velocity in pixels per second. */
+private const val PIXELS_PER_SECOND = 1000
+
+/** What the gestures read from the player at each touch. */
+internal data class PlayerTouchState(
+    val isReleased: () -> Boolean,
+    /** The app taps the page itself to match the controls; that tap goes straight to the page. */
+    val isAppTap: () -> Boolean,
+    val canMinimize: () -> Boolean,
+    val canExpand: () -> Boolean,
+    val canDismissHorizontally: () -> Boolean,
+    val controlsVisible: () -> Boolean,
+    /** Whether the page saw the current touch land on the player controls; it reports that shortly after the down. */
+    val touchOnControls: () -> Boolean,
+    val touchOnScrollableContent: () -> Boolean,
+    /** Whether the page saw the current touch land on a disclosure, such as the audience plaque. */
+    val touchOnDisclosure: () -> Boolean,
+    /** How tall the system's status bar is, shown or not: a swipe down from that band is the system's. */
+    val statusBarPx: () -> Int,
+    val tapExpands: () -> Boolean,
+    /** The tap only shows or hides the chrome; the page, which would act on it, does not get it. */
+    val tapStaysOffPage: () -> Boolean,
+)
+
+/** What the gestures tell the player: a tap, and the drags with their offset and, at the end, their velocity. */
+internal data class PlayerTouchCallbacks(
+    /** [reachedPage]: the page got the tap too and acts on it on its own, such as toggling its controls. */
+    val onTap: (reachedPage: Boolean, x: Float) -> Unit,
+    val onVerticalDrag: (Float) -> Unit,
+    val onVerticalDragEnd: (Float, Float) -> Unit,
+    val onHorizontalDrag: (Float) -> Unit,
+    val onHorizontalDragEnd: (Float, Float) -> Unit,
+)
+
 internal class PlayerGestureHandler(
     private val view: View,
     private val touchSlop: Int,
-    private val isReleased: () -> Boolean,
-    /** The app taps the page itself to match the controls; that tap goes straight to the page. */
-    private val isAppTap: () -> Boolean,
-    private val canMinimize: () -> Boolean,
-    private val canExpand: () -> Boolean,
-    private val canDismissHorizontally: () -> Boolean,
-    private val controlsVisible: () -> Boolean,
-    /** Whether the page saw the current touch land on the player controls; it reports that shortly after the down. */
-    private val touchOnControls: () -> Boolean,
-    private val touchOnScrollableContent: () -> Boolean,
-    /** How tall the system's status bar is, shown or not: a swipe down from that band is the system's. */
-    private val statusBarPx: () -> Int,
-    private val tapExpands: () -> Boolean,
-    /** The tap only shows or hides the chrome; the page, which would act on it, does not get it. */
-    private val tapStaysOffPage: () -> Boolean,
-    /** [reachedPage]: the page got the tap too and acts on it on its own, such as toggling its controls. */
-    private val onTap: (reachedPage: Boolean, x: Float) -> Unit,
-    private val onVerticalDrag: (Float) -> Unit,
-    private val onVerticalDragEnd: (Float, Float) -> Unit,
-    private val onHorizontalDrag: (Float) -> Unit,
-    private val onHorizontalDragEnd: (Float, Float) -> Unit,
+    private val state: PlayerTouchState,
+    private val callbacks: PlayerTouchCallbacks,
 ) {
     private var downX = 0f
     private var downY = 0f
@@ -54,7 +69,7 @@ internal class PlayerGestureHandler(
     }
 
     private fun handle(event: MotionEvent): Boolean {
-        return !isReleased() && !isAppTap() && when (event.actionMasked) {
+        return !state.isReleased() && !state.isAppTap() && when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 onDown(event)
                 false
@@ -70,8 +85,8 @@ internal class PlayerGestureHandler(
         downY = event.y
         downRawX = event.rawX
         downRawY = event.rawY
-        controlsShownAtDown = controlsVisible()
-        downInStatusBarZone = touchStartsInStatusBarZone(event.rawY, statusBarPx())
+        controlsShownAtDown = state.controlsVisible()
+        downInStatusBarZone = touchStartsInStatusBarZone(event.rawY, state.statusBarPx())
         dragAxis = DragAxis.None
         velocityTracker?.recycle()
         velocityTracker = VelocityTracker.obtain().also { it.addMovement(event) }
@@ -81,7 +96,7 @@ internal class PlayerGestureHandler(
         velocityTracker?.addMovement(event)
         val dy = event.rawY - downRawY
         val dx = event.rawX - downRawX
-        if (dragAxis == DragAxis.None && touchStaysWithControls(controlsShownAtDown, touchOnControls())) {
+        if (dragAxis == DragAxis.None && touchStaysWithControls(controlsShownAtDown, state.touchOnControls())) {
             dragAxis = DragAxis.Page
         }
         if (dragAxis == DragAxis.None) {
@@ -90,13 +105,11 @@ internal class PlayerGestureHandler(
             val startVertical = shouldStartPlayerVerticalDrag(
                 deltaY = dy,
                 deltaX = dx,
-                touchSlop = touchSlop,
-                canMinimize = canMinimize(),
-                canExpand = canExpand(),
-                touchOnScrollableContent = touchOnScrollableContent(),
+                rules = PlayerSwipeRules(touchSlop, state.canMinimize(), state.canExpand()),
+                touchOnScrollableContent = state.touchOnScrollableContent(),
                 startsInStatusBarZone = downInStatusBarZone,
             )
-            val startHorizontal = canDismissHorizontally() &&
+            val startHorizontal = state.canDismissHorizontally() &&
                 absDx > touchSlop && absDx > absDy
             if (startVertical || startHorizontal) {
                 dragAxis = if (startVertical) DragAxis.Vertical else DragAxis.Horizontal
@@ -106,11 +119,11 @@ internal class PlayerGestureHandler(
         }
         return when (dragAxis) {
             DragAxis.Vertical -> {
-                onVerticalDrag(dy)
+                callbacks.onVerticalDrag(dy)
                 true
             }
             DragAxis.Horizontal -> {
-                onHorizontalDrag(dx)
+                callbacks.onHorizontalDrag(dx)
                 true
             }
             DragAxis.None, DragAxis.Page -> false
@@ -124,11 +137,11 @@ internal class PlayerGestureHandler(
         dragAxis = DragAxis.None
         if (axis == DragAxis.Vertical || axis == DragAxis.Horizontal) {
             val tracker = velocityTracker
-            tracker?.computeCurrentVelocity(1000)
+            tracker?.computeCurrentVelocity(PIXELS_PER_SECOND)
             if (axis == DragAxis.Vertical) {
-                onVerticalDragEnd(event.rawY - downRawY, tracker?.yVelocity ?: 0f)
+                callbacks.onVerticalDragEnd(event.rawY - downRawY, tracker?.yVelocity ?: 0f)
             } else {
-                onHorizontalDragEnd(event.rawX - downRawX, tracker?.xVelocity ?: 0f)
+                callbacks.onHorizontalDragEnd(event.rawX - downRawX, tracker?.xVelocity ?: 0f)
             }
             tracker?.recycle()
             velocityTracker = null
@@ -137,20 +150,35 @@ internal class PlayerGestureHandler(
 
         velocityTracker?.recycle()
         velocityTracker = null
-        if (event.actionMasked == MotionEvent.ACTION_UP) {
-            val dx = event.x - downX
-            val dy = event.y - downY
-            if (dx * dx + dy * dy < touchSlop * touchSlop) {
-                view.performClick()
-                if (tapExpands() || tapStaysOffPage()) {
-                    cancelPageTouch(event)
-                    onTap(false, event.x)
-                    return true
-                }
-                onTap(true, event.x)
+        return event.actionMasked == MotionEvent.ACTION_UP && onLiftUp(event)
+    }
+
+    /** A finger lifted without a drag, a tap when within the touch slop; true when the page must not see it. */
+    private fun onLiftUp(event: MotionEvent): Boolean {
+        val dx = event.x - downX
+        val dy = event.y - downY
+        val end = playerTouchEnd(
+            withinTapSlop = dx * dx + dy * dy < touchSlop * touchSlop,
+            offPage = state.tapExpands() || state.tapStaysOffPage(),
+            onDisclosure = state.touchOnDisclosure(),
+        )
+        if (end != PlayerTouchEnd.PageTouch && end != PlayerTouchEnd.Dropped) view.performClick()
+        return when (end) {
+            PlayerTouchEnd.PageTouch, PlayerTouchEnd.DisclosureTap -> false
+            PlayerTouchEnd.Dropped -> {
+                cancelPageTouch(event)
+                true
+            }
+            PlayerTouchEnd.PageTap -> {
+                callbacks.onTap(true, event.x)
+                false
+            }
+            PlayerTouchEnd.AppTap -> {
+                cancelPageTouch(event)
+                callbacks.onTap(false, event.x)
+                true
             }
         }
-        return false
     }
 
     /** Ends the touch for the page without a click, so the player does not act on it. */

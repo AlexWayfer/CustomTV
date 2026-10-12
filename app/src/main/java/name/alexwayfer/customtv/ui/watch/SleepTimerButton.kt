@@ -38,6 +38,7 @@ import kotlinx.coroutines.delay
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -85,15 +86,7 @@ internal fun BoxScope.PlayerSleepTimerButton(visible: Boolean, fullscreen: Boole
 
 @Composable
 private fun SleepTimerDialog(onDismiss: () -> Unit) {
-    val endsAtMillis by SleepTimer.endsAtMillis.collectAsState()
-    var nowMillis by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
-    LaunchedEffect(endsAtMillis) {
-        while (endsAtMillis != null) {
-            nowMillis = SystemClock.elapsedRealtime()
-            delay(1.seconds)
-        }
-    }
-    val left = endsAtMillis?.let { sleepTimerLeft(it, nowMillis) }
+    val left = rememberSleepTimerLeft()
     val context = LocalContext.current
     // Read once as the dialog opens; the settings are restored when the app starts.
     val start = remember {
@@ -106,33 +99,12 @@ private fun SleepTimerDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.sleep_timer)) },
         text = {
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                if (left != null) {
-                    Text(
-                        text = stringResource(R.string.sleep_timer_left, formatSleepTimerLeft(left)),
-                        modifier = Modifier.padding(bottom = 16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    SleepTimerWheel(
-                        count = SLEEP_TIMER_HOURS,
-                        step = 1,
-                        initial = start.hours,
-                        label = stringResource(R.string.sleep_timer_hours),
-                        description = stringResource(R.string.sleep_timer_hours_description),
-                        onValueChange = { pick = pick.copy(hours = it) },
-                    )
-                    SleepTimerWheel(
-                        count = SLEEP_TIMER_MINUTE_STEPS,
-                        step = SLEEP_TIMER_MINUTE_STEP,
-                        initial = start.minutes,
-                        label = stringResource(R.string.sleep_timer_minutes),
-                        description = stringResource(R.string.sleep_timer_minutes_description),
-                        onValueChange = { pick = pick.copy(minutes = it) },
-                    )
-                }
-            }
+            SleepTimerPicker(
+                left = left,
+                start = start,
+                onHours = { pick = pick.copy(hours = it) },
+                onMinutes = { pick = pick.copy(minutes = it) },
+            )
         },
         confirmButton = {
             TextButton(
@@ -163,4 +135,49 @@ private fun SleepTimerDialog(onDismiss: () -> Unit) {
             }
         },
     )
+}
+
+/** The time the running timer has left, ticking each second; null while it is off. */
+@Composable
+private fun rememberSleepTimerLeft(): Duration? {
+    val endsAtMillis by SleepTimer.endsAtMillis.collectAsState()
+    var nowMillis by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(endsAtMillis) {
+        while (endsAtMillis != null) {
+            nowMillis = SystemClock.elapsedRealtime()
+            delay(1.seconds)
+        }
+    }
+    return endsAtMillis?.let { sleepTimerLeft(it, nowMillis) }
+}
+
+@Composable
+private fun SleepTimerPicker(left: Duration?, start: SleepTimerPick, onHours: (Int) -> Unit, onMinutes: (Int) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (left != null) {
+            Text(
+                text = stringResource(R.string.sleep_timer_left, formatSleepTimerLeft(left)),
+                modifier = Modifier.padding(bottom = 16.dp),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            SleepTimerWheel(
+                count = SLEEP_TIMER_HOURS,
+                step = 1,
+                initial = start.hours,
+                label = stringResource(R.string.sleep_timer_hours),
+                description = stringResource(R.string.sleep_timer_hours_description),
+                onValueChange = onHours,
+            )
+            SleepTimerWheel(
+                count = SLEEP_TIMER_MINUTE_STEPS,
+                step = SLEEP_TIMER_MINUTE_STEP,
+                initial = start.minutes,
+                label = stringResource(R.string.sleep_timer_minutes),
+                description = stringResource(R.string.sleep_timer_minutes_description),
+                onValueChange = onMinutes,
+            )
+        }
+    }
 }

@@ -1,13 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-data class ChatNickSpan(
-    val start: Int,
-    val endExclusive: Int,
-    val raw: String,
-    val key: String,
-    val mentioned: Boolean,
-)
-
 fun findChatNicks(text: String, knownKeys: Set<String>): List<ChatNickSpan> {
     if (text.isEmpty()) return emptyList()
     val urls = findChatUrls(text)
@@ -16,8 +8,7 @@ fun findChatNicks(text: String, knownKeys: Set<String>): List<ChatNickSpan> {
         val login = match.groupValues[1]
         val start = match.range.first
         val end = match.range.last + 1
-        if (isUrlLikeMention(login, text, end)) continue
-        if (overlapsUrl(start, end, urls)) continue
+        if (isUrlLikeMention(login, text, end) || overlapsUrl(start, end, urls)) continue
         mentions += ChatNickSpan(
             start = start,
             endExclusive = end,
@@ -31,11 +22,9 @@ fun findChatNicks(text: String, knownKeys: Set<String>): List<ChatNickSpan> {
     for (match in BARE_NICK_REGEX.findAll(text)) {
         val login = match.value
         val key = login.lowercase()
-        if (key !in knownKeys) continue
         val start = match.range.first
         val end = match.range.last + 1
-        if (overlapsUrl(start, end, urls)) continue
-        if (nicks.any { it.start < end && it.endExclusive > start }) continue
+        if (key !in knownKeys || overlapsUrl(start, end, urls) || overlapsNick(start, end, nicks)) continue
         nicks += ChatNickSpan(
             start = start,
             endExclusive = end,
@@ -60,6 +49,9 @@ private fun isUrlLikeMention(login: String, text: String, end: Int): Boolean {
 private fun overlapsUrl(start: Int, end: Int, urls: List<ChatUrlSpan>): Boolean {
     return urls.any { it.start < end && it.endExclusive > start }
 }
+
+private fun overlapsNick(start: Int, end: Int, nicks: List<ChatNickSpan>): Boolean =
+    nicks.any { it.start < end && it.endExclusive > start }
 
 private val MENTION_REGEX = Regex("""(?<![A-Za-z0-9_])@([A-Za-z0-9_]{4,25})(?![A-Za-z0-9_])""")
 private val BARE_NICK_REGEX = Regex("""(?<![A-Za-z0-9_@])([A-Za-z0-9_]{4,25})(?![A-Za-z0-9_])""")

@@ -1,7 +1,6 @@
 package name.alexwayfer.customtv.data
 
 import name.alexwayfer.customtv.auth.twitchErrorMessage
-import org.json.JSONObject
 
 internal const val CHAT_MESSAGE_MAX_LENGTH = 500
 
@@ -21,9 +20,9 @@ internal sealed interface ChatSendResult {
 }
 
 internal fun parseChatSendResponse(httpCode: Int, body: String): ChatSendResult {
-    if (httpCode in 400..499) return ChatSendResult.Rejected(httpCode, twitchErrorMessage(body))
-    if (httpCode !in 200..299) return ChatSendResult.Unavailable
-    val message = runCatching { JSONObject(body) }.getOrNull()
+    if (httpCode in HTTP_CLIENT_ERROR) return ChatSendResult.Rejected(httpCode, twitchErrorMessage(body))
+    if (httpCode !in HTTP_SUCCESS) return ChatSendResult.Unavailable
+    val message = body.toJsonObjectOrNull()
         ?.optJSONArray("data")
         ?.optJSONObject(0)
         ?: return ChatSendResult.Unavailable
@@ -31,7 +30,7 @@ internal fun parseChatSendResponse(httpCode: Int, body: String): ChatSendResult 
     val reason = message.optJSONObject("drop_reason")
     return ChatSendResult.Dropped(
         code = reason?.optString("code").orEmpty(),
-        message = reason?.optString("message")?.trim()?.takeIf { it != "null" }.orEmpty(),
+        message = reason?.trimmedText("message").orEmpty(),
     )
 }
 
@@ -55,10 +54,10 @@ internal fun chatSendError(result: ChatSendResult): ChatSendError? = when (resul
     is ChatSendResult.Dropped -> result.message.takeIf { it.isNotEmpty() }?.let(ChatSendError::Twitch)
         ?: ChatSendError.Failed
     is ChatSendResult.Rejected -> when (result.httpCode) {
-        401 -> ChatSendError.LogIn
-        403 -> ChatSendError.NotAllowed
-        422 -> ChatSendError.TooLong
-        429 -> ChatSendError.TooFast
+        HTTP_UNAUTHORIZED -> ChatSendError.LogIn
+        HTTP_FORBIDDEN -> ChatSendError.NotAllowed
+        HTTP_UNPROCESSABLE_CONTENT -> ChatSendError.TooLong
+        HTTP_TOO_MANY_REQUESTS -> ChatSendError.TooFast
         else -> result.message.takeIf { it.isNotEmpty() }?.let(ChatSendError::Twitch) ?: ChatSendError.Failed
     }
     ChatSendResult.Unavailable -> ChatSendError.Failed

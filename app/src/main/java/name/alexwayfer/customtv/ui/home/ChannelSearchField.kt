@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
@@ -61,7 +62,6 @@ import name.alexwayfer.customtv.channel.displayNameLabel
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChannelSearchHit
 import name.alexwayfer.customtv.data.FollowedChannel
-import name.alexwayfer.customtv.data.channelSearchExtras
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import name.alexwayfer.customtv.ui.theme.TwitchDivider
 import name.alexwayfer.customtv.ui.theme.TwitchHint
@@ -187,53 +187,15 @@ internal fun ChannelSearchExpanded(
         currentOnExpandedChange(open)
         onDispose { if (open) currentOnExpandedChange(false) }
     }
-    val historyMatches = channelSearchSuggestions(history, profiles, value)
-    val followedMatches = followedSearchSuggestions(followed, historyMatches, value)
-    val extras = channelSearchExtras(historyMatches + followedMatches.map { it.login }, searchHits)
+    val matches = channelSearchMatches(history, profiles, followed, searchHits, value)
     val showChecking = rememberHeldWhileLoading(checking, loading = checking)
-    // A state rather than a plain string, so text put in from outside, such as a picked suggestion, gets the
-    // cursor at its end instead of keeping the cursor where the typing was.
-    val text = rememberTextFieldState(value)
-    LaunchedEffect(value) {
-        if (text.text.toString() != value) text.setTextAndPlaceCursorAtEnd(value)
-    }
-    // Only typing goes up: the text put in from [value] itself must not search again or clear the error.
-    val currentValue by rememberUpdatedState(value)
-    val currentOnValueChange by rememberUpdatedState(onValueChange)
-    LaunchedEffect(text) {
-        snapshotFlow { text.text.toString() }.collect { typed ->
-            if (typed != currentValue) currentOnValueChange(typed)
-        }
-    }
+    val text = rememberSearchText(value, onValueChange)
 
     // The search's window takes its status bar icons from the content color here: light, for the dark screen.
     CompositionLocalProvider(LocalContentColor provides TwitchText) {
         ExpandedFullScreenSearchBar(
             state = state,
-            inputField = {
-                SearchBarDefaults.InputField(
-                    textFieldState = text,
-                    searchBarState = state,
-                    onSearch = { onSubmit() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { if (error != null) error(error) },
-                    placeholder = { Text(stringResource(R.string.channel_hint), color = TwitchHint) },
-                    trailingIcon = if (showChecking) {
-                        {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                color = TwitchPurple,
-                                trackColor = TwitchDivider,
-                                strokeWidth = 2.dp,
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                    colors = channelSearchInputColors(),
-                )
-            },
+            inputField = { ChannelSearchInputField(text, state, onSubmit, error, showChecking) },
             collapsedShape = collapsedShape,
             colors = channelSearchBarColors(),
         ) {
@@ -245,43 +207,108 @@ internal fun ChannelSearchExpanded(
                     modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
                 )
             }
-            LazyColumn {
-                items(historyMatches, key = { "history:$it" }) { login ->
-                    ChannelSearchItem(
-                        login = login,
-                        profile = profiles[login],
-                        liveLogins = liveLogins,
-                        onPick = { onPick(login) },
-                    )
-                }
-                items(followedMatches, key = { "followed:${it.id}" }) { channel ->
-                    ChannelSearchItem(
-                        login = channel.login,
-                        profile = ChannelProfile(
-                            login = channel.login,
-                            displayName = channel.displayName,
-                            avatarUrl = channel.avatarUrl,
-                            collaboratorAvatarUrls = channel.collaboratorAvatarUrls,
-                            isLive = channel.isLive,
-                        ),
-                        liveLogins = liveLogins,
-                        onPick = { onPick(channel.login) },
-                    )
-                }
-                items(extras, key = { "hit:${it.login}" }) { hit ->
-                    ChannelSearchItem(
-                        login = hit.login,
-                        profile = ChannelProfile(
-                            login = hit.login,
-                            displayName = hit.displayName,
-                            avatarUrl = hit.avatarUrl,
-                            isLive = hit.isLive,
-                        ),
-                        liveLogins = liveLogins,
-                        onPick = { onPick(hit.login) },
-                    )
-                }
+            ChannelSearchSuggestionList(matches, profiles, liveLogins, onPick)
+        }
+    }
+}
+
+/**
+ * The text in the search's field. A state rather than a plain string, so text put in from outside, such as a
+ * picked suggestion, gets the cursor at its end instead of keeping the cursor where the typing was. Only typing goes
+ * up to [onValueChange]: the text put in from [value] itself must not search again or clear the error.
+ */
+@Composable
+private fun rememberSearchText(value: String, onValueChange: (String) -> Unit): TextFieldState {
+    val text = rememberTextFieldState(value)
+    LaunchedEffect(value) {
+        if (text.text.toString() != value) text.setTextAndPlaceCursorAtEnd(value)
+    }
+    val currentValue by rememberUpdatedState(value)
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    LaunchedEffect(text) {
+        snapshotFlow { text.text.toString() }.collect { typed ->
+            if (typed != currentValue) currentOnValueChange(typed)
+        }
+    }
+    return text
+}
+
+/** The full-screen search's field, with a spinner at its end while a channel is checked. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChannelSearchInputField(
+    text: TextFieldState,
+    state: SearchBarState,
+    onSubmit: () -> Unit,
+    error: String?,
+    showChecking: Boolean,
+) {
+    SearchBarDefaults.InputField(
+        textFieldState = text,
+        searchBarState = state,
+        onSearch = { onSubmit() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { if (error != null) error(error) },
+        placeholder = { Text(stringResource(R.string.channel_hint), color = TwitchHint) },
+        trailingIcon = if (showChecking) {
+            {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = TwitchPurple,
+                    trackColor = TwitchDivider,
+                    strokeWidth = 2.dp,
+                )
             }
+        } else {
+            null
+        },
+        colors = channelSearchInputColors(),
+    )
+}
+
+@Composable
+private fun ChannelSearchSuggestionList(
+    matches: ChannelSearchMatches,
+    profiles: Map<String, ChannelProfile>,
+    liveLogins: Set<String>,
+    onPick: (String) -> Unit,
+) {
+    LazyColumn {
+        items(matches.history, key = { "history:$it" }) { login ->
+            ChannelSearchItem(
+                login = login,
+                profile = profiles[login],
+                liveLogins = liveLogins,
+                onPick = { onPick(login) },
+            )
+        }
+        items(matches.followed, key = { "followed:${it.id}" }) { channel ->
+            ChannelSearchItem(
+                login = channel.login,
+                profile = ChannelProfile(
+                    login = channel.login,
+                    displayName = channel.displayName,
+                    avatarUrl = channel.avatarUrl,
+                    collaboratorAvatarUrls = channel.collaboratorAvatarUrls,
+                    isLive = channel.isLive,
+                ),
+                liveLogins = liveLogins,
+                onPick = { onPick(channel.login) },
+            )
+        }
+        items(matches.found, key = { "hit:${it.login}" }) { hit ->
+            ChannelSearchItem(
+                login = hit.login,
+                profile = ChannelProfile(
+                    login = hit.login,
+                    displayName = hit.displayName,
+                    avatarUrl = hit.avatarUrl,
+                    isLive = hit.isLive,
+                ),
+                liveLogins = liveLogins,
+                onPick = { onPick(hit.login) },
+            )
         }
     }
 }

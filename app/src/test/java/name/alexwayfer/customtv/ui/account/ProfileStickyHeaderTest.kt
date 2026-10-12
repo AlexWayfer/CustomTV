@@ -11,12 +11,20 @@ class ProfileStickyHeaderTest {
 
     @Test
     fun theHeaderIsHalfFoldedHalfwayToTheBar() {
-        assertEquals(0.5f, profileHeaderCollapse(scrollPx = 160, headerTopPx = 180, headerHeightPx = 300, barPx = 160), 0f)
+        assertEquals(
+            0.5f,
+            profileHeaderCollapse(scrollPx = 160, headerTopPx = 180, headerHeightPx = 300, barPx = 160),
+            0f,
+        )
     }
 
     @Test
     fun theHeaderIsABarOnceItsRoomHasGoneUnderTheBar() {
-        assertEquals(1f, profileHeaderCollapse(scrollPx = 900, headerTopPx = 180, headerHeightPx = 300, barPx = 160), 0f)
+        assertEquals(
+            1f,
+            profileHeaderCollapse(scrollPx = 900, headerTopPx = 180, headerHeightPx = 300, barPx = 160),
+            0f,
+        )
     }
 
     @Test

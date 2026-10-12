@@ -1,0 +1,42 @@
+# Settings on top of detekt's defaults (buildUponDefaultConfig in each module's detekt block).
+# Do not raise a threshold or disable a rule to pass a check: split the code instead.
+
+# The test excludes list detekt's own test folders plus the flavor ones, which its defaults do not know.
+
+coroutines:
+  InjectDispatcher:
+    # A tested core takes its I/O as lambdas, as TwitchSessionHolder does; the object that wires the real I/O holds
+    # the dispatcher, and no test swaps it. Inject one only into a core that waits or times out, along with its test.
+    active: false
+  SuspendFunSwallowedCancellation:
+    # runCatching around a suspend call catches the coroutine's cancellation too.
+    active: true
+
+complexity:
+  CyclomaticComplexMethod:
+    # A `when` whose branches are plain expressions is a lookup table, not branching logic; a branch with a block
+    # still counts, and the conditions inside the branches count as before.
+    ignoreSimpleWhenEntries: true
+  LongParameterList:
+    # A composable takes its inputs as plain parameters, as Compose's own components do.
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    # A test class holds one function per case.
+    excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']
+
+style:
+  ReturnCount:
+    # An early return at the top of a function filters its input; only the returns after it count.
+    excludeGuardClauses: true
+  MagicNumber:
+    # An expected value in a test reads better as a plain number; a build script holds versions and sizes.
+    excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**', '**/*.kts']
+    # detekt's own plus 100, the whole of a percent.
+    ignoreNumbers: ['-1', '0', '1', '2', '100']
+
+naming:
+  FunctionNaming:
+    # Composables are named like classes.
+    ignoreAnnotated: ['Composable']
+    # A test may be named by a sentence in backticks.
+    excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']

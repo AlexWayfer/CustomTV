@@ -51,14 +51,42 @@ class CalendarAgeTest {
     }
 
     @Test
-    fun ownCardAlwaysReadsTheFollow() {
-        assertEquals(ChatterFollowSource.Own, chatterFollowSource(ownCard = true, chatterUserId = null, moderatesChannel = false))
+    fun ownCardReadsTheFollowOnSomeoneElsesChannel() {
+        assertEquals(
+            ChatterFollowSource.Own,
+            chatterFollowSource(ownCard = true, chatterUserId = null, broadcasterId = "1", moderatesChannel = false),
+        )
+        assertEquals(
+            ChatterFollowSource.Own,
+            chatterFollowSource(ownCard = true, chatterUserId = "7", broadcasterId = "1", moderatesChannel = false),
+        )
     }
 
     @Test
     fun someoneElseIsReadOnlyOnAChannelTheUserModerates() {
-        assertEquals(ChatterFollowSource.Moderator, chatterFollowSource(ownCard = false, chatterUserId = "7", moderatesChannel = true))
-        assertEquals(ChatterFollowSource.None, chatterFollowSource(ownCard = false, chatterUserId = "7", moderatesChannel = false))
-        assertEquals(ChatterFollowSource.None, chatterFollowSource(ownCard = false, chatterUserId = null, moderatesChannel = true))
+        assertEquals(
+            ChatterFollowSource.Moderator,
+            chatterFollowSource(ownCard = false, chatterUserId = "7", broadcasterId = "1", moderatesChannel = true),
+        )
+        assertEquals(
+            ChatterFollowSource.None,
+            chatterFollowSource(ownCard = false, chatterUserId = "7", broadcasterId = "1", moderatesChannel = false),
+        )
+        assertEquals(
+            ChatterFollowSource.None,
+            chatterFollowSource(ownCard = false, chatterUserId = null, broadcasterId = "1", moderatesChannel = true),
+        )
+    }
+
+    @Test
+    fun theBroadcastersCardHasNoFollowOnTheirOwnChannel() {
+        assertEquals(
+            ChatterFollowSource.None,
+            chatterFollowSource(ownCard = true, chatterUserId = "1", broadcasterId = "1", moderatesChannel = true),
+        )
+        assertEquals(
+            ChatterFollowSource.None,
+            chatterFollowSource(ownCard = false, chatterUserId = "1", broadcasterId = "1", moderatesChannel = true),
+        )
     }
 }

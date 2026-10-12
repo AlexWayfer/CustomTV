@@ -80,8 +80,12 @@ class TwitchEmoteCatalogTest {
 
     @Test
     fun storedUserEmotesJoinTheKeptPagesInOrder() {
-        val first = """{"data":[{"id":"1","name":"Kappa","emote_type":"turbo","format":["static"]}],"pagination":{"cursor":"a"}}"""
-        val second = """{"data":[{"id":"2","name":"Kreygasm","emote_type":"turbo","format":["animated"]}],"pagination":{}}"""
+        val first = """
+            {"data":[{"id":"1","name":"Kappa","emote_type":"turbo","format":["static"]}],"pagination":{"cursor":"a"}}
+        """.trimIndent()
+        val second = """
+            {"data":[{"id":"2","name":"Kreygasm","emote_type":"turbo","format":["animated"]}],"pagination":{}}
+        """.trimIndent()
         val body = JSONArray().put(first).put(second).toString()
 
         val emotes = parseStoredUserEmotes(body)!!

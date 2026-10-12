@@ -131,13 +131,5 @@ class ChatConnectionNoticeTest {
         assertEquals(listOf("old", "initial", "live"), result.map { it.id })
     }
 
-    private fun message(id: String, text: String) = ChatMessage(
-        id = id,
-        userLogin = "user",
-        displayName = "User",
-        color = androidx.compose.ui.graphics.Color.White,
-        rawText = text,
-        parts = listOf(ChatPart.Text(text)),
-        timestampMillis = 1L,
-    )
+    private fun message(id: String, text: String) = testChatMessage(id, text, login = "user", displayName = "User")
 }

@@ -1,15 +1,21 @@
 package name.alexwayfer.customtv.ui.account
 
 import java.io.IOException
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import name.alexwayfer.customtv.data.HTTP_CLIENT_ERROR
+import name.alexwayfer.customtv.data.HTTP_SUCCESS
+import name.alexwayfer.customtv.data.objects
 import name.alexwayfer.customtv.data.sharedHttpClient
+import name.alexwayfer.customtv.data.text
+import name.alexwayfer.customtv.data.trimmedText
 import name.alexwayfer.customtv.data.twitchGqlRequest
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import okhttp3.OkHttpClient
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
 
 internal data class VodChapter(
@@ -31,15 +37,15 @@ internal fun vodCategoryAt(categories: VodCategories, positionSeconds: Double): 
     if (ordered.isEmpty()) return categories.fallbackCategory?.takeIf { it.isNotBlank() }
     val at = positionSeconds.coerceAtLeast(0.0)
     var current = ordered.first().category
-    for ((positionSeconds, category) in ordered) {
-        if (positionSeconds > at) break
+    for ((startSeconds, category) in ordered) {
+        if (startSeconds > at) break
         current = category
     }
     return current
 }
 
 internal fun parseVodCategories(body: String): VodCategories? {
-    val video = runCatching { JSONObject(body) }.getOrNull()
+    val video = body.toJsonObjectOrNull()
         ?.optJSONObject("data")
         ?.optJSONObject("video")
         ?: return null
@@ -50,18 +56,7 @@ internal fun parseVodCategories(body: String): VodCategories? {
 internal fun parseVodCategoriesNode(video: JSONObject): VodCategories {
     val fallback = video.optJSONObject("game")
     val edges = video.optJSONObject("moments")?.optJSONArray("edges")
-    val chapters = buildList {
-        if (edges == null) return@buildList
-        for (index in 0 until edges.length()) {
-            val node = edges.optJSONObject(index)?.optJSONObject("node") ?: continue
-            val game = node.optJSONObject("details")?.optJSONObject("game")
-            val category = gameName(game)
-                ?: node.optString("description").trim().takeIf { it.isNotEmpty() && it != "null" }
-                ?: continue
-            val positionSeconds = node.optLong("positionMilliseconds", 0L).coerceAtLeast(0L) / 1_000.0
-            add(VodChapter(positionSeconds = positionSeconds, category = category, boxArtUrl = boxArt(game)))
-        }
-    }
+    val chapters = edges?.objects()?.mapNotNull { it.optJSONObject("node")?.let(::parseVodChapter) }.orEmpty()
     return VodCategories(
         chapters = chapters,
         fallbackCategory = gameName(fallback),
@@ -69,19 +64,22 @@ internal fun parseVodCategoriesNode(video: JSONObject): VodCategories {
     )
 }
 
-private fun gameName(game: JSONObject?): String? =
-    game?.optString("displayName")
-        ?.trim()
-        ?.takeIf { it.isNotEmpty() && it != "null" }
+/** A chapter named by its game, or by its description when it has none; one without either is dropped. */
+private fun parseVodChapter(node: JSONObject): VodChapter? {
+    val game = node.optJSONObject("details")?.optJSONObject("game")
+    val category = gameName(game) ?: node.trimmedText("description") ?: return null
+    val positionSeconds = node.optLong("positionMilliseconds", 0L).coerceAtLeast(0L) / 1_000.0
+    return VodChapter(positionSeconds = positionSeconds, category = category, boxArtUrl = boxArt(game))
+}
 
-private fun boxArt(game: JSONObject?): String? =
-    game?.optString("boxArtURL")
-        ?.takeIf { it.isNotBlank() && it != "null" }
+private fun gameName(game: JSONObject?): String? = game?.trimmedText("displayName")
+
+private fun boxArt(game: JSONObject?): String? = game?.text("boxArtURL")
 
 internal class VodChaptersRepository(
     private val http: OkHttpClient = sharedHttpClient.newBuilder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10.seconds)
+        .readTimeout(10.seconds)
         .build(),
 ) {
     suspend fun load(videoId: String): VodCategories? {
@@ -99,8 +97,8 @@ internal class VodChaptersRepository(
                 val body = response.body.string()
                 Diagnostics.reportGql(TAG, "chapters", response.code, body)
                 when (response.code) {
-                    in 200..299 -> body
-                    in 400..499 -> {
+                    in HTTP_SUCCESS -> body
+                    in HTTP_CLIENT_ERROR -> {
                         AppLog.w(TAG, "chapters rejected HTTP ${response.code}")
                         null
                     }

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.isActive
 import name.alexwayfer.customtv.R
@@ -55,40 +56,16 @@ internal fun ChatRaidNotice(
     chatTextSize: Int,
     dotInset: Dp,
 ) {
-    var seconds by remember(raid.id, raid.goAtMillis) {
-        mutableIntStateOf(raidSecondsRemaining(raid.goAtMillis, System.currentTimeMillis()))
-    }
-    val durationMillis = remember(raid.id, raid.goAtMillis) {
-        (raid.goAtMillis - System.currentTimeMillis()).coerceAtLeast(1L)
-    }
-    var fraction by remember(raid.id, raid.goAtMillis) {
-        mutableFloatStateOf(
-            raidFractionRemaining(raid.goAtMillis, System.currentTimeMillis(), durationMillis),
-        )
-    }
-    LaunchedEffect(raid.id, raid.goAtMillis) {
-        while (isActive) {
-            val now = System.currentTimeMillis()
-            seconds = raidSecondsRemaining(raid.goAtMillis, now)
-            fraction = raidFractionRemaining(raid.goAtMillis, now, durationMillis)
-            if (seconds == 0) return@LaunchedEffect
-            withFrameMillis { }
-        }
-    }
-    val headerSize = chatSp(chatTextSize, 12, 14)
+    val countdown = rememberRaidCountdown(raid)
     val bodySize = chatSp(chatTextSize, 14, 16)
     val timerSize = chatDp(chatTextSize, 36, 40)
-    val viewerCount = pluralStringResource(
-        R.plurals.raid_outgoing_viewer_count,
-        raid.viewerCount,
-        raid.viewerCount,
-    )
     val viewers = pluralStringResource(
         R.plurals.raid_outgoing_with_viewers,
         raid.viewerCount,
         raid.targetDisplayName,
         raid.viewerCount,
     )
+    val seconds = countdown.seconds
     val description = pluralStringResource(R.plurals.raid_outgoing_countdown, seconds, viewers, seconds)
     Column(
         modifier = Modifier
@@ -105,88 +82,10 @@ internal fun ChatRaidNotice(
                 .padding(start = 10.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
             content = {
                 Column(Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_chat_megaphone),
-                            contentDescription = null,
-                            tint = TwitchTextSecondary,
-                            modifier = Modifier.size(chatDp(chatTextSize, 16, 18)),
-                        )
-                        Text(
-                            text = stringResource(R.string.chat_raid_notice),
-                            color = TwitchTextSecondary,
-                            fontSize = headerSize,
-                            modifier = Modifier.padding(start = 4.dp),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.padding(top = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = stringResource(R.string.raid_outgoing_lead),
-                            color = TwitchText,
-                            fontSize = bodySize,
-                            maxLines = 1,
-                        )
-                        if (raid.targetAvatarUrl != null) {
-                            ChannelAvatar(
-                                channel = raid.targetLogin,
-                                profile = ChannelProfile(
-                                    login = raid.targetLogin,
-                                    displayName = raid.targetDisplayName,
-                                    avatarUrl = raid.targetAvatarUrl,
-                                ),
-                                size = chatDp(chatTextSize, 18, 22),
-                                modifier = Modifier.padding(start = 4.dp),
-                            )
-                        }
-                        Text(
-                            text = raid.targetDisplayName,
-                            color = TwitchText,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = bodySize,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .weight(1f, fill = false),
-                        )
-                        Text(
-                            text = stringResource(R.string.raid_outgoing_with),
-                            color = TwitchText,
-                            fontSize = bodySize,
-                            maxLines = 1,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
-                        Text(
-                            text = viewerCount,
-                            color = TwitchText,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = bodySize,
-                            maxLines = 1,
-                        )
-                    }
+                    RaidNoticeTitle(chatTextSize)
+                    RaidTarget(raid, chatTextSize)
                 }
-                Box(
-                    modifier = Modifier.size(timerSize),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(
-                        progress = { fraction },
-                        modifier = Modifier.size(timerSize),
-                        color = TwitchPurple,
-                        trackColor = TwitchDivider,
-                        strokeWidth = 2.dp,
-                        gapSize = 0.dp,
-                    )
-                    Text(
-                        text = seconds.toString(),
-                        color = TwitchText,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = bodySize,
-                    )
-                }
+                RaidTimer(countdown, timerSize, bodySize)
             },
         ) { measurables, constraints ->
             val timerPx = timerSize.roundToPx()
@@ -203,7 +102,7 @@ internal fun ChatRaidNotice(
             }
         }
         LinearProgressIndicator(
-            progress = { fraction },
+            progress = { countdown.fraction },
             modifier = Modifier.fillMaxWidth(),
             color = TwitchPurple,
             trackColor = TwitchDivider,
@@ -213,5 +112,137 @@ internal fun ChatRaidNotice(
         if (dotInset > 0.dp) {
             Spacer(Modifier.height(dotInset))
         }
+    }
+}
+
+/** The seconds left until the raid goes, and the share of the wait that remains. */
+private class RaidCountdown(seconds: Int, fraction: Float) {
+    var seconds by mutableIntStateOf(seconds)
+    var fraction by mutableFloatStateOf(fraction)
+}
+
+/** Counts down to the raid frame by frame, from the moment it is shown until it goes. */
+@Composable
+private fun rememberRaidCountdown(raid: OutgoingRaid): RaidCountdown {
+    val durationMillis = remember(raid.id, raid.goAtMillis) {
+        (raid.goAtMillis - System.currentTimeMillis()).coerceAtLeast(1L)
+    }
+    val countdown = remember(raid.id, raid.goAtMillis) {
+        RaidCountdown(
+            seconds = raidSecondsRemaining(raid.goAtMillis, System.currentTimeMillis()),
+            fraction = raidFractionRemaining(raid.goAtMillis, System.currentTimeMillis(), durationMillis),
+        )
+    }
+    LaunchedEffect(raid.id, raid.goAtMillis) {
+        while (isActive) {
+            val now = System.currentTimeMillis()
+            countdown.seconds = raidSecondsRemaining(raid.goAtMillis, now)
+            countdown.fraction = raidFractionRemaining(raid.goAtMillis, now, durationMillis)
+            if (countdown.seconds == 0) return@LaunchedEffect
+            withFrameMillis { }
+        }
+    }
+    return countdown
+}
+
+@Composable
+private fun RaidNoticeTitle(chatTextSize: Int) {
+    val headerSize = chatSp(chatTextSize, 12, 14)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = painterResource(R.drawable.ic_chat_megaphone),
+            contentDescription = null,
+            tint = TwitchTextSecondary,
+            modifier = Modifier.size(chatDp(chatTextSize, normal = 16, large = 18)),
+        )
+        Text(
+            text = stringResource(R.string.chat_raid_notice),
+            color = TwitchTextSecondary,
+            fontSize = headerSize,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+    }
+}
+
+/** "Raiding [avatar] [channel] with [viewers]", the channel's name cut short before the rest. */
+@Composable
+private fun RaidTarget(raid: OutgoingRaid, chatTextSize: Int) {
+    val bodySize = chatSp(chatTextSize, 14, 16)
+    val viewerCount = pluralStringResource(
+        R.plurals.raid_outgoing_viewer_count,
+        raid.viewerCount,
+        raid.viewerCount,
+    )
+    Row(
+        modifier = Modifier.padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.raid_outgoing_lead),
+            color = TwitchText,
+            fontSize = bodySize,
+            maxLines = 1,
+        )
+        if (raid.targetAvatarUrl != null) {
+            ChannelAvatar(
+                channel = raid.targetLogin,
+                profile = ChannelProfile(
+                    login = raid.targetLogin,
+                    displayName = raid.targetDisplayName,
+                    avatarUrl = raid.targetAvatarUrl,
+                ),
+                size = chatDp(chatTextSize, normal = 18, large = 22),
+                modifier = Modifier.padding(start = 4.dp),
+            )
+        }
+        Text(
+            text = raid.targetDisplayName,
+            color = TwitchText,
+            fontWeight = FontWeight.Bold,
+            fontSize = bodySize,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .weight(1f, fill = false),
+        )
+        Text(
+            text = stringResource(R.string.raid_outgoing_with),
+            color = TwitchText,
+            fontSize = bodySize,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        Text(
+            text = viewerCount,
+            color = TwitchText,
+            fontWeight = FontWeight.Bold,
+            fontSize = bodySize,
+            maxLines = 1,
+        )
+    }
+}
+
+/** The seconds left inside a ring that empties with them. */
+@Composable
+private fun RaidTimer(countdown: RaidCountdown, timerSize: Dp, textSize: TextUnit) {
+    Box(
+        modifier = Modifier.size(timerSize),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(
+            progress = { countdown.fraction },
+            modifier = Modifier.size(timerSize),
+            color = TwitchPurple,
+            trackColor = TwitchDivider,
+            strokeWidth = 2.dp,
+            gapSize = 0.dp,
+        )
+        Text(
+            text = countdown.seconds.toString(),
+            color = TwitchText,
+            fontWeight = FontWeight.Bold,
+            fontSize = textSize,
+        )
     }
 }

@@ -49,11 +49,6 @@ import name.alexwayfer.customtv.data.TwitchEmoteDetails
 import name.alexwayfer.customtv.data.TwitchEmoteDetailsRepository
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 
-internal data class EmotePreviewChannel(
-    val twitchUserId: String?,
-    val displayName: String,
-)
-
 internal val LocalEmotePreviewChannel = compositionLocalOf { EmotePreviewChannel(null, "") }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -259,16 +254,12 @@ private fun cachedLibraryOrigin(
     name: String,
     channel: EmotePreviewChannel,
 ): EmoteOrigin {
-    val userId = channel.twitchUserId
-    val onChannel = when (library) {
-        EmoteLibrary.SevenTv -> SevenTvRepository.isChannelEmote(userId, name)
-        EmoteLibrary.Bttv -> BttvRepository.isChannelEmote(userId, name)
-        EmoteLibrary.Ffz -> FfzRepository.isChannelEmote(userId, name)
+    val emotes = when (library) {
+        EmoteLibrary.SevenTv -> SevenTvRepository.emotes
+        EmoteLibrary.Bttv -> BttvRepository.emotes
+        EmoteLibrary.Ffz -> FfzRepository.emotes
     }
-    val global = when (library) {
-        EmoteLibrary.SevenTv -> SevenTvRepository.isGlobalEmote(name)
-        EmoteLibrary.Bttv -> BttvRepository.isGlobalEmote(name)
-        EmoteLibrary.Ffz -> FfzRepository.isGlobalEmote(name)
-    }
+    val onChannel = name in emotes.cachedChannel(channel.twitchUserId)
+    val global = name in emotes.cachedGlobal()
     return libraryEmoteOrigin(library, onChannel, channel.displayName, global)
 }

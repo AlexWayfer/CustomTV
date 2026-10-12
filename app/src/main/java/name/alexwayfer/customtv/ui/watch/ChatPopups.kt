@@ -13,9 +13,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,8 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -50,6 +54,7 @@ import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
+import kotlin.math.roundToInt
 
 @Composable
 internal fun ChatMessageCopyPopup(
@@ -57,37 +62,89 @@ internal fun ChatMessageCopyPopup(
     onCopy: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
-    DismissWhenPlayerContentHidden(onDismiss)
     val gestureHints = LocalGestureHints.current
+    ChatActionPopup(onDismiss) {
+        if (onReply != null) {
+            ChatMessageActionRow(
+                icon = R.drawable.ic_reply_arrow,
+                label = stringResource(R.string.chat_reply),
+                onClick = {
+                    gestureHints?.slowPathUsed(GestureHint.Reply)
+                    onReply()
+                },
+            )
+        }
+        if (onCopy != null) {
+            ChatMessageActionRow(
+                icon = R.drawable.ic_chat_copy,
+                label = stringResource(R.string.chat_copy),
+                onClick = onCopy,
+            )
+        }
+    }
+}
+
+/**
+ * Shown on a long press on the link at [start] until [end] of the text laid out in [layout]. It sits by the
+ * link's end as the message menu sits by the message's: below its last line, at its end edge. Call it inside
+ * a box that covers the text exactly.
+ */
+@Composable
+internal fun ChatLinkMenuPopup(
+    layout: TextLayoutResult,
+    start: Int,
+    end: Int,
+    onOpen: () -> Unit,
+    onCopy: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (start >= end) return
+    val density = LocalDensity.current
+    val lastLineStart = layout.getLineStart(layout.getLineForOffset(end - 1))
+    val bounds = layout.getPathForRange(linkLastLineStart(start, lastLineStart), end).getBounds()
+    // A popup places itself by the box it is called in, so this box covers the link's last line.
+    Box(
+        Modifier
+            .offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
+            .size(with(density) { bounds.width.toDp() }, with(density) { bounds.height.toDp() }),
+    ) {
+        ChatActionPopup(onDismiss) {
+            ChatMessageActionRow(
+                icon = R.drawable.ic_open_in_new,
+                label = stringResource(R.string.chat_open_link),
+                onClick = onOpen,
+            )
+            ChatMessageActionRow(
+                icon = R.drawable.ic_chat_copy,
+                label = stringResource(R.string.chat_copy),
+                onClick = onCopy,
+            )
+        }
+    }
+}
+
+/**
+ * Not focusable, so the message field keeps its focus and the keyboard stays up under it. A touch outside still
+ * closes it, but Back reaches the app's window, so a handler here takes it.
+ */
+@Composable
+private fun ChatActionPopup(
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    DismissWhenPlayerContentHidden(onDismiss)
+    BackHandler(onBack = onDismiss)
     Popup(
         popupPositionProvider = remember { ChatCopyPopupPositionProvider() },
         onDismissRequest = onDismiss,
-        properties = PopupProperties(focusable = true, clippingEnabled = true),
+        properties = PopupProperties(focusable = false, clippingEnabled = true),
     ) {
         Surface(
             shape = RoundedCornerShape(8.dp),
             color = TwitchSurfaceAlt,
             shadowElevation = 6.dp,
         ) {
-            Column {
-                if (onReply != null) {
-                    ChatMessageActionRow(
-                        icon = R.drawable.ic_reply_arrow,
-                        label = stringResource(R.string.chat_reply),
-                        onClick = {
-                            gestureHints?.slowPathUsed(GestureHint.Reply)
-                            onReply()
-                        },
-                    )
-                }
-                if (onCopy != null) {
-                    ChatMessageActionRow(
-                        icon = R.drawable.ic_chat_copy,
-                        label = stringResource(R.string.chat_copy),
-                        onClick = onCopy,
-                    )
-                }
-            }
+            Column(content = content)
         }
     }
 }
@@ -181,6 +238,9 @@ internal fun ChatOpenLinkOverlay(
         }
     }
 }
+
+/** Where the part of a link on its last line starts: the link's own start when it fits on one line. */
+internal fun linkLastLineStart(linkStart: Int, lastLineStart: Int): Int = maxOf(linkStart, lastLineStart)
 
 internal fun Context.copyChatText(text: String) {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

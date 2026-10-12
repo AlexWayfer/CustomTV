@@ -23,27 +23,47 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         label = stringResource(R.string.seven_tv_emotes),
         hint = stringResource(R.string.seven_tv_emotes_hint),
         checked = settings.sevenTvEmotes,
-        onCheckedChange = viewModel::setSevenTvEmotes,
+        onCheckedChange = viewModel.chat::setSevenTvEmotes,
     )
     SettingsToggle(
         label = stringResource(R.string.ffz_emotes),
         hint = stringResource(R.string.ffz_emotes_hint),
         checked = settings.ffzEmotes,
-        onCheckedChange = viewModel::setFfzEmotes,
+        onCheckedChange = viewModel.chat::setFfzEmotes,
     )
     SettingsToggle(
         label = stringResource(R.string.bttv_emotes),
         hint = stringResource(R.string.bttv_emotes_hint),
         checked = settings.bttvEmotes,
-        onCheckedChange = viewModel::setBttvEmotes,
+        onCheckedChange = viewModel.chat::setBttvEmotes,
     )
     SettingsToggle(
         label = stringResource(R.string.emote_completion_without_colon),
         hint = stringResource(R.string.emote_completion_without_colon_hint),
         checked = settings.emoteCompletionWithoutColon,
-        onCheckedChange = viewModel::setEmoteCompletionWithoutColon,
+        onCheckedChange = viewModel.chat::setEmoteCompletionWithoutColon,
     )
     SettingsSection(stringResource(R.string.settings_section_messages))
+    MeMessageStyle(settings, viewModel)
+    SettingsToggle(
+        label = stringResource(R.string.highlight_first_messages),
+        hint = stringResource(R.string.highlight_first_messages_hint),
+        checked = settings.highlightFirstMessages,
+        onCheckedChange = viewModel.chat::setHighlightFirstMessages,
+    )
+    RaiderMarkSettings(settings, viewModel)
+    LinkPreviewSettings(settings, viewModel)
+    SettingsToggle(
+        label = stringResource(R.string.keep_keyboard_after_send),
+        hint = stringResource(R.string.keep_keyboard_after_send_hint),
+        checked = settings.keepKeyboardAfterSend,
+        onCheckedChange = viewModel.chat::setKeepKeyboardAfterSend,
+    )
+}
+
+/** How a `/me` message looks: in italics, or in the chatter's name color. */
+@Composable
+private fun MeMessageStyle(settings: AppSettings, viewModel: SettingsViewModel) {
     Text(
         text = stringResource(R.string.me_messages),
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
@@ -56,7 +76,7 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
     ) {
         SegmentedButton(
             selected = settings.meMessageItalic,
-            onClick = { viewModel.setMeMessageItalic(true) },
+            onClick = { viewModel.chat.setMeMessageItalic(true) },
             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
         ) {
             Text(
@@ -66,7 +86,7 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         }
         SegmentedButton(
             selected = !settings.meMessageItalic,
-            onClick = { viewModel.setMeMessageItalic(false) },
+            onClick = { viewModel.chat.setMeMessageItalic(false) },
             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
         ) {
             Text(stringResource(R.string.me_messages_name_color))
@@ -77,19 +97,5 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.bodyMedium,
-    )
-    SettingsToggle(
-        label = stringResource(R.string.highlight_first_messages),
-        hint = stringResource(R.string.highlight_first_messages_hint),
-        checked = settings.highlightFirstMessages,
-        onCheckedChange = viewModel::setHighlightFirstMessages,
-    )
-    RaiderMarkSettings(settings, viewModel)
-    LinkPreviewSettings(settings, viewModel)
-    SettingsToggle(
-        label = stringResource(R.string.keep_keyboard_after_send),
-        hint = stringResource(R.string.keep_keyboard_after_send_hint),
-        checked = settings.keepKeyboardAfterSend,
-        onCheckedChange = viewModel::setKeepKeyboardAfterSend,
     )
 }

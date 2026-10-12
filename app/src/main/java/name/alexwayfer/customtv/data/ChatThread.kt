@@ -3,10 +3,9 @@ package name.alexwayfer.customtv.data
 import name.alexwayfer.customtv.chat.ChatThreadEntry
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.Instant
 
 internal fun parseChatThread(body: String): List<ChatThreadEntry>? {
-    val data = runCatching { JSONObject(body) }.getOrNull()?.optJSONObject("data") ?: return null
+    val data = body.toJsonObjectOrNull()?.optJSONObject("data") ?: return null
     if (data.isNull("message")) return null
     val message = data.optJSONObject("message") ?: return null
     val entries = mutableListOf<ChatThreadEntry>()
@@ -14,11 +13,14 @@ internal fun parseChatThread(body: String): List<ChatThreadEntry>? {
     return entries.distinctBy { it.id }
 }
 
+/** Replies nested deeper than this are not read. */
+private const val THREAD_DEPTH = 6
+
 private fun collectThreadMessage(node: JSONObject, into: MutableList<ChatThreadEntry>, depth: Int) {
     if (node.isNull("deletedAt") || node.optString("deletedAt").isBlank()) {
         threadEntry(node)?.let(into::add)
     }
-    if (depth >= 6) return
+    if (depth >= THREAD_DEPTH) return
     val nodes = node.optJSONObject("replies")?.optJSONArray("nodes") ?: return
     for (index in 0 until nodes.length()) {
         val child = nodes.optJSONObject(index) ?: continue
@@ -27,10 +29,10 @@ private fun collectThreadMessage(node: JSONObject, into: MutableList<ChatThreadE
 }
 
 private fun threadEntry(node: JSONObject): ChatThreadEntry? {
-    val id = node.optString("id").takeIf { it.isNotBlank() && it != "null" } ?: return null
+    val id = node.text("id") ?: return null
     val sender = node.optJSONObject("sender") ?: return null
-    val login = sender.optString("login").takeIf { it.isNotBlank() && it != "null" } ?: return null
-    val displayName = sender.optString("displayName").takeIf { it.isNotBlank() && it != "null" } ?: login
+    val login = sender.text("login") ?: return null
+    val displayName = sender.text("displayName") ?: login
     val text = messageText(node.optJSONObject("content"))
     val body = if (node.optJSONObject("parentMessage")?.optString("id").isNullOrBlank()) {
         text
@@ -38,7 +40,7 @@ private fun threadEntry(node: JSONObject): ChatThreadEntry? {
         stripLeadingMention(text)
     }
     val sentAt = node.optString("sentAt")
-    val timestamp = runCatching { Instant.parse(sentAt).toEpochMilli() }.getOrDefault(0L)
+    val timestamp = instantMillisOrNull(sentAt) ?: 0L
     return ChatThreadEntry(
         id = id,
         login = login,
@@ -50,10 +52,7 @@ private fun threadEntry(node: JSONObject): ChatThreadEntry? {
 
 private fun messageText(content: JSONObject?): String {
     if (content == null) return ""
-    val text = content.optString("text").takeIf { it.isNotBlank() && it != "null" }
-    if (text != null) return text
-    val fragments = content.optJSONArray("fragments") ?: return ""
-    return fragmentText(fragments)
+    return content.text("text") ?: content.optJSONArray("fragments")?.let(::fragmentText).orEmpty()
 }
 
 private fun fragmentText(fragments: JSONArray): String {

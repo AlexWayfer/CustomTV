@@ -5,6 +5,7 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 
 /** What a recent channel was streaming at the last load: shown at start until a fresh load replaces it. */
 internal data class RecentStream(
@@ -74,27 +75,30 @@ internal fun recentStreamsAfterRefresh(
 internal class RecentChannelsSnapshot(context: Context) {
     private val file = File(context.applicationContext.filesDir, "recent-channels.json")
 
-    fun read(): Map<String, RecentStream> {
-        synchronized(gate) {
-            if (!file.exists()) return emptyMap()
-            val raw = runCatching { file.readText() }.getOrElse { failure ->
-                AppLog.w(TAG, "recents snapshot read failed: ${failure.javaClass.simpleName}")
-                return emptyMap()
+    fun read(): Map<String, RecentStream> = synchronized(gate) {
+        if (!file.exists()) {
+            emptyMap()
+        } else {
+            try {
+                decodeRecentStreams(file.readText())
+            } catch (failure: IOException) {
+                AppLog.w(RECENT_CHANNELS_TAG, "recents snapshot read failed: ${failure.javaClass.simpleName}")
+                emptyMap()
             }
-            return decodeRecentStreams(raw)
         }
     }
 
     fun write(streams: Map<String, RecentStream>) {
         synchronized(gate) {
-            runCatching { file.writeText(encodeRecentStreams(streams)) }.onFailure { failure ->
-                AppLog.w(TAG, "recents snapshot write failed: ${failure.javaClass.simpleName}")
+            try {
+                file.writeText(encodeRecentStreams(streams))
+            } catch (failure: IOException) {
+                AppLog.w(RECENT_CHANNELS_TAG, "recents snapshot write failed: ${failure.javaClass.simpleName}")
             }
         }
     }
 
     private companion object {
-        const val TAG = "RecentChannels"
         val gate = Any()
     }
 }
@@ -120,7 +124,7 @@ internal fun encodeRecentStreams(streams: Map<String, RecentStream>): String {
 
 /** The saved streams by channel ID, or none when the file is unreadable. */
 internal fun decodeRecentStreams(raw: String): Map<String, RecentStream> {
-    val root = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+    val root = raw.toJsonObjectOrNull() ?: return emptyMap()
     return buildMap {
         root.keys().forEach { id ->
             val item = root.optJSONObject(id) ?: return@forEach
@@ -148,9 +152,3 @@ internal fun decodeRecentStreams(raw: String): Map<String, RecentStream> {
         }
     }
 }
-
-private fun JSONObject.stringOrNull(name: String): String? =
-    if (has(name) && !isNull(name)) optString(name) else null
-
-private fun JSONObject.intOrNull(name: String): Int? =
-    if (has(name) && !isNull(name)) optInt(name) else null

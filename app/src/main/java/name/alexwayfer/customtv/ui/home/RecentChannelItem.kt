@@ -9,6 +9,7 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -57,6 +58,8 @@ import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import kotlin.math.roundToInt
 
+private const val SWIPE_SETTLE_MS = 180
+
 @Composable
 internal fun RecentChannelItem(
     channel: String,
@@ -85,7 +88,7 @@ internal fun RecentChannelItem(
         scope.launch {
             offsetX.animateTo(
                 if (open) -actionWidthPx else 0f,
-                tween(180),
+                tween(SWIPE_SETTLE_MS),
             )
         }
     }
@@ -110,29 +113,7 @@ internal fun RecentChannelItem(
                 )
             },
     ) {
-        Box(modifier = Modifier.matchParentSize()) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .fillMaxHeight()
-                    .width(RecentDeleteWidth)
-                    // Hidden at rest: the anti-aliased rounded corners of the row above would let the red show through.
-                    .graphicsLayer { alpha = if (offsetX.value < 0f) 1f else 0f }
-                    .background(TwitchLive)
-                    .clickable(
-                        interactionSource = null,
-                        indication = ripple(color = Color.White),
-                        onClick = onRemove,
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.remove_recent),
-                    tint = Color.White,
-                )
-            }
-        }
+        RecentDeleteAction(swipeOffset = { offsetX.value }, onRemove = onRemove)
         RecentChannelRow(
             channel = channel,
             refreshedProfile = refreshedProfile,
@@ -154,6 +135,34 @@ internal fun RecentChannelItem(
     }
 }
 
+/** Delete, under the row's end, which a swipe to the start uncovers by [swipeOffset]. */
+@Composable
+private fun BoxScope.RecentDeleteAction(swipeOffset: () -> Float, onRemove: () -> Unit) {
+    Box(modifier = Modifier.matchParentSize()) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(RecentDeleteWidth)
+                // Hidden at rest: the anti-aliased rounded corners of the row above would let the red show through.
+                .graphicsLayer { alpha = if (swipeOffset() < 0f) 1f else 0f }
+                .background(TwitchLive)
+                .clickable(
+                    interactionSource = null,
+                    indication = ripple(color = Color.White),
+                    onClick = onRemove,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = stringResource(R.string.remove_recent),
+                tint = Color.White,
+            )
+        }
+    }
+}
+
 @Composable
 private fun RecentChannelRow(
     channel: String,
@@ -163,14 +172,7 @@ private fun RecentChannelRow(
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
-    val profile = refreshedProfile ?: remember(channel) {
-        ChannelAvatarRepository.cached(channel) ?: ChannelProfile(
-            login = channel.lowercase(),
-            displayName = channel,
-            avatarUrl = null,
-        )
-    }
-    val displayName = profile.displayName
+    val profile = refreshedProfile ?: rememberSavedRecentProfile(channel)
     val category = profile.categoryName.takeIf { profile.isLive }
     val viewerCount = profile.viewerCount.takeIf { profile.isLive }
     Row(
@@ -203,7 +205,7 @@ private fun RecentChannelRow(
                 .weight(1f),
         ) {
             ChannelListTitle(
-                displayName = displayName,
+                displayName = profile.displayName,
                 login = channel,
                 collaboratorCount = if (profile.isLive) profile.collaborationCount else null,
             )
@@ -225,6 +227,16 @@ private fun RecentChannelRow(
             )
         }
     }
+}
+
+/** The channel's profile the app saved before, or only its login until the first refresh. */
+@Composable
+private fun rememberSavedRecentProfile(channel: String): ChannelProfile = remember(channel) {
+    ChannelAvatarRepository.cached(channel) ?: ChannelProfile(
+        login = channel.lowercase(),
+        displayName = channel,
+        avatarUrl = null,
+    )
 }
 
 private val RecentDeleteWidth = 72.dp

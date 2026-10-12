@@ -106,7 +106,7 @@ internal class TwitchSessionHolder(
             if (!shouldRefreshAccessToken(latest.expiresAtMillis, System.currentTimeMillis())) {
                 latest
             } else {
-                AppLog.i(TAG, "refreshing access token")
+                AppLog.i(TWITCH_AUTH_TAG, "refreshing access token")
                 refreshAndPublish(latest, generation)
             }
         }
@@ -139,9 +139,5 @@ internal class TwitchSessionHolder(
         val memory = session
         val persisted = read()
         return latestSessionForRefresh(requested, memory, persisted, deviceGrant)
-    }
-
-    private companion object {
-        const val TAG = "TwitchAuth"
     }
 }

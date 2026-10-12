@@ -121,15 +121,7 @@ class ChatMessageEnrichmentTest {
         assertEquals("OldName", result.emoteChange?.previousName)
     }
 
-    private fun message() = ChatMessage(
-        id = "message",
-        userLogin = "viewer",
-        displayName = "Viewer",
-        color = Color.Red,
-        rawText = "text",
-        parts = listOf(ChatPart.Text("text")),
-        timestampMillis = 1L,
-    )
+    private fun message() = testChatMessage("message", displayName = "Viewer", color = Color.Red)
 
     private fun reward(
         title: String,

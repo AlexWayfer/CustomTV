@@ -1,5 +1,7 @@
 package name.alexwayfer.customtv.chat
 
+import name.alexwayfer.customtv.data.UserTwitchEmotes
+
 internal data class TwitchCatalogEmote(
     val name: String,
     val url: String,
@@ -50,26 +52,27 @@ internal data class ChannelEmoteSource(
     val ffz: Map<String, SevenTvEmote> = emptyMap(),
 )
 
+/** The emotes every channel shares: Twitch's own and the third-party platforms' global sets. */
+internal data class GlobalEmoteSource(
+    val twitch: List<TwitchCatalogEmote> = emptyList(),
+    val sevenTv: Map<String, SevenTvEmote> = emptyMap(),
+    val bttv: Map<String, SevenTvEmote> = emptyMap(),
+    val ffz: Map<String, SevenTvEmote> = emptyMap(),
+)
+
 internal fun emotePickerSections(
     channel: ChannelEmoteSource,
     own: ChannelEmoteSource?,
-    globalTwitch: List<TwitchCatalogEmote>,
-    globalSevenTv: Map<String, SevenTvEmote>,
-    globalBttv: Map<String, SevenTvEmote>,
-    globalFfz: Map<String, SevenTvEmote>,
-    sevenTvEnabled: Boolean,
-    bttvEnabled: Boolean,
-    ffzEnabled: Boolean,
-    personalSmilies: List<TwitchCatalogEmote> = emptyList(),
-    turboTwitch: List<TwitchCatalogEmote> = emptyList(),
-    unlockedTwitch: List<UnlockedSourceEmote> = emptyList(),
+    global: GlobalEmoteSource,
+    sources: EmoteSources,
+    personal: UserTwitchEmotes? = null,
 ): List<EmotePickerSection> {
     return buildList {
-        addChannel(EmotePickerPlace.Channel, channel, sevenTvEnabled, bttvEnabled, ffzEnabled)
+        addChannel(EmotePickerPlace.Channel, channel, sources)
         if (own != null) {
-            addChannel(EmotePickerPlace.OwnChannel, own, sevenTvEnabled = false, bttvEnabled = false, ffzEnabled = false)
+            addChannel(EmotePickerPlace.OwnChannel, own, EmoteSources(sevenTv = false, ffz = false, bttv = false))
         }
-        unlockedEmoteGroups(unlockedTwitch).forEach { group ->
+        unlockedEmoteGroups(personal?.unlocked.orEmpty()).forEach { group ->
             add(
                 EmotePickerSection(
                     place = EmotePickerPlace.Unlocked,
@@ -81,11 +84,11 @@ internal fun emotePickerSections(
         }
         addGlobal(
             EmotePickerKind.Twitch,
-            pickerEmotes(twitchPickerEmotes(globalTwitch, personalSmilies, turboTwitch)),
+            pickerEmotes(twitchPickerEmotes(global.twitch, personal?.smilies.orEmpty(), personal?.turbo.orEmpty())),
         )
-        if (sevenTvEnabled) addGlobal(EmotePickerKind.SevenTv, pickerEmotes(globalSevenTv))
-        if (bttvEnabled) addGlobal(EmotePickerKind.Bttv, pickerEmotes(globalBttv))
-        if (ffzEnabled) addGlobal(EmotePickerKind.Ffz, pickerEmotes(globalFfz))
+        if (sources.sevenTv) addGlobal(EmotePickerKind.SevenTv, pickerEmotes(global.sevenTv))
+        if (sources.bttv) addGlobal(EmotePickerKind.Bttv, pickerEmotes(global.bttv))
+        if (sources.ffz) addGlobal(EmotePickerKind.Ffz, pickerEmotes(global.ffz))
     }
 }
 
@@ -127,15 +130,13 @@ internal fun frequentlyUsedEmotes(emotes: List<PickerEmote>, usage: List<EmoteUs
 private fun MutableList<EmotePickerSection>.addChannel(
     place: EmotePickerPlace,
     source: ChannelEmoteSource,
-    sevenTvEnabled: Boolean,
-    bttvEnabled: Boolean,
-    ffzEnabled: Boolean,
+    sources: EmoteSources,
 ) {
     addTwitch(place, source.label, EmotePickerKind.Follow, source.twitch)
     addTwitch(place, source.label, EmotePickerKind.Subscriptions, source.twitch)
-    if (sevenTvEnabled) addPlatform(place, source.label, EmotePickerKind.SevenTv, source.sevenTv)
-    if (bttvEnabled) addPlatform(place, source.label, EmotePickerKind.Bttv, source.bttv)
-    if (ffzEnabled) addPlatform(place, source.label, EmotePickerKind.Ffz, source.ffz)
+    if (sources.sevenTv) addPlatform(place, source.label, EmotePickerKind.SevenTv, source.sevenTv)
+    if (sources.bttv) addPlatform(place, source.label, EmotePickerKind.Bttv, source.bttv)
+    if (sources.ffz) addPlatform(place, source.label, EmotePickerKind.Ffz, source.ffz)
 }
 
 private fun MutableList<EmotePickerSection>.addTwitch(

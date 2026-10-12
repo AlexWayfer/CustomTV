@@ -31,10 +31,10 @@ internal object ChannelEventsRepository {
                     val body = response.body.string()
                     Diagnostics.reportGql(TAG, "events", response.code, body)
                     when (response.code) {
-                        in 200..299 -> parseChannelEventsGql(body, System.currentTimeMillis()).also {
+                        in HTTP_SUCCESS -> parseChannelEventsGql(body, System.currentTimeMillis()).also {
                             if (it == null) AppLog.w(TAG, "events unreadable: ${gqlFailureCause(body)}")
                         }
-                        in 400..499 -> {
+                        in HTTP_CLIENT_ERROR -> {
                             AppLog.w(TAG, "events rejected HTTP ${response.code}")
                             null
                         }

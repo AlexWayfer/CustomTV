@@ -24,28 +24,32 @@ class RecordingTapSeekTest {
 
     @Test
     fun aQuickSecondTapOnTheSameSideStartsSeeking() {
-        assertTrue(tapSeeks(TapSide.Forward, TapSide.Forward, sinceLastTapMs = 300, doubleTapTimeoutMs = 300, seriesRunning = false))
-        assertTrue(tapSeeks(TapSide.Back, TapSide.Back, sinceLastTapMs = 0, doubleTapTimeoutMs = 300, seriesRunning = false))
+        assertTrue(seeks(TapSide.Forward, TapSide.Forward, sinceLastTapMs = 300))
+        assertTrue(seeks(TapSide.Back, TapSide.Back, sinceLastTapMs = 0))
     }
 
     @Test
     fun aSlowSecondTapOrOneOnTheOtherSideDoesNotStartSeeking() {
-        assertFalse(tapSeeks(TapSide.Forward, TapSide.Forward, sinceLastTapMs = 301, doubleTapTimeoutMs = 300, seriesRunning = false))
-        assertFalse(tapSeeks(TapSide.Back, TapSide.Forward, sinceLastTapMs = 100, doubleTapTimeoutMs = 300, seriesRunning = false))
-        assertFalse(tapSeeks(null, TapSide.Forward, sinceLastTapMs = 100, doubleTapTimeoutMs = 300, seriesRunning = false))
+        assertFalse(seeks(TapSide.Forward, TapSide.Forward, sinceLastTapMs = 301))
+        assertFalse(seeks(TapSide.Back, TapSide.Forward, sinceLastTapMs = 100))
+        assertFalse(seeks(null, TapSide.Forward, sinceLastTapMs = 100))
     }
 
     @Test
     fun whileASeriesRunsATapOnEitherSideSeeksEvenASlowOne() {
-        assertTrue(tapSeeks(TapSide.Forward, TapSide.Forward, sinceLastTapMs = 900, doubleTapTimeoutMs = 300, seriesRunning = true))
-        assertTrue(tapSeeks(TapSide.Forward, TapSide.Back, sinceLastTapMs = 900, doubleTapTimeoutMs = 300, seriesRunning = true))
+        assertTrue(seeks(TapSide.Forward, TapSide.Forward, sinceLastTapMs = 900, seriesRunning = true))
+        assertTrue(seeks(TapSide.Forward, TapSide.Back, sinceLastTapMs = 900, seriesRunning = true))
     }
 
     @Test
     fun aTapInTheMiddleNeverSeeks() {
-        assertFalse(tapSeeks(TapSide.Middle, TapSide.Middle, sinceLastTapMs = 100, doubleTapTimeoutMs = 300, seriesRunning = false))
-        assertFalse(tapSeeks(TapSide.Forward, TapSide.Middle, sinceLastTapMs = 100, doubleTapTimeoutMs = 300, seriesRunning = true))
+        assertFalse(seeks(TapSide.Middle, TapSide.Middle, sinceLastTapMs = 100))
+        assertFalse(seeks(TapSide.Forward, TapSide.Middle, sinceLastTapMs = 100, seriesRunning = true))
     }
+
+    /** [tapSeeks] with a double-tap timeout of 300 ms. */
+    private fun seeks(previous: TapSide?, side: TapSide, sinceLastTapMs: Long, seriesRunning: Boolean = false) =
+        tapSeeks(previous, side, sinceLastTapMs, doubleTapTimeoutMs = 300, seriesRunning = seriesRunning)
 
     @Test
     fun aFirstTapThatWouldHideTheControlsOnASideWaitsForASecond() {

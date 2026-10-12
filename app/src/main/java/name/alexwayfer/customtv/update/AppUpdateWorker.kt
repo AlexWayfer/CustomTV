@@ -19,7 +19,7 @@ internal class AppUpdateWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        TelegramSession.checkInBackground()
+        TelegramSession.updates.checkInBackground()
         return Result.success()
     }
 }

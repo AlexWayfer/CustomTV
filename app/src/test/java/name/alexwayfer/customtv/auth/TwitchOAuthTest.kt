@@ -13,7 +13,13 @@ class TwitchOAuthTest {
     fun deviceLoginReadsCodeUriAndInterval() {
         val login = parseTwitchDeviceLogin(
             """
-            {"device_code":"device","expires_in":1800,"interval":5,"user_code":"ABCDEFGH","verification_uri":"https://www.twitch.tv/activate?public=true&device-code=ABCDEFGH"}
+            {
+              "device_code":"device",
+              "expires_in":1800,
+              "interval":5,
+              "user_code":"ABCDEFGH",
+              "verification_uri":"https://www.twitch.tv/activate?public=true&device-code=ABCDEFGH"
+            }
             """.trimIndent(),
         )
         assertEquals("device", login?.deviceCode)
@@ -25,9 +31,18 @@ class TwitchOAuthTest {
 
     @Test
     fun deviceLoginRejectsMissingCodeAndUsesFiveSecondFloor() {
-        assertNull(parseTwitchDeviceLogin("""{"user_code":"ABCDEFGH","verification_uri":"https://www.twitch.tv/activate"}"""))
+        val withoutCode = """{"user_code":"ABCDEFGH","verification_uri":"https://www.twitch.tv/activate"}"""
+        assertNull(parseTwitchDeviceLogin(withoutCode))
         val login = parseTwitchDeviceLogin(
-            """{"device_code":"device","user_code":"ABCDEFGH","verification_uri":"https://www.twitch.tv/activate","expires_in":30,"interval":0}""",
+            """
+            {
+              "device_code":"device",
+              "user_code":"ABCDEFGH",
+              "verification_uri":"https://www.twitch.tv/activate",
+              "expires_in":30,
+              "interval":0
+            }
+            """.trimIndent(),
         )
         assertEquals(5L, login?.intervalSeconds)
     }
@@ -120,7 +135,14 @@ class TwitchOAuthTest {
     @Test
     fun accountJsonKeepsTheProfileDescription() {
         val account = parseTwitchAccount(
-            """{"data":[{"login":"alice","display_name":"Alice","profile_image_url":"https://example/a.png","description":" Software Developer. "}]}""",
+            """
+            {"data":[{
+              "login":"alice",
+              "display_name":"Alice",
+              "profile_image_url":"https://example/a.png",
+              "description":" Software Developer. "
+            }]}
+            """.trimIndent(),
         )
 
         assertEquals("Software Developer.", account?.description)
@@ -129,7 +151,9 @@ class TwitchOAuthTest {
     @Test
     fun accountJsonKeepsTheUserId() {
         val account = parseTwitchAccount(
-            """{"data":[{"id":"42","login":"alice","display_name":"Alice","profile_image_url":"https://example/a.png"}]}""",
+            """
+            {"data":[{"id":"42","login":"alice","display_name":"Alice","profile_image_url":"https://example/a.png"}]}
+            """.trimIndent(),
         )
 
         assertEquals("42", account?.userId)
@@ -294,6 +318,12 @@ class TwitchOAuthTest {
     }
 
     @Test
+    fun answersThatAreNotJsonHaveNoTokensOrAccount() {
+        assertNull(parseTwitchTokens("<html>Bad Gateway</html>"))
+        assertNull(parseTwitchAccount("<html>Bad Gateway</html>"))
+    }
+
+    @Test
     fun tokenJsonRequiresRefreshToken() {
         assertNull(parseTwitchTokens("""{"access_token":"a","expires_in":3600}"""))
         val tokens = parseTwitchTokens(
@@ -343,7 +373,15 @@ class TwitchOAuthTest {
         )
         val payload = pendingLoginPayload(login, nowMillis = 1_000L)
         assertNull(restorePendingLogin(payload, nowMillis = 31_000L))
-        assertNull(restorePendingLogin("""{"deviceCode":"","userCode":"ABCDEFGH","verificationUri":"https://www.twitch.tv/activate","expiresAtMillis":99999}""", 0L))
+        val withoutDeviceCode = """
+            {
+              "deviceCode":"",
+              "userCode":"ABCDEFGH",
+              "verificationUri":"https://www.twitch.tv/activate",
+              "expiresAtMillis":99999
+            }
+        """.trimIndent()
+        assertNull(restorePendingLogin(withoutDeviceCode, 0L))
     }
 
     @Test

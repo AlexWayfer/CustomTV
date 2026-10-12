@@ -26,7 +26,10 @@ class ChannelFollowStatusTest {
     @Test
     fun withoutARequestTheFollowsListDecides() {
         assertEquals(ChannelFollowStatus.Following, channelFollowStatus(setOf("123"), FollowForChatMode.Unknown, "123"))
-        assertEquals(ChannelFollowStatus.NotFollowing, channelFollowStatus(setOf("456"), FollowForChatMode.Unknown, "123"))
+        assertEquals(
+            ChannelFollowStatus.NotFollowing,
+            channelFollowStatus(setOf("456"), FollowForChatMode.Unknown, "123"),
+        )
     }
 
     @Test
@@ -36,12 +39,18 @@ class ChannelFollowStatusTest {
 
     @Test
     fun aFollowMadeInABrowserFillsTheHeartBeforeTheListKnowsIt() {
-        assertEquals(ChannelFollowStatus.Following, channelFollowStatus(setOf("456"), FollowForChatMode.Following(1L), "123"))
+        assertEquals(
+            ChannelFollowStatus.Following,
+            channelFollowStatus(setOf("456"), FollowForChatMode.Following(1L), "123"),
+        )
     }
 
     @Test
     fun anUnfollowMadeInABrowserEmptiesTheHeartTheListStillFills() {
-        assertEquals(ChannelFollowStatus.NotFollowing, channelFollowStatus(setOf("123"), FollowForChatMode.NotFollowing, "123"))
+        assertEquals(
+            ChannelFollowStatus.NotFollowing,
+            channelFollowStatus(setOf("123"), FollowForChatMode.NotFollowing, "123"),
+        )
     }
 
     @Test
@@ -58,6 +67,26 @@ class ChannelFollowStatusTest {
     fun anAnswerTheListAgreesWithKeepsIt() {
         assertFalse(followListOutdated(setOf("123"), FollowForChatMode.Following(1L), "123"))
         assertFalse(followListOutdated(setOf("456"), FollowForChatMode.NotFollowing, "123"))
+    }
+
+    @Test
+    fun theUsersOwnChannelIsMatchedById() {
+        assertTrue(isOwnChannel(channelId = "123", ownUserId = "123"))
+        assertFalse(isOwnChannel(channelId = "123", ownUserId = "456"))
+    }
+
+    @Test
+    fun withoutASignedInUserNoChannelIsOwn() {
+        assertFalse(isOwnChannel(channelId = "123", ownUserId = null))
+        assertFalse(isOwnChannel(channelId = "", ownUserId = ""))
+    }
+
+    @Test
+    fun theHeartShowsOnlyForAKnownFollowOfAnotherChannel() {
+        assertTrue(ChannelFollowStatus.Following.showsFollowButton)
+        assertTrue(ChannelFollowStatus.NotFollowing.showsFollowButton)
+        assertFalse(ChannelFollowStatus.Unknown.showsFollowButton)
+        assertFalse(ChannelFollowStatus.OwnChannel.showsFollowButton)
     }
 
     @Test

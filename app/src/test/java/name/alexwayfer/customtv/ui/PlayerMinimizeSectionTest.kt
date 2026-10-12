@@ -8,35 +8,59 @@ import org.junit.Test
 class PlayerMinimizeSectionTest {
     @Test
     fun backOnHomeWithAMiniStreamKeepsItInPip() {
-        assertTrue(homeBackKeepsMiniPlayer(AppSection.Home, liveMiniPlayer = true, videoMiniPlayer = false, inPictureInPicture = false))
+        assertTrue(keepsMiniPlayer(AppSection.Home, liveMiniPlayer = true))
     }
 
     @Test
     fun backOnHomeWithAMiniRecordingKeepsItInPip() {
-        assertTrue(homeBackKeepsMiniPlayer(AppSection.Home, liveMiniPlayer = false, videoMiniPlayer = true, inPictureInPicture = false))
+        assertTrue(keepsMiniPlayer(AppSection.Home, videoMiniPlayer = true))
     }
 
     @Test
     fun backOnHomeWithoutAMiniPlayerLeavesTheAppAsUsual() {
-        assertFalse(homeBackKeepsMiniPlayer(AppSection.Home, liveMiniPlayer = false, videoMiniPlayer = false, inPictureInPicture = false))
+        assertFalse(keepsMiniPlayer(AppSection.Home))
     }
 
     @Test
     fun backOnAnotherSectionIsLeftToThatSection() {
-        assertFalse(homeBackKeepsMiniPlayer(AppSection.Account, liveMiniPlayer = true, videoMiniPlayer = true, inPictureInPicture = false))
+        assertFalse(keepsMiniPlayer(AppSection.Account, liveMiniPlayer = true, videoMiniPlayer = true))
     }
 
     @Test
     fun pipIsOfferedForALiveStreamAndForAnOpenRecording() {
-        assertTrue(pictureInPictureAllowed(watching = true, channelLive = true, liveClosedWithPip = false, recordingOpen = false))
-        assertTrue(pictureInPictureAllowed(watching = false, channelLive = false, liveClosedWithPip = false, recordingOpen = true))
+        assertTrue(pipAllowed(watching = true, channelLive = true))
+        assertTrue(pipAllowed(recordingOpen = true))
     }
 
     @Test
     fun pipIsNotOfferedForAnOfflineOrDismissedStream() {
-        assertFalse(pictureInPictureAllowed(watching = true, channelLive = false, liveClosedWithPip = false, recordingOpen = false))
-        assertFalse(pictureInPictureAllowed(watching = true, channelLive = true, liveClosedWithPip = true, recordingOpen = false))
+        assertFalse(pipAllowed(watching = true))
+        assertFalse(pipAllowed(watching = true, channelLive = true, liveClosedWithPip = true))
     }
+
+    /** [homeBackKeepsMiniPlayer] outside picture-in-picture. */
+    private fun keepsMiniPlayer(
+        section: AppSection,
+        liveMiniPlayer: Boolean = false,
+        videoMiniPlayer: Boolean = false,
+    ) = homeBackKeepsMiniPlayer(
+        section,
+        liveMiniPlayer = liveMiniPlayer,
+        videoMiniPlayer = videoMiniPlayer,
+        inPictureInPicture = false,
+    )
+
+    private fun pipAllowed(
+        watching: Boolean = false,
+        channelLive: Boolean = false,
+        liveClosedWithPip: Boolean = false,
+        recordingOpen: Boolean = false,
+    ) = pictureInPictureAllowed(
+        watching = watching,
+        channelLive = channelLive,
+        liveClosedWithPip = liveClosedWithPip,
+        recordingOpen = recordingOpen,
+    )
 
     @Test
     fun theMiniPlayerHidesOnSettings() {

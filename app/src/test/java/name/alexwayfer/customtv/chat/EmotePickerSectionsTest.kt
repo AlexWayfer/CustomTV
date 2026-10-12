@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.chat
 
+import name.alexwayfer.customtv.data.UserTwitchEmotes
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -26,13 +27,13 @@ class EmotePickerSectionsTest {
                 bttv = mapOf("MyBttv" to emote("b")),
                 ffz = mapOf("MyFfz" to emote("ffz")),
             ),
-            globalTwitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global), twitch("HeyGuys", TwitchEmoteGroup.Global)),
-            globalSevenTv = mapOf("Pepe" to emote("p")),
-            globalBttv = mapOf("NaM" to emote("n")),
-            globalFfz = mapOf("ZreknarF" to emote("f")),
-            sevenTvEnabled = true,
-            bttvEnabled = false,
-            ffzEnabled = true,
+            global = GlobalEmoteSource(
+                twitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global), twitch("HeyGuys", TwitchEmoteGroup.Global)),
+                sevenTv = mapOf("Pepe" to emote("p")),
+                bttv = mapOf("NaM" to emote("n")),
+                ffz = mapOf("ZreknarF" to emote("f")),
+            ),
+            sources = EmoteSources(sevenTv = true, ffz = true, bttv = false),
         )
 
         assertEquals(
@@ -61,13 +62,8 @@ class EmotePickerSectionsTest {
                 sevenTv = mapOf("Pepe" to emote("p")),
             ),
             own = null,
-            globalTwitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global)),
-            globalSevenTv = emptyMap(),
-            globalBttv = emptyMap(),
-            globalFfz = emptyMap(),
-            sevenTvEnabled = true,
-            bttvEnabled = false,
-            ffzEnabled = false,
+            global = GlobalEmoteSource(twitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global))),
+            sources = EmoteSources(sevenTv = true, ffz = false, bttv = false),
         )
         val usage = listOf(
             EmoteUse("Kappa", count = 2, usedAtMillis = 10L),
@@ -88,14 +84,13 @@ class EmotePickerSectionsTest {
         val sections = emotePickerSections(
             channel = ChannelEmoteSource(label = "Quin69"),
             own = null,
-            globalTwitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global)),
-            globalSevenTv = emptyMap(),
-            globalBttv = emptyMap(),
-            globalFfz = emptyMap(),
-            sevenTvEnabled = false,
-            bttvEnabled = false,
-            ffzEnabled = false,
-            unlockedTwitch = listOf(UnlockedSourceEmote("HypeYawn", "https://emote/HypeYawn", "hypetrain")),
+            global = GlobalEmoteSource(twitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global))),
+            sources = noThirdParty,
+            personal = UserTwitchEmotes(
+                smilies = emptyList(),
+                turbo = emptyList(),
+                unlocked = listOf(UnlockedSourceEmote("HypeYawn", "https://emote/HypeYawn", "hypetrain")),
+            ),
         )
 
         assertEquals(
@@ -109,18 +104,18 @@ class EmotePickerSectionsTest {
         val sections = emotePickerSections(
             channel = ChannelEmoteSource(label = "Quin69"),
             own = null,
-            globalTwitch = listOf(
-                twitch(":o", TwitchEmoteGroup.Global),
-                twitch("Kappa", TwitchEmoteGroup.Global),
+            global = GlobalEmoteSource(
+                twitch = listOf(
+                    twitch(":o", TwitchEmoteGroup.Global),
+                    twitch("Kappa", TwitchEmoteGroup.Global),
+                ),
             ),
-            globalSevenTv = emptyMap(),
-            globalBttv = emptyMap(),
-            globalFfz = emptyMap(),
-            sevenTvEnabled = false,
-            bttvEnabled = false,
-            ffzEnabled = false,
-            turboTwitch = listOf(
-                TwitchCatalogEmote(":-O", "https://emote/turbo", TwitchEmoteGroup.Global),
+            sources = noThirdParty,
+            personal = UserTwitchEmotes(
+                smilies = emptyList(),
+                turbo = listOf(
+                    TwitchCatalogEmote(":-O", "https://emote/turbo", TwitchEmoteGroup.Global),
+                ),
             ),
         )
 
@@ -128,6 +123,8 @@ class EmotePickerSectionsTest {
         assertEquals(listOf(":O", "Kappa"), twitch.emotes.map { it.name })
         assertEquals("https://emote/turbo", twitch.emotes[0].url)
     }
+
+    private val noThirdParty = EmoteSources(sevenTv = false, ffz = false, bttv = false)
 
     private fun twitch(name: String, group: TwitchEmoteGroup) = TwitchCatalogEmote(name, "https://emote/$name", group)
 

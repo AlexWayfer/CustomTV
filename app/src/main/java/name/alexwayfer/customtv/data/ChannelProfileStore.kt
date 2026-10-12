@@ -37,40 +37,23 @@ class ChannelProfileStore(context: Context) {
 
         fun parse(raw: String): List<ChannelProfile> {
             if (raw.isBlank()) return emptyList()
-            return runCatching {
-                val array = JSONArray(raw)
-                buildList {
-                    for (index in 0 until array.length()) {
-                        val item = array.optJSONObject(index) ?: continue
-                        val login = item.optString("login").takeIf { it.isNotBlank() } ?: continue
-                        val id = item.optString("id").takeIf { it.isNotBlank() && it != "null" } ?: continue
-                        add(
-                            ChannelProfile(
-                                login = login.lowercase(),
-                                displayName = item.optString("displayName").takeIf {
-                                    it.isNotBlank() && it != "null"
-                                } ?: login,
-                                avatarUrl = item.optString("avatarUrl").takeIf {
-                                    it.isNotBlank() && it != "null"
-                                },
-                                id = id,
-                                highlightColorHex = item.optString("highlightColorHex").takeIf {
-                                    it.isNotBlank() && it != "null"
-                                },
-                                primaryColorHex = item.optString("primaryColorHex").takeIf {
-                                    it.isNotBlank() && it != "null"
-                                },
-                                highlightRewardCost = item.takeIf {
-                                    it.has("highlightRewardCost") && !it.isNull("highlightRewardCost")
-                                }?.optInt("highlightRewardCost"),
-                                channelPointsIconUrl = item.optString("channelPointsIconUrl").takeIf {
-                                    it.isNotBlank() && it != "null"
-                                },
-                            ),
-                        )
-                    }
-                }
-            }.getOrDefault(emptyList())
+            return raw.toJsonArrayOrNull()?.objects()?.mapNotNull(::parseProfile).orEmpty()
+        }
+
+        /** A saved profile; one without its login or ID is dropped. */
+        fun parseProfile(item: JSONObject): ChannelProfile? {
+            val login = item.optString("login").takeIf { it.isNotBlank() } ?: return null
+            val id = item.text("id") ?: return null
+            return ChannelProfile(
+                login = login.lowercase(),
+                displayName = item.text("displayName") ?: login,
+                avatarUrl = item.text("avatarUrl"),
+                id = id,
+                highlightColorHex = item.text("highlightColorHex"),
+                primaryColorHex = item.text("primaryColorHex"),
+                highlightRewardCost = item.intOrNull("highlightRewardCost"),
+                channelPointsIconUrl = item.text("channelPointsIconUrl"),
+            )
         }
 
         fun serialize(profiles: List<ChannelProfile>): String {

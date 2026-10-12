@@ -10,4 +10,5 @@ internal class TemporaryHighlightPins
 
 @Suppress("unused")
 @Composable
-internal fun rememberTemporaryHighlightPins(chat: String): TemporaryHighlightPins = remember { TemporaryHighlightPins() }
+internal fun rememberTemporaryHighlightPins(chat: String): TemporaryHighlightPins =
+    remember { TemporaryHighlightPins() }

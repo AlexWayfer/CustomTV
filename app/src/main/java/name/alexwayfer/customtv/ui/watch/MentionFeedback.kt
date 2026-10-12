@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -21,8 +20,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.mentionBaselineResets
 import name.alexwayfer.customtv.chat.newMentionArrived
-import name.alexwayfer.customtv.data.KeywordPhrase
-import name.alexwayfer.customtv.diagnostics.AppLog
+import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.ui.settings.mentionSoundStillPlaying
 import name.alexwayfer.customtv.ui.settings.mentionSoundUri
 import name.alexwayfer.customtv.ui.settings.playMentionVibration
@@ -38,49 +36,26 @@ internal fun MentionFeedback(
     channel: String,
     selfLogin: String?,
     selfDisplayName: String?,
-    vibrate: Boolean,
-    vibrationMs: Int,
-    vibrationPercent: Int,
-    sound: Boolean,
-    soundUri: String,
-    phrases: List<KeywordPhrase>,
+    settings: AppSettings,
 ) {
     val timeline = remember(messages) { messages.map { it to 0 } }
-    MentionAlerts(
-        timeline = timeline,
-        channel = channel,
-        selfLogin = selfLogin,
-        selfDisplayName = selfDisplayName,
-        vibrate = vibrate,
-        vibrationMs = vibrationMs,
-        vibrationPercent = vibrationPercent,
-        sound = sound,
-        soundUri = soundUri,
-        phrases = phrases,
-    )
+    MentionAlerts(timeline, channel, selfLogin, selfDisplayName, settings)
 }
 
-/** The alerts behind both the live chat and a replay: [timeline] carries the chat and its jump generation. */
+/**
+ * The alerts behind both the live chat and a replay: [timeline] carries the chat and its jump generation, and
+ * [settings] the mention vibration, sound, and keyword phrases.
+ */
 @Composable
 internal fun MentionAlerts(
     timeline: Flow<Pair<List<ChatMessage>, Int>>,
     channel: String,
     selfLogin: String?,
     selfDisplayName: String?,
-    vibrate: Boolean,
-    vibrationMs: Int,
-    vibrationPercent: Int,
-    sound: Boolean,
-    soundUri: String,
-    phrases: List<KeywordPhrase>,
+    settings: AppSettings,
 ) {
     val context = LocalContext.current
-    val vibrateState = rememberUpdatedState(vibrate)
-    val vibrationMsState = rememberUpdatedState(vibrationMs)
-    val vibrationPercentState = rememberUpdatedState(vibrationPercent)
-    val soundState = rememberUpdatedState(sound)
-    val soundUriState = rememberUpdatedState(soundUri)
-    val phrasesState = rememberUpdatedState(phrases)
+    val settingsState = rememberUpdatedState(settings)
     val loginState = rememberUpdatedState(selfLogin.orEmpty())
     val nameState = rememberUpdatedState(selfDisplayName.orEmpty())
     LaunchedEffect(channel, timeline) {
@@ -95,19 +70,20 @@ internal fun MentionAlerts(
             }
             val login = loginState.value
             val name = nameState.value
-            val mentioned = newMentionArrived(seen, current, login, name, phrasesState.value)
+            val alerts = settingsState.value
+            val mentioned = newMentionArrived(seen, current, login, name, alerts.keywordPhrases)
             seen = current.map { it.id }.toSet()
             if (!mentioned) return@collect
-            if (vibrateState.value) {
+            if (alerts.mentionVibration) {
                 playMentionVibration(
                     context,
-                    vibrationMsState.value,
-                    vibrationPercentState.value,
+                    alerts.mentionVibrationMs,
+                    alerts.mentionVibrationPercent,
                 )
             }
-            if (soundState.value) {
+            if (alerts.mentionSound) {
                 soundJob?.cancel()
-                soundJob = this@LaunchedEffect.launch { playMentionSound(context, soundUriState.value) }
+                soundJob = this@LaunchedEffect.launch { playMentionSound(context, alerts.mentionSoundUri) }
             }
         }
     }
@@ -128,13 +104,7 @@ private suspend fun playMentionSound(context: Context, storedUri: String) {
         while (mentionSoundStillPlaying(SystemClock.elapsedRealtime() - started, ringtone.isPlaying)) {
             delay(50.milliseconds)
         }
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
-        AppLog.w(TAG, "mention sound failed: ${error.javaClass.simpleName}")
     } finally {
-        runCatching { ringtone.stop() }
+        ringtone.stop()
     }
 }
-
-private const val TAG = "MentionSound"

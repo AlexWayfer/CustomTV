@@ -1,7 +1,7 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.ui.graphics.Color
 import name.alexwayfer.customtv.chat.ChatMessage
+import name.alexwayfer.customtv.chat.testChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -48,13 +48,6 @@ class UniqueChatRowsTest {
         assertEquals(listOf("a", "b", "c", "d"), result.map { it.id })
     }
 
-    private fun message(id: String, text: String) = ChatMessage(
-        id = id,
-        userLogin = "viewer",
-        displayName = "Viewer",
-        color = Color.White,
-        rawText = text,
-        parts = emptyList(),
-        timestampMillis = 1_000,
-    )
+    private fun message(id: String, text: String) =
+        testChatMessage(id, text, displayName = "Viewer", parts = emptyList(), timestampMillis = 1_000)
 }

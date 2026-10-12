@@ -12,6 +12,21 @@ import kotlin.math.pow
 object ReadableChatColor {
     const val MIN_CONTRAST = 6f
 
+    /** Halvings of the lightness range; 24 leave a step far below one color level. */
+    private const val SEARCH_STEPS = 24
+
+    // WCAG 2.1 relative luminance and contrast ratio, over sRGB.
+    private const val CONTRAST_FLARE = 0.05f
+    private const val RED_WEIGHT = 0.2126f
+    private const val GREEN_WEIGHT = 0.7152f
+    private const val BLUE_WEIGHT = 0.0722f
+    private const val SRGB_LINEAR_LIMIT = 0.04045f
+    private const val SRGB_LINEAR_SLOPE = 12.92f
+    private const val SRGB_OFFSET = 0.055f
+    private const val SRGB_GAMMA = 2.4f
+
+    private const val FULL_TURN_DEGREES = 360f
+
     fun adjust(foreground: Color, background: Color): Color {
         if (contrastRatio(foreground, background) >= MIN_CONTRAST) {
             return foreground
@@ -21,7 +36,7 @@ object ReadableChatColor {
         var low = if (lighten) hsl.l else 0f
         var high = if (lighten) 1f else hsl.l
         var best = if (lighten) Color.White else Color.Black
-        repeat(24) {
+        repeat(SEARCH_STEPS) {
             val mid = (low + high) / 2f
             val candidate = hslToColor(hsl.h, hsl.s, mid)
             if (contrastRatio(candidate, background) >= MIN_CONTRAST) {
@@ -37,20 +52,20 @@ object ReadableChatColor {
     fun contrastRatio(first: Color, second: Color): Float {
         val lighter = max(relativeLuminance(first), relativeLuminance(second))
         val darker = min(relativeLuminance(first), relativeLuminance(second))
-        return (lighter + 0.05f) / (darker + 0.05f)
+        return (lighter + CONTRAST_FLARE) / (darker + CONTRAST_FLARE)
     }
 
     private fun relativeLuminance(color: Color): Float {
-        return 0.2126f * linearize(color.red) +
-            0.7152f * linearize(color.green) +
-            0.0722f * linearize(color.blue)
+        return RED_WEIGHT * linearize(color.red) +
+            GREEN_WEIGHT * linearize(color.green) +
+            BLUE_WEIGHT * linearize(color.blue)
     }
 
     private fun linearize(channel: Float): Float {
-        return if (channel <= 0.04045f) {
-            channel / 12.92f
+        return if (channel <= SRGB_LINEAR_LIMIT) {
+            channel / SRGB_LINEAR_SLOPE
         } else {
-            ((channel + 0.055f) / 1.055f).pow(2.4f)
+            ((channel + SRGB_OFFSET) / (1f + SRGB_OFFSET)).pow(SRGB_GAMMA)
         }
     }
 
@@ -77,12 +92,12 @@ object ReadableChatColor {
             g -> ((b - r) / delta + 2f) / 6f
             else -> ((r - g) / delta + 4f) / 6f
         }
-        return Hsl(hue * 360f, saturation, lightness)
+        return Hsl(hue * FULL_TURN_DEGREES, saturation, lightness)
     }
 
     private fun hslToColor(hue: Float, saturation: Float, lightness: Float): Color {
         return Color.hsl(
-            hue = hue.mod(360f),
+            hue = hue.mod(FULL_TURN_DEGREES),
             saturation = saturation.coerceIn(0f, 1f),
             lightness = lightness.coerceIn(0f, 1f),
         )

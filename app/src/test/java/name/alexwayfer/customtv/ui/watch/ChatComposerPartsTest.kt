@@ -33,16 +33,20 @@ class ChatComposerPartsTest {
         assertEquals(ChatFieldEndIcon.Sending, chatFieldEndIcon(sending = true, hasMessage = true))
 
     @Test
-    fun aTypedMessageShowsSend() = assertEquals(ChatFieldEndIcon.Send, chatFieldEndIcon(sending = false, hasMessage = true))
+    fun aTypedMessageShowsSend() =
+        assertEquals(ChatFieldEndIcon.Send, chatFieldEndIcon(sending = false, hasMessage = true))
 
     @Test
-    fun anEmptyFieldShowsTheMenu() = assertEquals(ChatFieldEndIcon.Menu, chatFieldEndIcon(sending = false, hasMessage = false))
+    fun anEmptyFieldShowsTheMenu() =
+        assertEquals(ChatFieldEndIcon.Menu, chatFieldEndIcon(sending = false, hasMessage = false))
 
     @Test
-    fun theOverlayGetsWhatTheBarLeavesOfTheColumn() = assertEquals(600, overlayRoomAbovePx(maxHeightPx = 700, barHeightPx = 100))
+    fun theOverlayGetsWhatTheBarLeavesOfTheColumn() =
+        assertEquals(600, overlayRoomAbovePx(maxHeightPx = 700, barHeightPx = 100))
 
     @Test
-    fun aBarTallerThanTheColumnLeavesNoRoomAndNeverANegativeOne() = assertEquals(0, overlayRoomAbovePx(maxHeightPx = 80, barHeightPx = 100))
+    fun aBarTallerThanTheColumnLeavesNoRoomAndNeverANegativeOne() =
+        assertEquals(0, overlayRoomAbovePx(maxHeightPx = 80, barHeightPx = 100))
 
     @Test
     fun anUnboundedColumnLeavesUnboundedRoom() =

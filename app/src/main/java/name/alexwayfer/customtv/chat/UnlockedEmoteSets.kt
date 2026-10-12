@@ -11,25 +11,24 @@ internal data class UnlockedEmoteGroup(
     val emotes: List<PickerEmote>,
 )
 
-internal fun unlockedEmoteSet(type: String, name: String): String? {
-    when (type) {
-        "globals", "smilies", "subscriptions", "follower", "bitstier", "turbo" -> return null
-        "hypetrain" -> return "TwitchHypeTrain"
-        "owl2019" -> return "ow_esports"
-        "twofactor", "rewards", "channelpoints" -> return "Unlocked"
-    }
-    if (type != "limitedtime" && type != "prime") {
-        return type.takeIf { it.isNotBlank() && it != "unknown" }
-    }
-    return when {
-        name.startsWith("Pride") -> "StreamWithPride"
-        name.startsWith("Luv") -> "streamerluv"
-        name.startsWith("Haha") -> "Haha"
-        name.startsWith("Hyper") -> "Hyper"
-        name.startsWith("2020") -> "2020"
-        name.startsWith("OWL") -> "ow_esports"
-        else -> "Unlocked"
-    }
+internal fun unlockedEmoteSet(type: String, name: String): String? = when (type) {
+    "globals", "smilies", "subscriptions", "follower", "bitstier", "turbo" -> null
+    "hypetrain" -> "TwitchHypeTrain"
+    "owl2019" -> "ow_esports"
+    "twofactor", "rewards", "channelpoints" -> "Unlocked"
+    "limitedtime", "prime" -> limitedEmoteSet(name)
+    else -> type.takeIf { it.isNotBlank() && it != "unknown" }
+}
+
+/** A limited-time or Prime emote's set, told by its name. */
+private fun limitedEmoteSet(name: String): String = when {
+    name.startsWith("Pride") -> "StreamWithPride"
+    name.startsWith("Luv") -> "streamerluv"
+    name.startsWith("Haha") -> "Haha"
+    name.startsWith("Hyper") -> "Hyper"
+    name.startsWith("2020") -> "2020"
+    name.startsWith("OWL") -> "ow_esports"
+    else -> "Unlocked"
 }
 
 internal fun unlockedEmoteGroups(emotes: List<UnlockedSourceEmote>): List<UnlockedEmoteGroup> {

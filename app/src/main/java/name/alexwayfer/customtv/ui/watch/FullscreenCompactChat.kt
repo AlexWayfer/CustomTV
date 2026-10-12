@@ -36,7 +36,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
@@ -46,20 +45,7 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.CHAT_WELCOME_NOTICE_ID
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.ui.theme.TwitchBg
-import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
-
-/** How tall a chat laid over a full screen video is. */
-internal enum class FullscreenOverlayChatHeight {
-    /** The latest few messages in the bottom corner. */
-    Compact,
-
-    /** The whole chat on its side of the video. */
-    Full,
-
-    /** Not laid over the video, or open for typing: the chat takes its full column and keeps its message bar. */
-    None,
-}
 
 /**
  * An overlaid chat shows as its latest messages in the corner until the user expands it. While the user types it
@@ -121,10 +107,6 @@ internal fun compactChatNextHideMillis(shownAt: Map<String, Long>, nowMillis: Lo
 internal fun compactChatFadedId(ids: List<String>, visible: Set<String>, capacity: Int): String? =
     if (visible.size >= capacity) ids.firstOrNull { it in visible } else null
 
-/** How tall the message bar is while it folds away under an overlaid chat; never below zero. */
-internal fun foldedHeightPx(heightPx: Int, shown: Float): Int =
-    (heightPx.coerceAtLeast(0) * shown.coerceIn(0f, 1f)).roundToInt()
-
 /**
  * The latest few messages of a chat laid over the video, each on its own see-through ground. Each one hides a while
  * after it came ([shownAt], kept by the chat while the corner is gone, so typing does not show the same messages
@@ -142,15 +124,7 @@ internal fun FullscreenCompactChat(
     // A few more than show, so the messages that newer ones push out fold away instead of vanishing.
     val kept = uniqueChatRows(messages.takeLast(COMPACT_CHAT_MESSAGES * 2))
     val shownIds = kept.takeLast(COMPACT_CHAT_MESSAGES).map { it.id }
-    var nowMillis by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
-    LaunchedEffect(shownAt) {
-        nowMillis = SystemClock.uptimeMillis()
-        while (true) {
-            val hideAt = compactChatNextHideMillis(shownAt, nowMillis, COMPACT_CHAT_MESSAGE_MILLIS) ?: break
-            delay((hideAt - SystemClock.uptimeMillis()).coerceAtLeast(0L).milliseconds)
-            nowMillis = SystemClock.uptimeMillis()
-        }
-    }
+    val nowMillis = rememberCompactChatClock(shownAt)
     val visible = compactChatVisibleIds(shownIds, shownAt, nowMillis, COMPACT_CHAT_MESSAGE_MILLIS)
     val fadedId = compactChatFadedId(shownIds, visible, COMPACT_CHAT_MESSAGES)
     // Messages already showing when the corner comes back stand as the full chat turned into them while it sank;
@@ -176,20 +150,7 @@ internal fun FullscreenCompactChat(
                             slideOutVertically(tween(COMPACT_CHAT_MOTION_MS)) { -it } +
                             shrinkVertically(tween(COMPACT_CHAT_MOTION_MS), shrinkTowards = Alignment.Bottom),
                     ) {
-                        val topAlpha = animateFloatAsState(
-                            targetValue = if (message.id == fadedId) COMPACT_CHAT_FADED_TOP_ALPHA else 1f,
-                            animationSpec = tween(COMPACT_CHAT_MOTION_MS),
-                            label = "compact chat fade",
-                        )
-                        Box(
-                            modifier = Modifier
-                                .padding(top = CompactChatBubbleGap)
-                                .fadedTop { topAlpha.value }
-                                .clip(CompactChatBubbleShape)
-                                .background(TwitchBg.copy(alpha = FULLSCREEN_OVERLAY_CHAT_ALPHA)),
-                        ) {
-                            row(message)
-                        }
+                        CompactChatBubble(faded = message.id == fadedId) { row(message) }
                     }
                 }
             }
@@ -206,6 +167,40 @@ internal fun FullscreenCompactChat(
                     }
                 },
         )
+    }
+}
+
+/** The clock that ticks when the next message hides, and stops once every one has hidden. */
+@Composable
+private fun rememberCompactChatClock(shownAt: Map<String, Long>): Long {
+    var nowMillis by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
+    LaunchedEffect(shownAt) {
+        nowMillis = SystemClock.uptimeMillis()
+        while (true) {
+            val hideAt = compactChatNextHideMillis(shownAt, nowMillis, COMPACT_CHAT_MESSAGE_MILLIS) ?: break
+            delay((hideAt - SystemClock.uptimeMillis()).coerceAtLeast(0L).milliseconds)
+            nowMillis = SystemClock.uptimeMillis()
+        }
+    }
+    return nowMillis
+}
+
+/** One message on its see-through ground; the top one fades toward its top edge. */
+@Composable
+private fun CompactChatBubble(faded: Boolean, content: @Composable () -> Unit) {
+    val topAlpha = animateFloatAsState(
+        targetValue = if (faded) COMPACT_CHAT_FADED_TOP_ALPHA else 1f,
+        animationSpec = tween(COMPACT_CHAT_MOTION_MS),
+        label = "compact chat fade",
+    )
+    Box(
+        modifier = Modifier
+            .padding(top = CompactChatBubbleGap)
+            .fadedTop { topAlpha.value }
+            .clip(CompactChatBubbleShape)
+            .background(TwitchBg.copy(alpha = FULLSCREEN_OVERLAY_CHAT_ALPHA)),
+    ) {
+        content()
     }
 }
 
@@ -227,23 +222,6 @@ internal fun Modifier.fadedTop(topAlpha: () -> Float): Modifier =
                 )
             }
         }
-
-/**
- * Folds the message bar away from its top while [shown] goes from 1 to 0, clipped only while folded, so the
- * suggestions above an open bar still show.
- */
-internal fun Modifier.foldedAway(shown: () -> Float): Modifier =
-    graphicsLayer {
-        val fraction = shown()
-        clip = fraction < 1f
-        alpha = fraction
-    }.layout { measurable, constraints ->
-        val placeable = measurable.measure(constraints)
-        val height = foldedHeightPx(placeable.height, shown())
-        layout(placeable.width, height) {
-            placeable.place(0, height - placeable.height)
-        }
-    }
 
 /** How many of the latest messages the compact chat shows. */
 internal const val COMPACT_CHAT_MESSAGES = 3

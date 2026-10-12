@@ -7,21 +7,27 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import name.alexwayfer.customtv.data.HTTP_SERVER_ERROR
 import name.alexwayfer.customtv.diagnostics.AppLog
+
+/** What the player does as its page loads, fails, or navigates away. */
+internal data class PlayerPageEvents(
+    val hideTopOverlay: () -> Unit,
+    val onPlayerPageStarted: () -> Unit,
+    val onPlayerPageLoaded: () -> Unit,
+    val onPlayerPageFailed: (reason: String) -> Unit,
+    val restorePlayer: () -> Unit,
+)
 
 internal class PlayerNavigationClient(
     private val handler: Handler,
     private val isReleased: () -> Boolean,
-    private val hideTopOverlay: () -> Unit,
-    private val onPlayerPageStarted: () -> Unit,
-    private val onPlayerPageLoaded: () -> Unit,
-    private val onPlayerPageFailed: (reason: String) -> Unit,
-    private val restorePlayer: () -> Unit,
+    private val events: PlayerPageEvents,
 ) : WebViewClient() {
     override fun shouldOverrideUrlLoading(
         view: WebView,
         request: WebResourceRequest,
-    ): Boolean = TwitchPlayerScripts.shouldBlockNavigation(
+    ): Boolean = shouldBlockPlayerNavigation(
         request.url,
         request.isForMainFrame,
     )
@@ -30,14 +36,14 @@ internal class PlayerNavigationClient(
         if (isReleased()) null else UsherAudioOnly.intercept(request)
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-        if (isReleased() || !TwitchPlayerScripts.isPlayerDocumentUrl(url)) return
-        onPlayerPageStarted()
-        hideTopOverlay()
+        if (isReleased() || !isPlayerDocumentUrl(url)) return
+        events.onPlayerPageStarted()
+        events.hideTopOverlay()
     }
 
     override fun onPageCommitVisible(view: WebView, url: String) {
-        if (isReleased() || !TwitchPlayerScripts.isPlayerDocumentUrl(url)) return
-        hideTopOverlay()
+        if (isReleased() || !isPlayerDocumentUrl(url)) return
+        events.hideTopOverlay()
     }
 
     override fun onReceivedError(
@@ -46,7 +52,7 @@ internal class PlayerNavigationClient(
         error: WebResourceError,
     ) {
         if (isReleased() || !request.isForMainFrame) return
-        onPlayerPageFailed("error ${error.errorCode}")
+        events.onPlayerPageFailed("error ${error.errorCode}")
     }
 
     override fun onReceivedHttpError(
@@ -56,8 +62,8 @@ internal class PlayerNavigationClient(
     ) {
         if (isReleased() || !request.isForMainFrame) return
         val code = errorResponse.statusCode
-        if (code >= 500) {
-            onPlayerPageFailed("HTTP $code")
+        if (code >= HTTP_SERVER_ERROR.first) {
+            events.onPlayerPageFailed("HTTP $code")
         } else {
             AppLog.w(PLAYER_LOG_TAG, "Page answered HTTP $code")
         }
@@ -65,15 +71,15 @@ internal class PlayerNavigationClient(
 
     override fun onPageFinished(view: WebView, url: String) {
         if (isReleased()) return
-        if (!TwitchPlayerScripts.isPlayerDocumentUrl(url)) {
+        if (!isPlayerDocumentUrl(url)) {
             AppLog.w(PLAYER_LOG_TAG, "Left the player page, restoring it")
-            restorePlayer()
+            events.restorePlayer()
             return
         }
-        onPlayerPageLoaded()
-        hideTopOverlay()
+        events.onPlayerPageLoaded()
+        events.hideTopOverlay()
         OVERLAY_RETRY_DELAYS_MS.forEach { delay ->
-            handler.postDelayed({ hideTopOverlay() }, delay)
+            handler.postDelayed({ events.hideTopOverlay() }, delay)
         }
     }
 

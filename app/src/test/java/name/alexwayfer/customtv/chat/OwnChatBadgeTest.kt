@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-import androidx.compose.ui.graphics.Color
 import name.alexwayfer.customtv.data.parseDisplayedChatBadges
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -21,7 +20,12 @@ class OwnChatBadgeTest {
 
     @Test
     fun displayBadgesParseWithTheirImages() {
-        val body = """{"data":{"user":{"displayBadges":[{"setID":"moderator","version":"1","imageURL":"https://b/mod"},{"setID":"subscriber","version":"12","imageURL":null}]}}}"""
+        val body = """
+            {"data":{"user":{"displayBadges":[
+              {"setID":"moderator","version":"1","imageURL":"https://b/mod"},
+              {"setID":"subscriber","version":"12","imageURL":null}
+            ]}}}
+        """.trimIndent()
         val parsed = parseDisplayedChatBadges(body)!!
         assertEquals(listOf("moderator/1", "subscriber/12"), parsed.badges.map(ChatBadge::key))
         assertEquals(mapOf("moderator/1" to "https://b/mod"), parsed.imageUrls)
@@ -51,13 +55,5 @@ class OwnChatBadgeTest {
 
     private fun badges(vararg keys: String) = keys.map { key -> key.split("/").let { ChatBadge(it[0], it[1]) } }
 
-    private fun chat(id: String, login: String) = ChatMessage(
-        id = id,
-        userLogin = login,
-        displayName = login,
-        color = Color.White,
-        rawText = "hi",
-        parts = listOf(ChatPart.Text("hi")),
-        timestampMillis = 1L,
-    )
+    private fun chat(id: String, login: String) = testChatMessage(id, "hi", login = login)
 }

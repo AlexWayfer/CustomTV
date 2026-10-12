@@ -41,13 +41,12 @@ internal fun nickQueryAtCursor(text: String, cursor: Int): NickQuery? {
     if (cursor !in 0..text.length) return null
     var start = cursor
     while (start > 0 && text[start - 1].isNickChar()) start--
-    if (start == 0 || text[start - 1] != '@') return null
-    val at = start - 1
-    if (at > 0 && text[at - 1].isNickChar()) return null
-    if (cursor <= at) return null
     var end = cursor
     while (end < text.length && text[end].isNickChar()) end++
-    if (end == start) return null
+    val at = start - 1
+    // An `@` that starts a word, before the cursor; one inside a word such as an email is not a mention.
+    val mention = at >= 0 && text[at] == '@' && !(at > 0 && text[at - 1].isNickChar()) && cursor > at
+    if (!mention || end == start) return null
     return NickQuery(start = at, end = end, text = text.substring(start, end))
 }
 

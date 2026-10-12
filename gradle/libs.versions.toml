@@ -7,7 +7,7 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 appcompat = "1.8.0"
 material = "1.14.0"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 composeBom = "2026.09.00"
 navigationCompose = "2.10.2"
 lifecycle = "2.11.0"
@@ -23,6 +23,8 @@ work = "2.12.0"
 markdownRenderer = "0.45.0"
 tracingPerfetto = "1.0.1"
 reorderable = "3.1.0"
+versions = "0.66.0"
+detekt = "2.0.0-alpha.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,3 +62,5 @@ reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.r
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
+versions = { id = "io.github.ben-manes.versions", version.ref = "versions" }

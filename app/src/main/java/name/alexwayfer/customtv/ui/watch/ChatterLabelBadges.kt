@@ -1,6 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -11,8 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import name.alexwayfer.customtv.data.ChatterLabelIcon
@@ -22,36 +20,48 @@ internal val LocalChatterLabels = compositionLocalOf<Map<String, List<ChatterLab
 
 internal val BadgeGap = 4.dp
 
+/** A badge's image in a slot of the [sizes] of its line. */
 internal fun badgeInlineContent(
     model: Any?,
     contentDescription: String,
-    badgeSize: Dp,
-    slotWidth: TextUnit,
-    slotHeight: TextUnit,
+    sizes: ChatTextSizes,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ): InlineTextContent = InlineTextContent(
-    Placeholder(slotWidth, slotHeight, PlaceholderVerticalAlign.Center),
+    Placeholder(sizes.badgeSlotWidth, sizes.badgeSlotHeight, PlaceholderVerticalAlign.Center),
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+            // A badge takes the touch around it too, so it passes a long press on to the message.
+            .then(
+                if (onClick != null) {
+                    Modifier.combinedClickable(
+                        hapticFeedbackEnabled = false,
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
+                } else {
+                    Modifier
+                },
+            ),
         contentAlignment = Alignment.CenterStart,
     ) {
         if (model is String) {
-            // Chat badges repeat on every message; the shared store loads each once, far cheaper than a request per row.
+            // Chat badges repeat on every message; the shared store loads each once, far cheaper than a request per
+            // row.
             SharedEmoteImage(
                 url = model,
                 contentDescription = contentDescription,
-                size = badgeSize,
+                size = sizes.badge,
                 // The square comes first, so a wide badge fits inside it as before instead of growing out of its slot.
-                modifier = Modifier.size(badgeSize).ffzModBadgeBackground(model),
+                modifier = Modifier.size(sizes.badge).ffzModBadgeBackground(model),
             )
         } else {
             AsyncImage(
                 model = model,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(badgeSize).ffzModBadgeBackground(model),
+                modifier = Modifier.size(sizes.badge).ffzModBadgeBackground(model),
                 contentScale = ContentScale.Fit,
             )
         }

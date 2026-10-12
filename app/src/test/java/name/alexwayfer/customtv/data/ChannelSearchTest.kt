@@ -35,7 +35,13 @@ class ChannelSearchTest {
         val hits = parseChannelSearchSuggestions(
             """
             {"data":{"searchSuggestions":{"edges":[
-              {"node":{"text":"Poko","content":{"__typename":"SearchSuggestionChannel","id":"123","login":"Poko","profileImageURL":"https://cdn/poko.png","isLive":true}}},
+              {"node":{"text":"Poko","content":{
+                "__typename":"SearchSuggestionChannel",
+                "id":"123",
+                "login":"Poko",
+                "profileImageURL":"https://cdn/poko.png",
+                "isLive":true
+              }}},
               {"node":{"text":"Poker","content":{"__typename":"SearchSuggestionCategory"}}},
               {"node":{"text":"akira","content":null}},
               {"node":{"text":"","content":{"__typename":"SearchSuggestionChannel","login":"","isLive":false}}}

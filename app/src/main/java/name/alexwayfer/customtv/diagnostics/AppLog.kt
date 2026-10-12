@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import name.alexwayfer.customtv.BuildConfig
 import java.io.File
+import java.io.IOException
 import java.time.ZoneId
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
@@ -29,8 +30,10 @@ internal object AppLog {
         file = logFile
         val edition = if (BuildConfig.PREMIUM) "premium" else "free"
         val build = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) $edition"
-        val mark = recentLogLine(System.currentTimeMillis(), ZoneId.systemDefault(), 'I', "AppLog", "Process started $build")
-        fileWriter.execute { runCatching { logFile.append(mark) } }
+        val mark = recentLogLine(
+            System.currentTimeMillis(), ZoneId.systemDefault(), 'I', "AppLog", "Process started $build",
+        )
+        fileWriter.execute { appendQuietly(logFile, mark) }
     }
 
     fun i(tag: String, message: String) {
@@ -71,6 +74,14 @@ internal object AppLog {
         val line = recentLogLine(System.currentTimeMillis(), ZoneId.systemDefault(), level, tag, message)
         recent.add(line)
         val logFile = file ?: return
-        fileWriter.execute { runCatching { logFile.append(line) } }
+        fileWriter.execute { appendQuietly(logFile, line) }
+    }
+
+    private fun appendQuietly(logFile: AppLogFile, line: String) {
+        try {
+            logFile.append(line)
+        } catch (_: IOException) {
+            // The line stays in the recent lines; the log has nowhere to report its own failure.
+        }
     }
 }

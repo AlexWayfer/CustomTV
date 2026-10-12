@@ -39,9 +39,9 @@ internal object StreamMediaArtwork {
 
     /** The picture at [imageUrl], or the channel's avatar on a dark ground when that fails. */
     suspend fun loadJpeg(context: Context, imageUrl: String?, avatarUrl: String?): ByteArray? {
-        imageUrl?.let { decodeBitmap(context, it) }?.let { return it.toJpeg() }
-        val avatar = avatarUrl?.let { decodeBitmap(context, it) } ?: return null
-        return artworkFromAvatar(avatar).toJpeg()
+        val artwork = imageUrl?.let { decodeBitmap(context, it) }
+            ?: avatarUrl?.let { decodeBitmap(context, it) }?.let(::artworkFromAvatar)
+        return artwork?.toJpeg()
     }
 
     private suspend fun decodeBitmap(context: Context, url: String): Bitmap? {

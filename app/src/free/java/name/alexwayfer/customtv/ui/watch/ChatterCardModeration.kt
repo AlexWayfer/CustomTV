@@ -5,9 +5,6 @@ import androidx.compose.ui.Modifier
 import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.ChatMessage
 
-/** Moderator tools are Premium: the free chatter card keeps no moderator state. */
-internal class ChatterModTools
-
 private val NoModTools = ChatterModTools()
 
 @Suppress("unused")

@@ -41,28 +41,24 @@ fun parseChannelSearchSuggestions(body: String): List<ChannelSearchHit> {
         ?.optJSONObject("searchSuggestions")
         ?.optJSONArray("edges")
         ?: return emptyList()
-    return buildList {
-        for (index in 0 until edges.length()) {
-            val node = edges.optJSONObject(index)?.optJSONObject("node") ?: continue
-            val content = node.optJSONObject("content") ?: continue
-            if (content.optString("__typename") != "SearchSuggestionChannel") continue
-            val login = content.optString("login").trim().lowercase()
-            if (!isValidChannelLogin(login)) continue
-            val displayName = node.optString("text").trim().ifBlank { login }
-            val avatarUrl = content.optString("profileImageURL").takeIf { url ->
-                url.isNotBlank() && url != "null"
-            }
-            add(
-                ChannelSearchHit(
-                    login = login,
-                    displayName = displayName,
-                    avatarUrl = avatarUrl,
-                    isLive = content.optBoolean("isLive"),
-                    userId = content.optString("id").trim().takeIf { it.isNotEmpty() && it != "null" },
-                ),
-            )
-        }
-    }
+    return edges.objects().mapNotNull { it.optJSONObject("node")?.let(::parseSearchSuggestion) }
+}
+
+/** A channel suggestion; a category or a channel with a broken login is none. */
+private fun parseSearchSuggestion(node: JSONObject): ChannelSearchHit? {
+    val content = node.optJSONObject("content")
+        ?.takeIf { it.optString("__typename") == "SearchSuggestionChannel" }
+        ?: return null
+    val login = content.optString("login").trim().lowercase().takeIf(::isValidChannelLogin) ?: return null
+    val displayName = node.optString("text").trim().ifBlank { login }
+    val avatarUrl = content.text("profileImageURL")
+    return ChannelSearchHit(
+        login = login,
+        displayName = displayName,
+        avatarUrl = avatarUrl,
+        isLive = content.optBoolean("isLive"),
+        userId = content.trimmedText("id"),
+    )
 }
 
 object ChannelSearchRepository {
@@ -81,8 +77,8 @@ object ChannelSearchRepository {
                 val text = response.body.string()
                 Diagnostics.reportGql(TAG, "search", response.code, text)
                 when (response.code) {
-                    in 200..299 -> text
-                    in 400..499 -> {
+                    in HTTP_SUCCESS -> text
+                    in HTTP_CLIENT_ERROR -> {
                         AppLog.w(TAG, "search rejected HTTP ${response.code}")
                         return@withContext emptyList()
                     }

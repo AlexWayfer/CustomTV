@@ -21,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -53,6 +55,7 @@ internal fun ListPullToRefreshBox(
     }
     val pullState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
     val bar = rememberLoadingBarState(isRefreshing)
     // Where the indicator was released while it flows into the bar; null when nothing is flowing.
     var releasedFraction by remember { mutableStateOf<Float?>(null) }
@@ -64,6 +67,7 @@ internal fun ListPullToRefreshBox(
         // The indicator never stays down: the bar shows the refresh instead.
         isRefreshing = false,
         onRefresh = {
+            haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             releasedFraction = pullState.distanceFraction
             bar.showNow()
             scope.launch {
@@ -76,40 +80,7 @@ internal fun ListPullToRefreshBox(
         modifier = modifier.clipToBounds(),
         state = pullState,
         indicator = {
-            val released = releasedFraction
-            if (released == null) {
-                PullToRefreshDefaults.Indicator(
-                    state = pullState,
-                    isRefreshing = false,
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    maxDistance = REFRESH_INDICATOR_DISTANCE,
-                )
-            } else {
-                val heldState = remember(released) { HeldPullToRefreshState(released) }
-                PullToRefreshDefaults.Indicator(
-                    state = heldState,
-                    isRefreshing = true,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .graphicsLayer {
-                            val progress = morph.value
-                            val center = pullIndicatorCenter(
-                                distanceFraction = released,
-                                maxDistancePx = REFRESH_INDICATOR_DISTANCE.roundToPx().toFloat(),
-                                heightPx = size.height,
-                            )
-                            // Stretches to the width the bar grows from and flattens into its thickness, around
-                            // its own center while that center moves onto the bar's, so it becomes the bar rather
-                            // than vanishing into a point.
-                            transformOrigin = TransformOrigin(0.5f, center / size.height)
-                            translationY = (barTopPx + LOADING_BAR_HEIGHT.toPx() / 2 - center) * progress
-                            scaleX = 1f + progress * (LOADING_BAR_START_WIDTH.toPx() / size.width - 1f)
-                            scaleY = 1f - progress * (1f - LOADING_BAR_HEIGHT.toPx() / size.height)
-                            alpha = pullIndicatorFlowAlpha(progress)
-                        },
-                    maxDistance = REFRESH_INDICATOR_DISTANCE,
-                )
-            }
+            PullIndicator(pullState, releasedFraction, flowProgress = { morph.value }, barTopPx = barTopPx)
         },
     ) {
         content()
@@ -122,6 +93,51 @@ internal fun ListPullToRefreshBox(
             held = barHeld,
         )
     }
+}
+
+/**
+ * The indicator following the pull, or, once [released] at that fraction, held there while it flows into the bar
+ * at [barTopPx] as [flowProgress] goes from 0 to 1.
+ */
+@Composable
+private fun BoxScope.PullIndicator(
+    pullState: PullToRefreshState,
+    released: Float?,
+    flowProgress: () -> Float,
+    barTopPx: Int,
+) {
+    if (released == null) {
+        PullToRefreshDefaults.Indicator(
+            state = pullState,
+            isRefreshing = false,
+            modifier = Modifier.align(Alignment.TopCenter),
+            maxDistance = REFRESH_INDICATOR_DISTANCE,
+        )
+        return
+    }
+    val heldState = remember(released) { HeldPullToRefreshState(released) }
+    PullToRefreshDefaults.Indicator(
+        state = heldState,
+        isRefreshing = true,
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .graphicsLayer {
+                val progress = flowProgress()
+                val center = pullIndicatorCenter(
+                    distanceFraction = released,
+                    maxDistancePx = REFRESH_INDICATOR_DISTANCE.roundToPx().toFloat(),
+                    heightPx = size.height,
+                )
+                // Stretches to the width the bar grows from and flattens into its thickness, around its own center
+                // while that center moves onto the bar's, so it becomes the bar rather than vanishing into a point.
+                transformOrigin = TransformOrigin(TransformOrigin.Center.pivotFractionX, center / size.height)
+                translationY = (barTopPx + LOADING_BAR_HEIGHT.toPx() / 2 - center) * progress
+                scaleX = 1f + progress * (LOADING_BAR_START_WIDTH.toPx() / size.width - 1f)
+                scaleY = 1f - progress * (1f - LOADING_BAR_HEIGHT.toPx() / size.height)
+                alpha = pullIndicatorFlowAlpha(progress)
+            },
+        maxDistance = REFRESH_INDICATOR_DISTANCE,
+    )
 }
 
 /** How long the released indicator takes to lie down in the bar's place and fade. */

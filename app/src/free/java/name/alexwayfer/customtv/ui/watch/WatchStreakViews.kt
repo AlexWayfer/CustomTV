@@ -10,8 +10,13 @@ internal fun WatchPresenceEffect(channelLogin: String, isLive: Boolean) = Unit
 
 @Suppress("unused")
 @Composable
-internal fun ChannelPointsChip(channelLogin: String, pointsIconUrl: String?, prediction: ChannelPrediction?, visible: Boolean) = Unit
+internal fun ChannelPointsChip(
+    channelLogin: String,
+    pointsIconUrl: String?,
+    prediction: ChannelPrediction?,
+    visible: Boolean,
+) = Unit
 
-@Suppress("unused")
+@Suppress("unused", "FunctionOnlyReturningConstant")
 @Composable
 internal fun rememberChatShareOffer(channelLogin: String, pointsIconUrl: String?): ChatShareOffer? = null

@@ -65,8 +65,16 @@ class IrcMessageParserTest {
 
     @Test
     fun parsePrivMsgWithTwitchEmote() {
-        val raw = "@badge-info=;badges=;color=#FF4500;display-name=CoolUser;emotes=25:6-10;id=abc-123;mod=0;tmi-sent-ts=1700000000000 " +
-            ":cooluser!cooluser@cooluser.tmi.twitch.tv PRIVMSG #channel :Hello Kappa there"
+        val raw = ircTags(
+            "badge-info=",
+            "badges=",
+            "color=#FF4500",
+            "display-name=CoolUser",
+            "emotes=25:6-10",
+            "id=abc-123",
+            "mod=0",
+            "tmi-sent-ts=1700000000000",
+        ) + ":cooluser!cooluser@cooluser.tmi.twitch.tv PRIVMSG #channel :Hello Kappa there"
         val message = IrcMessageParser.parsePrivMsg(raw)
         assertNotNull(message)
         assertEquals("CoolUser", message!!.displayName)
@@ -139,18 +147,25 @@ class IrcMessageParserTest {
         val reply = ChatReply("id", "cooluser", "CoolUser", "Hi")
         assertEquals(
             "@CoolUserish hello",
-            IrcMessageParser.stripLeadingReplyMention("@CoolUserish hello", reply),
+            IrcMessageText.stripLeadingReplyMention("@CoolUserish hello", reply),
         )
         assertEquals(
             "hello",
-            IrcMessageParser.stripLeadingReplyMention("@cooluser hello", reply),
+            IrcMessageText.stripLeadingReplyMention("@cooluser hello", reply),
         )
     }
 
     @Test
     fun parseRepeatedEmotesAsSeparateParts() {
-        val raw = "@badge-info=;badges=;color=#FF4500;display-name=CoolUser;emotes=25:0-4,6-10,12-16;id=abc-456;tmi-sent-ts=1700000000000 " +
-            ":cooluser!cooluser@cooluser.tmi.twitch.tv PRIVMSG #channel :Kappa Kappa Kappa"
+        val raw = ircTags(
+            "badge-info=",
+            "badges=",
+            "color=#FF4500",
+            "display-name=CoolUser",
+            "emotes=25:0-4,6-10,12-16",
+            "id=abc-456",
+            "tmi-sent-ts=1700000000000",
+        ) + ":cooluser!cooluser@cooluser.tmi.twitch.tv PRIVMSG #channel :Kappa Kappa Kappa"
         val message = IrcMessageParser.parsePrivMsg(raw)
         assertNotNull(message)
         assertEquals(5, message!!.parts.size)
@@ -176,8 +191,29 @@ class IrcMessageParserTest {
 
     @Test
     fun parseResubUserNoticeWithMessage() {
-        val raw = "@badge-info=;badges=staff/1,broadcaster/1,turbo/1;color=#008000;display-name=ronni;emotes=;id=db25007f-7a18-43eb-9379-80131e44d633;login=ronni;mod=0;msg-id=resub;msg-param-cumulative-months=6;msg-param-streak-months=2;msg-param-should-share-streak=1;msg-param-sub-plan=Prime;msg-param-sub-plan-name=Prime;room-id=1337;subscriber=1;system-msg=ronni\\shas\\ssubscribed\\sfor\\s6\\smonths!;tmi-sent-ts=1507246572675;turbo=1;user-id=1337;user-type=staff " +
-            ":tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!"
+        val raw = ircTags(
+            "badge-info=",
+            "badges=staff/1,broadcaster/1,turbo/1",
+            "color=#008000",
+            "display-name=ronni",
+            "emotes=",
+            "id=db25007f-7a18-43eb-9379-80131e44d633",
+            "login=ronni",
+            "mod=0",
+            "msg-id=resub",
+            "msg-param-cumulative-months=6",
+            "msg-param-streak-months=2",
+            "msg-param-should-share-streak=1",
+            "msg-param-sub-plan=Prime",
+            "msg-param-sub-plan-name=Prime",
+            "room-id=1337",
+            "subscriber=1",
+            "system-msg=ronni\\shas\\ssubscribed\\sfor\\s6\\smonths!",
+            "tmi-sent-ts=1507246572675",
+            "turbo=1",
+            "user-id=1337",
+            "user-type=staff",
+        ) + ":tmi.twitch.tv USERNOTICE #dallas :Great stream -- keep it up!"
         val message = IrcMessageParser.parseUserNotice(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.Subscription, message!!.eventKind)
@@ -192,8 +228,24 @@ class IrcMessageParserTest {
 
     @Test
     fun parseAnnouncementUserNotice() {
-        val raw = "@badge-info=;badges=broadcaster/1;color=#FFFFFF;display-name=Streamer;emotes=;id=ann-1;login=streamer;mod=1;msg-id=announcement;msg-param-color=PURPLE;room-id=123;subscriber=0;system-msg=;tmi-sent-ts=1700000000000;user-id=123;user-type=mod " +
-            ":tmi.twitch.tv USERNOTICE #channel :Hello everyone"
+        val raw = ircTags(
+            "badge-info=",
+            "badges=broadcaster/1",
+            "color=#FFFFFF",
+            "display-name=Streamer",
+            "emotes=",
+            "id=ann-1",
+            "login=streamer",
+            "mod=1",
+            "msg-id=announcement",
+            "msg-param-color=PURPLE",
+            "room-id=123",
+            "subscriber=0",
+            "system-msg=",
+            "tmi-sent-ts=1700000000000",
+            "user-id=123",
+            "user-type=mod",
+        ) + ":tmi.twitch.tv USERNOTICE #channel :Hello everyone"
         val message = IrcMessageParser.parseUserNotice(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.Announcement, message!!.eventKind)
@@ -206,18 +258,28 @@ class IrcMessageParserTest {
 
     @Test
     fun announcementColorsMatchTwitchCommands() {
-        assertEquals(Color(0xFF00D6D6), IrcMessageParser.announcementColor("BLUE"))
-        assertEquals(Color(0xFF00DB84), IrcMessageParser.announcementColor("GREEN"))
-        assertEquals(Color(0xFFFFB31A), IrcMessageParser.announcementColor("ORANGE"))
-        assertEquals(Color(0xFFBF94FF), IrcMessageParser.announcementColor("PURPLE"))
-        assertEquals(Color(0xFFADADB8), IrcMessageParser.announcementColor("PRIMARY"))
-        assertEquals(Color(0xFFADADB8), IrcMessageParser.announcementColor(null))
+        assertEquals(Color(0xFF00D6D6), IrcUserNotice.announcementColor("BLUE"))
+        assertEquals(Color(0xFF00DB84), IrcUserNotice.announcementColor("GREEN"))
+        assertEquals(Color(0xFFFFB31A), IrcUserNotice.announcementColor("ORANGE"))
+        assertEquals(Color(0xFFBF94FF), IrcUserNotice.announcementColor("PURPLE"))
+        assertEquals(Color(0xFFADADB8), IrcUserNotice.announcementColor("PRIMARY"))
+        assertEquals(Color(0xFFADADB8), IrcUserNotice.announcementColor(null))
     }
 
     @Test
     fun parseSubGiftUserNoticeWithoutTrailing() {
-        val raw = "@display-name=Gifter;login=gifter;msg-id=subgift;msg-param-months=1;msg-param-recipient-display-name=Target;msg-param-recipient-user-name=target;msg-param-sub-plan=1000;system-msg=Gifter\\sgifted\\sa\\sTier\\s1\\ssub\\sto\\sTarget!;tmi-sent-ts=1700000000000;id=gift-1 " +
-            ":tmi.twitch.tv USERNOTICE #channel"
+        val raw = ircTags(
+            "display-name=Gifter",
+            "login=gifter",
+            "msg-id=subgift",
+            "msg-param-months=1",
+            "msg-param-recipient-display-name=Target",
+            "msg-param-recipient-user-name=target",
+            "msg-param-sub-plan=1000",
+            "system-msg=Gifter\\sgifted\\sa\\sTier\\s1\\ssub\\sto\\sTarget!",
+            "tmi-sent-ts=1700000000000",
+            "id=gift-1",
+        ) + ":tmi.twitch.tv USERNOTICE #channel"
         val message = IrcMessageParser.parseUserNotice(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.Subscription, message!!.eventKind)
@@ -277,8 +339,16 @@ class IrcMessageParserTest {
 
     @Test
     fun parseRaidUserNotice() {
-        val raw = "@display-name=Raider;login=raider;msg-id=raid;msg-param-displayName=Raider;msg-param-viewerCount=1234;system-msg=1234\\sraiders\\sfrom\\sRaider\\shave\\sjoined!;tmi-sent-ts=1700000000000;id=raid-1 " +
-            ":tmi.twitch.tv USERNOTICE #channel"
+        val raw = ircTags(
+            "display-name=Raider",
+            "login=raider",
+            "msg-id=raid",
+            "msg-param-displayName=Raider",
+            "msg-param-viewerCount=1234",
+            "system-msg=1234\\sraiders\\sfrom\\sRaider\\shave\\sjoined!",
+            "tmi-sent-ts=1700000000000",
+            "id=raid-1",
+        ) + ":tmi.twitch.tv USERNOTICE #channel"
         val message = IrcMessageParser.parseUserNotice(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.Raid, message!!.eventKind)
@@ -290,7 +360,8 @@ class IrcMessageParserTest {
 
     @Test
     fun parseRoomNotice() {
-        val raw = "@msg-id=slow_on :tmi.twitch.tv NOTICE #channel :This room is now in slow mode. You may send messages every 30 seconds."
+        val raw = "@msg-id=slow_on :tmi.twitch.tv NOTICE #channel " +
+            ":This room is now in slow mode. You may send messages every 30 seconds."
         val message = IrcMessageParser.parseNotice(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.System, message!!.eventKind)
@@ -300,8 +371,16 @@ class IrcMessageParserTest {
 
     @Test
     fun parseHighlightedPrivMsg() {
-        val raw = "@badge-info=;badges=;color=#FF4500;display-name=CoolUser;emotes=;id=hl-1;msg-id=highlighted-message;tmi-sent-ts=1700000000000 " +
-            ":cooluser!cooluser@cooluser.tmi.twitch.tv PRIVMSG #channel :Pay attention"
+        val raw = ircTags(
+            "badge-info=",
+            "badges=",
+            "color=#FF4500",
+            "display-name=CoolUser",
+            "emotes=",
+            "id=hl-1",
+            "msg-id=highlighted-message",
+            "tmi-sent-ts=1700000000000",
+        ) + ":cooluser!cooluser@cooluser.tmi.twitch.tv PRIVMSG #channel :Pay attention"
         val message = IrcMessageParser.parsePrivMsg(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.Highlight, message!!.eventKind)
@@ -310,8 +389,16 @@ class IrcMessageParserTest {
 
     @Test
     fun parseCustomRewardPrivMsg() {
-        val raw = "@badge-info=;badges=;color=#FF4500;custom-reward-id=4eb8ee0f-2c05-4848-9ed4-d369b3ff5986;display-name=AlexWayfer;emotes=;id=rw-1;tmi-sent-ts=1700000000000 " +
-            ":alexwayfer!alexwayfer@alexwayfer.tmi.twitch.tv PRIVMSG #alexwayfer :stand up"
+        val raw = ircTags(
+            "badge-info=",
+            "badges=",
+            "color=#FF4500",
+            "custom-reward-id=4eb8ee0f-2c05-4848-9ed4-d369b3ff5986",
+            "display-name=AlexWayfer",
+            "emotes=",
+            "id=rw-1",
+            "tmi-sent-ts=1700000000000",
+        ) + ":alexwayfer!alexwayfer@alexwayfer.tmi.twitch.tv PRIVMSG #alexwayfer :stand up"
         val message = IrcMessageParser.parsePrivMsg(raw)
         assertNotNull(message)
         assertEquals(ChatEventKind.Reward, message!!.eventKind)
@@ -321,7 +408,7 @@ class IrcMessageParserTest {
 
     @Test
     fun parsePingStyleLine() {
-        val line = IrcMessageParser.parseLine(":tmi.twitch.tv 001 justinfan123 :Welcome")
+        val line = IrcLineParser.parse(":tmi.twitch.tv 001 justinfan123 :Welcome")
         assertEquals("001", line!!.command)
         assertEquals("Welcome", line.trailing)
     }
@@ -477,10 +564,10 @@ class IrcMessageParserTest {
 
     @Test
     fun doesNotTreatActionLookalikeAsCtcp() {
-        val plain = IrcMessageParser.stripCtcpAction("ACTION waves")
+        val plain = IrcMessageText.stripCtcpAction("ACTION waves")
         assertFalse(plain.isAction)
         assertEquals("ACTION waves", plain.text)
-        val glued = IrcMessageParser.stripCtcpAction("\u0001ACTIONFOO")
+        val glued = IrcMessageText.stripCtcpAction("\u0001ACTIONFOO")
         assertFalse(glued.isAction)
     }
 
@@ -531,4 +618,7 @@ class IrcMessageParserTest {
         assertEquals("https://example.com/b.gif", spans[1].url)
         assertEquals(7, spans[1].start)
     }
+
+    /** The tags part of an IRC line, from `@` to the space before the prefix. */
+    private fun ircTags(vararg tags: String) = tags.joinToString(";", prefix = "@", postfix = " ")
 }

@@ -19,10 +19,10 @@ internal class ChannelBadges(private val scope: CoroutineScope) {
         job?.cancel()
         _urls.value = emptyMap()
         job = scope.launch {
-            resultUnlessCancelled { ChatBadgeRepository.restore(channel) }.getOrNull()?.let { stored ->
+            loadResult { ChatBadgeRepository.restore(channel) }.getOrNull()?.let { stored ->
                 if (channelResultApplies(channel, this@ChannelBadges.channel)) _urls.value = stored
             }
-            val loaded = resultUnlessCancelled { ChatBadgeRepository.forChannel(channel) }.getOrNull()
+            val loaded = loadResult { ChatBadgeRepository.forChannel(channel) }.getOrNull()
                 ?: return@launch
             if (channelResultApplies(channel, this@ChannelBadges.channel)) _urls.value = loaded
         }

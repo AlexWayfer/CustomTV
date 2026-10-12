@@ -48,10 +48,11 @@ internal fun lockAfterDeviceTurn(lock: FullscreenLock, turn: DeviceTurn?, autoRo
  */
 internal fun deviceTurn(degrees: Int): DeviceTurn? {
     if (degrees < 0) return null
-    val fromUpright = degrees % 180
+    val fromUpright = degrees % HALF_TURN
     return when {
-        fromUpright <= DEVICE_TURN_TOLERANCE || fromUpright >= 180 - DEVICE_TURN_TOLERANCE -> DeviceTurn.Portrait
-        fromUpright in 90 - DEVICE_TURN_TOLERANCE..90 + DEVICE_TURN_TOLERANCE -> DeviceTurn.Landscape
+        fromUpright <= DEVICE_TURN_TOLERANCE || fromUpright >= HALF_TURN - DEVICE_TURN_TOLERANCE -> DeviceTurn.Portrait
+        fromUpright in QUARTER_TURN - DEVICE_TURN_TOLERANCE..QUARTER_TURN + DEVICE_TURN_TOLERANCE ->
+            DeviceTurn.Landscape
         else -> null
     }
 }
@@ -121,5 +122,7 @@ private const val EXIT_DRAG_PROGRESS = MINIMIZE_DRAG_PROGRESS
 private const val ENTER_DRAG_PROGRESS = MINIMIZE_DRAG_PROGRESS / 2
 
 private const val DEVICE_TURN_TOLERANCE = 30
+private const val QUARTER_TURN = 90
+private const val HALF_TURN = 180
 private const val DRAG_FOLLOW = 0.5f
 private const val DRAG_SCALE = 0.1f

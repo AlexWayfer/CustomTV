@@ -56,7 +56,13 @@ class OutgoingRaidRecheckTest {
         val result = recheckOutgoingRaid(raid, lookup, nowMillis = 1_000L)
 
         assertEquals(
-            raid.copy(id = "raid-2", targetLogin = "other", targetDisplayName = "Other", targetAvatarUrl = null, viewerCount = 25),
+            raid.copy(
+                id = "raid-2",
+                targetLogin = "other",
+                targetDisplayName = "Other",
+                targetAvatarUrl = null,
+                viewerCount = 25,
+            ),
             result,
         )
     }

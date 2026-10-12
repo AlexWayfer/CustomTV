@@ -27,10 +27,7 @@ class ChatAppearanceTest {
         textSize = DEFAULT_CHAT_TEXT_SIZE,
         meMessageItalic = true,
         badgeUrls = emptyMap(),
-        sources = sources,
-        sevenTvEmotes = sevenTv,
-        ffzEmotes = ffz,
-        bttvEmotes = bttv,
+        emotes = ThirdPartyEmotes(sources, sevenTv = sevenTv, ffz = ffz, bttv = bttv),
     )
 
     @Test

@@ -35,28 +35,64 @@ internal object IrcEmoteParser {
         val spans = mutableListOf<ChatGifSpan>()
         var index = 0
         while (index < gifsTag.length) {
-            val pipe1 = gifsTag.indexOf('|', index)
-            if (pipe1 < 0) break
-            val range = gifsTag.substring(index, pipe1)
-            val dash = range.indexOf('-')
-            if (dash < 0) break
-            val start = range.substring(0, dash).toIntOrNull() ?: break
-            val end = range.substring(dash + 1).toIntOrNull() ?: break
-            val pipe2 = gifsTag.indexOf('|', pipe1 + 1)
-            if (pipe2 < 0) break
-            val id = gifsTag.substring(pipe1 + 1, pipe2)
-            val urlStart = pipe2 + 1
-            val next = nextGifEntrySeparator(gifsTag, urlStart)
-            val url = gifsTag.substring(urlStart, if (next < 0) gifsTag.length else next)
-            if (url.isNotBlank()) {
-                spans += ChatGifSpan(start, end, id, url)
-            }
-            index = if (next < 0) gifsTag.length else next + 1
+            val entry = gifEntryAt(gifsTag, index) ?: break
+            entry.span?.let { spans += it }
+            index = entry.next
         }
         return spans
     }
 
+    /** One `<start>-<end>|<id>|<url>` entry; its span is null for a blank URL. */
+    private class GifEntry(val span: ChatGifSpan?, val next: Int)
+
+    /** The entry at [index] of the tag, or null when it is broken and the rest cannot be read. */
+    private fun gifEntryAt(tag: String, index: Int): GifEntry? {
+        val pipe1 = tag.indexOf('|', index).takeIf { it >= 0 } ?: return null
+        val dash = tag.indexOf('-', index).takeIf { it in index until pipe1 } ?: return null
+        val start = tag.substring(index, dash).toIntOrNull() ?: return null
+        val end = tag.substring(dash + 1, pipe1).toIntOrNull() ?: return null
+        val pipe2 = tag.indexOf('|', pipe1 + 1).takeIf { it >= 0 } ?: return null
+        val id = tag.substring(pipe1 + 1, pipe2)
+        val urlStart = pipe2 + 1
+        val next = nextGifEntrySeparator(tag, urlStart)
+        val url = tag.substring(urlStart, if (next < 0) tag.length else next)
+        return GifEntry(
+            span = ChatGifSpan(start, end, id, url).takeIf { url.isNotBlank() },
+            next = if (next < 0) tag.length else next + 1,
+        )
+    }
+
     fun parse(message: String, emotesTag: String, gifsTag: String = ""): List<ChatPart> {
+        val ranges = emoteRanges(emotesTag)
+        parseGifTag(gifsTag).forEach { gif ->
+            ranges += EmoteRange(gif.start, gif.endInclusive, gifUrl = gif.url)
+        }
+        if (ranges.isEmpty()) return listOf(ChatPart.Text(message))
+        ranges.sortBy { it.start }
+
+        val codePoints = message.codePoints().toArray()
+        val parts = mutableListOf<ChatPart>()
+        var cursor = 0
+        for (range in ranges) {
+            val (start, endInclusive) = range
+            // The cursor is never below zero, so this also skips a negative start.
+            if (start < cursor || start > endInclusive || endInclusive >= codePoints.size) continue
+            if (start > cursor) {
+                parts += ChatPart.Text(String(codePoints, cursor, start - cursor))
+            }
+            val name = String(codePoints, start, endInclusive - start + 1)
+            parts += range.gifUrl?.let { ChatPart.Gif(name, it) }
+                ?: ChatPart.Emote(name, twitchEmoteUrl(range.emoteId.orEmpty()))
+            cursor = endInclusive + 1
+        }
+        if (cursor < codePoints.size) {
+            parts += ChatPart.Text(String(codePoints, cursor, codePoints.size - cursor))
+        }
+        return parts.ifEmpty { listOf(ChatPart.Text(message)) }
+    }
+
+    /** The emote positions of the `emotes` tag, `id:start-end,start-end/id:...`; a broken entry is skipped. */
+    private fun emoteRanges(emotesTag: String): MutableList<EmoteRange> {
         val ranges = mutableListOf<EmoteRange>()
         emotesTag.split('/').forEach { entry ->
             if (entry.isBlank()) return@forEach
@@ -71,52 +107,27 @@ internal object IrcEmoteParser {
                 ranges += EmoteRange(start, end, emoteId = id)
             }
         }
-        parseGifTag(gifsTag).forEach { gif ->
-            ranges += EmoteRange(gif.start, gif.endInclusive, gifUrl = gif.url)
-        }
-        if (ranges.isEmpty()) return listOf(ChatPart.Text(message))
-        ranges.sortBy { it.start }
-
-        val codePoints = message.codePoints().toArray()
-        val parts = mutableListOf<ChatPart>()
-        var cursor = 0
-        for ((start, endInclusive, emoteId, gifUrl) in ranges) {
-            if (start < 0 || endInclusive >= codePoints.size || start > endInclusive) continue
-            if (start < cursor) continue
-            if (start > cursor) {
-                parts += ChatPart.Text(String(codePoints, cursor, start - cursor))
-            }
-            val name = String(codePoints, start, endInclusive - start + 1)
-            parts += gifUrl?.let { ChatPart.Gif(name, it) }
-                ?: ChatPart.Emote(name, twitchEmoteUrl(emoteId.orEmpty()))
-            cursor = endInclusive + 1
-        }
-        if (cursor < codePoints.size) {
-            parts += ChatPart.Text(String(codePoints, cursor, codePoints.size - cursor))
-        }
-        return parts.ifEmpty { listOf(ChatPart.Text(message)) }
+        return ranges
     }
 
     private fun nextGifEntrySeparator(tag: String, from: Int): Int {
-        var search = from
-        while (search < tag.length) {
-            val comma = tag.indexOf(',', search)
-            if (comma < 0) return -1
-            if (isGifRangePrefix(tag, comma + 1)) return comma
-            search = comma + 1
-        }
-        return -1
+        var comma = tag.indexOf(',', from)
+        while (comma >= 0 && !isGifRangePrefix(tag, comma + 1)) comma = tag.indexOf(',', comma + 1)
+        return comma
     }
 
+    /** Whether [tag] has `<digits>-<digits>|` at [at], the start of the next GIF entry. */
     private fun isGifRangePrefix(tag: String, at: Int): Boolean {
-        var index = at
-        if (index >= tag.length || !tag[index].isDigit()) return false
+        val dash = digitsEnd(tag, at)
+        if (dash == at || dash >= tag.length || tag[dash] != '-') return false
+        val bar = digitsEnd(tag, dash + 1)
+        return bar > dash + 1 && bar < tag.length && tag[bar] == '|'
+    }
+
+    private fun digitsEnd(tag: String, from: Int): Int {
+        var index = from
         while (index < tag.length && tag[index].isDigit()) index++
-        if (index >= tag.length || tag[index] != '-') return false
-        index++
-        if (index >= tag.length || !tag[index].isDigit()) return false
-        while (index < tag.length && tag[index].isDigit()) index++
-        return index < tag.length && tag[index] == '|'
+        return index
     }
 
     private data class EmoteRange(

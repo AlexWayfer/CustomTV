@@ -38,18 +38,19 @@ internal fun twitchEmoteOrigin(
     val tier = subscriptionTierNumber(subscriptionTier)
     val prime = kind == "PRIME" || subscriptionTier.equals("PRIME", ignoreCase = true)
     return when {
-        prime && owner != null -> EmoteOrigin.TwitchPrime(owner)
-        prime -> EmoteOrigin.Twitch
-        kind == "GLOBALS" || kind == "SMILIES" -> EmoteOrigin.TwitchGlobal
-        kind == "SUBSCRIPTIONS" && owner != null -> EmoteOrigin.TwitchSubscription(tier, owner)
-        kind == "SUBSCRIPTIONS" -> EmoteOrigin.Twitch
-        kind == "FOLLOWER" && owner != null -> EmoteOrigin.TwitchFollower(owner)
-        kind == "FOLLOWER" -> EmoteOrigin.Twitch
-        "BITS" in kind && owner != null -> EmoteOrigin.TwitchBits(owner)
-        "BITS" in kind -> EmoteOrigin.Twitch
-        owner != null -> EmoteOrigin.TwitchChannel(owner)
-        else -> EmoteOrigin.Twitch
+        !prime && (kind == "GLOBALS" || kind == "SMILIES") -> EmoteOrigin.TwitchGlobal
+        owner == null -> EmoteOrigin.Twitch
+        else -> ownedTwitchEmoteOrigin(kind, prime, tier, owner)
     }
+}
+
+/** The origin of a Twitch emote whose channel is known: how a viewer gets it there. */
+private fun ownedTwitchEmoteOrigin(kind: String, prime: Boolean, tier: Int?, owner: String): EmoteOrigin = when {
+    prime -> EmoteOrigin.TwitchPrime(owner)
+    kind == "SUBSCRIPTIONS" -> EmoteOrigin.TwitchSubscription(tier, owner)
+    kind == "FOLLOWER" -> EmoteOrigin.TwitchFollower(owner)
+    "BITS" in kind -> EmoteOrigin.TwitchBits(owner)
+    else -> EmoteOrigin.TwitchChannel(owner)
 }
 
 internal fun libraryEmoteOrigin(
@@ -66,11 +67,13 @@ internal fun libraryEmoteOrigin(
     }
 }
 
-private fun subscriptionTierNumber(tier: String?): Int? = when (tier?.uppercase()) {
-    "TIER_1", "1", "1000" -> 1
-    "TIER_2", "2", "2000" -> 2
-    "TIER_3", "3", "3000" -> 3
-    else -> null
-}
+private fun subscriptionTierNumber(tier: String?): Int? = tier?.uppercase()?.let(SUBSCRIPTION_TIERS::get)
+
+/** A subscription tier by each name Twitch gives it. */
+private val SUBSCRIPTION_TIERS = mapOf(
+    "TIER_1" to 1, "1" to 1, "1000" to 1,
+    "TIER_2" to 2, "2" to 2, "2000" to 2,
+    "TIER_3" to 3, "3" to 3, "3000" to 3,
+)
 
 private val TWITCH_EMOTE_ID = Regex("/emoticons/v2/([^/]+)/")

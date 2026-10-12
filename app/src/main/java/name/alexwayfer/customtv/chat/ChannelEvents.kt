@@ -1,6 +1,6 @@
 package name.alexwayfer.customtv.chat
 
-import org.json.JSONObject
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
 
 /** The channel's poll, prediction, and hype train shown over chat. */
 internal data class ChannelEvents(
@@ -46,7 +46,7 @@ internal fun visibleChannelEvents(
  * answer. Null when the answer could not be read; a hidden poll or prediction counts as none.
  */
 internal fun parseChannelEventsGql(body: String, nowMillis: Long): ChannelEvents? {
-    val user = runCatching { JSONObject(body) }.getOrNull()
+    val user = body.toJsonObjectOrNull()
         ?.optJSONObject("data")
         ?.optJSONObject("user")
         ?: return null

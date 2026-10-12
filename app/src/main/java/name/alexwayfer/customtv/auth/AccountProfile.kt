@@ -1,7 +1,10 @@
 package name.alexwayfer.customtv.auth
 
 import name.alexwayfer.customtv.data.ProfileDetails
+import name.alexwayfer.customtv.data.objects
+import name.alexwayfer.customtv.data.trimmedText
 import org.json.JSONArray
+import org.json.JSONObject
 
 internal fun TwitchAccount.withProfileDetails(details: ProfileDetails): TwitchAccount {
     return copy(
@@ -37,19 +40,16 @@ internal fun profileAfterRefresh(
     )
 }
 
-internal fun parseProfileLinks(array: JSONArray): List<TwitchProfileLink> {
-    return buildList {
-        for (index in 0 until array.length()) {
-            val item = array.optJSONObject(index) ?: continue
-            val url = httpUrl(item.optString("url")) ?: continue
-            val name = item.optString("name").trim().takeIf { it.isNotBlank() && it != "null" }
-            val title = item.optString("title").trim().takeIf { it.isNotBlank() && it != "null" }
-                ?: name
-                ?: continue
-            if (any { it.url == url }) continue
-            add(TwitchProfileLink(title = title, url = url, name = name))
-        }
-    }
+internal fun parseProfileLinks(array: JSONArray): List<TwitchProfileLink> =
+    array.objects().mapNotNull(::parseProfileLink).distinctBy { it.url }
+
+private fun parseProfileLink(item: JSONObject): TwitchProfileLink? {
+    val url = httpUrl(item.optString("url")) ?: return null
+    val name = item.trimmedText("name")
+    val title = item.trimmedText("title")
+        ?: name
+        ?: return null
+    return TwitchProfileLink(title = title, url = url, name = name)
 }
 
 internal fun httpUrl(value: String): String? {

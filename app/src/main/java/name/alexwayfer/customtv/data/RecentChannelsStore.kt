@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,6 +17,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.diagnostics.AppLog
+import java.io.IOException
+
+/** The log tag of the recently watched channels. */
+internal const val RECENT_CHANNELS_TAG = "RecentChannels"
 
 private val Context.recentChannelsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "recent_channels",
@@ -66,7 +69,6 @@ class RecentChannelsStore(context: Context) {
     }
 
     companion object {
-        private const val TAG = "RecentChannels"
         private val KEY = stringPreferencesKey("channels")
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val current = MutableStateFlow<List<RecentChannel>?>(null)
@@ -82,10 +84,8 @@ class RecentChannelsStore(context: Context) {
             scope.launch {
                 try {
                     store.recents.collect { current.value = it }
-                } catch (failure: CancellationException) {
-                    throw failure
-                } catch (failure: Exception) {
-                    AppLog.w(TAG, "recents restore failed: ${failure.javaClass.simpleName}")
+                } catch (failure: IOException) {
+                    AppLog.w(RECENT_CHANNELS_TAG, "recents restore failed: ${failure.javaClass.simpleName}")
                 }
             }
         }

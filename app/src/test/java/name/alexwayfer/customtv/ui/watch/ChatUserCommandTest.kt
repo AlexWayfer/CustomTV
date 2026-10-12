@@ -1,8 +1,7 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.ui.graphics.Color
 import name.alexwayfer.customtv.chat.ChatBadge
-import name.alexwayfer.customtv.chat.ChatMessage
+import name.alexwayfer.customtv.chat.testChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -68,15 +67,12 @@ class ChatUserCommandTest {
         assertEquals(emptyList<ChatBadge>(), request.badges)
     }
 
-    private fun message(login: String, displayName: String, badges: List<ChatBadge>) = ChatMessage(
-        id = "$login-$displayName",
-        userLogin = login,
+    private fun message(login: String, displayName: String, badges: List<ChatBadge>) = testChatMessage(
+        "$login-$displayName",
+        "hi",
+        login = login,
         displayName = displayName,
-        color = Color.White,
-        rawText = "hi",
         parts = emptyList(),
         timestampMillis = 0,
-        badges = badges,
-        userId = "id-${login.lowercase()}",
-    )
+    ).copy(badges = badges, userId = "id-${login.lowercase()}")
 }

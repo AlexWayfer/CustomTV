@@ -9,7 +9,7 @@ import android.provider.Settings
 import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import java.io.File
-import kotlinx.coroutines.CancellationException
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -53,15 +53,20 @@ internal object AppUpdateInstaller {
             try {
                 commit(app, File(path))
                 AppLog.i(APP_UPDATE_TAG, "install session committed")
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                AppLog.w(APP_UPDATE_TAG, "install session failed ${error.javaClass.simpleName}")
-                _error.value = UiText.Raw(error.message ?: error.javaClass.simpleName)
+            } catch (error: IOException) {
+                installFailed(error)
+            } catch (error: SecurityException) {
+                // Android refuses an install session to a restricted user.
+                installFailed(error)
             } finally {
                 _busy.value = false
             }
         }
+    }
+
+    private fun installFailed(error: Exception) {
+        AppLog.w(APP_UPDATE_TAG, "install session failed ${error.javaClass.simpleName}")
+        _error.value = UiText.Raw(error.message ?: error.javaClass.simpleName)
     }
 
     private fun commit(app: Context, file: File) {

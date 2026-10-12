@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.chat
 
 import name.alexwayfer.customtv.data.ChatSendResult
+import name.alexwayfer.customtv.secondsRoundedUp
 
 /**
  * A channel's warning the user has to acknowledge before chatting there again. A refused send tells only that there
@@ -23,4 +24,4 @@ private const val WARNING_READ_MILLIS = 7_000L
 
 /** The whole seconds Acknowledge still waits, rounded up so the last second still shows; 0 once it can be pressed. */
 internal fun warningAcknowledgeWaitSeconds(shownAtMillis: Long, nowMillis: Long): Int =
-    ((shownAtMillis + WARNING_READ_MILLIS - nowMillis + 999) / 1_000).coerceAtLeast(0).toInt()
+    secondsRoundedUp(shownAtMillis + WARNING_READ_MILLIS - nowMillis).coerceAtLeast(0).toInt()

@@ -1,13 +1,15 @@
 package name.alexwayfer.customtv.chat
 
-import kotlinx.coroutines.CancellationException
+import org.json.JSONException
+import java.io.IOException
 
-internal inline fun <T> resultUnlessCancelled(block: () -> T): Result<T> {
+/** A load that failed on the network or on its answer is a failed result; any other error is a bug and is thrown. */
+internal inline fun <T> loadResult(block: () -> T): Result<T> {
     return try {
         Result.success(block())
-    } catch (error: CancellationException) {
-        throw error
-    } catch (error: Exception) {
+    } catch (error: IOException) {
+        Result.failure(error)
+    } catch (error: JSONException) {
         Result.failure(error)
     }
 }

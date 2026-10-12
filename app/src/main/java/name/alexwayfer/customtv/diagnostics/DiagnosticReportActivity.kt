@@ -38,7 +38,7 @@ class DiagnosticReportActivity : Activity() {
         }
         val uri = FileProvider.getUriForFile(this, "$packageName.diagnostics", file)
         val summary = Diagnostics.shareText(this)
-        Diagnostics.markSent(this)
+        DiagnosticJournal.markSent(this)
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_EMAIL, arrayOf(REPORT_ADDRESS))

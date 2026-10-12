@@ -6,7 +6,8 @@ import org.junit.Test
 
 class ChatSheetHeightTest {
     @Test
-    fun sheetReachesUpToThePlayersBottomEdge() = assertEquals(1_400, chatSheetMaxHeightPx(containerHeightPx = 2_200, playerBottomPx = 800))
+    fun sheetReachesUpToThePlayersBottomEdge() =
+        assertEquals(1_400, chatSheetMaxHeightPx(containerHeightPx = 2_200, playerBottomPx = 800))
 
     @Test
     fun contentLeavesRoomForTheDragHandleAndTheSystemBar() =

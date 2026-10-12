@@ -194,7 +194,8 @@ class ChannelEventsTest {
             wait = { CompletableDeferred<Unit>().also(waits::add).await() },
             now = { NOW },
         )
-        val train = ChannelHypeTrain("t1", HypeTrainPhase.Active, 2, 900, 1800, NOW + 60_000L, null, emptyList(), emptyList())
+        val train =
+            ChannelHypeTrain("t1", HypeTrainPhase.Active, 2, 900, 1800, NOW + 60_000L, null, emptyList(), emptyList())
 
         controller.onHypeTrain(HypeTrainEvent.Approaching(1, NOW + 30_000L, emptyList()))
         controller.onHypeTrain(HypeTrainEvent.Execution(train))

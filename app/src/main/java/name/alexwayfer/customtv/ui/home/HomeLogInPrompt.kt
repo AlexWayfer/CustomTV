@@ -30,9 +30,6 @@ import name.alexwayfer.customtv.data.HomeLogInPromptStore
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
-/** Whether Home offers to log in to Twitch, and the action that puts the offer away until the next log out. */
-internal class HomeLogInPromptState(val shown: Boolean, val dismiss: () -> Unit)
-
 @Composable
 internal fun rememberHomeLogInPrompt(signedIn: Boolean): HomeLogInPromptState {
     val context = LocalContext.current

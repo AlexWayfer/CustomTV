@@ -8,48 +8,25 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
@@ -63,42 +40,25 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChannelPoll
-import name.alexwayfer.customtv.chat.ChannelPollChoice
 import name.alexwayfer.customtv.chat.ChannelPollStatus
 import name.alexwayfer.customtv.chat.ChannelPrediction
 import name.alexwayfer.customtv.chat.ChannelPredictionOutcome
 import name.alexwayfer.customtv.chat.ChannelPredictionStatus
-import name.alexwayfer.customtv.ui.components.CardFoldSpring
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
-import name.alexwayfer.customtv.ui.components.collapsibleTextMaxLines
 import name.alexwayfer.customtv.ui.components.placementAnimation
-import name.alexwayfer.customtv.ui.components.revealLines
 import name.alexwayfer.customtv.chat.pollChoicesInOrder
-import name.alexwayfer.customtv.chat.pollChoicePercent
-import name.alexwayfer.customtv.chat.pollChoiceShare
 import name.alexwayfer.customtv.chat.pollLeaderIds
-import name.alexwayfer.customtv.chat.raidFractionRemaining
-import name.alexwayfer.customtv.ui.theme.TwitchDivider
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
-import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import java.text.NumberFormat
-import kotlin.math.roundToInt
 
 @Composable
 internal fun ChatPollBanner(
@@ -199,123 +159,6 @@ private fun PollVoteAction(voting: PollVoting, chatTextSize: Int) {
     }
 }
 
-/**
- * A choice with its share of the votes. The numbers switch at once; the bar slides to its new share. While the
- * viewer can vote, a radio button picks the choice. Once the poll ends, the leaders get the trophy, as on Twitch; the
- * viewer's choice gets the check.
- */
-@Composable
-private fun PollChoiceRow(
-    choice: ChannelPollChoice,
-    totalVotes: Int,
-    leader: Boolean,
-    winner: Boolean,
-    pickable: Boolean,
-    picked: Boolean,
-    voted: Boolean,
-    onPick: () -> Unit,
-    chatTextSize: Int,
-    modifier: Modifier = Modifier,
-) {
-    val bodySize = chatSp(chatTextSize, 14, 16)
-    val iconSize = chatDp(chatTextSize, 14, 16)
-    val locale = LocalConfiguration.current.locales[0]
-    val percent = pollChoicePercent(choice.votes, totalVotes)
-    val votes = NumberFormat.getIntegerInstance(locale).format(choice.votes)
-    val choiceDescription = pluralStringResource(
-        R.plurals.chat_poll_choice_description,
-        choice.votes,
-        choice.title,
-        percent,
-        votes,
-    )
-    val winnerLabel = stringResource(R.string.chat_prediction_winner)
-    val yourVote = stringResource(R.string.chat_poll_your_vote)
-    val description = listOfNotNull(winnerLabel.takeIf { winner }, yourVote.takeIf { voted }, choiceDescription).joinToString(". ")
-    val share by animateFloatAsState(
-        targetValue = pollChoiceShare(choice.votes, totalVotes),
-        animationSpec = tween(VOTE_ANIMATION_MS),
-        label = "poll share",
-    )
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(TwitchDivider)
-            .drawBehind {
-                drawRect(PollShareColor, size = Size(size.width * share, size.height))
-            }
-            .then(
-                if (pickable) {
-                    Modifier.selectable(selected = picked, role = Role.RadioButton, onClick = onPick)
-                } else {
-                    Modifier
-                },
-            )
-            .clearAndSetSemantics {
-                contentDescription = description
-                if (pickable) {
-                    role = Role.RadioButton
-                    selected = picked
-                    onClick { onPick(); true }
-                }
-            },
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AnimatedVisibility(
-                visible = pickable,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally(),
-            ) {
-                RadioButton(
-                    selected = picked,
-                    onClick = null,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = TwitchPurple,
-                        unselectedColor = TwitchTextSecondary,
-                    ),
-                    modifier = Modifier.padding(end = 8.dp),
-                )
-            }
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AnimatedVisibility(
-                    visible = winner,
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkHorizontally(),
-                ) {
-                    WinnerTrophy(Modifier.padding(end = 6.dp).size(iconSize))
-                }
-                Text(
-                    text = choice.title,
-                    color = TwitchText,
-                    fontSize = bodySize,
-                    fontWeight = if (leader) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                AnimatedVisibility(
-                    visible = voted,
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkHorizontally(),
-                ) {
-                    PickedCheck(Modifier.padding(start = 6.dp).size(iconSize))
-                }
-            }
-            Text(
-                text = pluralStringResource(R.plurals.chat_poll_choice_result, choice.votes, percent, votes),
-                color = TwitchText,
-                fontSize = bodySize,
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        }
-    }
-}
-
 internal enum class PredictionBrowserOffer {
     Browser,
     OwnChannel,
@@ -372,7 +215,10 @@ internal fun ChatPredictionBanner(
                     onClick = entry.onPredict,
                     modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 8.dp),
                 ) {
-                    Text(stringResource(R.string.chat_prediction_predict), fontSize = chatSp(chatTextSize, 12, 14))
+                    Text(
+                        stringResource(R.string.chat_prediction_predict),
+                        fontSize = chatSp(chatTextSize, normal = 12, large = 14),
+                    )
                 }
             }
         } else {
@@ -445,8 +291,8 @@ private fun PredictionOutcomeRow(
             PredictionOutcomeBadge(
                 number = number,
                 color = color,
-                size = chatDp(chatTextSize, 16, 18),
-                textSize = chatSp(chatTextSize, 10, 11),
+                size = chatDp(chatTextSize, normal = 16, large = 18),
+                textSize = chatSp(chatTextSize, normal = 10, large = 11),
             )
             Text(
                 text = outcome.title,
@@ -473,155 +319,12 @@ private fun PredictionOutcomeRow(
     }
 }
 
-private val PollShareColor = TwitchPurple.copy(alpha = 0.45f)
-
 /** Poll bars, prediction points, and the hype train's fill follow changes faster than a stream's viewer count. */
 internal const val VOTE_ANIMATION_MS = 1000
 
-private class VoteCountdown(val endsAtMillis: Long, val durationMillis: Long)
-
-/** The card both notices share: a tap on the header shows the choices, like the pinned message. */
-@Composable
-private fun ChatVoteCard(
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    label: String,
-    title: String,
-    chatTextSize: Int,
-    countdown: VoteCountdown?,
-    browserLabel: String?,
-    note: String?,
-    action: (@Composable () -> Unit)?,
-    headerAction: (@Composable () -> Unit)?,
-    onOpenTwitchChat: () -> Unit,
-    onHide: () -> Unit,
-    bottomInset: Dp,
-    choices: @Composable ColumnScope.() -> Unit,
-) {
-    val headerSize = chatSp(chatTextSize, 12, 14)
-    val hintSize = chatSp(chatTextSize, 11, 12)
-    val titleSize = chatSp(chatTextSize, 14, 16)
-    val expandLabel = stringResource(if (expanded) R.string.chat_vote_collapse else R.string.chat_vote_expand)
-    // The title keeps every line while the card folds, and the fold cuts them off from the bottom.
-    val transition = updateTransition(expanded, label = "voteBanner")
-    val fold by transition.animateFloat({ CardFoldSpring }, label = "voteFold") { if (it) 1f else 0f }
-    val allLines = transition.currentState || transition.targetState
-    var titleFirstLineBottomPx by remember { mutableIntStateOf(0) }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = ChatNoticeCardOuterPadding)
-            .clip(RoundedCornerShape(8.dp))
-            .background(TwitchSurface)
-            .blockChatTouches(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onExpandedChange(!expanded) }
-                .padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    color = TwitchTextSecondary,
-                    fontSize = headerSize,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text(
-                    text = title,
-                    color = TwitchText,
-                    fontSize = titleSize,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = collapsibleTextMaxLines(allLines),
-                    overflow = if (allLines) TextOverflow.Clip else TextOverflow.Ellipsis,
-                    onTextLayout = { layout -> titleFirstLineBottomPx = layout.getLineBottom(0).roundToInt() },
-                    modifier = Modifier.revealLines({ titleFirstLineBottomPx }, { fold }),
-                )
-            }
-            headerAction?.invoke()
-            NoticeExpandArrow(
-                expanded = expanded,
-                contentDescription = expandLabel,
-                tint = TwitchTextSecondary,
-                modifier = Modifier.size(chatDp(chatTextSize, 20, 22)),
-            )
-        }
-        // The body folds with the card, so the countdown bar under it rides the bottom edge.
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            Column {
-                Column(
-                    modifier = Modifier.padding(start = 10.dp, end = 12.dp, bottom = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    content = choices,
-                )
-                // Twitch takes votes and predictions only on its site, so this opens the same
-                // browser chat as the chat settings item, where Twitch's own card has the buttons.
-                browserLabel?.let { label ->
-                    Button(
-                        onClick = onOpenTwitchChat,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp),
-                    ) {
-                        Text(label, fontSize = headerSize)
-                    }
-                }
-                action?.invoke()
-                note?.let { text ->
-                    Text(
-                        text = text,
-                        color = TwitchTextSecondary,
-                        fontSize = hintSize,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 8.dp),
-                    )
-                }
-                ChatNoticeHideButton(
-                    onClick = onHide,
-                    textSize = headerSize,
-                    modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
-                )
-            }
-        }
-        countdown?.let { VoteCountdownBar(it) }
-        if (bottomInset > 0.dp) {
-            Spacer(Modifier.height(bottomInset))
-        }
-    }
-}
-
-/** A bar that empties as the time to vote runs out, like the raid countdown. */
-@Composable
-private fun VoteCountdownBar(countdown: VoteCountdown) {
-    val fraction = remember(countdown.endsAtMillis, countdown.durationMillis) {
-        Animatable(raidFractionRemaining(countdown.endsAtMillis, System.currentTimeMillis(), countdown.durationMillis))
-    }
-    LaunchedEffect(fraction) {
-        val left = (countdown.endsAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
-        val duration = left.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        fraction.animateTo(0f, tween(durationMillis = duration, easing = LinearEasing))
-    }
-    LinearProgressIndicator(
-        progress = { fraction.value },
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { },
-        color = TwitchPurple,
-        trackColor = TwitchDivider,
-        gapSize = 0.dp,
-        drawStopIndicator = {},
-    )
-}
-
 /** The winning choice or outcome, as on Twitch: it pulses a few times as it appears, then stays still. */
 @Composable
-private fun WinnerTrophy(modifier: Modifier = Modifier) {
+internal fun WinnerTrophy(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val motionOff = remember(context) {
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
@@ -651,7 +354,7 @@ private const val TROPHY_PULSE_MILLIS = 500
 
 /** The viewer's vote or prediction: a heavier check than the Material icon, so it stands out beside the title. */
 @Composable
-private fun PickedCheck(modifier: Modifier = Modifier) {
+internal fun PickedCheck(modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val stroke = Stroke(size.minDimension * 0.2f, cap = StrokeCap.Round, join = StrokeJoin.Round)
         val check = Path().apply {

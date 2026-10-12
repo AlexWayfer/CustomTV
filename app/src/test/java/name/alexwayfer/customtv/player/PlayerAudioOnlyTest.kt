@@ -9,51 +9,65 @@ import org.junit.Test
 class PlayerAudioOnlyTest {
     @Test
     fun backgroundWithoutPictureInPicturePlaysSoundOnly() {
-        assertTrue(playerAudioOnly(enabled = true, background = true, inPictureInPicture = false, screenUnlocked = true))
+        assertTrue(
+            playerAudioOnly(enabled = true, background = true, inPictureInPicture = false, screenUnlocked = true),
+        )
     }
 
     @Test
     fun turnedOffSettingKeepsTheVideoInTheBackground() {
-        assertFalse(playerAudioOnly(enabled = false, background = true, inPictureInPicture = false, screenUnlocked = true))
+        assertFalse(
+            playerAudioOnly(enabled = false, background = true, inPictureInPicture = false, screenUnlocked = true),
+        )
     }
 
     @Test
     fun pictureInPictureKeepsTheVideo() {
-        assertFalse(playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = true))
+        assertFalse(
+            playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = true),
+        )
     }
 
     @Test
     fun lockedScreenHidesPictureInPictureAndPlaysSoundOnly() {
-        assertTrue(playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = false))
+        assertTrue(
+            playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = false),
+        )
     }
 
     @Test
     fun lockedScreenPlaysSoundOnlyBeforeTheActivityStops() {
-        assertTrue(playerAudioOnly(enabled = true, background = false, inPictureInPicture = true, screenUnlocked = false))
+        assertTrue(
+            playerAudioOnly(enabled = true, background = false, inPictureInPicture = true, screenUnlocked = false),
+        )
     }
 
     @Test
     fun litLockScreenKeepsPictureInPictureOnSoundOnly() {
         // Picking the phone up lights the lock screen; the picture-in-picture window stays hidden behind it.
-        assertTrue(playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = false))
+        assertTrue(
+            playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = false),
+        )
     }
 
     @Test
     fun turnedOffSettingKeepsTheVideoWithTheScreenOff() {
-        assertFalse(playerAudioOnly(enabled = false, background = true, inPictureInPicture = true, screenUnlocked = false))
+        assertFalse(
+            playerAudioOnly(enabled = false, background = true, inPictureInPicture = true, screenUnlocked = false),
+        )
     }
 
     @Test
     fun foregroundKeepsTheVideo() {
-        assertFalse(playerAudioOnly(enabled = true, background = false, inPictureInPicture = false, screenUnlocked = true))
+        assertFalse(
+            playerAudioOnly(enabled = true, background = false, inPictureInPicture = false, screenUnlocked = true),
+        )
     }
 
     @Test
     fun livePlaylistGetsTheAudioOnlyParameter() {
-        assertEquals(
-            "https://usher.ttvnw.net/api/channel/hls/quin69.m3u8?sig=a&token=b%7D&allow_source=true&allow_audio_only=true",
-            usherUrlWithAudioOnly("https://usher.ttvnw.net/api/channel/hls/quin69.m3u8?sig=a&token=b%7D&allow_source=true"),
-        )
+        val playlist = "https://usher.ttvnw.net/api/channel/hls/quin69.m3u8?sig=a&token=b%7D&allow_source=true"
+        assertEquals("$playlist&allow_audio_only=true", usherUrlWithAudioOnly(playlist))
     }
 
     @Test

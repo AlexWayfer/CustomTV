@@ -10,10 +10,19 @@ class CollaborationTest {
         val channels = parseCollaborationChannels(
             """
             {"data":{"channel":{"collaboration":{"collaborators":[
-              {"role":"MEMBER","status":"ACTIVE","user":{"id":"guest","login":"quiet","displayName":"Quiet","profileImageURL":null,"stream":{"viewersCount":10}}},
-              {"role":"LEADER","status":"ACTIVE","user":{"id":"host","login":"host","displayName":"Host","profileImageURL":"host.png","stream":{"viewersCount":4}}},
-              {"role":"MEMBER","status":"ACTIVE","user":{"id":"loud","login":"loud","displayName":"Loud","profileImageURL":"loud.png","stream":{"viewersCount":50}}},
-              {"role":"MEMBER","status":"INVITED","user":{"id":"wait","login":"wait","displayName":"Wait","stream":{"viewersCount":99}}}
+              {"role":"MEMBER","status":"ACTIVE","user":{
+                "id":"guest","login":"quiet","displayName":"Quiet","profileImageURL":null,"stream":{"viewersCount":10}
+              }},
+              {"role":"LEADER","status":"ACTIVE","user":{
+                "id":"host","login":"host","displayName":"Host","profileImageURL":"host.png","stream":{"viewersCount":4}
+              }},
+              {"role":"MEMBER","status":"ACTIVE","user":{
+                "id":"loud","login":"loud","displayName":"Loud","profileImageURL":"loud.png",
+                "stream":{"viewersCount":50}
+              }},
+              {"role":"MEMBER","status":"INVITED","user":{
+                "id":"wait","login":"wait","displayName":"Wait","stream":{"viewersCount":99}
+              }}
             ]}}}}
             """.trimIndent(),
         )
@@ -26,9 +35,15 @@ class CollaborationTest {
         val channels = parseCollaborationChannels(
             """
             {"data":{"channel":{"collaboration":{"collaborators":[
-              {"role":"MEMBER","status":"ACTIVE","user":{"id":"guest","login":"quiet","displayName":"Quiet","stream":{"viewersCount":10}}},
-              {"role":"LEADER","status":"ACTIVE","user":{"id":"host","login":"host","displayName":"Host","stream":{"viewersCount":4}}},
-              {"role":"MEMBER","status":"ACTIVE","user":{"id":"loud","login":"loud","displayName":"Loud","stream":{"viewersCount":50}}}
+              {"role":"MEMBER","status":"ACTIVE","user":{
+                "id":"guest","login":"quiet","displayName":"Quiet","stream":{"viewersCount":10}
+              }},
+              {"role":"LEADER","status":"ACTIVE","user":{
+                "id":"host","login":"host","displayName":"Host","stream":{"viewersCount":4}
+              }},
+              {"role":"MEMBER","status":"ACTIVE","user":{
+                "id":"loud","login":"loud","displayName":"Loud","stream":{"viewersCount":50}
+              }}
             ]}}}}
             """.trimIndent(),
             currentLogin = "Quiet",

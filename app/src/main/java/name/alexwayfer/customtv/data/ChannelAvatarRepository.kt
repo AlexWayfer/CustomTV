@@ -1,7 +1,6 @@
 package name.alexwayfer.customtv.data
 
 import android.content.Context
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,22 +14,14 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import name.alexwayfer.customtv.diagnostics.AppLog
-import okhttp3.CacheControl
-import org.json.JSONObject
-import name.alexwayfer.customtv.chat.ChatReward
-import name.alexwayfer.customtv.diagnostics.Diagnostics
 import java.io.IOException
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import kotlin.time.TimeSource
 
+/** The log tag of the channel profiles: avatars, streams, and lookups. */
+internal const val CHANNEL_AVATAR_TAG = "ChannelAvatar"
+
 object ChannelAvatarRepository {
-    private val http = sharedHttpClient.newBuilder()
-        .cache(null)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
     private val cache = ConcurrentHashMap<String, ChannelProfile>()
     // Channels loaded in this run: their stream fields are current, unlike a profile restored at start.
     private val loadedIds = ConcurrentHashMap.newKeySet<String>()
@@ -39,7 +30,6 @@ object ChannelAvatarRepository {
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
     val profileUpdates: SharedFlow<ChannelProfile> = _profileUpdates
-    private val customRewards = ConcurrentHashMap<String, Map<String, ChatReward>>()
     private val inFlight = ConcurrentHashMap<String, CompletableDeferred<ChannelProfile?>>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val restored = CompletableDeferred<Unit>()
@@ -54,10 +44,8 @@ object ChannelAvatarRepository {
                 profileStore.loadAll().forEach { profile ->
                     cache[profile.login] = profile
                 }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                AppLog.w(TAG, "profile restore failed: ${error.javaClass.simpleName}")
+            } catch (error: IOException) {
+                AppLog.w(CHANNEL_AVATAR_TAG, "profile restore failed: ${error.javaClass.simpleName}")
             } finally {
                 restored.complete(Unit)
             }
@@ -84,10 +72,6 @@ object ChannelAvatarRepository {
         _profileUpdates.tryEmit(next)
     }
 
-    fun customReward(login: String, id: String): ChatReward? {
-        return customRewards[login.lowercase()]?.get(id)
-    }
-
     suspend fun refresh(login: String, force: Boolean = false): ChannelProfile? {
         val key = login.lowercase()
         if (force) {
@@ -100,15 +84,9 @@ object ChannelAvatarRepository {
         }
         return try {
             fetchAndCache(key).also { created.complete(it) }
-        } catch (error: CancellationException) {
-            if (!created.isCompleted) {
-                created.complete(cache[key])
-            }
-            throw error
-        } catch (error: Throwable) {
-            created.completeExceptionally(error)
-            throw error
         } finally {
+            // A cancelled or failed load leaves the waiters the cached profile.
+            if (!created.isCompleted) created.complete(cache[key])
             inFlight.remove(key, created)
         }
     }
@@ -125,15 +103,20 @@ object ChannelAvatarRepository {
             // One query holds only so many channels; the batches load side by side, and a failed one keeps its cache.
             val fetched = gqlAliasBatches(keys).map { batch ->
                 async {
-                    runCatching { fetchMany(batch) }
-                        .onFailure { failure -> AppLog.w(TAG, "profiles fetch failed: ${failure.javaClass.simpleName}") }
-                        .getOrNull().orEmpty()
+                    try {
+                        ChannelProfileFetcher.many(batch).map { fetched ->
+                            profileWithKeptDetails(fetched, fetched.id?.let(::cachedById) ?: cache[fetched.login])
+                        }
+                    } catch (failure: IOException) {
+                        AppLog.w(CHANNEL_AVATAR_TAG, "profiles fetch failed: ${failure.javaClass.simpleName}")
+                        emptyList()
+                    }
                 }
             }.awaitAll().flatten()
             val fetchedIn = started.elapsedNow()
             fetched.forEach { profile -> persistFetched(profile) }
             AppLog.i(
-                TAG,
+                CHANNEL_AVATAR_TAG,
                 "fetched ${fetched.size} of ${keys.size} profiles in ${fetchedIn.inWholeMilliseconds} ms, " +
                     "saved in ${(started.elapsedNow() - fetchedIn).inWholeMilliseconds} ms",
             )
@@ -146,16 +129,14 @@ object ChannelAvatarRepository {
         if (key.isEmpty()) return ChannelLookup.NotFound
         return withContext(Dispatchers.IO) {
             try {
-                val fetched = fetchOne(key)
+                val fetched = ChannelProfileFetcher.one(key)
                 if (fetched == null) {
                     ChannelLookup.NotFound
                 } else {
                     persistFetched(fetched)
                     ChannelLookup.Found(fetched)
                 }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Throwable) {
+            } catch (_: IOException) {
                 ChannelLookup.Unavailable
             }
         }
@@ -163,7 +144,11 @@ object ChannelAvatarRepository {
 
     private suspend fun fetchAndCache(key: String): ChannelProfile? {
         return withContext(NonCancellable + Dispatchers.IO) {
-            val fetched = runCatching { fetchOne(key) }.getOrNull()
+            val fetched = try {
+                ChannelProfileFetcher.one(key)
+            } catch (_: IOException) {
+                null
+            }
             if (fetched != null) {
                 persistFetched(fetched)
                 fetched
@@ -179,103 +164,30 @@ object ChannelAvatarRepository {
         cache[key] = fetched
         fetched.id?.let { id -> cache.entries.removeIf { it.key != key && it.value.id == id } }
         fetched.id?.let(loadedIds::add)
-        val previousIdentity = previous?.copy(
-            streamTitle = null,
-            categoryName = null,
-            streamStartedAtMillis = null,
-            currentStreamVideoId = null,
-            viewerCount = null,
-            sharedViewerCount = null,
-            collaboratorAvatarUrls = emptyList(),
-            isLive = false,
-            tags = emptyList(),
-            chatRules = null,
-        )
-        val fetchedIdentity = fetched.copy(
-            streamTitle = null,
-            categoryName = null,
-            streamStartedAtMillis = null,
-            currentStreamVideoId = null,
-            viewerCount = null,
-            sharedViewerCount = null,
-            collaboratorAvatarUrls = emptyList(),
-            isLive = false,
-            tags = emptyList(),
-            chatRules = null,
-        )
+        val previousIdentity = previous?.identity()
+        val fetchedIdentity = fetched.identity()
         if (fetchedIdentity != previousIdentity) {
             store?.upsert(fetchedIdentity)
         }
     }
-
-    private fun fetchOne(login: String): ChannelProfile? {
-        val payload = JSONObject()
-            .put(
-                "query",
-                $$"query($login:String!){user(login:$login){id login displayName profileImageURL(width:150) primaryColorHex stream{title createdAt archiveVideo{id} viewersCount collaborationViewersCount game{name} freeformTags{name}} broadcastSettings{title game{name}} channel{collaboration{collaborators{status user{login profileImageURL(width:150)}}} communityPointsSettings{image{url} defaultImage{url} automaticRewards{type cost defaultCost backgroundColor} customRewards{id title prompt cost backgroundColor image{url} defaultImage{url}}}} chatSettings{rules}}}",
-            )
-            .put("variables", JSONObject().put("login", login))
-        val body = executeGql(payload)
-        val parsed = ChannelProfileParser.parse(body, login) ?: return null
-        customRewards[parsed.profile.login] = parsed.customRewards
-        return parsed.profile
-    }
-
-    private fun fetchMany(ids: List<String>): List<ChannelProfile> {
-        val variables = JSONObject()
-        val declarations = ids.indices.joinToString(",") { index -> $$"$id$$index:ID!" }
-        val users = ids.mapIndexed { index, id ->
-            variables.put("id$index", id)
-            $$"user$$index:user(id:$id$$index){$$HOME_PROFILE_FIELDS}"
-        }
-        val payload = JSONObject()
-            .put("query", "query($declarations){${users.joinToString("")}}")
-            .put("variables", variables)
-        val data = JSONObject(executeGql(payload)).optJSONObject("data") ?: return emptyList()
-        return ids.indices.mapNotNull { index ->
-            val user = data.optJSONObject("user$index") ?: return@mapNotNull null
-            val login = user.optString("login").takeIf { it.isNotBlank() && it != "null" }
-                ?: return@mapNotNull null
-            mergeRecentProfile(ChannelProfileParser.parseUser(user, login).profile)
-        }
-    }
-
-    private fun mergeRecentProfile(fetched: ChannelProfile): ChannelProfile {
-        val previous = fetched.id?.let(::cachedById) ?: cache[fetched.login] ?: return fetched
-        return fetched.copy(
-            highlightColorHex = previous.highlightColorHex ?: fetched.highlightColorHex,
-            primaryColorHex = fetched.primaryColorHex ?: previous.primaryColorHex,
-            highlightRewardCost = previous.highlightRewardCost ?: fetched.highlightRewardCost,
-            channelPointsIconUrl = previous.channelPointsIconUrl,
-            tags = fetched.tags.ifEmpty { previous.tags },
-            chatRules = fetched.chatRules ?: previous.chatRules,
-        )
-    }
-
-    private fun executeGql(payload: JSONObject): String {
-        val request = twitchGqlRequest(payload.toString())
-            .header("Client-Request-Id", UUID.randomUUID().toString())
-            .header("Cache-Control", "no-cache")
-            .header("Pragma", "no-cache")
-            .cacheControl(CacheControl.FORCE_NETWORK)
-            .build()
-        http.newCall(request).execute().use { response ->
-            val body = response.body.string()
-            Diagnostics.reportGql(TAG, "channel profile", response.code, body)
-            if (!response.isSuccessful) {
-                throw IOException("Twitch GQL ${response.code}")
-            }
-            return body
-        }
-    }
-
-    private const val TAG = "ChannelAvatar"
-    private const val HOME_PROFILE_FIELDS =
-        "id login displayName profileImageURL(width:150) primaryColorHex stream{title createdAt archiveVideo{id} viewersCount collaborationViewersCount game{name}} broadcastSettings{title game{name}} channel{collaboration{collaborators{status user{login profileImageURL(width:150)}}}}"
 }
 
-sealed class ChannelLookup {
-    data class Found(val profile: ChannelProfile) : ChannelLookup()
-    data object NotFound : ChannelLookup()
-    data object Unavailable : ChannelLookup()
+/** The part of a profile worth saving: who the channel is, without its stream of the moment. */
+internal fun ChannelProfile.identity(): ChannelProfile = copy(
+    streamTitle = null,
+    categoryName = null,
+    streamStartedAtMillis = null,
+    currentStreamVideoId = null,
+    viewerCount = null,
+    sharedViewerCount = null,
+    collaboratorAvatarUrls = emptyList(),
+    isLive = false,
+    tags = emptyList(),
+    chatRules = null,
+)
+
+sealed interface ChannelLookup {
+    data class Found(val profile: ChannelProfile) : ChannelLookup
+    data object NotFound : ChannelLookup
+    data object Unavailable : ChannelLookup
 }

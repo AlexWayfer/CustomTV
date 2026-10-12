@@ -2,10 +2,12 @@ package name.alexwayfer.customtv.ui.watch
 
 import name.alexwayfer.customtv.chat.ChatMessage
 
-internal enum class ChatReturnScroll {
-    Stay,
-    JumpToEnd,
-}
+/**
+ * Whether the list moves on its own to new rows and to a growing tail: while it follows, outside a jump to the newest
+ * message, on a shown screen, and with no finger on the list, so a row stays under a press until a gesture takes it.
+ */
+internal fun chatScrollsToNewRows(following: Boolean, catchingUp: Boolean, resumed: Boolean, touching: Boolean) =
+    following && !catchingUp && resumed && !touching
 
 internal fun restartEntranceAfterManualScroll(userInput: Boolean, canScrollForward: Boolean): Boolean =
     userInput && !canScrollForward

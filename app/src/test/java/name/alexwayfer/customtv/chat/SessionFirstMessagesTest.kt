@@ -103,15 +103,5 @@ class SessionFirstMessagesTest {
         assertTrue(merge.movedFirstLogins.isEmpty())
     }
 
-    private fun chat(login: String, text: String): ChatMessage {
-        return ChatMessage(
-            id = "$login-$text",
-            userLogin = login,
-            displayName = login,
-            color = Color.White,
-            rawText = text,
-            parts = listOf(ChatPart.Text(text)),
-            timestampMillis = 1L,
-        )
-    }
+    private fun chat(login: String, text: String) = testChatMessage("$login-$text", text, login = login)
 }

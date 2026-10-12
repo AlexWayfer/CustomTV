@@ -66,26 +66,27 @@ class FullscreenChatLayoutTest {
                 chatWidth = 700,
                 chatBottomInset = 115,
             ),
-            fullscreenPlacement(overlayRight, 2000, 900, keyboardHeightPx = 0, keyboardProgress = 0f, controlBarPx = 115),
+            placement(overlayRight, keyboardHeightPx = 0, keyboardProgress = 0f, controlBarPx = 115),
         )
     }
 
     @Test
     fun anOverlaidChatTakesTheFullHeightWhileTheControlBarIsHidden() {
-        val placement = fullscreenPlacement(overlayRight, 2000, 900, 0, 0f, controlBarPx = 115, controlBarShown = 0f)
+        val placement = atRest(overlayRight, FullscreenChatInsets(controlBarPx = 115, controlBarShown = 0f))
         assertEquals(0, placement.chatBottomInset)
     }
 
     @Test
     fun anOverlaidChatRisesWithTheControlBarAsItShows() {
-        val placement = fullscreenPlacement(overlayRight, 2000, 900, 0, 0f, controlBarPx = 115, controlBarShown = 0.5f)
+        val placement = atRest(overlayRight, FullscreenChatInsets(controlBarPx = 115, controlBarShown = 0.5f))
         assertEquals(58, placement.chatBottomInset)
     }
 
     @Test
     fun anOverlaidChatKeepsItsEdgeGapAboveAndBelowWithoutTheControlBar() {
-        val placement = fullscreenPlacement(
-            overlayRight, 2000, 900, 0, 0f, controlBarPx = 115, controlBarShown = 0f, chatEdgePx = 40,
+        val placement = atRest(
+            overlayRight,
+            FullscreenChatInsets(controlBarPx = 115, controlBarShown = 0f, chatEdgePx = 40),
         )
         assertEquals(40, placement.chatBottomInset)
         assertEquals(40, placement.chatTopInset)
@@ -93,8 +94,9 @@ class FullscreenChatLayoutTest {
 
     @Test
     fun anOverlaidChatRestsOnTheShownControlBarAndKeepsItsTopGap() {
-        val placement = fullscreenPlacement(
-            overlayRight, 2000, 900, 0, 0f, controlBarPx = 115, controlBarShown = 1f, chatEdgePx = 40,
+        val placement = atRest(
+            overlayRight,
+            FullscreenChatInsets(controlBarPx = 115, controlBarShown = 1f, chatEdgePx = 40),
         )
         assertEquals(115, placement.chatBottomInset)
         assertEquals(40, placement.chatTopInset)
@@ -102,29 +104,36 @@ class FullscreenChatLayoutTest {
 
     @Test
     fun anOverlaidChatMovesFromItsEdgeGapToTheControlBarAsItShows() {
-        val placement = fullscreenPlacement(
-            overlayRight, 2000, 900, 0, 0f, controlBarPx = 115, controlBarShown = 0.5f, chatEdgePx = 40,
+        val placement = atRest(
+            overlayRight,
+            FullscreenChatInsets(controlBarPx = 115, controlBarShown = 0.5f, chatEdgePx = 40),
         )
         assertEquals(78, placement.chatBottomInset)
     }
 
     @Test
     fun withTheKeyboardUpTheOverlaidChatDropsItsEdgeGaps() {
-        val placement = fullscreenPlacement(overlayRight, 2000, 900, 400, 1f, controlBarPx = 115, chatEdgePx = 40)
+        val placement = fullscreenPlacement(
+            overlayRight,
+            2000,
+            900,
+            FullscreenKeyboard(heightPx = 400, progress = 1f),
+            FullscreenChatInsets(controlBarPx = 115, chatEdgePx = 40),
+        )
         assertEquals(0, placement.chatBottomInset)
         assertEquals(0, placement.chatTopInset)
     }
 
     @Test
     fun aColumnChatHasNoEdgeGaps() {
-        val placement = fullscreenPlacement(columnRight, 2000, 900, 0, 0f, controlBarPx = 115, chatEdgePx = 40)
+        val placement = atRest(columnRight, FullscreenChatInsets(controlBarPx = 115, chatEdgePx = 40))
         assertEquals(0, placement.chatBottomInset)
         assertEquals(0, placement.chatTopInset)
     }
 
     @Test
     fun atRestAColumnChatReachesTheBottomAndTheNarrowVideoCentersVertically() {
-        val placement = fullscreenPlacement(columnRight, 2000, 900, 0, 0f, controlBarPx = 115)
+        val placement = atRest(columnRight, FullscreenChatInsets(controlBarPx = 115))
         assertEquals(0, placement.videoX)
         assertEquals(84, placement.videoY)
         assertEquals(1300, placement.videoWidth)
@@ -145,13 +154,13 @@ class FullscreenChatLayoutTest {
                 chatWidth = 1200,
                 chatBottomInset = 0,
             ),
-            fullscreenPlacement(overlayRight, 2000, 900, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 115),
+            placement(overlayRight, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 115),
         )
     }
 
     @Test
     fun withTheKeyboardUpAChatOnTheLeftPutsTheVideoInTheRightCorner() {
-        val placement = fullscreenPlacement(overlayLeft, 2000, 900, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 0)
+        val placement = placement(overlayLeft, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 0)
         assertEquals(1200, placement.videoX)
         assertEquals(0, placement.chatX)
         assertEquals(1200, placement.chatWidth)
@@ -159,7 +168,7 @@ class FullscreenChatLayoutTest {
 
     @Test
     fun aShortKeyboardStillLeavesTheChatItsUsualWidth() {
-        val placement = fullscreenPlacement(overlayRight, 2000, 900, keyboardHeightPx = 100, keyboardProgress = 1f, controlBarPx = 0)
+        val placement = placement(overlayRight, keyboardHeightPx = 100, keyboardProgress = 1f, controlBarPx = 0)
         assertEquals(0.8125f, placement.videoScale, 0.0001f)
         assertEquals(700, placement.chatWidth)
     }
@@ -177,13 +186,13 @@ class FullscreenChatLayoutTest {
                 chatWidth = 950,
                 chatBottomInset = 58,
             ),
-            fullscreenPlacement(overlayRight, 2000, 900, keyboardHeightPx = 450, keyboardProgress = 0.5f, controlBarPx = 115),
+            placement(overlayRight, keyboardHeightPx = 450, keyboardProgress = 0.5f, controlBarPx = 115),
         )
     }
 
     @Test
     fun withoutAChatTheKeyboardMovesNothing() {
-        val placement = fullscreenPlacement(null, 2000, 900, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 115)
+        val placement = placement(null, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 115)
         assertEquals(200, placement.videoX)
         assertEquals(1f, placement.videoScale, 0.0001f)
         assertEquals(0, placement.chatWidth)
@@ -191,7 +200,13 @@ class FullscreenChatLayoutTest {
 
     @Test
     fun aZeroAreaPlacesAnEmptyVideo() {
-        val placement = fullscreenPlacement(overlayRight, 0, 0, keyboardHeightPx = 450, keyboardProgress = 1f, controlBarPx = 0)
+        val placement = fullscreenPlacement(
+            overlayRight,
+            0,
+            0,
+            FullscreenKeyboard(heightPx = 450, progress = 1f),
+            FullscreenChatInsets(controlBarPx = 0),
+        )
         assertEquals(0, placement.videoWidth)
         assertEquals(0, placement.videoHeight)
     }
@@ -252,14 +267,32 @@ class FullscreenChatLayoutTest {
 
     @Test
     fun thePlayerButtonsMoveClearOfAChatOverTheRightOfTheVideo() {
-        val rest = fullscreenPlacement(overlayRight, 2000, 900, 0, 0f, 0)
+        val rest = atRest(overlayRight, FullscreenChatInsets(controlBarPx = 0))
         assertEquals(500, fullscreenPlayerButtonsEndPx(overlayRight, rest))
     }
 
     @Test
     fun thePlayerButtonsStayInTheCornerOtherwise() {
-        assertEquals(0, fullscreenPlayerButtonsEndPx(overlayLeft, fullscreenPlacement(overlayLeft, 2000, 900, 0, 0f, 0)))
-        assertEquals(0, fullscreenPlayerButtonsEndPx(columnRight, fullscreenPlacement(columnRight, 2000, 900, 0, 0f, 0)))
-        assertEquals(0, fullscreenPlayerButtonsEndPx(null, fullscreenPlacement(null, 2000, 900, 0, 0f, 0)))
+        assertEquals(0, fullscreenPlayerButtonsEndPx(overlayLeft, placement(overlayLeft, 0, 0f, 0)))
+        assertEquals(0, fullscreenPlayerButtonsEndPx(columnRight, placement(columnRight, 0, 0f, 0)))
+        assertEquals(0, fullscreenPlayerButtonsEndPx(null, placement(null, 0, 0f, 0)))
     }
+
+    /** [fullscreenPlacement] in a 2000 × 900 area. */
+    private fun placement(
+        bounds: FullscreenChatBounds?,
+        keyboardHeightPx: Int,
+        keyboardProgress: Float,
+        controlBarPx: Int,
+    ) = fullscreenPlacement(
+        bounds,
+        2000,
+        900,
+        FullscreenKeyboard(keyboardHeightPx, keyboardProgress),
+        FullscreenChatInsets(controlBarPx),
+    )
+
+    /** [fullscreenPlacement] in a 2000 × 900 area without the keyboard. */
+    private fun atRest(bounds: FullscreenChatBounds?, insets: FullscreenChatInsets) =
+        fullscreenPlacement(bounds, 2000, 900, FullscreenKeyboard(), insets)
 }

@@ -1,10 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-internal data class EmoteInsertion(
-    val text: String,
-    val cursor: Int,
-)
-
 internal fun textWithInsertedEmote(
     text: String,
     selectionStart: Int,
@@ -71,18 +66,21 @@ internal fun textWithEmoteSearchColon(
 internal fun settledKeyboardHeightPx(imeBottomPx: Int, imeTargetBottomPx: Int, rememberedPx: Int): Int =
     if (imeBottomPx > 0 && imeBottomPx == imeTargetBottomPx) imeBottomPx else rememberedPx
 
+/**
+ * The picker is as tall as the keyboard it replaces, so the chat above them keeps its height; the fallback is only
+ * for a keyboard not seen yet.
+ */
+internal fun emotePickerHeightPx(rememberedImePx: Int, fallbackPx: Int): Int =
+    if (rememberedImePx > 0) rememberedImePx else fallbackPx
+
 internal fun emotePanelHeightPx(
     navigationBarPx: Int,
     imeBottomPx: Int,
     pickerOpen: Boolean,
     keyboardReturning: Boolean,
-    rememberedImePx: Int,
-    fallbackPx: Int,
+    pickerHeightPx: Int,
 ): Int {
-    // While the keyboard rises in place of the closed picker, the picker's space stays reserved. The picker is as
-    // tall as the keyboard it replaces, so the chat above them keeps its height; the fallback is only for a keyboard
-    // not seen yet.
-    val pickerHeightPx = if (rememberedImePx > 0) rememberedImePx else fallbackPx
+    // While the keyboard rises in place of the closed picker, the picker's space stays reserved.
     val pickerPx = if (pickerOpen || keyboardReturning) pickerHeightPx else 0
     return maxOf(navigationBarPx, imeBottomPx, pickerPx)
 }

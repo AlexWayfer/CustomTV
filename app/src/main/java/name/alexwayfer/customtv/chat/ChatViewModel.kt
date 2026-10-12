@@ -4,8 +4,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,12 +14,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
+import name.alexwayfer.customtv.data.ChannelCustomRewards
 import name.alexwayfer.customtv.data.ChannelLookup
-import name.alexwayfer.customtv.data.PinnedChatRepository
 import name.alexwayfer.customtv.data.SevenTvRepository
-import name.alexwayfer.customtv.diagnostics.AppLog
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 class ChatViewModel(
     private val client: TwitchIrcClient = TwitchIrcClient(),
@@ -31,10 +26,10 @@ class ChatViewModel(
 ) : ViewModel() {
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages
-    private val _recentChatLoadState = MutableStateFlow(RecentChatLoadState.Idle)
-    internal val recentChatLoadState: StateFlow<RecentChatLoadState> = _recentChatLoadState
     private val _recentAuthorMessages = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
     val recentAuthorMessages: StateFlow<Map<String, List<ChatMessage>>> = _recentAuthorMessages
+    private val _sessionChatters = MutableStateFlow<Map<String, String>>(emptyMap())
+    internal val sessionChatters: StateFlow<Map<String, String>> = _sessionChatters
 
     /** Messages as they arrive in live chat, without recent chat history. */
     internal val liveIrcMessages: SharedFlow<ChatMessage> = client.messages
@@ -51,32 +46,38 @@ class ChatViewModel(
 
     private val cheermotes = ChannelCheermotes(viewModelScope)
 
-    private val _nickColors = MutableStateFlow<Map<String, Color>>(emptyMap())
-    val nickColors: StateFlow<Map<String, Color>> = _nickColors
+    private val colors = ParticipantColors()
+    val nickColors: StateFlow<Map<String, Color>> = colors.colors
 
-    private val _pinnedChat = MutableStateFlow<PinnedChat?>(null)
-    val pinnedChat: StateFlow<PinnedChat?> = _pinnedChat
-    private val _outgoingRaid = MutableStateFlow<OutgoingRaid?>(null)
-    internal val outgoingRaid: StateFlow<OutgoingRaid?> = _outgoingRaid
+    internal val pins = ChatPins(viewModelScope, { currentChannelId }, colors::remember)
+    val pinnedChat: StateFlow<PinnedChat?> = pins.pinned
+    internal val raid = OutgoingRaidTracker(viewModelScope, pubSub, { currentChannelId }, _messages)
+    internal val outgoingRaid: StateFlow<OutgoingRaid?> = raid.raid
     private val liveEvents = ChannelEventsController(viewModelScope)
     internal val channelEvents: StateFlow<ChannelEvents> = liveEvents.events
 
+    private val recentChat = RecentChatLoad(
+        viewModelScope,
+        _messages,
+        _sessionChatters,
+        _recentAuthorMessages,
+        currentChannel = { currentChannel },
+    )
+    internal val recentChatLoadState: StateFlow<RecentChatLoadState> = recentChat.state
+    private val notices = ChatConnectionNotices(_messages, onWelcomed = recentChat::start)
+    private val deletions = ChatDeletions(_messages, _recentAuthorMessages)
+
     private var collectJob: Job? = null
-    private var reconnectJob: Job? = null
-    private var pinExpireJob: Job? = null
+    private val reconnect = ChatReconnect(
+        viewModelScope,
+        currentChannel = { currentChannel },
+        connect = client::connect,
+    )
     private var currentChannel: String? = null
     private var currentChannelId: String? = null
     private var raidToken: String? = null
-    private var currentPin: PinnedChat? = null
-    private var hiddenPinId: String? = null
-    private var pinGeneration = 0
-    private var hasWelcomed = false
-    private var loadRecentChatOnConnect = false
-    private var recentChatLoadStarted = false
     private var inForeground = true
     private var pendingRewardEvents: List<ChatMessage> = emptyList()
-    private val _sessionChatters = MutableStateFlow<Map<String, String>>(emptyMap())
-    internal val sessionChatters: StateFlow<Map<String, String>> = _sessionChatters
 
     init {
         collectJob = viewModelScope.launch {
@@ -87,11 +88,11 @@ class ChatViewModel(
                 bttvEvents.messages,
             ).collect { message ->
                 when (message.eventKind) {
-                    ChatEventKind.MessageDeleted -> markMessageDeleted(message)
-                    ChatEventKind.UserMessagesDeleted -> markUserMessagesDeleted(message)
+                    ChatEventKind.MessageDeleted -> deletions.markMessageDeleted(message)
+                    ChatEventKind.UserMessagesDeleted -> deletions.markUserMessagesDeleted(message)
                     else -> {
                         val enriched = applyLiveEmoteChange(
-                            CheermoteMatcher.apply(enrichReward(message), cheermotes.tiers.value),
+                            CheermoteMatcher.apply(message.withKnownReward(currentChannel), cheermotes.tiers.value),
                         ) ?: return@collect
                         val seen = rememberSessionChatter(_sessionChatters.value, enriched)
                         if (seen.chatters !== _sessionChatters.value) {
@@ -108,12 +109,12 @@ class ChatViewModel(
                             previousMessages = current
                             val result = RewardMessageDeduper.apply(
                                 current,
-                                paintKnownRewardColor(chatterMessage),
+                                colors.paintReward(chatterMessage),
                                 MAX_CHAT_MESSAGES,
                                 pendingRewardEvents,
                             )
                             pendingRewardEvents = result.pending
-                            result.colorSource?.let { rememberParticipantColor(it) }
+                            result.colorSource?.let { colors.remember(it) }
                             result.messages.also { updatedMessages = it }
                         }
                         _recentAuthorMessages.update { history ->
@@ -126,15 +127,16 @@ class ChatViewModel(
         viewModelScope.launch {
             var previous: ChatConnectionState? = null
             client.state.collect { state ->
-                handleConnectionState(previous, state)
+                // In the background only a finished connection changes the chat; the notices wait for the screen.
+                if (inForeground || state == ChatConnectionState.Connected) notices.onState(previous, state)
                 previous = state
-                if (state == ChatConnectionState.Reconnecting) {
-                    scheduleReconnect()
+                if (state == ChatConnectionState.Reconnecting && inForeground) {
+                    reconnect.schedule()
                 }
             }
         }
         viewModelScope.launch {
-            pubSub.pins.collect { handlePinnedUpdate(it) }
+            pubSub.pins.collect { pins.onUpdate(it) }
         }
         viewModelScope.launch { pubSub.polls.collect(liveEvents::onPoll) }
         viewModelScope.launch { pubSub.predictions.collect(liveEvents::onPrediction) }
@@ -144,23 +146,6 @@ class ChatViewModel(
                 .map(::emoteSources)
                 .distinctUntilChanged()
                 .collect(emotes::setSources)
-        }
-        viewModelScope.launch {
-            pubSub.raids.collect { event ->
-                val current = _outgoingRaid.value
-                val createdId = outgoingRaidCreatedId(current, event)
-                _outgoingRaid.value = applyRaidEvent(current, event)
-                if (createdId != null) appendRaidCreated(createdId)
-            }
-        }
-        viewModelScope.launch {
-            pubSub.opened.collect { channelId ->
-                if (channelId != currentChannelId || _outgoingRaid.value == null) return@collect
-                val lookup = OutgoingRaidLookup.load(channelId)
-                if (channelId != currentChannelId) return@collect
-                _outgoingRaid.value = recheckOutgoingRaid(_outgoingRaid.value, lookup, System.currentTimeMillis())
-                AppLog.i("Raid", "raid recheck after reconnect: ${lookup.javaClass.simpleName}")
-            }
         }
     }
 
@@ -178,88 +163,45 @@ class ChatViewModel(
         _messages.update { current -> transform(current).takeLast(MAX_CHAT_MESSAGES) }
     }
 
-    internal fun dismissOutgoingRaid() {
-        _outgoingRaid.value = null
-    }
-
-    private fun appendRaidCreated(raidId: String) {
-        val message = ChatMessage(
-            id = "raid-created-$raidId",
-            userLogin = "",
-            displayName = "",
-            color = Color.Unspecified,
-            rawText = "",
-            parts = emptyList(),
-            timestampMillis = System.currentTimeMillis(),
-            eventKind = ChatEventKind.Raid,
-            raid = ChatRaid(viewerCount = 0, fromDisplayName = "", created = true),
-        )
-        _messages.update { current ->
-            if (current.any { it.id == message.id }) current
-            else (current + message).takeLast(MAX_CHAT_MESSAGES)
-        }
-    }
-
     fun connect(channel: String, loadRecentChat: Boolean) {
         val normalized = channel.lowercase().removePrefix("#")
         if (normalized == currentChannel &&
             connectionState.value == ChatConnectionState.Connected
         ) {
-            revealHiddenPin()
+            pins.revealHidden()
             return
         }
-        hiddenPinId = null
-        if (normalized != currentChannel) {
+        val sameChannel = normalized == currentChannel
+        if (!sameChannel) {
             _recentAuthorMessages.value = emptyMap()
             sevenTvEvents.disconnect()
             bttvEvents.disconnect()
             pubSub.disconnect()
             currentChannelId = null
-            _outgoingRaid.value = null
-            pinGeneration++
-            applyPinned(null)
+            raid.dismiss()
             liveEvents.clear()
-        } else {
-            publishPinned()
         }
+        pins.reopen(sameChannel)
         currentChannel = normalized
-        reconnectJob?.cancel()
-        hasWelcomed = false
+        reconnect.cancel()
+        notices.reset()
         pendingRewardEvents = emptyList()
         _sessionChatters.value = emptyMap()
         _messages.value = listOf(chatNoticeMessage(ChatNotice.Connecting, CHAT_WELCOME_NOTICE_ID))
-        _recentChatLoadState.value = RecentChatLoadState.Idle
-        loadRecentChatOnConnect = loadRecentChat
-        recentChatLoadStarted = false
-        _nickColors.value = emptyMap()
+        recentChat.reset(loadOnConnect = loadRecentChat)
+        colors.clear()
         val cachedId = ChannelAvatarRepository.cached(normalized)?.id
         currentChannelId = cachedId
         client.connect(normalized)
-        cachedId?.let {
-            pubSub.listen(it, raidToken)
-            listenEmoteEvents(it)
-            loadPinned(it)
-            liveEvents.load(it)
-        }
+        cachedId?.let(::followChannel)
         viewModelScope.launch {
             val lookup = ChannelAvatarRepository.lookup(normalized)
             val channelId = (lookup as? ChannelLookup.Found)?.profile?.id
             if (channelId != null && currentChannel == normalized) {
-                currentChannelId = channelId
-                pubSub.listen(channelId, raidToken)
-                listenEmoteEvents(channelId)
-                loadPinned(channelId)
-                liveEvents.load(channelId)
+                followChannel(channelId)
             } else if (currentChannel == normalized) {
                 channelLookupNotice(lookup)?.let { notice ->
-                    _messages.update { current ->
-                        insertRecentChatBeforeWelcome(
-                            messages = current,
-                            recent = listOf(chatNoticeMessage(notice, "channel-not-found-${System.nanoTime()}")),
-                            initialNoticeId = CHAT_WELCOME_NOTICE_ID,
-                            maxMessages = MAX_CHAT_MESSAGES,
-                        )
-                    }
+                    _messages.update { current -> withChannelLookupNotice(current, notice) }
                 }
             }
         }
@@ -282,7 +224,7 @@ class ChatViewModel(
     fun setForeground(foreground: Boolean) {
         if (inForeground == foreground) return
         inForeground = foreground
-        reconnectJob?.cancel()
+        reconnect.cancel()
         if (!foreground) {
             client.pause()
             pubSub.disconnect()
@@ -292,14 +234,17 @@ class ChatViewModel(
         }
         val channel = currentChannel ?: return
         client.connect(channel)
-        ChannelAvatarRepository.cached(channel)?.id?.let { channelId ->
-            currentChannelId = channelId
-            pubSub.listen(channelId, raidToken)
-            listenEmoteEvents(channelId)
-            loadPinned(channelId)
-            liveEvents.load(channelId)
-        }
+        ChannelAvatarRepository.cached(channel)?.id?.let(::followChannel)
         emotes.loadIfIncomplete(ChannelAvatarRepository.cached(channel)?.id)
+    }
+
+    /** Follows the channel's live sources: PubSub, the emote events, the pinned message, and the channel's events. */
+    private fun followChannel(channelId: String) {
+        currentChannelId = channelId
+        pubSub.listen(channelId, raidToken)
+        listenEmoteEvents(channelId)
+        pins.load(channelId)
+        liveEvents.load(channelId)
     }
 
     private fun listenEmoteEvents(channelId: String?) {
@@ -309,282 +254,40 @@ class ChatViewModel(
         bttvEvents.listen(channelId)
     }
 
-    private fun paintKnownRewardColor(message: ChatMessage): ChatMessage {
-        if (message.eventKind != ChatEventKind.Reward) return message
-        if (!RewardMessageDeduper.isPubSub(message)) return message
-        val known = knownChatColor(message.displayName, message.userLogin) ?: return message
-        return message.copy(color = known)
-    }
-
-    private fun rememberParticipantColor(message: ChatMessage) {
-        _nickColors.update { current ->
-            rememberParticipantColor(current, message, MAX_NICK_COLORS)
-        }
-    }
-
     private fun applyLiveEmoteChange(message: ChatMessage): ChatMessage? {
-        message.emoteChange ?: return message
-        val colored = resolveEmoteActorColor(message)
-        val channelId = currentChannelId ?: return colored
-        return emotes.applyLiveChange(channelId, colored, colored.emoteChange!!)
-    }
-
-    private fun resolveEmoteActorColor(message: ChatMessage): ChatMessage {
-        val change = message.emoteChange ?: return message
-        return resolveEmoteActorColor(
-            message,
-            knownChatColor(change.actorName, message.userLogin),
-        )
-    }
-
-    private fun knownChatColor(actorName: String, login: String): Color? {
-        return knownParticipantColor(_nickColors.value, actorName, login)
-    }
-
-
-    private fun markMessageDeleted(event: ChatMessage) {
-        _messages.update { current ->
-            markMessageDeleted(current, event.id, event.deletedBy)
+        val colored = colors.resolveEmoteActor(message)
+        val change = colored.emoteChange
+        val channelId = currentChannelId
+        return when {
+            change == null -> message
+            channelId == null -> colored
+            else -> emotes.applyLiveChange(channelId, colored, change)
         }
-        _recentAuthorMessages.update { history ->
-            markRecentAuthorMessageDeleted(history, event.id, event.deletedBy)
-        }
-    }
-
-    private fun markUserMessagesDeleted(event: ChatMessage) {
-        _messages.update { current ->
-            val marked = markUserMessagesDeleted(
-                current,
-                event.userLogin,
-                event.deletedBy,
-                event.timeoutSeconds,
-                event.banned,
-            )
-            withModerationNotice(marked, clearChatNoticeRow(event)).takeLast(MAX_CHAT_MESSAGES)
-        }
-        _recentAuthorMessages.update { history ->
-            markRecentAuthorMessagesDeleted(
-                history,
-                event.userLogin,
-                event.deletedBy,
-                event.timeoutSeconds,
-                event.banned,
-            )
-        }
-    }
-
-    private fun enrichReward(message: ChatMessage): ChatMessage {
-        val reward = message.reward ?: return message
-        val channel = currentChannel ?: return message
-        return mergeKnownReward(message, ChannelAvatarRepository.customReward(channel, reward.id))
-    }
-
-    private fun handleConnectionState(
-        previous: ChatConnectionState?,
-        state: ChatConnectionState,
-    ) {
-        when (state) {
-            ChatConnectionState.Connecting -> {
-                if (!inForeground) return
-                if (!hasWelcomed) {
-                    _messages.value = listOf(
-                        chatNoticeMessage(ChatNotice.Connecting, CHAT_WELCOME_NOTICE_ID),
-                    )
-                } else if (previous == ChatConnectionState.Disconnected) {
-                    showReconnectNotice(ChatNotice.Reconnecting)
-                }
-            }
-            ChatConnectionState.Connected -> {
-                if (!hasWelcomed) {
-                    hasWelcomed = true
-                    showWelcomeNotice()
-                    startRecentChatLoad()
-                } else if (previous != ChatConnectionState.Connected) {
-                    showReconnectNotice(ChatNotice.Connected)
-                }
-            }
-            ChatConnectionState.Reconnecting -> {
-                if (!inForeground) return
-                if (!hasWelcomed) return
-                if (previous == ChatConnectionState.Connected) {
-                    appendDisconnectedNotice()
-                }
-                showReconnectNotice(ChatNotice.Reconnecting)
-            }
-            ChatConnectionState.Disconnected -> {
-                if (!inForeground) return
-                if (hasWelcomed && previous == ChatConnectionState.Connected) {
-                    appendDisconnectedNotice()
-                }
-            }
-        }
-    }
-
-    private fun appendDisconnectedNotice() {
-        _messages.update { current ->
-            (current + chatNoticeMessage(ChatNotice.Disconnected, newStatusNoticeId()))
-                .takeLast(MAX_CHAT_MESSAGES)
-        }
-    }
-
-    private fun showReconnectNotice(notice: ChatNotice) {
-        _messages.update { current ->
-            replaceOrAppendReconnectNotice(
-                messages = current,
-                notice = notice,
-                newId = newStatusNoticeId(),
-                maxMessages = MAX_CHAT_MESSAGES,
-            )
-        }
-    }
-
-    private fun newStatusNoticeId(): String = "system-${System.nanoTime()}"
-
-    private fun showWelcomeNotice() {
-        _messages.update { current ->
-            replaceOrAppendWelcomeNotice(current, CHAT_WELCOME_NOTICE_ID, MAX_CHAT_MESSAGES)
-        }
-    }
-
-    private fun startRecentChatLoad() {
-        val channel = currentChannel ?: return
-        if (!loadRecentChatOnConnect || recentChatLoadStarted) return
-        recentChatLoadStarted = true
-        _recentChatLoadState.value = RecentChatLoadState.Loading
-        viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            try {
-                val result = loadRecentChatMessages(channel)
-                if (currentChannel == channel) {
-                    val failure = recentChatNotice(result)?.let { notice ->
-                        chatNoticeMessage(notice, "recent-chat-failed-${System.nanoTime()}")
-                    }
-                    var merge: RecentChatSessionMerge? = null
-                    _messages.update { current ->
-                        val next = mergeRecentChatSession(result.messages, current, _sessionChatters.value)
-                        merge = next
-                        insertRecentChatBeforeWelcome(next.current, next.recent + listOfNotNull(failure), CHAT_WELCOME_NOTICE_ID, MAX_CHAT_MESSAGES)
-                    }
-                    merge?.let { applied ->
-                        _sessionChatters.value = applied.chatters
-                        _recentAuthorMessages.update { history ->
-                            prependRecentAuthorMessages(history, applied.recent, applied.movedFirstLogins)
-                        }
-                    }
-                }
-            } finally {
-                if (currentChannel == channel) _recentChatLoadState.value = RecentChatLoadState.Idle
-            }
-        }
-    }
-
-    private fun scheduleReconnect() {
-        if (!inForeground) return
-        val channel = currentChannel ?: return
-        reconnectJob?.cancel()
-        AppLog.i(TAG, "retry in ${RECONNECT_DELAY.inWholeMilliseconds}ms")
-        reconnectJob = viewModelScope.launch {
-            delay(RECONNECT_DELAY)
-            if (currentChannel == channel) {
-                client.connect(channel)
-            }
-        }
-    }
-
-    fun hidePinnedForSelf() {
-        val pin = currentPin ?: return
-        hiddenPinId = pin.pinId
-        _pinnedChat.value = null
-    }
-
-    private fun revealHiddenPin() {
-        if (hiddenPinId == null) return
-        hiddenPinId = null
-        _pinnedChat.value = currentPin
-    }
-
-    private fun handlePinnedUpdate(update: PinnedChatUpdate) {
-        when (update) {
-            is PinnedChatUpdate.Set -> {
-                pinGeneration++
-                applyPinned(update.pin.copy(live = true))
-            }
-            is PinnedChatUpdate.Clear -> {
-                val current = currentPin
-                if (!shouldClearPinnedChat(current, update.pinId)) return
-                pinGeneration++
-                applyPinned(null)
-            }
-            is PinnedChatUpdate.Duration -> {
-                val current = currentPin
-                if (current == null) {
-                    pinGeneration++
-                    currentChannelId?.let(::loadPinned)
-                    return
-                }
-                val updated = updatePinnedChatDuration(current, update.pinId, update.endsAtMillis)
-                if (updated === current) return
-                pinGeneration++
-                applyPinned(updated)
-            }
-            PinnedChatUpdate.Refresh -> {
-                pinGeneration++
-                currentChannelId?.let(::loadPinned)
-            }
-        }
-    }
-
-    private fun loadPinned(channelId: String) {
-        val generation = pinGeneration
-        viewModelScope.launch {
-            val pin = resultUnlessCancelled { PinnedChatRepository.fetch(channelId) }
-                .getOrElse { return@launch }
-            if (generation != pinGeneration || currentChannelId != channelId) return@launch
-            applyPinned(pin)
-        }
-    }
-
-    private fun applyPinned(pin: PinnedChat?) {
-        pinExpireJob?.cancel()
-        currentPin = pin
-        if (pin != null && pin.pinId != hiddenPinId) {
-            hiddenPinId = null
-        }
-        publishPinned()
-        pin?.message?.let(::rememberParticipantColor)
-        val endsAt = pin?.endsAtMillis ?: return
-        val wait = endsAt - System.currentTimeMillis()
-        if (wait <= 0L) {
-            currentPin = null
-            publishPinned()
-            return
-        }
-        val pinId = pin.pinId
-        pinExpireJob = viewModelScope.launch {
-            delay(wait.milliseconds)
-            if (currentPin?.pinId == pinId) {
-                currentPin = null
-                publishPinned()
-            }
-        }
-    }
-
-    private fun publishPinned() {
-        _pinnedChat.value = visiblePinnedChat(currentPin, hiddenPinId)
     }
 
     override fun onCleared() {
-        reconnectJob?.cancel()
+        reconnect.cancel()
         collectJob?.cancel()
-        pinExpireJob?.cancel()
+        pins.close()
         sevenTvEvents.close()
         bttvEvents.close()
         pubSub.close()
         client.disconnect()
     }
-
-    private companion object {
-        const val MAX_NICK_COLORS = 800
-        const val TAG = "ChatIrc"
-        val RECONNECT_DELAY = 1.seconds
-    }
 }
+
+/** A reward redemption with the title and cost the open [channel]'s known rewards give it. */
+private fun ChatMessage.withKnownReward(channel: String?): ChatMessage {
+    val rewardId = reward?.id ?: return this
+    if (channel == null) return this
+    return mergeKnownReward(this, ChannelCustomRewards.reward(channel, rewardId))
+}
+
+/** The chat with the notice why the channel could not be found, put before the welcome. */
+private fun withChannelLookupNotice(messages: List<ChatMessage>, notice: ChatNotice): List<ChatMessage> =
+    insertRecentChatBeforeWelcome(
+        messages = messages,
+        recent = listOf(chatNoticeMessage(notice, "channel-not-found-${System.nanoTime()}")),
+        initialNoticeId = CHAT_WELCOME_NOTICE_ID,
+        maxMessages = MAX_CHAT_MESSAGES,
+    )

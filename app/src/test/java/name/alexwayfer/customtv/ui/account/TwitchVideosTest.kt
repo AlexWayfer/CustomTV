@@ -16,7 +16,10 @@ class TwitchVideosTest {
               "viewCount":1234,"lengthSeconds":7384,
               "game":{"displayName":"Just Chatting","boxArtURL":"jc.jpg"},
               "moments":{"edges":[
-                {"node":{"positionMilliseconds":60000,"details":{"game":{"displayName":"Dota 2","boxArtURL":"dota.jpg"}}}}
+                {"node":{
+                  "positionMilliseconds":60000,
+                  "details":{"game":{"displayName":"Dota 2","boxArtURL":"dota.jpg"}}
+                }}
               ]}
             }}]}}}}
             """.trimIndent(),
@@ -59,8 +62,13 @@ class TwitchVideosTest {
     fun aFailedSuggestedShelfKeepsTheRecordings() {
         val page = parseChannelRecordings(
             """
-            {"errors":[{"message":"shelf failed"}],
-             "data":{"user":{"videos":{"edges":[{"node":{"id":"1"}}]},"channel":{"home":{"shelves":{"streamerShelf":null}}}}}}
+            {
+              "errors":[{"message":"shelf failed"}],
+              "data":{"user":{
+                "videos":{"edges":[{"node":{"id":"1"}}]},
+                "channel":{"home":{"shelves":{"streamerShelf":null}}}
+              }}
+            }
             """.trimIndent(),
         )
 
@@ -70,7 +78,10 @@ class TwitchVideosTest {
 
     @Test
     fun aChannelThatDoesNotExistHasNoRecordings() {
-        assertEquals(ChannelRecordingsPage(emptyList(), emptyMap()), parseChannelRecordings("""{"data":{"user":null}}"""))
+        assertEquals(
+            ChannelRecordingsPage(emptyList(), emptyMap()),
+            parseChannelRecordings("""{"data":{"user":null}}"""),
+        )
     }
 
     @Test

@@ -74,10 +74,10 @@ class EmoteInsertTest {
 
     @Test
     fun pickerPanelUsesTheKeyboardHeightAndFallsBackWhenItWasNeverOpened() {
-        assertEquals(48, emotePanelHeightPx(48, 0, pickerOpen = false, keyboardReturning = false, rememberedImePx = 800, fallbackPx = 400))
-        assertEquals(800, emotePanelHeightPx(48, 0, pickerOpen = true, keyboardReturning = false, rememberedImePx = 800, fallbackPx = 400))
-        assertEquals(400, emotePanelHeightPx(48, 0, pickerOpen = true, keyboardReturning = false, rememberedImePx = 0, fallbackPx = 400))
-        assertEquals(900, emotePanelHeightPx(48, 900, pickerOpen = true, keyboardReturning = false, rememberedImePx = 800, fallbackPx = 400))
+        assertEquals(48, panelHeight(0, pickerOpen = false))
+        assertEquals(800, panelHeight(0, pickerOpen = true))
+        assertEquals(400, panelHeight(0, pickerOpen = true, rememberedImePx = 0))
+        assertEquals(900, panelHeight(900, pickerOpen = true))
     }
 
     @Test
@@ -90,7 +90,7 @@ class EmoteInsertTest {
 
     @Test
     fun pickerPanelIsAsLowAsALowKeyboard() {
-        assertEquals(200, emotePanelHeightPx(48, 0, pickerOpen = true, keyboardReturning = false, rememberedImePx = 200, fallbackPx = 400))
+        assertEquals(200, panelHeight(0, pickerOpen = true, rememberedImePx = 200))
     }
 
     @Test
@@ -156,8 +156,8 @@ class EmoteInsertTest {
 
     @Test
     fun aClosedPickerKeepsItsSpaceWhileTheKeyboardRisesInItsPlace() {
-        assertEquals(800, emotePanelHeightPx(48, 0, pickerOpen = false, keyboardReturning = true, rememberedImePx = 800, fallbackPx = 400))
-        assertEquals(800, emotePanelHeightPx(48, 300, pickerOpen = false, keyboardReturning = true, rememberedImePx = 800, fallbackPx = 400))
+        assertEquals(800, panelHeight(0, pickerOpen = false, keyboardReturning = true))
+        assertEquals(800, panelHeight(300, pickerOpen = false, keyboardReturning = true))
     }
 
     @Test
@@ -213,4 +213,18 @@ class EmoteInsertTest {
         heightPx(imeBottomPx = px / 2, imeTargetBottomPx = px, landscape = landscape)
         return heightPx(imeBottomPx = px, imeTargetBottomPx = px, landscape = landscape)
     }
+
+    /** [emotePanelHeightPx] above a 48 px navigation bar, with a 400 px fallback. */
+    private fun panelHeight(
+        imeBottomPx: Int,
+        pickerOpen: Boolean,
+        keyboardReturning: Boolean = false,
+        rememberedImePx: Int = 800,
+    ) = emotePanelHeightPx(
+        48,
+        imeBottomPx,
+        pickerOpen = pickerOpen,
+        keyboardReturning = keyboardReturning,
+        pickerHeightPx = emotePickerHeightPx(rememberedImePx, fallbackPx = 400),
+    )
 }

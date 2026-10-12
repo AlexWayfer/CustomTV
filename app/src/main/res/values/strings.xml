@@ -12,6 +12,7 @@
     <string name="following_offline">Offline channels</string>
     <string name="following_empty">You don’t follow any channels yet</string>
     <string name="following_unavailable">Couldn’t load the channels you follow</string>
+    <string name="channels_load_failed">Couldn’t load channels</string>
     <string name="following_last_live">Last live %1$s</string>
     <string name="following_last_live_today">Today</string>
     <string name="following_last_live_yesterday">Yesterday</string>
@@ -304,6 +305,7 @@
     <string name="telegram_current_version_free">Current version: %1$s, free</string>
     <string name="telegram_current_version_premium">Current version: %1$s, premium</string>
     <string name="telegram_no_new_versions">New versions not found</string>
+    <string name="telegram_no_new_versions_latest">New versions not found. Latest found: %1$s</string>
     <string name="telegram_start_over">Start over</string>
     <string name="telegram_not_registered">This number is not registered in Telegram</string>
     <string name="telegram_unsupported">Telegram asked for a step this app does not handle</string>

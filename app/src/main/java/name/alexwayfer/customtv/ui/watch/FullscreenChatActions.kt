@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -84,7 +84,7 @@ internal fun BoxScope.PlayerFullscreenChatActions(
         exit = HeaderFadeOut,
     ) {
         Surface(
-            shape = RoundedCornerShape(50),
+            shape = CircleShape,
             color = Color.Black.copy(alpha = FULLSCREEN_OVERLAY_CHAT_ALPHA),
             contentColor = Color.White,
         ) {
@@ -151,7 +151,8 @@ internal fun fullscreenPlayerButtonsBottom(controlBarHeightPx: Int?): Dp =
 
 /**
  * How far the full screen player's bottom buttons go down as the controls hide: from resting on the control buttons
- * ([restTop]) to the chat's edge gap above the bottom. The chat buttons' group and the player's own buttons go together.
+ * ([restTop]) to the chat's edge gap above the bottom. The chat buttons' group and the player's own buttons go
+ * together.
  */
 internal fun fullscreenControlsHiddenDrop(restTop: Dp): Dp = (restTop - OverlayChatEdgeGap).coerceAtLeast(0.dp)
 

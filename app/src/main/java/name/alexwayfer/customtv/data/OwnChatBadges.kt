@@ -1,12 +1,13 @@
 package name.alexwayfer.customtv.data
 
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
+import org.json.JSONException
 import org.json.JSONObject
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /** The badges Twitch shows beside a user's name in one channel, with the image for each `set/version`. */
@@ -24,7 +25,8 @@ internal object OwnChatBadgesRepository {
             val payload = JSONObject()
                 .put(
                     "query",
-                    $$"query($id:ID!,$channel:ID!){user(id:$id){displayBadges(channelID:$channel){setID version imageURL(size:NORMAL)}}}",
+                    $$"query($id:ID!,$channel:ID!){user(id:$id)" +
+                        $$"{displayBadges(channelID:$channel){setID version imageURL(size:NORMAL)}}}",
                 )
                 .put("variables", JSONObject().put("id", userId).put("channel", channelId))
             val body = http.newCall(twitchGqlRequest(payload.toString()).build()).execute().use { response ->
@@ -37,9 +39,10 @@ internal object OwnChatBadgesRepository {
                 text
             }
             parseDisplayedChatBadges(body)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: Exception) {
+        } catch (error: IOException) {
+            AppLog.w(TAG, "load failed ${error.javaClass.simpleName}")
+            null
+        } catch (error: JSONException) {
             AppLog.w(TAG, "load failed ${error.javaClass.simpleName}")
             null
         }
@@ -53,12 +56,11 @@ internal fun parseDisplayedChatBadges(body: String): DisplayedChatBadges? {
         ?: return null
     val badges = ArrayList<ChatBadge>(array.length())
     val urls = LinkedHashMap<String, String>()
-    for (index in 0 until array.length()) {
-        val item = array.optJSONObject(index) ?: continue
-        val setId = item.optString("setID").takeIf { it.isNotBlank() && it != "null" } ?: continue
+    for (item in array.objects()) {
+        val setId = item.text("setID") ?: continue
         val badge = ChatBadge(setId, item.optString("version"))
         badges += badge
-        item.optString("imageURL").takeIf { it.isNotBlank() && it != "null" }?.let { urls[badge.key] = it }
+        item.text("imageURL")?.let { urls[badge.key] = it }
     }
     return DisplayedChatBadges(badges, urls)
 }

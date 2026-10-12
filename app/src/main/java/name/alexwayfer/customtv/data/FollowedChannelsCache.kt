@@ -11,6 +11,7 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -66,20 +67,23 @@ internal class FollowedChannelsCache(context: Context) {
 
     private fun readRaw(): String? {
         if (!file.exists()) return null
-        return runCatching { file.readText() }.getOrElse { failure ->
-            AppLog.w(TAG, "follows cache read failed: ${failure.javaClass.simpleName}")
+        return try {
+            file.readText()
+        } catch (failure: IOException) {
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "follows cache read failed: ${failure.javaClass.simpleName}")
             null
         }
     }
 
     private fun writeRaw(text: String) {
-        runCatching { file.writeText(text) }.onFailure { failure ->
-            AppLog.w(TAG, "follows cache write failed: ${failure.javaClass.simpleName}")
+        try {
+            file.writeText(text)
+        } catch (failure: IOException) {
+            AppLog.w(FOLLOWED_CHANNELS_TAG, "follows cache write failed: ${failure.javaClass.simpleName}")
         }
     }
 
     private companion object {
-        const val TAG = "FollowedChannels"
         val gate = Any()
     }
 }
@@ -110,7 +114,7 @@ internal fun encodeFollowedChannelsCache(
         )
     }
     val root = JSONObject().put("userId", userId).put("channels", items)
-    previous?.let { runCatching { JSONObject(it) }.getOrNull() }
+    previous?.toJsonObjectOrNull()
         ?.takeIf { it.optString("userId") == userId }
         ?.optJSONObject("watchStreaks")
         ?.let { root.put("watchStreaks", it) }
@@ -119,7 +123,7 @@ internal fun encodeFollowedChannelsCache(
 
 /** [raw] with [streaks] in place of the saved ones; null when nothing changes or the file is unreadable. */
 internal fun followedCacheWithStreaks(raw: String, streaks: Map<String, Int>): String? {
-    val root = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+    val root = raw.toJsonObjectOrNull() ?: return null
     if (decodeFollowedWatchStreaks(raw) == streaks) return null
     if (streaks.isEmpty()) {
         root.remove("watchStreaks")
@@ -130,7 +134,7 @@ internal fun followedCacheWithStreaks(raw: String, streaks: Map<String, Int>): S
 }
 
 internal fun decodeFollowedWatchStreaks(raw: String): Map<String, Int> {
-    val streaks = runCatching { JSONObject(raw) }.getOrNull()?.optJSONObject("watchStreaks") ?: return emptyMap()
+    val streaks = raw.toJsonObjectOrNull()?.optJSONObject("watchStreaks") ?: return emptyMap()
     return buildMap {
         streaks.keys().forEach { id ->
             val count = streaks.optInt(id)
@@ -141,7 +145,7 @@ internal fun decodeFollowedWatchStreaks(raw: String): Map<String, Int> {
 
 /** The saved list in its saved order, or empty when it is unreadable or belongs to another account. */
 internal fun decodeFollowedChannelsCache(raw: String, userId: String): List<FollowedChannel> {
-    val root = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyList()
+    val root = raw.toJsonObjectOrNull() ?: return emptyList()
     if (root.optString("userId") != userId) return emptyList()
     val items = root.optJSONArray("channels") ?: return emptyList()
     return (0 until items.length()).mapNotNull { index ->
@@ -154,34 +158,29 @@ internal fun decodeFollowedChannelsCache(raw: String, userId: String): List<Foll
             id = id,
             login = login,
             displayName = item.optString("displayName").ifBlank { login },
-            avatarUrl = item.optStringOrNull("avatarUrl"),
+            avatarUrl = item.stringOrNull("avatarUrl"),
             isLive = item.optBoolean("isLive"),
-            categoryName = item.optStringOrNull("categoryName"),
-            viewerCount = item.optIntOrNull("viewerCount"),
-            sharedViewerCount = item.optIntOrNull("sharedViewerCount"),
-            collaborationCount = item.optIntOrNull("collaborationCount"),
+            categoryName = item.stringOrNull("categoryName"),
+            viewerCount = item.intOrNull("viewerCount"),
+            sharedViewerCount = item.intOrNull("sharedViewerCount"),
+            collaborationCount = item.intOrNull("collaborationCount"),
             collaboratorAvatarUrls = (0 until (collaborators?.length() ?: 0)).mapNotNull { at ->
                 collaborators?.optString(at)?.takeIf { it.isNotBlank() }
             },
-            lastBroadcastAtMillis = if (item.has("lastBroadcastAtMillis")) item.optLong("lastBroadcastAtMillis") else null,
-            streamTitle = item.optStringOrNull("streamTitle"),
+            lastBroadcastAtMillis =
+                if (item.has("lastBroadcastAtMillis")) item.optLong("lastBroadcastAtMillis") else null,
+            streamTitle = item.stringOrNull("streamTitle"),
             previewAtMillis = if (item.has("previewAtMillis")) item.optLong("previewAtMillis") else null,
         )
     }
 }
-
-private fun JSONObject.optStringOrNull(name: String): String? =
-    if (has(name) && !isNull(name)) optString(name) else null
-
-private fun JSONObject.optIntOrNull(name: String): Int? =
-    if (has(name) && !isNull(name)) optInt(name) else null
 
 /** A saved follow list and the account it belongs to. */
 internal class SavedFollows(val userId: String, val channels: List<FollowedChannel>)
 
 /** The account the saved list belongs to, or null when [raw] is unreadable or names none. */
 internal fun decodeFollowedChannelsCacheOwner(raw: String): String? =
-    runCatching { JSONObject(raw) }.getOrNull()?.optString("userId")?.takeIf { it.isNotBlank() }
+    raw.toJsonObjectOrNull()?.optString("userId")?.takeIf { it.isNotBlank() }
 
 /**
  * The saved list Home can show before it loads anything: only a list of the saved account, while that account may
@@ -199,16 +198,13 @@ internal object FollowedChannelsAtStart {
     fun start(context: Context) {
         val appContext = context.applicationContext
         scope.launch {
-            val shown = runCatching {
-                val session = TwitchSessionStore(appContext).read()
-                followsShownAtStart(
-                    saved = FollowedChannelsCache(appContext).readSaved(),
-                    sessionUserId = session?.account?.userId,
-                    followsCanLoad = followListCanLoad(session?.grantedScopes),
-                )
-            }.onFailure { failure ->
-                AppLog.w("FollowedChannels", "follows read at start failed: ${failure.javaClass.simpleName}")
-            }.getOrNull()
+            // Both stores answer a failed read with nothing, so the read itself does not throw.
+            val session = TwitchSessionStore(appContext).read()
+            val shown = followsShownAtStart(
+                saved = FollowedChannelsCache(appContext).readSaved(),
+                sessionUserId = session?.account?.userId,
+                followsCanLoad = followListCanLoad(session?.grantedScopes),
+            )
             saved.complete(shown)
         }
     }

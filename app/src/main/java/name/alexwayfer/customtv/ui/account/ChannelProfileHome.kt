@@ -46,6 +46,7 @@ import java.text.NumberFormat
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.player.StreamMediaArtwork
+import name.alexwayfer.customtv.ui.components.VIDEO_ASPECT_RATIO
 import name.alexwayfer.customtv.ui.components.rememberSecondTicker
 import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.watch.StreamViewersIcon
@@ -167,7 +168,9 @@ internal fun ChannelProfileHome(
             )
         }
         AnimatedVisibility(
-            visible = recordings != ChannelRecordings.Loading && primary == ProfileHomePrimary.None && categories.isEmpty(),
+            visible = recordings != ChannelRecordings.Loading &&
+                primary == ProfileHomePrimary.None &&
+                categories.isEmpty(),
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
@@ -237,7 +240,7 @@ private fun RecentCategoryItem(category: RecentCategory, modifier: Modifier = Mo
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(3f / 4f)
+                .aspectRatio(BOX_ART_ASPECT_RATIO)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
@@ -261,11 +264,11 @@ private fun RecentCategoryItem(category: RecentCategory, modifier: Modifier = Mo
     }
 }
 
+/** Twitch's box art is a portrait cover. */
+private const val BOX_ART_ASPECT_RATIO = 3f / 4f
+
 @Composable
 private fun ProfileLiveItem(profile: ChannelProfile, showChannelName: Boolean, onClick: () -> Unit) {
-    val preview = remember(profile.login) { StreamMediaArtwork.previewUrl(profile.login, System.currentTimeMillis()) }
-    val startedAtMillis = profile.streamStartedAtMillis
-    val nowMillis = rememberSecondTicker(running = startedAtMillis != null)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -273,46 +276,7 @@ private fun ProfileLiveItem(profile: ChannelProfile, showChannelName: Boolean, o
             .padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            AsyncImage(
-                model = preview,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-            profile.viewerCount?.let { viewers ->
-                val formatted = NumberFormat.getIntegerInstance().format(viewers)
-                val description = pluralStringResource(R.plurals.stream_viewers, viewers, formatted)
-                LiveBadge(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .clearAndSetSemantics { contentDescription = description },
-                ) {
-                    StreamViewersIcon(Color.White, Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(formatted, color = Color.White, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-            startedAtMillis?.let { started ->
-                val uptime = formatStreamUptime(started, nowMillis)
-                val description = stringResource(R.string.stream_live_for, uptime)
-                LiveBadge(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .clearAndSetSemantics { contentDescription = description },
-                ) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(TwitchLive))
-                    Spacer(Modifier.width(4.dp))
-                    Text(uptime, color = Color.White, style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
+        ProfileLivePreview(profile)
         Column {
             Text(
                 text = profile.streamTitle?.takeIf { it.isNotBlank() } ?: profile.displayName,
@@ -339,6 +303,54 @@ private fun ProfileLiveItem(profile: ChannelProfile, showChannelName: Boolean, o
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+            }
+        }
+    }
+}
+
+/** The stream's preview with the viewers in one bottom corner and how long it has been live in the other. */
+@Composable
+private fun ProfileLivePreview(profile: ChannelProfile) {
+    val preview = remember(profile.login) { StreamMediaArtwork.previewUrl(profile.login, System.currentTimeMillis()) }
+    val startedAtMillis = profile.streamStartedAtMillis
+    val nowMillis = rememberSecondTicker(running = startedAtMillis != null)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(VIDEO_ASPECT_RATIO)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        AsyncImage(
+            model = preview,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        profile.viewerCount?.let { viewers ->
+            val formatted = NumberFormat.getIntegerInstance().format(viewers)
+            val description = pluralStringResource(R.plurals.stream_viewers, viewers, formatted)
+            LiveBadge(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .clearAndSetSemantics { contentDescription = description },
+            ) {
+                StreamViewersIcon(Color.White, Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(formatted, color = Color.White, style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        startedAtMillis?.let { started ->
+            val uptime = formatStreamUptime(started, nowMillis)
+            val description = stringResource(R.string.stream_live_for, uptime)
+            LiveBadge(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .clearAndSetSemantics { contentDescription = description },
+            ) {
+                Box(Modifier.size(8.dp).clip(CircleShape).background(TwitchLive))
+                Spacer(Modifier.width(4.dp))
+                Text(uptime, color = Color.White, style = MaterialTheme.typography.labelMedium)
             }
         }
     }

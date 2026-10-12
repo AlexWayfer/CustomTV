@@ -43,54 +43,14 @@ internal fun ChatNotices(
     onHideEvent: (String) -> Unit,
 ) {
     var hiddenCommunityGiftId by remember { mutableStateOf<String?>(null) }
-    var communityGiftClockMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val currentMessages by rememberUpdatedState(messages)
-    val latestGiftMessage by remember { derivedStateOf { latestCommunityGiftMessage(currentMessages()) } }
-    LaunchedEffect(latestGiftMessage?.id) {
-        val message = latestGiftMessage ?: return@LaunchedEffect
-        communityGiftClockMillis = System.currentTimeMillis()
-        val remaining = communityGiftPlaqueRemainingMillis(message, communityGiftClockMillis)
-        if (remaining > 0L) delay(remaining.milliseconds)
-        communityGiftClockMillis = System.currentTimeMillis()
-    }
-    val communityGiftMessage = visibleCommunityGiftMessage(
-        latest = latestGiftMessage,
-        hiddenMessageId = hiddenCommunityGiftId,
-        nowMillis = communityGiftClockMillis,
-    )
-    // What each page shows, so the order knows what is new: a hype train's next level counts as new.
-    val items = buildMap {
-        raid?.let { put(ChatNoticePage.Raid, ChatNoticeItem(it.id, live = true)) }
-        events.hypeTrain?.let {
-            put(ChatNoticePage.HypeTrain, ChatNoticeItem("${it.id}:${it.level}", it.id in events.liveIds))
-        }
-        events.poll?.let { put(ChatNoticePage.Poll, ChatNoticeItem(it.id, it.id in events.liveIds)) }
-        events.prediction?.let { put(ChatNoticePage.Prediction, ChatNoticeItem(it.id, it.id in events.liveIds)) }
-        communityGiftMessage?.let { put(ChatNoticePage.CommunityGift, ChatNoticeItem(it.id, live = true)) }
-        pin?.let { put(ChatNoticePage.Pinned, ChatNoticeItem(it.pinId, it.live)) }
-    }
-    // Which item is expanded, by page and id; a new poll or pin on the same page starts collapsed.
-    val expandKeys = buildMap {
-        events.hypeTrain?.let { put(ChatNoticePage.HypeTrain, "hype:${it.id}") }
-        events.poll?.let { put(ChatNoticePage.Poll, "poll:${it.id}") }
-        events.prediction?.let { put(ChatNoticePage.Prediction, "prediction:${it.id}") }
-        pin?.let { put(ChatNoticePage.Pinned, "pin:${it.pinId}") }
-    }
+    val communityGiftMessage = rememberVisibleCommunityGift(messages, hiddenCommunityGiftId)
+    val items = chatNoticeItems(raid, events, communityGiftMessage, pin)
+    val expandKeys = chatNoticeExpandKeys(events, pin)
     var expandedKey by remember { mutableStateOf<String?>(null) }
     val anyExpanded = expandedKey != null && expandedKey in expandKeys.values
     val committed = remember { CommittedNoticeOrder() }
     val arrivals = nextChatNoticeArrivals(committed.arrivals, items)
-    val ordered = orderedChatNoticePages(
-        pages = chatNoticePages(
-            hasPinned = pin != null,
-            hasRaid = raid != null,
-            hasCommunityGift = communityGiftMessage != null,
-            hasPoll = events.poll != null,
-            hasPrediction = events.prediction != null,
-            hasHypeTrain = events.hypeTrain != null,
-        ),
-        arrivals = arrivals,
-    )
+    val ordered = orderedChatNoticePages(chatNoticePagesOf(pin, raid, communityGiftMessage, events), arrivals)
     // An expanded notice stays where it is: pages move and switch only while every notice is collapsed.
     val pages = if (anyExpanded) frozenChatNoticePages(committed.pages, ordered) else ordered
     SideEffect {
@@ -134,6 +94,71 @@ internal fun ChatNotices(
             )
         }
     }
+}
+
+/**
+ * The latest community gift while its plaque lasts, unless the viewer hid it. Only the gifts of [messages] are read,
+ * so other chat messages do not recompose the notices.
+ */
+@Composable
+private fun rememberVisibleCommunityGift(messages: () -> List<ChatMessage>, hiddenMessageId: String?): ChatMessage? {
+    var communityGiftClockMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val currentMessages by rememberUpdatedState(messages)
+    val latestGiftMessage by remember { derivedStateOf { latestCommunityGiftMessage(currentMessages()) } }
+    LaunchedEffect(latestGiftMessage?.id) {
+        val message = latestGiftMessage ?: return@LaunchedEffect
+        communityGiftClockMillis = System.currentTimeMillis()
+        val remaining = communityGiftPlaqueRemainingMillis(message, communityGiftClockMillis)
+        if (remaining > 0L) delay(remaining.milliseconds)
+        communityGiftClockMillis = System.currentTimeMillis()
+    }
+    return visibleCommunityGiftMessage(
+        latest = latestGiftMessage,
+        hiddenMessageId = hiddenMessageId,
+        nowMillis = communityGiftClockMillis,
+    )
+}
+
+/** The pages there is something for, before they are put in order. */
+private fun chatNoticePagesOf(
+    pin: PinnedChat?,
+    raid: OutgoingRaid?,
+    communityGiftMessage: ChatMessage?,
+    events: ChannelEvents,
+): List<ChatNoticePage> = chatNoticePages(
+    buildSet {
+        if (pin != null) add(ChatNoticePage.Pinned)
+        if (raid != null) add(ChatNoticePage.Raid)
+        if (communityGiftMessage != null) add(ChatNoticePage.CommunityGift)
+        if (events.poll != null) add(ChatNoticePage.Poll)
+        if (events.prediction != null) add(ChatNoticePage.Prediction)
+        if (events.hypeTrain != null) add(ChatNoticePage.HypeTrain)
+    },
+)
+
+/** What each page shows, so the order knows what is new: a hype train's next level counts as new. */
+private fun chatNoticeItems(
+    raid: OutgoingRaid?,
+    events: ChannelEvents,
+    communityGiftMessage: ChatMessage?,
+    pin: PinnedChat?,
+): Map<ChatNoticePage, ChatNoticeItem> = buildMap {
+    raid?.let { put(ChatNoticePage.Raid, ChatNoticeItem(it.id, live = true)) }
+    events.hypeTrain?.let {
+        put(ChatNoticePage.HypeTrain, ChatNoticeItem("${it.id}:${it.level}", it.id in events.liveIds))
+    }
+    events.poll?.let { put(ChatNoticePage.Poll, ChatNoticeItem(it.id, it.id in events.liveIds)) }
+    events.prediction?.let { put(ChatNoticePage.Prediction, ChatNoticeItem(it.id, it.id in events.liveIds)) }
+    communityGiftMessage?.let { put(ChatNoticePage.CommunityGift, ChatNoticeItem(it.id, live = true)) }
+    pin?.let { put(ChatNoticePage.Pinned, ChatNoticeItem(it.pinId, it.live)) }
+}
+
+/** Which item is expanded, by page and id; a new poll or pin on the same page starts collapsed. */
+private fun chatNoticeExpandKeys(events: ChannelEvents, pin: PinnedChat?): Map<ChatNoticePage, String> = buildMap {
+    events.hypeTrain?.let { put(ChatNoticePage.HypeTrain, "hype:${it.id}") }
+    events.poll?.let { put(ChatNoticePage.Poll, "poll:${it.id}") }
+    events.prediction?.let { put(ChatNoticePage.Prediction, "prediction:${it.id}") }
+    pin?.let { put(ChatNoticePage.Pinned, "pin:${it.pinId}") }
 }
 
 /** What the notices showed last, so the block can slide away with it after it is gone. */
@@ -209,33 +234,20 @@ private fun ChatNoticePageContent(
                 bottomInset = dotInset,
             )
         }
-        ChatNoticePage.Pinned -> {
-            if (pin != null) {
-                ChatPinnedBanner(
-                    pin = pin,
-                    channelLogin = channelLogin,
-                    appearance = appearance,
-                    expanded = expanded,
-                    onExpandedChange = onExpandedChange,
-                    onHide = onHidePin,
-                    bottomInset = dotInset,
-                )
-            }
+        ChatNoticePage.Pinned -> pin?.let {
+            ChatPinnedBanner(
+                pin = it,
+                channelLogin = channelLogin,
+                appearance = appearance,
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
+                onHide = onHidePin,
+                bottomInset = dotInset,
+            )
         }
-        ChatNoticePage.Raid -> {
-            if (raid != null) {
-                ChatRaidNotice(raid = raid, chatTextSize = appearance.textSize, dotInset = dotInset)
-            }
-        }
-        ChatNoticePage.CommunityGift -> {
-            if (communityGiftMessage != null) {
-                ChatCommunityGiftBanner(
-                    message = communityGiftMessage,
-                    chatTextSize = appearance.textSize,
-                    onHide = onHideCommunityGift,
-                    bottomInset = dotInset,
-                )
-            }
+        ChatNoticePage.Raid -> raid?.let { ChatRaidNotice(it, chatTextSize = appearance.textSize, dotInset = dotInset) }
+        ChatNoticePage.CommunityGift -> communityGiftMessage?.let {
+            ChatCommunityGiftBanner(it, appearance.textSize, onHide = onHideCommunityGift, bottomInset = dotInset)
         }
     }
 }

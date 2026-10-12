@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.detekt)
 }
 
 // The public repository carries the free edition only; without the premium sources only free builds.
@@ -20,7 +21,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 19
+        versionCode = 21
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -54,14 +55,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.6.0"
+            versionName = "1.7.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.5.0"
+                versionName = "1.6.0"
                 buildConfigField("boolean", "PREMIUM", "true")
             }
         }
@@ -92,11 +93,9 @@ android {
         }
         release {
             // R8 shrinks the APK and renames the code, so the Premium checks are harder to find and patch out.
+            // Its rules are in src/main/keepRules.
             optimization {
                 enable = true
-                keepRules {
-                    files.add(file("proguard-rules.pro"))
-                }
             }
             signingConfig = signingConfigs.findByName("release")
             // Some phones with a 64-bit CPU run a 32-bit Android, such as the Galaxy A10, and refuse an APK
@@ -117,6 +116,10 @@ android {
     // Android 13+ lists the languages of the values-* folders in the app's system language screen.
     androidResources {
         generateLocaleConfig = true
+    }
+    // A unit test of code that logs through AppLog reaches android.util.Log, which only answers on a device.
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -171,4 +174,15 @@ dependencies {
     testImplementation(libs.json)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    config.setFrom(rootProject.file("config/detekt.yml"))
+    // `verify.ps1 -Detekt` lists the changed sources in a file, one path from the repository root per line.
+    source.setFrom(
+        providers.gradleProperty("detektFileList")
+            .map { list -> rootProject.file(list).readLines().filter(String::isNotBlank).map(rootProject::file) }
+            .orElse(listOf(file("src"))),
+    )
 }

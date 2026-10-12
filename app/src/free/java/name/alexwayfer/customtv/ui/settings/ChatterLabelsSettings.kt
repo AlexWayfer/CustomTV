@@ -13,4 +13,8 @@ internal fun ChatterLabelsSettingsEntry(onOpen: () -> Unit) = Unit
 
 @Suppress("unused")
 @Composable
-internal fun ChatterLabelsSettings(seed: ChatterLabelFieldSeed, leaveGuard: SettingsLeaveGuard, modifier: Modifier) = Unit
+internal fun ChatterLabelsSettings(
+    seed: ChatterLabelFieldSeed,
+    leaveGuard: SettingsLeaveGuard,
+    modifier: Modifier,
+) = Unit

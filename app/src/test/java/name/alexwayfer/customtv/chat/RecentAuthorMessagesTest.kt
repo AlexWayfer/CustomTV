@@ -50,7 +50,7 @@ class RecentAuthorMessagesTest {
         val first = message("first", "alice")
         val history = rememberRecentAuthorMessages(emptyMap(), emptyList(), listOf(first))
         val updated = markRecentAuthorMessagesDeleted(history, "alice", "mod", 45, false)
-        val retained = updated["alice"]!!.single()
+        val retained = updated.getValue("alice").single()
         assertTrue(retained.deleted)
         assertEquals(45L, retained.timeoutSeconds)
         assertEquals("mod", retained.deletedBy)
@@ -62,8 +62,8 @@ class RecentAuthorMessagesTest {
         val second = message("second", "alice")
         val history = rememberRecentAuthorMessages(emptyMap(), emptyList(), listOf(first, second))
         val updated = markRecentAuthorMessageDeleted(history, "first", "mod")
-        assertTrue(updated["alice"]!![0].deleted)
-        assertFalse(updated["alice"]!![1].deleted)
+        assertTrue(updated.getValue("alice")[0].deleted)
+        assertFalse(updated.getValue("alice")[1].deleted)
     }
 
     @Test
@@ -71,7 +71,7 @@ class RecentAuthorMessagesTest {
         val live = (1..15).map { message("live-$it", "alice") }
         val recent = (1..10).map { message("old-$it", "alice") }
         val history = prependRecentAuthorMessages(mapOf("alice" to live), recent, emptySet())
-        val ids = history["alice"]!!.map(ChatMessage::id)
+        val ids = history.getValue("alice").map(ChatMessage::id)
         assertEquals(MAX_RECENT_AUTHOR_MESSAGES, ids.size)
         assertEquals("old-6", ids.first())
         assertEquals("live-15", ids.last())
@@ -91,13 +91,6 @@ class RecentAuthorMessagesTest {
         assertEquals(listOf(true, false), history["alice"]?.map(ChatMessage::firstInSession))
     }
 
-    private fun message(id: String, login: String) = ChatMessage(
-        id = id,
-        userLogin = login,
-        displayName = login,
-        color = Color.Unspecified,
-        rawText = id,
-        parts = listOf(ChatPart.Text(id)),
-        timestampMillis = 0L,
-    )
+    private fun message(id: String, login: String) =
+        testChatMessage(id, id, login = login, color = Color.Unspecified, timestampMillis = 0L)
 }

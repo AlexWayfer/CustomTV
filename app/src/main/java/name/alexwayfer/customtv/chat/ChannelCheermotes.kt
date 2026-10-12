@@ -19,12 +19,12 @@ internal class ChannelCheermotes(private val scope: CoroutineScope) {
     fun open(channel: String, onLoaded: (Map<String, List<CheermoteTier>>) -> Unit = {}) {
         this.channel = channel
         job?.cancel()
-        _tiers.value = CheermoteRepository.cached(channel) ?: emptyMap()
+        _tiers.value = CheermoteRepository.cached(channel).orEmpty()
         job = scope.launch {
-            resultUnlessCancelled { CheermoteRepository.restore(channel) }.getOrNull()?.let { stored ->
+            loadResult { CheermoteRepository.restore(channel) }.getOrNull()?.let { stored ->
                 if (channelResultApplies(channel, this@ChannelCheermotes.channel)) _tiers.value = stored
             }
-            val loaded = resultUnlessCancelled { CheermoteRepository.forChannel(channel) }.getOrNull()
+            val loaded = loadResult { CheermoteRepository.forChannel(channel) }.getOrNull()
                 ?: return@launch
             if (!channelResultApplies(channel, this@ChannelCheermotes.channel)) return@launch
             _tiers.value = loaded

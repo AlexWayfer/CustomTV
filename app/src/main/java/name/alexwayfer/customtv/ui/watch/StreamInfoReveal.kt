@@ -7,12 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
-internal data class StreamInfoSnapshot(
-    val login: String,
-    val title: String?,
-    val categoryName: String?,
-)
-
 /**
  * A title or category that changes on the same channel expands the info panel. The first load
  * (nothing known yet), a value that goes away, and a switch to another channel do not.

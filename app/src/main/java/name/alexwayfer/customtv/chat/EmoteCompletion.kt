@@ -1,29 +1,18 @@
 package name.alexwayfer.customtv.chat
 
-internal data class EmoteQuery(
-    val start: Int,
-    val end: Int,
-    val text: String,
-)
-
 internal fun emoteQueryAtCursor(
     text: String,
     cursor: Int,
     withoutColon: Boolean = false,
-): EmoteQuery? {
-    colonEmoteQuery(text, cursor)?.let { return it }
-    if (!withoutColon) return null
-    return wordEmoteQuery(text, cursor)
-}
+): EmoteQuery? =
+    colonEmoteQuery(text, cursor) ?: if (withoutColon) wordEmoteQuery(text, cursor) else null
 
 private fun colonEmoteQuery(text: String, cursor: Int): EmoteQuery? {
     if (cursor !in 1..text.length) return null
     if (text[cursor - 1].isWhitespace()) return null
-    var tokenStart = cursor
-    while (tokenStart > 0 && !text[tokenStart - 1].isWhitespace()) tokenStart--
+    val tokenStart = tokenStartBefore(text, cursor)
     if (text[tokenStart] != ':') return null
-    var tokenEnd = cursor
-    while (tokenEnd < text.length && !text[tokenEnd].isWhitespace()) tokenEnd++
+    val tokenEnd = tokenEndAfter(text, cursor)
     return EmoteQuery(
         start = tokenStart,
         end = tokenEnd,
@@ -34,14 +23,11 @@ private fun colonEmoteQuery(text: String, cursor: Int): EmoteQuery? {
 private fun wordEmoteQuery(text: String, cursor: Int): EmoteQuery? {
     if (cursor !in 1..text.length) return null
     if (text[cursor - 1].isWhitespace()) return null
-    var tokenStart = cursor
-    while (tokenStart > 0 && !text[tokenStart - 1].isWhitespace()) tokenStart--
-    if (text[tokenStart] == ':') return null
+    val tokenStart = tokenStartBefore(text, cursor)
+    val tokenEnd = tokenEndAfter(text, cursor)
     // A message that starts with `/` is a command: its first word is the command, not an emote.
-    if (tokenStart == 0 && text[0] == '/') return null
-    var tokenEnd = cursor
-    while (tokenEnd < text.length && !text[tokenEnd].isWhitespace()) tokenEnd++
-    if (tokenEnd == tokenStart) return null
+    val command = tokenStart == 0 && text[0] == '/'
+    if (text[tokenStart] == ':' || command || tokenEnd == tokenStart) return null
     return EmoteQuery(
         start = tokenStart,
         end = tokenEnd,
@@ -49,11 +35,25 @@ private fun wordEmoteQuery(text: String, cursor: Int): EmoteQuery? {
     )
 }
 
+/** Where the word that ends at [cursor] starts. */
+private fun tokenStartBefore(text: String, cursor: Int): Int {
+    var start = cursor
+    while (start > 0 && !text[start - 1].isWhitespace()) start--
+    return start
+}
+
+/** Where the word that runs through [cursor] ends. */
+private fun tokenEndAfter(text: String, cursor: Int): Int {
+    var end = cursor
+    while (end < text.length && !text[end].isWhitespace()) end++
+    return end
+}
+
 internal fun pickerEmotesForCompletion(sections: List<EmotePickerSection>): List<PickerEmote> {
     val seen = HashSet<String>()
     val result = ArrayList<PickerEmote>()
-    for ((_, _, _, emotes) in sections) {
-        for (emote in emotes) {
+    for (section in sections) {
+        for (emote in section.emotes) {
             if (seen.add(emote.name.lowercase())) result.add(emote)
         }
     }

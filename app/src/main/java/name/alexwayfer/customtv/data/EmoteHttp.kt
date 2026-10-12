@@ -8,10 +8,12 @@ import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import org.json.JSONException
 import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 internal sealed interface EmoteHttpBody {
     data class Success(val body: String) : EmoteHttpBody
@@ -21,6 +23,9 @@ internal sealed interface EmoteHttpBody {
 
 internal object EmoteHttp {
     const val ATTEMPTS = 3
+
+    private val FIRST_BACKOFF = 500.milliseconds
+    private val MAX_BACKOFF = 4.seconds
 
     suspend fun get(client: OkHttpClient, url: String): EmoteHttpBody {
         val request = Request.Builder()
@@ -37,7 +42,7 @@ internal object EmoteHttp {
         parse: (String) -> T,
     ): T? {
         return when (val result = get(client, url)) {
-            is EmoteHttpBody.Success -> runCatching { parse(result.body) }.getOrNull()
+            is EmoteHttpBody.Success -> parsedOrNull(result.body, parse)
             EmoteHttpBody.Empty -> empty
             is EmoteHttpBody.Failure -> null
         }
@@ -52,7 +57,7 @@ internal object EmoteHttp {
         parse: (String) -> T,
     ): T? {
         return when (val result = get(client, url)) {
-            is EmoteHttpBody.Success -> runCatching { parse(result.body) }.getOrNull()
+            is EmoteHttpBody.Success -> parsedOrNull(result.body, parse)
                 ?.also { AssetFiles.write(file, result.body) }
             EmoteHttpBody.Empty -> empty.also { AssetFiles.delete(file) }
             is EmoteHttpBody.Failure -> null
@@ -61,7 +66,14 @@ internal object EmoteHttp {
 
     /** The answer [fetchStored] kept in [file], or null when there is none or it no longer parses. */
     fun <T> stored(file: String, parse: (String) -> T): T? =
-        AssetFiles.read(file)?.let { body -> runCatching { parse(body) }.getOrNull() }
+        AssetFiles.read(file)?.let { body -> parsedOrNull(body, parse) }
+
+    /** What [parse] reads from [body], or null when the body is not the JSON it expects. */
+    private fun <T> parsedOrNull(body: String, parse: (String) -> T): T? = try {
+        parse(body)
+    } catch (_: JSONException) {
+        null
+    }
 
     suspend fun retry(
         attempts: Int,
@@ -72,20 +84,19 @@ internal object EmoteHttp {
         for (attempt in 0 until attempts) {
             if (attempt > 0) delay(backoff(attempt))
             last = fetch()
-            when (last) {
-                is EmoteHttpBody.Success, EmoteHttpBody.Empty -> return last
-                is EmoteHttpBody.Failure -> if (!last.retryable) return last
-            }
+            if (last !is EmoteHttpBody.Failure || !last.retryable) break
         }
         return last
     }
 
     fun isRetryableStatus(code: Int): Boolean {
-        return code == 408 || code == 425 || code == 429 || code in 500..599
+        return code == HTTP_REQUEST_TIMEOUT || code == HTTP_TOO_EARLY || code == HTTP_TOO_MANY_REQUESTS ||
+            code in HTTP_SERVER_ERROR
     }
 
     fun backoff(attempt: Int): Duration {
-        return (500L * (1L shl (attempt - 1).coerceAtLeast(0))).coerceAtMost(4_000L).milliseconds
+        return (FIRST_BACKOFF.inWholeMilliseconds * (1L shl (attempt - 1).coerceAtLeast(0)))
+            .coerceAtMost(MAX_BACKOFF.inWholeMilliseconds).milliseconds
     }
 
     fun classify(response: Response): EmoteHttpBody {
@@ -95,7 +106,7 @@ internal object EmoteHttp {
                 val text = response.body.string()
                 if (text.isBlank()) EmoteHttpBody.Empty else EmoteHttpBody.Success(text)
             }
-            code == 404 -> EmoteHttpBody.Empty
+            code == HTTP_NOT_FOUND -> EmoteHttpBody.Empty
             isRetryableStatus(code) -> EmoteHttpBody.Failure(retryable = true)
             else -> EmoteHttpBody.Failure(retryable = false)
         }
@@ -113,7 +124,13 @@ internal object EmoteHttp {
 
                 override fun onResponse(call: Call, response: Response) {
                     // A channel without emotes there answers 404; the host names the service.
-                    Diagnostics.reportHttp("EmoteHttp", response.request.url.host, response.code, "", setOf(404))
+                    Diagnostics.reportHttp(
+                        "EmoteHttp",
+                        response.request.url.host,
+                        response.code,
+                        "",
+                        setOf(HTTP_NOT_FOUND),
+                    )
                     val classified = try {
                         response.use { classify(it) }
                     } catch (_: IOException) {

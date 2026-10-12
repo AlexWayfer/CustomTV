@@ -47,26 +47,16 @@ class MiniPlayerGesturesTest {
 
     @Test
     fun `player bounds preserve expanded and minimized positions`() {
-        val expanded = miniPlayerBounds(
-            fullWidthPx = 1000f,
-            fullHeightPx = 2000f,
+        val dock = MiniPlayerDock(
             miniWidthPx = 250f,
             miniPaddingPx = 10f,
             statusBarTopPx = 30f,
             navigationBarBottomPx = 50f,
-            progress = 0f,
         )
+        val expanded = miniPlayerBounds(fullWidthPx = 1000f, fullHeightPx = 2000f, dock, progress = 0f)
         assertEquals(MiniPlayerBounds(0, 30, 1000, 563), expanded)
 
-        val minimized = miniPlayerBounds(
-            fullWidthPx = 1000f,
-            fullHeightPx = 2000f,
-            miniWidthPx = 250f,
-            miniPaddingPx = 10f,
-            statusBarTopPx = 30f,
-            navigationBarBottomPx = 50f,
-            progress = 1f,
-        )
+        val minimized = miniPlayerBounds(fullWidthPx = 1000f, fullHeightPx = 2000f, dock, progress = 1f)
         assertEquals(MiniPlayerBounds(740, 1799, 250, 141), minimized)
     }
 

@@ -1,12 +1,7 @@
 package name.alexwayfer.customtv.chat
 
+import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
-
-internal data class EmoteUse(
-    val name: String,
-    val count: Int,
-    val usedAtMillis: Long,
-)
 
 internal fun emoteUsesAfterMessage(
     current: List<EmoteUse>,
@@ -65,7 +60,7 @@ internal fun encodeEmoteUsage(channels: Map<String, List<EmoteUse>>): String {
 }
 
 internal fun decodeEmoteUsage(raw: String): Map<String, List<EmoteUse>>? {
-    val root = runCatching { JSONObject(raw) }.getOrNull() ?: return null
+    val root = raw.toJsonObjectOrNull() ?: return null
     val channels = linkedMapOf<String, List<EmoteUse>>()
     val channelIds = root.keys()
     while (channelIds.hasNext()) {
@@ -75,10 +70,11 @@ internal fun decodeEmoteUsage(raw: String): Map<String, List<EmoteUse>>? {
         val names = channel.keys()
         while (names.hasNext()) {
             val name = names.next()
-            val item = channel.optJSONObject(name) ?: continue
-            val count = item.optInt("count", 0)
-            if (name.isEmpty() || count <= 0) continue
-            uses.add(EmoteUse(name, count, item.optLong("usedAt", 0L)))
+            val item = channel.optJSONObject(name)
+            val count = item?.optInt("count", 0) ?: 0
+            if (item != null && name.isNotEmpty() && count > 0) {
+                uses.add(EmoteUse(name, count, item.optLong("usedAt", 0L)))
+            }
         }
         if (uses.isNotEmpty()) channels[channelId] = uses
     }

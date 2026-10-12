@@ -5,7 +5,7 @@ package name.alexwayfer.customtv.ui.watch
  * [alreadyVoted] means Twitch refused the vote because the viewer had voted before; [failed] means the last vote was
  * not taken for another reason.
  */
-internal class PollVoting(
+internal data class PollVoting(
     val selectedChoiceId: String?,
     val votedChoiceId: String?,
     val sending: Boolean,

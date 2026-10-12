@@ -15,8 +15,8 @@ class MentionVibrationTest {
 
     @Test
     fun aLengthOutsideTheRangeIsBroughtInsideIt() {
-        assertEquals(MentionVibrationMinMs, mentionVibrationMs(0))
-        assertEquals(MentionVibrationMaxMs, mentionVibrationMs(5_000))
+        assertEquals(MENTION_VIBRATION_MIN_MS, mentionVibrationMs(0))
+        assertEquals(MENTION_VIBRATION_MAX_MS, mentionVibrationMs(5_000))
     }
 
     @Test

@@ -65,7 +65,8 @@ class FollowedPreviewsTest {
 
     @Test
     fun channelThatWentOfflineDropsItsPreview() {
-        val next = followedWithPreviews(listOf(live.copy(previewAtMillis = now)), listOf(live.copy(isLive = false)), now)
+        val shown = listOf(live.copy(previewAtMillis = now))
+        val next = followedWithPreviews(shown, listOf(live.copy(isLive = false)), now)
 
         assertNull(next.single().previewAtMillis)
     }

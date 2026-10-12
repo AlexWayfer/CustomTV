@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -17,6 +18,13 @@ import kotlin.math.roundToInt
 /** Expand vertically only; leave the neighbouring badges and message text outside the target. */
 internal fun authorTouchBounds(bounds: Rect, extra: Float): Rect =
     Rect(bounds.left, bounds.top - extra, bounds.right, bounds.bottom + extra)
+
+/**
+ * Whether the text a layout was made for ([laidOut]) is [text], so its offsets match the link ranges. Text with
+ * links is laid out with the link styles added as span styles, so the whole annotated strings never compare equal.
+ */
+internal fun layoutTextMatches(laidOut: AnnotatedString, text: AnnotatedString): Boolean =
+    laidOut.text == text.text
 
 @Composable
 internal fun ChatAuthorTouchTarget(

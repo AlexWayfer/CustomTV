@@ -25,8 +25,9 @@ internal object TwitchEmoteDetailsRepository {
 
     fun peek(id: String): TwitchEmoteDetails? = cache[id]
 
-    suspend fun details(id: String): TwitchEmoteDetails? {
-        cache[id]?.let { return it }
+    suspend fun details(id: String): TwitchEmoteDetails? = cache[id] ?: loadDetails(id)
+
+    private suspend fun loadDetails(id: String): TwitchEmoteDetails? {
         val loaded = withContext(Dispatchers.IO) { fetch(id) } ?: return null
         if (loaded.globalSet) globalsLoaded = true
         cache.putAll(loaded.emotes)
@@ -56,8 +57,8 @@ internal object TwitchEmoteDetailsRepository {
         val result = LinkedHashMap<String, TwitchEmoteDetails>()
         val data = json.optJSONObject("data") ?: return result
         val emote = data.optJSONObject("emote")
-        val ownerName = emote?.optJSONObject("owner").text("displayName")
         val owner = emote?.optJSONObject("owner")
+        val ownerName = owner?.text("displayName")
         val products = owner?.optJSONArray("subscriptionProducts")
         if (products != null) {
             for (productIndex in 0 until products.length()) {
@@ -128,9 +129,4 @@ internal object TwitchEmoteDetailsRepository {
         val emotes: Map<String, TwitchEmoteDetails>,
         val globalSet: Boolean,
     )
-}
-
-private fun JSONObject?.text(name: String): String? {
-    val value = this?.optString(name) ?: return null
-    return value.takeIf { it.isNotBlank() && it != "null" }
 }

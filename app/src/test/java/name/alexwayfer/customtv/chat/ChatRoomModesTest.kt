@@ -58,13 +58,13 @@ class ChatRoomModesTest {
 
     @Test
     fun notFollowingShowsFollowersPlaque() {
-        val plaques = plaques(followersOnlyMinutes = 0, follow = FollowForChatMode.NotFollowing)
+        val plaques = plaques(ChatRoomModes(followersOnlyMinutes = 0), viewer(follow = FollowForChatMode.NotFollowing))
         assertEquals(listOf(ChatModePlaque.FollowersNeedFollow("Segall")), plaques)
     }
 
     @Test
     fun unknownFollowHidesFollowersPlaque() {
-        val plaques = plaques(followersOnlyMinutes = 10, follow = FollowForChatMode.Unknown)
+        val plaques = plaques(ChatRoomModes(followersOnlyMinutes = 10), viewer(follow = FollowForChatMode.Unknown))
         assertTrue(plaques.isEmpty())
     }
 
@@ -72,8 +72,8 @@ class ChatRoomModesTest {
     fun followingForTenMinutesWithFiveElapsedShowsFiveRemaining() {
         val followedAt = 1_000_000L
         val plaques = plaques(
-            followersOnlyMinutes = 10,
-            follow = FollowForChatMode.Following(followedAt),
+            ChatRoomModes(followersOnlyMinutes = 10),
+            viewer(follow = FollowForChatMode.Following(followedAt)),
             nowMillis = followedAt + 5 * 60_000L,
         )
         assertEquals(listOf(ChatModePlaque.FollowersWait(5 * 60_000L)), plaques)
@@ -83,8 +83,8 @@ class ChatRoomModesTest {
     fun followingLongEnoughHidesFollowersPlaque() {
         val followedAt = 1_000_000L
         val plaques = plaques(
-            followersOnlyMinutes = 10,
-            follow = FollowForChatMode.Following(followedAt),
+            ChatRoomModes(followersOnlyMinutes = 10),
+            viewer(follow = FollowForChatMode.Following(followedAt)),
             nowMillis = followedAt + 10 * 60_000L,
         )
         assertTrue(plaques.isEmpty())
@@ -93,8 +93,8 @@ class ChatRoomModesTest {
     @Test
     fun anyFollowerCanChatWhenFollowersOnlyIsZero() {
         val plaques = plaques(
-            followersOnlyMinutes = 0,
-            follow = FollowForChatMode.Following(1L),
+            ChatRoomModes(followersOnlyMinutes = 0),
+            viewer(follow = FollowForChatMode.Following(1L)),
             nowMillis = 1L,
         )
         assertTrue(plaques.isEmpty())
@@ -103,12 +103,8 @@ class ChatRoomModesTest {
     @Test
     fun broadcasterSeesRoomModesWithoutAPersonalLimit() {
         val plaques = plaques(
-            followersOnlyMinutes = 10,
-            subscribersOnly = true,
-            emoteOnly = true,
-            slowSeconds = 10,
-            follow = FollowForChatMode.NotFollowing,
-            viewerIsBroadcaster = true,
+            ChatRoomModes(followersOnlyMinutes = 10, subscribersOnly = true, emoteOnly = true, slowSeconds = 10),
+            viewer(follow = FollowForChatMode.NotFollowing, isBroadcaster = true),
             slowDeadlineMillis = 2_000L,
             nowMillis = 1_000L,
         )
@@ -130,12 +126,8 @@ class ChatRoomModesTest {
     @Test
     fun enabledModesStackFollowersThenSubscribersEmotesAndSlow() {
         val plaques = plaques(
-            followersOnlyMinutes = 0,
-            subscribersOnly = true,
-            emoteOnly = true,
-            slowSeconds = 30,
-            follow = FollowForChatMode.NotFollowing,
-            subscription = SubForChatMode.NotSubscribed,
+            ChatRoomModes(followersOnlyMinutes = 0, subscribersOnly = true, emoteOnly = true, slowSeconds = 30),
+            viewer(follow = FollowForChatMode.NotFollowing, subscription = SubForChatMode.NotSubscribed),
         )
         assertEquals(
             listOf(
@@ -150,13 +142,13 @@ class ChatRoomModesTest {
 
     @Test
     fun subscribedViewerHidesSubscribersPlaque() {
-        val plaques = plaques(subscribersOnly = true, subscription = SubForChatMode.Subscribed)
+        val plaques = plaques(ChatRoomModes(subscribersOnly = true), viewer(subscription = SubForChatMode.Subscribed))
         assertTrue(plaques.isEmpty())
     }
 
     @Test
     fun unknownSubscriptionHidesSubscribersPlaque() {
-        val plaques = plaques(subscribersOnly = true, subscription = SubForChatMode.Unknown)
+        val plaques = plaques(ChatRoomModes(subscribersOnly = true), viewer(subscription = SubForChatMode.Unknown))
         assertTrue(plaques.isEmpty())
     }
 
@@ -177,7 +169,7 @@ class ChatRoomModesTest {
     @Test
     fun slowCountdownStartsFromTheDeadlineAndBlocksSend() {
         val deadline = slowModeDeadline(sentAtMillis = 5_000L, slowSeconds = 30)
-        val plaques = plaques(slowSeconds = 30, slowDeadlineMillis = deadline, nowMillis = 10_000L)
+        val plaques = plaques(ChatRoomModes(slowSeconds = 30), slowDeadlineMillis = deadline, nowMillis = 10_000L)
         val slow = plaques.single() as ChatModePlaque.Slow
         assertEquals(25_000L, slow.remainingMillis)
         assertTrue(slowModeBlocksSend(slow, awaitingOwnEcho = false))
@@ -192,7 +184,7 @@ class ChatRoomModesTest {
 
     @Test
     fun slowModeWaitingForOwnEchoBlocksSendWithoutACountdown() {
-        val slow = plaques(slowSeconds = 30).single() as ChatModePlaque.Slow
+        val slow = plaques(ChatRoomModes(slowSeconds = 30)).single() as ChatModePlaque.Slow
         assertNull(slow.remainingMillis)
         assertTrue(slowModeBlocksSend(slow, awaitingOwnEcho = true))
     }
@@ -246,25 +238,19 @@ class ChatRoomModesTest {
         assertEquals("1d 1:00:00", chatModeCountdown(90_000_000L))
     }
 
+    /** The plaques in Segall's chat. */
     private fun plaques(
-        followersOnlyMinutes: Int? = null,
-        subscribersOnly: Boolean = false,
-        emoteOnly: Boolean = false,
-        slowSeconds: Int? = null,
-        follow: FollowForChatMode = FollowForChatMode.Unknown,
-        subscription: SubForChatMode = SubForChatMode.Unknown,
-        viewerIsBroadcaster: Boolean = false,
+        modes: ChatRoomModes = ChatRoomModes(),
+        viewer: ChatModeViewer = viewer(),
         nowMillis: Long = 0L,
         slowDeadlineMillis: Long? = null,
-    ): List<ChatModePlaque> = chatModePlaques(
-        modes = ChatRoomModes(followersOnlyMinutes, subscribersOnly, emoteOnly, slowSeconds),
-        viewerIsBroadcaster = viewerIsBroadcaster,
-        follow = follow,
-        subscription = subscription,
-        nowMillis = nowMillis,
-        slowDeadlineMillis = slowDeadlineMillis,
-        channelName = "Segall",
-    )
+    ): List<ChatModePlaque> = chatModePlaques(modes, viewer, nowMillis, slowDeadlineMillis, channelName = "Segall")
+
+    private fun viewer(
+        follow: FollowForChatMode = FollowForChatMode.Unknown,
+        subscription: SubForChatMode = SubForChatMode.Unknown,
+        isBroadcaster: Boolean = false,
+    ) = ChatModeViewer(isBroadcaster, follow, subscription)
 
     private fun slowDeadline(
         message: ChatMessage,

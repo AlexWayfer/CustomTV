@@ -77,13 +77,6 @@ internal fun CollaborationSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val title = stringResource(R.string.collaboration_title)
-    val sharedLabel = sharedViewerCount?.let { NumberFormat.getIntegerInstance().format(it) }
-    val titleDescription = if (sharedLabel == null) {
-        title
-    } else {
-        stringResource(R.string.collaboration_title_with_viewers, title, sharedLabel)
-    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -93,29 +86,7 @@ internal fun CollaborationSheet(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 12.dp),
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                    .clearAndSetSemantics { contentDescription = titleDescription },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = title,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-                if (sharedLabel != null) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(TwitchLive))
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = sharedLabel,
-                        color = TwitchText,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
-            }
+            CollaborationTitle(sharedViewerCount)
             when (result) {
                 null -> {
                     Box(
@@ -146,6 +117,41 @@ internal fun CollaborationSheet(
                     }
                 }
             }
+        }
+    }
+}
+
+/** The sheet's title, and the viewers the channels share beside it. */
+@Composable
+private fun CollaborationTitle(sharedViewerCount: Int?) {
+    val title = stringResource(R.string.collaboration_title)
+    val sharedLabel = sharedViewerCount?.let { NumberFormat.getIntegerInstance().format(it) }
+    val titleDescription = if (sharedLabel == null) {
+        title
+    } else {
+        stringResource(R.string.collaboration_title_with_viewers, title, sharedLabel)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+            .clearAndSetSemantics { contentDescription = titleDescription },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        if (sharedLabel != null) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(TwitchLive))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = sharedLabel,
+                color = TwitchText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 }

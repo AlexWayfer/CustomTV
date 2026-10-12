@@ -8,6 +8,7 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import name.alexwayfer.customtv.chat.ChatNickSpan
 import name.alexwayfer.customtv.chat.ChatUrlSpan
 import name.alexwayfer.customtv.chat.ReadableChatColor
@@ -15,18 +16,18 @@ import name.alexwayfer.customtv.chat.findChatNicks
 import name.alexwayfer.customtv.chat.findChatUrls
 import name.alexwayfer.customtv.ui.theme.ChatLink
 import name.alexwayfer.customtv.ui.theme.TwitchBg
+import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
+/** [text] in [bodyStyle], with its links in [linkStyle] and the nicks it mentions in their colors from [look]. */
 internal fun AnnotatedString.Builder.appendChatTextWithLinks(
     text: String,
     bodyStyle: SpanStyle,
     linkStyle: SpanStyle,
-    nickColors: Map<String, Color>,
-    readableColors: Boolean,
-    enableLinks: Boolean = true,
+    look: ChatMessageLook,
     onClick: (String) -> Unit,
 ) {
-    val urls = if (enableLinks) findChatUrls(text) else emptyList()
-    val nicks = findChatNicks(text, nickColors.keys)
+    val urls = if (look.enableLinks) findChatUrls(text) else emptyList()
+    val nicks = findChatNicks(text, look.nickColors.keys)
     if (urls.isEmpty() && nicks.isEmpty()) {
         withStyle(bodyStyle) { append(keepCommandPrefixTogether(text)) }
         return
@@ -43,32 +44,13 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
         }
         when (span) {
             is ChatUrlSpan -> {
-                withLink(
-                    LinkAnnotation.Url(
-                        span.href,
-                        TextLinkStyles(
-                            style = linkStyle,
-                            focusedStyle = linkStyle,
-                            hoveredStyle = linkStyle,
-                            pressedStyle = linkStyle.copy(color = ChatLink.copy(alpha = 0.75f)),
-                        ),
-                        linkInteractionListener = { onClick(span.href) },
-                    ),
-                ) {
-                    append(keepUrlPathTogether(span.raw))
-                }
+                appendChatLink(span, linkStyle, onClick)
                 cursor = span.endExclusive
             }
             is ChatNickSpan -> {
-                val known = nickColors[span.key]?.takeUnless { it == Color.Unspecified }
-                val color = when {
-                    known != null && readableColors -> ReadableChatColor.adjust(known, TwitchBg)
-                    known != null -> known
-                    else -> Color.White
-                }
                 withStyle(
                     bodyStyle.copy(
-                        color = color,
+                        color = chatNickColor(look.nickColors[span.key], look.readableColors),
                         fontWeight = FontWeight.Bold,
                     ),
                 ) {
@@ -81,6 +63,64 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
     if (cursor < text.length) {
         withStyle(bodyStyle) { append(keepCommandPrefixTogether(text.substring(cursor))) }
     }
+}
+
+private fun AnnotatedString.Builder.appendChatLink(span: ChatUrlSpan, linkStyle: SpanStyle, onClick: (String) -> Unit) {
+    withLink(
+        LinkAnnotation.Url(
+            span.href,
+            TextLinkStyles(
+                style = linkStyle,
+                focusedStyle = linkStyle,
+                hoveredStyle = linkStyle,
+                pressedStyle = linkStyle.copy(color = ChatLink.copy(alpha = 0.75f)),
+            ),
+            linkInteractionListener = { onClick(span.href) },
+        ),
+    ) {
+        append(keepUrlPathTogether(span.raw))
+    }
+}
+
+/** The time a chat line starts with, in the secondary color and a space after it; nothing without a [timestamp]. */
+internal fun AnnotatedString.Builder.appendChatTimestamp(timestamp: String?, size: TextUnit) {
+    if (timestamp == null) return
+    withStyle(SpanStyle(color = TwitchTextSecondary, fontSize = size)) {
+        append(timestamp)
+        append(" ")
+    }
+}
+
+/** The [text] in the secondary color, with the chatter's [name] in it bold in their [nickColor] where it is found. */
+internal fun AnnotatedString.Builder.appendWithChatterName(
+    text: String,
+    name: String,
+    nickColor: Color,
+    textSize: TextUnit,
+) {
+    val plain = SpanStyle(color = TwitchTextSecondary, fontSize = textSize)
+    val nameStart = text.indexOf(name, ignoreCase = true)
+    if (nameStart < 0 || name.isBlank()) {
+        withStyle(plain) {
+            append(text)
+        }
+        return
+    }
+    withStyle(plain) {
+        append(text.substring(0, nameStart))
+    }
+    withStyle(SpanStyle(color = nickColor, fontWeight = FontWeight.Bold, fontSize = textSize)) {
+        append(text.substring(nameStart, nameStart + name.length))
+    }
+    withStyle(plain) {
+        append(text.substring(nameStart + name.length))
+    }
+}
+
+/** A mentioned chatter's chat color, made readable on the dark chat when asked; white for one not seen yet. */
+private fun chatNickColor(known: Color?, readableColors: Boolean): Color {
+    val color = known?.takeUnless { it == Color.Unspecified } ?: return Color.White
+    return if (readableColors) ReadableChatColor.adjust(color, TwitchBg) else color
 }
 
 // Word Joiner prevents a break after "!" without changing the copied message text.

@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +26,8 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.diagnostics.AppLog
+import java.io.IOException
+import java.util.Locale
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
@@ -53,9 +54,7 @@ internal object SleepTimer {
         saveScope.launch {
             try {
                 store.setSleepTimerMinutes(duration.inWholeMinutes.toInt())
-            } catch (failure: CancellationException) {
-                throw failure
-            } catch (failure: Exception) {
+            } catch (failure: IOException) {
                 AppLog.w(SLEEP_TIMER_LOG_TAG, "save failed: ${failure.javaClass.simpleName}")
             }
         }
@@ -101,10 +100,10 @@ internal fun SleepTimerEffect(snackbarHostState: SnackbarHostState, inPictureInP
         if (!currentInPictureInPicture) warningFor = endsAt
         delay(sleepTimerLeft(endsAt, SystemClock.elapsedRealtime()))
         warningFor = null
-        val inPictureInPicture = currentInPictureInPicture
+        val firedInPictureInPicture = currentInPictureInPicture
         SleepTimer.fired()
         currentOnFire()
-        if (!inPictureInPicture) closedNotice = OneShotRequest(Unit)
+        if (!firedInPictureInPicture) closedNotice = OneShotRequest(Unit)
     }
     val warning = stringResource(R.string.sleep_timer_warning)
     val cancel = stringResource(R.string.cancel)
@@ -156,6 +155,6 @@ internal fun sleepTimerPickerStart(left: Duration?, lastSet: Duration?): SleepTi
 }
 
 internal fun formatSleepTimerLeft(left: Duration): String =
-    left.toComponents { hours, minutes, seconds, _ -> "%d:%02d:%02d".format(hours, minutes, seconds) }
+    left.toComponents { hours, minutes, seconds, _ -> "%d:%02d:%02d".format(Locale.ROOT, hours, minutes, seconds) }
 
 private const val SLEEP_TIMER_LOG_TAG = "SleepTimer"

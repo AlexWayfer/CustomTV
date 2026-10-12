@@ -46,6 +46,7 @@ import name.alexwayfer.customtv.data.FollowedChannel
 import name.alexwayfer.customtv.data.FollowedLastBroadcastAge
 import name.alexwayfer.customtv.data.followedLastBroadcastAge
 import name.alexwayfer.customtv.data.followedLastBroadcastMillis
+import name.alexwayfer.customtv.ui.components.VIDEO_ASPECT_RATIO
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
@@ -72,7 +73,7 @@ internal val SECTION_HEADER_BAND = 10.dp
  * through [onHeight], so the loading bar can run along its bottom.
  */
 internal fun LazyListScope.sectionStickyHeader(key: Any, @StringRes text: Int, onHeight: (Int) -> Unit) {
-    stickyHeader(key = key) {
+    stickyHeader(key = key) { _ ->
         FollowedSectionHeader(
             text = stringResource(text),
             modifier = Modifier
@@ -104,27 +105,7 @@ internal fun FollowedLiveChannelRow(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .width(PREVIEW_WIDTH)
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(6.dp))
-                .background(TwitchSurfaceAlt),
-        ) {
-            FollowedStreamPreview(url = followedPreviewUrl(channel), modifier = Modifier.fillMaxSize())
-            if (channel.viewerCount != null) {
-                ChannelListViewers(
-                    viewerCount = channel.viewerCount,
-                    sharedViewerCount = channel.sharedViewerCount,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.65f))
-                        .padding(horizontal = 4.dp, vertical = 1.dp),
-                )
-            }
-        }
+        FollowedLivePreview(channel)
         Column(
             modifier = Modifier
                 .padding(start = 12.dp)
@@ -166,6 +147,32 @@ internal fun FollowedLiveChannelRow(
                 )
             }
             FollowedWatchStreakLine(channelId = channel.id, isLive = true)
+        }
+    }
+}
+
+/** The stream's preview with the viewers over its corner. */
+@Composable
+private fun FollowedLivePreview(channel: FollowedChannel) {
+    Box(
+        modifier = Modifier
+            .width(PREVIEW_WIDTH)
+            .aspectRatio(VIDEO_ASPECT_RATIO)
+            .clip(RoundedCornerShape(6.dp))
+            .background(TwitchSurfaceAlt),
+    ) {
+        FollowedStreamPreview(url = followedPreviewUrl(channel), modifier = Modifier.fillMaxSize())
+        if (channel.viewerCount != null) {
+            ChannelListViewers(
+                viewerCount = channel.viewerCount,
+                sharedViewerCount = channel.sharedViewerCount,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
+            )
         }
     }
 }

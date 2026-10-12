@@ -31,6 +31,7 @@ import name.alexwayfer.customtv.data.ChannelFollowStatus
 import name.alexwayfer.customtv.data.channelFollowNeedsRequest
 import name.alexwayfer.customtv.data.channelFollowStatus
 import name.alexwayfer.customtv.data.followListOutdated
+import name.alexwayfer.customtv.data.isOwnChannel
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 
 /** The user's follow of the open channel; [set] records a follow or an unfollow the user just made in the app. */
@@ -40,12 +41,13 @@ internal class ChannelFollow(val status: ChannelFollowStatus, val set: (followin
  * Whether the user follows the channel, for its heart and its bell. Home's follows list answers when it is
  * loaded; otherwise, and after the user comes back to the app from a browser where they may have followed or
  * unfollowed, one request asks Twitch. A follow made in the app is newer than both. When the request disagrees
- * with Home's list, [onListOutdated] reloads it. Call it where it stays composed while the stream info collapses,
- * so collapsing does not ask again.
+ * with Home's list, [onListOutdated] reloads it. The user's own channel asks nothing. Call it where it stays
+ * composed while the stream info collapses, so collapsing does not ask again.
  */
 @Composable
 internal fun rememberChannelFollow(
     channelId: String?,
+    ownUserId: String?,
     followedIds: Set<String>?,
     readFollow: suspend (broadcasterId: String) -> FollowForChatMode,
     onListOutdated: () -> Unit,
@@ -74,17 +76,28 @@ internal fun rememberChannelFollow(
     val followedIdsState = rememberUpdatedState(followedIds)
     val listOutdated = rememberUpdatedState(onListOutdated)
     val listKnown = followedIds != null
-    LaunchedEffect(id, listKnown, returns) {
-        if (id.isEmpty() || !channelFollowNeedsRequest(followedIds, returned = returns != returnsAtOpen)) {
+    val ownChannel = isOwnChannel(id, ownUserId)
+    LaunchedEffect(id, listKnown, returns, ownChannel) {
+        if (id.isEmpty() || ownChannel ||
+            !channelFollowNeedsRequest(followedIds, returned = returns != returnsAtOpen)
+        ) {
             return@LaunchedEffect
         }
         val read = readFollowState.value(id)
         checked = read
         if (followListOutdated(followedIdsState.value, read, id)) listOutdated.value()
     }
-    val status = if (id.isEmpty()) ChannelFollowStatus.Unknown else channelFollowStatus(followedIds, checked, id)
+    val status = when {
+        id.isEmpty() -> ChannelFollowStatus.Unknown
+        ownChannel -> ChannelFollowStatus.OwnChannel
+        else -> channelFollowStatus(followedIds, checked, id)
+    }
     return ChannelFollow(status) { following ->
-        checked = if (following) FollowForChatMode.Following(System.currentTimeMillis()) else FollowForChatMode.NotFollowing
+        checked = if (following) {
+            FollowForChatMode.Following(System.currentTimeMillis())
+        } else {
+            FollowForChatMode.NotFollowing
+        }
     }
 }
 

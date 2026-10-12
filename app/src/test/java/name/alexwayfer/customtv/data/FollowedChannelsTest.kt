@@ -62,14 +62,18 @@ class FollowedChannelsTest {
         )
         assertEquals(UserSubscriptionRead.NotSubscribed, userSubscriptionRead(200, """{"data":[]}"""))
         assertEquals(UserSubscriptionRead.Unavailable, userSubscriptionRead(401, """{"message":"missing scope"}"""))
-        assertEquals(UserSubscriptionRead.Unavailable, userSubscriptionRead(500, """{"error":"Internal Server Error"}"""))
+        assertEquals(
+            UserSubscriptionRead.Unavailable,
+            userSubscriptionRead(500, """{"error":"Internal Server Error"}"""),
+        )
     }
 
     @Test
     fun ownFollowDateIsMissingWhenTheUserDoesNotFollow() {
         assertNull(parseOwnFollowedAt("""{"data":[]}""", "99"))
         assertNull(parseOwnFollowedAt("""{"data":[{"broadcaster_id":"99","followed_at":"nope"}]}""", "99"))
-        assertNull(parseOwnFollowedAt("""{"data":[{"broadcaster_id":"1","followed_at":"2020-05-01T12:00:00Z"}]}""", "99"))
+        val other = """{"data":[{"broadcaster_id":"1","followed_at":"2020-05-01T12:00:00Z"}]}"""
+        assertNull(parseOwnFollowedAt(other, "99"))
     }
 
     @Test
@@ -411,7 +415,14 @@ class FollowedChannelsTest {
                     viewerCount = 12,
                     streamTitle = "Drawing",
                 ),
-                FollowedChannel(id = "2", login = "bob", displayName = "bob", isLive = true, viewerCount = 0, streamTitle = ""),
+                FollowedChannel(
+                    id = "2",
+                    login = "bob",
+                    displayName = "bob",
+                    isLive = true,
+                    viewerCount = 0,
+                    streamTitle = "",
+                ),
             ),
             page?.channels,
         )

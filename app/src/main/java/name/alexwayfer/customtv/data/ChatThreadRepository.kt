@@ -9,12 +9,12 @@ import name.alexwayfer.customtv.diagnostics.Diagnostics
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import java.io.IOException
-import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.seconds
 
 internal class ChatThreadRepository(
     private val http: OkHttpClient = sharedHttpClient.newBuilder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(10.seconds)
+        .readTimeout(10.seconds)
         .build(),
 ) {
     suspend fun load(messageId: String): List<ChatThreadEntry>? {
@@ -29,8 +29,8 @@ internal class ChatThreadRepository(
                     val body = response.body.string()
                     Diagnostics.reportGql(TAG, "thread", response.code, body)
                     val code = response.code
-                    if (code !in 200..299) {
-                        if (code in 400..499) {
+                    if (code !in HTTP_SUCCESS) {
+                        if (code in HTTP_CLIENT_ERROR) {
                             AppLog.w(TAG, "thread rejected HTTP $code")
                         } else {
                             AppLog.w(TAG, "thread failed HTTP $code")

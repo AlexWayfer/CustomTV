@@ -9,6 +9,7 @@
     <string name="following_offline">Не в эфире</string>
     <string name="following_empty">Вы пока не отслеживаете ни одного канала</string>
     <string name="following_unavailable">Не удалось загрузить отслеживаемые каналы</string>
+    <string name="channels_load_failed">Не удалось загрузить каналы</string>
     <string name="following_last_live">Последний эфир: %1$s</string>
     <string name="following_last_live_today">Сегодня</string>
     <string name="following_last_live_yesterday">Вчера</string>
@@ -352,6 +353,7 @@
     <string name="telegram_current_version_free">Текущая версия: %1$s, free</string>
     <string name="telegram_current_version_premium">Текущая версия: %1$s, premium</string>
     <string name="telegram_no_new_versions">Новых версий нет</string>
+    <string name="telegram_no_new_versions_latest">Новых версий нет. Последняя найденная: %1$s</string>
     <string name="telegram_start_over">Начать заново</string>
     <string name="telegram_not_registered">Этот номер не зарегистрирован в Telegram</string>
     <string name="telegram_unsupported">Telegram запросил шаг, который приложение не поддерживает</string>

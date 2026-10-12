@@ -5,18 +5,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
-import name.alexwayfer.customtv.data.ChatterLabelIcon
 
 @Suppress("unused", "UnusedReceiverParameter")
 internal fun AnnotatedString.Builder.appendChatterLabelBadges(
     userId: String?,
-    badgeSize: Dp,
-    slotWidth: TextUnit,
-    slotHeight: TextUnit,
-    labels: Map<String, List<ChatterLabelIcon>>,
+    look: ChatMessageLook,
     inlineContent: MutableMap<String, InlineTextContent>,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) = Unit
 
 @Suppress("unused")

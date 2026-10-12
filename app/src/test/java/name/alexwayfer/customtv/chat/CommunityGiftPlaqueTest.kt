@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.chat
 
-import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -40,10 +39,8 @@ class CommunityGiftPlaqueTest {
         val hidden = message("hidden", gift = true)
         val latest = message("latest", gift = true)
 
-        assertEquals(
-            latest,
-            visibleCommunityGiftMessage(latestCommunityGiftMessage(listOf(hidden, latest)), hidden.id, latest.timestampMillis),
-        )
+        val newest = latestCommunityGiftMessage(listOf(hidden, latest))
+        assertEquals(latest, visibleCommunityGiftMessage(newest, hidden.id, latest.timestampMillis))
     }
 
     @Test
@@ -62,14 +59,12 @@ class CommunityGiftPlaqueTest {
         )
     }
 
-    private fun message(id: String, gift: Boolean = false) = ChatMessage(
-        id = id,
-        userLogin = "viewer",
+    private fun message(id: String, gift: Boolean = false) = testChatMessage(
+        id,
+        id,
         displayName = "Viewer",
-        color = Color.White,
-        rawText = id,
         parts = emptyList(),
-        timestampMillis = 1L,
+    ).copy(
         communityGift = if (gift) {
             ChatCommunityGift(10, 1, "Viewer", 10, anonymous = false)
         } else {

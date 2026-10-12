@@ -62,36 +62,54 @@ class ChatMenuKeyboardTest {
 
     @Test
     fun withTheKeyboardUpAndNoMessageTheBadgeAndTheMenuGiveWay() {
-        assertEquals(ChatFieldSideButtons(start = false, endButton = false), chatFieldSideButtons(composerOpen = true, hasMessage = false, sending = false, fullscreen = false))
+        assertEquals(ChatFieldSideButtons(start = false, endButton = false), sideButtons(composerOpen = true))
     }
 
     @Test
     fun aTypedMessageBringsTheEndButtonBackAsSendWithTheBadgeStillAway() {
-        assertEquals(ChatFieldSideButtons(start = false, endButton = true), chatFieldSideButtons(composerOpen = true, hasMessage = true, sending = false, fullscreen = false))
+        assertEquals(
+            ChatFieldSideButtons(start = false, endButton = true),
+            sideButtons(composerOpen = true, hasMessage = true),
+        )
     }
 
     @Test
     fun aMessageBeingSentKeepsItsProgressInView() {
-        assertTrue(chatFieldSideButtons(composerOpen = true, hasMessage = false, sending = true, fullscreen = false).endButton)
+        assertTrue(sideButtons(composerOpen = true, sending = true).endButton)
     }
 
     @Test
     fun withTheKeyboardDownBothButtonsShow() {
-        assertEquals(ChatFieldSideButtons(start = true, endButton = true), chatFieldSideButtons(composerOpen = false, hasMessage = false, sending = false, fullscreen = false))
+        assertEquals(ChatFieldSideButtons(start = true, endButton = true), sideButtons())
     }
 
     @Test
     fun besideAFullScreenPlayerTheClosedFieldShowsAlone() {
-        assertEquals(ChatFieldSideButtons(start = false, endButton = false), chatFieldSideButtons(composerOpen = false, hasMessage = false, sending = false, fullscreen = true))
+        assertEquals(ChatFieldSideButtons(start = false, endButton = false), sideButtons(fullscreen = true))
     }
 
     @Test
     fun besideAFullScreenPlayerTheKeyboardBringsBothButtons() {
-        assertEquals(ChatFieldSideButtons(start = true, endButton = true), chatFieldSideButtons(composerOpen = true, hasMessage = false, sending = false, fullscreen = true))
+        assertEquals(
+            ChatFieldSideButtons(start = true, endButton = true),
+            sideButtons(composerOpen = true, fullscreen = true),
+        )
     }
 
     @Test
     fun besideAFullScreenPlayerAMessageBeingSentKeepsItsProgressInView() {
-        assertTrue(chatFieldSideButtons(composerOpen = false, hasMessage = false, sending = true, fullscreen = true).endButton)
+        assertTrue(sideButtons(sending = true, fullscreen = true).endButton)
     }
+
+    private fun sideButtons(
+        composerOpen: Boolean = false,
+        hasMessage: Boolean = false,
+        sending: Boolean = false,
+        fullscreen: Boolean = false,
+    ) = chatFieldSideButtons(
+        composerOpen = composerOpen,
+        hasMessage = hasMessage,
+        sending = sending,
+        fullscreen = fullscreen,
+    )
 }

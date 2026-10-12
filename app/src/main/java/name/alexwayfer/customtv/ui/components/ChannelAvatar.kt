@@ -24,15 +24,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
+import java.io.IOException
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
@@ -64,27 +62,27 @@ fun rememberChannelProfile(
             }
         }
         var force = forceRefresh
+        var polling = true
         try {
-        while (true) {
-            val started = TimeSource.Monotonic.markNow()
-            try {
-                val fresh = ChannelAvatarRepository.refresh(login, force = force)
-                force = false
-                if (fresh != null) {
-                    value = fresh
+            while (polling) {
+                val started = TimeSource.Monotonic.markNow()
+                try {
+                    val fresh = ChannelAvatarRepository.refresh(login, force = force)
+                    force = false
+                    if (fresh != null) {
+                        value = fresh
+                    }
+                } catch (_: IOException) {
+                    // Keep the last known profile and retry on the next interval.
                 }
-            } catch (_: CancellationException) {
-                currentCoroutineContext().ensureActive()
-                continue
-            } catch (_: Throwable) {
-                // Keep the last known profile and retry on the next interval.
+                polling = pollEvery != null
+                if (pollEvery != null) {
+                    val remaining = pollEvery - started.elapsedNow()
+                    if (remaining.isPositive()) {
+                        delay(remaining)
+                    }
+                }
             }
-            if (pollEvery == null) break
-            val remaining = pollEvery - started.elapsedNow()
-            if (remaining.isPositive()) {
-                delay(remaining)
-            }
-        }
         } finally {
             updates.cancel()
         }

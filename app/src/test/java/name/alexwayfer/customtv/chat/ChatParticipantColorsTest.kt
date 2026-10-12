@@ -72,13 +72,6 @@ class ChatParticipantColorsTest {
         assertNull(knownParticipantColor(colors, "missing", ""))
     }
 
-    private fun message(login: String, displayName: String, color: Color) = ChatMessage(
-        id = "message",
-        userLogin = login,
-        displayName = displayName,
-        color = color,
-        rawText = "text",
-        parts = listOf(ChatPart.Text("text")),
-        timestampMillis = 1L,
-    )
+    private fun message(login: String, displayName: String, color: Color) =
+        testChatMessage("message", login = login, displayName = displayName, color = color)
 }

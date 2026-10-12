@@ -9,11 +9,6 @@ import name.alexwayfer.customtv.auth.rejectedAuthClearsSession
 import name.alexwayfer.customtv.diagnostics.AppLog
 import java.io.IOException
 
-internal data class StreamStartSession(
-    val accessToken: String,
-    val userId: String,
-)
-
 /** [onRejected] runs when Twitch refuses the saved refresh token, which only a new login fixes. */
 internal suspend fun streamStartAccess(
     context: Context,
@@ -43,17 +38,18 @@ internal suspend fun streamStartAccess(
             StreamStartSession(updated.accessToken, userId)
         } catch (error: TwitchAuthException) {
             if (rejectedAuthClearsSession(error.httpCode)) {
-                AppLog.w(TAG, "token rejected HTTP ${error.httpCode}")
+                AppLog.w(STREAM_START_TAG, "token rejected HTTP ${error.httpCode}")
                 onRejected()
             } else {
-                AppLog.w(TAG, "token failed HTTP ${error.httpCode}")
+                AppLog.w(STREAM_START_TAG, "token failed HTTP ${error.httpCode}")
             }
             null
         } catch (error: IOException) {
-            AppLog.w(TAG, "token failed ${error.javaClass.simpleName}")
+            AppLog.w(STREAM_START_TAG, "token failed ${error.javaClass.simpleName}")
             null
         }
     }
 }
 
-private const val TAG = "StreamStart"
+/** The log tag of the stream start and change alerts. */
+internal const val STREAM_START_TAG = "StreamStart"

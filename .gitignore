@@ -11,6 +11,7 @@
 /.idea/*
 !/.idea/codeStyles/
 !/.idea/codeStyles/**
+!/.idea/icon.svg
 .DS_Store
 /build
 /captures

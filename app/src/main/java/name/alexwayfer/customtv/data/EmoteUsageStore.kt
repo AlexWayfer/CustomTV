@@ -7,6 +7,7 @@ import name.alexwayfer.customtv.chat.emoteUsesAfterMessage
 import name.alexwayfer.customtv.chat.encodeEmoteUsage
 import name.alexwayfer.customtv.diagnostics.AppLog
 import java.io.File
+import java.io.IOException
 
 internal class EmoteUsageStore(context: Context) {
     private val file = File(context.applicationContext.filesDir, "emote-usage.json")
@@ -38,7 +39,9 @@ internal class EmoteUsageStore(context: Context) {
 
     private fun read(): Map<String, List<EmoteUse>>? {
         if (!file.exists()) return emptyMap()
-        val raw = runCatching { file.readText() }.getOrElse { failure ->
+        val raw = try {
+            file.readText()
+        } catch (failure: IOException) {
             AppLog.w(TAG, "emote usage read failed: ${failure.javaClass.simpleName}")
             return null
         }
@@ -49,12 +52,14 @@ internal class EmoteUsageStore(context: Context) {
     }
 
     private fun write(channels: Map<String, List<EmoteUse>>): Boolean {
-        return runCatching {
+        return try {
             file.parentFile?.mkdirs()
             file.writeText(encodeEmoteUsage(channels))
-        }.onFailure { failure ->
+            true
+        } catch (failure: IOException) {
             AppLog.w(TAG, "emote usage write failed: ${failure.javaClass.simpleName}")
-        }.isSuccess
+            false
+        }
     }
 
     private companion object {

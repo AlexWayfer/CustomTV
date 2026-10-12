@@ -12,7 +12,24 @@ class ChannelPointsPubSubParserTest {
     @Test
     fun parsePostureCheckRedemptionWithoutUserInput() {
         val inner = """
-            {"type":"reward-redeemed","data":{"timestamp":"2026-09-17T14:00:00.000000000Z","redemption":{"id":"redemption-1","user":{"id":"117474239","login":"alexwayfer","display_name":"AlexWayfer"},"channel_id":"117474239","redeemed_at":"2026-09-17T14:00:00.000000000Z","reward":{"id":"4eb8ee0f-2c05-4848-9ed4-d369b3ff5986","title":"Posture Check!","cost":100,"background_color":"#019B00","image":{"url_1x":"https://example.com/custom-1.png","url_2x":"https://example.com/custom-2.png"},"default_image":{"url_1x":"https://static-cdn.jtvnw.net/custom-reward-images/clock-1.png"}},"status":"UNFULFILLED"}}}
+            {"type":"reward-redeemed","data":{
+              "timestamp":"2026-09-17T14:00:00.000000000Z",
+              "redemption":{
+                "id":"redemption-1",
+                "user":{"id":"117474239","login":"alexwayfer","display_name":"AlexWayfer"},
+                "channel_id":"117474239",
+                "redeemed_at":"2026-09-17T14:00:00.000000000Z",
+                "reward":{
+                  "id":"4eb8ee0f-2c05-4848-9ed4-d369b3ff5986",
+                  "title":"Posture Check!",
+                  "cost":100,
+                  "background_color":"#019B00",
+                  "image":{"url_1x":"https://example.com/custom-1.png","url_2x":"https://example.com/custom-2.png"},
+                  "default_image":{"url_1x":"https://static-cdn.jtvnw.net/custom-reward-images/clock-1.png"}
+                },
+                "status":"UNFULFILLED"
+              }
+            }}
         """.trimIndent()
         val frame = JSONObject()
             .put("type", "MESSAGE")
@@ -41,7 +58,12 @@ class ChannelPointsPubSubParserTest {
     @Test
     fun parseRedemptionWithUserInput() {
         val inner = """
-            {"type":"reward-redeemed","data":{"redemption":{"id":"redemption-2","user":{"login":"viewer","display_name":"Viewer"},"reward":{"id":"song","title":"Request a song","cost":1000},"user_input":"Never Gonna Give You Up"}}}
+            {"type":"reward-redeemed","data":{"redemption":{
+              "id":"redemption-2",
+              "user":{"login":"viewer","display_name":"Viewer"},
+              "reward":{"id":"song","title":"Request a song","cost":1000},
+              "user_input":"Never Gonna Give You Up"
+            }}}
         """.trimIndent()
         val message = ChannelPointsPubSubParser.parseRedemptionMessage(inner)
         assertNotNull(message)
@@ -55,7 +77,12 @@ class ChannelPointsPubSubParserTest {
     @Test
     fun parseGiantEmoteRewardFromPrompt() {
         val inner = """
-            {"type":"reward-redeemed","data":{"redemption":{"id":"redemption-3","user":{"login":"alexwayfer","display_name":"AlexWayfer"},"reward":{"id":"giants","title":"АТАКА ГИГАНТОВ","prompt":"Напиши эмоут. FFZ:GE","cost":10000},"user_input":"coin"}}}
+            {"type":"reward-redeemed","data":{"redemption":{
+              "id":"redemption-3",
+              "user":{"login":"alexwayfer","display_name":"AlexWayfer"},
+              "reward":{"id":"giants","title":"АТАКА ГИГАНТОВ","prompt":"Напиши эмоут. FFZ:GE","cost":10000},
+              "user_input":"coin"
+            }}}
         """.trimIndent()
         val message = ChannelPointsPubSubParser.parseRedemptionMessage(inner)
         assertNotNull(message)

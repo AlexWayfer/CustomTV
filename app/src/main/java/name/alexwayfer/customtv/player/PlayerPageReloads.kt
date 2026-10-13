@@ -3,9 +3,10 @@ package name.alexwayfer.customtv.player
 /**
  * When the player page loads again because the video does not come.
  *
- * The wait starts at a page load, or at a press of the error screen's reload, which also starts
- * the count over. Each delay that passes without video reloads the page once; after the last one
- * the player stays as it is.
+ * The wait starts when the server answers the page and again when the page loads, so a resource
+ * that hangs does not hold the page back until its connection times out. A press of the error
+ * screen's reload starts the wait too, and the count over. Each delay that passes without video
+ * reloads the page once; after the last one the player stays as it is.
  */
 internal object PlayerPageReloads {
     private val DELAYS_MS = longArrayOf(10_000, 20_000)

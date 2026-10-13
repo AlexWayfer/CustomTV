@@ -50,7 +50,7 @@ internal fun ChatRow(
 ) {
     val appearance = settings.appearance
     val sizes = chatRowSizes(appearance.textSize)
-    if (ChatOwnLine(message, appearance, sizes, settings.showTimestamps, stripeColor = settings.highlightColor)) return
+    if (chatOwnLine(message, appearance, sizes, settings.showTimestamps, stripeColor = settings.highlightColor)) return
     // Every shown row runs this again with each new message; the text match runs once per row.
     val mentioned = remember(message, settings.mentions) { settings.mentions.matches(message) }
     val displayMessage = rememberDisplayMessage(message, appearance)
@@ -137,7 +137,7 @@ private fun rememberChatTimestamp(timestampMillis: Long, shown: Boolean): String
 
 /** A notice, an AutoMod notice, or an emote change, drawn in a line of its own; false for any other message. */
 @Composable
-private fun ChatOwnLine(
+private fun chatOwnLine(
     message: ChatMessage,
     appearance: ChatAppearance,
     sizes: ChatRowSizes,

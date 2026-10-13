@@ -95,6 +95,17 @@ class TwitchSessionHolderTest {
     }
 
     @Test
+    fun sessionDroppedWhileWaitingForTheRefreshIsNotRefreshedAgain() = runBlocking {
+        val storage = Storage(oldSession)
+        val sessions = holder(storage)
+        val generation = sessions.generation()
+        // The restore at start refreshed first, Twitch refused it, and the session was dropped.
+        sessions.clearIfCurrent(generation) {}
+        assertNull(sessions.refreshIfDue(oldSession, generation))
+        assertEquals(0, storage.refreshes)
+    }
+
+    @Test
     fun refusedTokenIsRefreshedAndSaved() = runBlocking {
         val storage = Storage(oldSession)
         val sessions = holder(storage, TwitchTokens("fresh-access", "fresh-refresh", expiresInSeconds = 3600))

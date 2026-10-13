@@ -19,6 +19,7 @@ data class AppSettings(
     val loadRecentChatOnOpen: Boolean = true,
     val emoteCompletionWithoutColon: Boolean = false,
     val keepKeyboardAfterSend: Boolean = false,
+    val scrollToLatestAfterSend: Boolean = true,
     val backgroundSoundOnly: Boolean = true,
     val streamStartNotifications: Boolean = true,
     val streamChangeNotifications: Boolean = false,

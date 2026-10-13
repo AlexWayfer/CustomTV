@@ -13,7 +13,6 @@ internal val PremiumGlowEdgeStyle = PremiumGlowStyle(
     line = 0.5.dp,
     lineAlpha = 0.6f,
     glow = 8.dp,
-    glowAlpha = 0.3f,
     outward = false,
 )
 

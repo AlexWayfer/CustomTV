@@ -3,17 +3,17 @@ package name.alexwayfer.customtv.chat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
-/** Marks what moderators delete, in the chat and in each chatter's recent messages. */
+/** Marks what moderators delete, in the chat and in each chatter's recent messages and mentions. */
 internal class ChatDeletions(
     private val messages: MutableStateFlow<List<ChatMessage>>,
-    private val recentAuthorMessages: MutableStateFlow<Map<String, List<ChatMessage>>>,
+    private val chatterHistory: MutableStateFlow<ChatterHistory>,
 ) {
     fun markMessageDeleted(event: ChatMessage) {
         messages.update { current ->
             markMessageDeleted(current, event.id, event.deletedBy)
         }
-        recentAuthorMessages.update { history ->
-            markRecentAuthorMessageDeleted(history, event.id, event.deletedBy)
+        chatterHistory.update { history ->
+            markChatterMessageDeleted(history, event.id, event.deletedBy)
         }
     }
 
@@ -28,8 +28,8 @@ internal class ChatDeletions(
             )
             withModerationNotice(marked, clearChatNoticeRow(event)).takeLast(MAX_CHAT_MESSAGES)
         }
-        recentAuthorMessages.update { history ->
-            markRecentAuthorMessagesDeleted(
+        chatterHistory.update { history ->
+            markChatterMessagesDeleted(
                 history,
                 event.userLogin,
                 event.deletedBy,

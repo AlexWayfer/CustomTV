@@ -9,6 +9,14 @@ import name.alexwayfer.customtv.data.KeywordPhrase
 internal fun mentionBaselineResets(baselineGeneration: Int?, timelineGeneration: Int): Boolean =
     baselineGeneration != timelineGeneration
 
+/**
+ * A mention alerts while the app is on screen, a picture-in-picture window included, or after locking the screen
+ * over it, until the screen is unlocked. An app left in the background stays silent, also once the screen locks
+ * over another app: nothing on screen would say where the sound came from.
+ */
+internal fun mentionAlertAudible(appStarted: Boolean, stoppedByLock: Boolean, screenUnlocked: Boolean): Boolean =
+    appStarted || stoppedByLock && !screenUnlocked
+
 internal fun newMentionArrived(
     seenIds: Set<String>,
     messages: List<ChatMessage>,

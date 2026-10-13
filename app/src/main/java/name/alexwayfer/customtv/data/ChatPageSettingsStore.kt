@@ -53,6 +53,10 @@ class ChatPageSettingsStore(context: Context) {
         dataStore.edit { prefs -> prefs[KEEP_KEYBOARD_AFTER_SEND] = enabled }
     }
 
+    suspend fun setScrollToLatestAfterSend(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[SCROLL_TO_LATEST_AFTER_SEND] = enabled }
+    }
+
     suspend fun setLinkPreviewMode(mode: LinkPreviewMode) {
         dataStore.edit { prefs ->
             prefs[LINK_PREVIEW_MODE] = mode.name

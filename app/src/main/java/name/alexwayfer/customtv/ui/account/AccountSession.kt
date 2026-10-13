@@ -115,8 +115,11 @@ internal class AccountSession(
         return TwitchUserAccess(accessToken = token, userId = userId)
     }
 
+    /**
+     * The access for a request. It does not wait for the restore at start to read the account and check the token's
+     * permissions: a refresh the restore runs is shared through the refresh lock.
+     */
     suspend fun userAccess(): TwitchUserAccess? {
-        restoreJob?.join()
         val generation = sessions.generation()
         val current = sessions.session?.let { refreshedSession(it, generation) }
         val userId = current?.let { it.account.userId ?: loadUserId(it, generation) }

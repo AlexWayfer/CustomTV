@@ -10,8 +10,8 @@ import org.junit.Test
 class AppReleaseTest {
     private fun version(text: String): AppVersion = AppVersion.parse(text)!!
 
-    private fun release(fileId: Int, version: String, downloadedPath: String? = null) =
-        AppRelease(fileId, version(version), downloadedPath)
+    private fun release(id: Long, version: String, downloadedPath: String? = null) =
+        AppRelease(id, version(version), downloadedPath)
 
     @Test
     fun missingPartsCountAsZero() {
@@ -57,7 +57,7 @@ class AppReleaseTest {
     @Test
     fun newestReleaseMustBeNewerThanTheInstalledBuild() {
         val releases = listOf(release(1, "1.1"), release(2, "1.2"), release(3, "1.1.5"))
-        assertEquals(2, newestRelease(releases, version("1.1"))!!.fileId)
+        assertEquals(2L, newestRelease(releases, version("1.1"))!!.id)
         assertNull(newestRelease(releases, version("1.2.0")))
         assertNull(newestRelease(emptyList(), version("1.0")))
     }
@@ -70,12 +70,12 @@ class AppReleaseTest {
             release(3, "1.2", "/c.apk"),
             release(4, "1.0"),
         )
-        assertEquals(listOf(1, 2), installedDownloads(releases, version("1.1")).map { it.fileId })
+        assertEquals(listOf(1L, 2L), installedDownloads(releases, version("1.1")).map { it.id })
     }
 
     @Test
     fun downloadFractionFallsBackToTheExpectedSize() {
-        assertEquals(0.5f, downloadFraction(50, 100, 0), 0f)
+        assertEquals(0.5f, downloadFraction(50, 100), 0f)
         assertEquals(0.25f, downloadFraction(25, 0, 100), 0f)
         assertEquals(0f, downloadFraction(25, 0, 0), 0f)
         assertEquals(1f, downloadFraction(150, 100, 0), 0f)

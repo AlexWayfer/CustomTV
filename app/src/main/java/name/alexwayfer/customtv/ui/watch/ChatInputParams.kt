@@ -50,6 +50,8 @@ internal data class ChatCompose(
     val replyFocusRequest: OneShotRequest<Unit>?,
     /** Read only while a nick is typed or a command sent, so new chatters do not recompose the input. */
     val sessionChatters: () -> Map<String, String>,
+    /** When each of [sessionChatters] last wrote, read with them to put the latest nicks first. */
+    val chatterLastSpokeAt: () -> Map<String, Long>,
     /** What Send posts instead of a plain message, such as a watch streak; null for plain chat. */
     val shareOffer: ChatShareOffer?,
     val keepKeyboardAfterSend: Boolean,

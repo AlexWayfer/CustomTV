@@ -27,7 +27,7 @@ internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePla
         channel = scene.channel,
         channelProfile = scene.profile,
         messages = { data.messages.value },
-        recentAuthorMessages = scene.chatViewModel.recentAuthorMessages,
+        chatterHistory = scene.chatViewModel.chatterHistory,
         badgeUrls = data.badgeUrls.value,
         sevenTvEmotes = data.sevenTvEmotes.value,
         ffzEmotes = data.ffzEmotes.value,
@@ -169,6 +169,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
         replyParentMessageId = replyParentMessageId(chat.replySession),
         replyFocusRequest = chat.replyFocusRequest,
         sessionChatters = { data.sessionChatters.value },
+        chatterLastSpokeAt = { scene.chatViewModel.chatterRecency.lastSpokeAt },
         // Hidden for the whole reply, keyboard up or not. Called on every pass, so the offer keeps its
         // state and returns once the thread is closed, until the user closes the offer itself.
         shareOffer = rememberChatShareOffer(scene.channel, scene.profile.channelPointsIconUrl)
@@ -178,7 +179,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
         onSent = {
             scene.mode.slowModeSend.onSent(scene.mode.roomModes.slowSeconds, scene.mode.viewerIsBroadcaster)
             chat.replySession = null
-            chat.stickToBottom = true
+            chat.stickToBottom = chatFollowsAfterSend(chat.stickToBottom, settings.scrollToLatestAfterSend)
         },
         onOpenChatterCard = scene::openChatterCard,
     )

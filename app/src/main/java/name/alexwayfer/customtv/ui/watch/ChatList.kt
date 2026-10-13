@@ -69,7 +69,7 @@ internal fun ChatList(
     val context = LocalContext.current
     ChatterCardHost(
         selfLogin = settings.mentions.selfLogin,
-        recentAuthorMessages = feed.recentAuthorMessages,
+        chatterHistory = feed.chatterHistory,
         fieldCardOpen = feed.fieldCardOpen,
         renderMessage = { message, replyable ->
             val copy = { copyChatMessage(context, message) }

@@ -1,7 +1,9 @@
 package name.alexwayfer.customtv.ui.account
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import name.alexwayfer.customtv.auth.TwitchAccount
 import name.alexwayfer.customtv.auth.TwitchAuthException
 import name.alexwayfer.customtv.auth.TwitchSession
@@ -15,6 +17,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 class AccountSessionTest {
     private val scopes = twitchLoginScopes().split(' ').filter { it.isNotBlank() }.toSet()
@@ -26,6 +29,8 @@ class AccountSessionTest {
         var refresh: () -> TwitchTokens = { TwitchTokens("new-access", "new-refresh", expiresInSeconds = 14_400) }
         var profile: (accessToken: String) -> TwitchAccount = { account }
         var validated: ValidatedScopes = ValidatedScopes.Known(scopes)
+        /** Holds the account's answer until completed, as a slow network would. */
+        var accountAnswer: CompletableDeferred<Unit>? = null
 
         fun io() = AccountSessionIo(
             read = { stored },
@@ -35,7 +40,10 @@ class AccountSessionTest {
                 refreshes++
                 refresh()
             },
-            account = { token -> profile(token) },
+            account = { token ->
+                accountAnswer?.await()
+                profile(token)
+            },
             validatedScopes = { validated },
             profileDetails = { null },
         )
@@ -47,9 +55,10 @@ class AccountSessionTest {
         TwitchSession("old-access", "old-refresh", expiresAtMillis, account, scopes)
 
     /** The session after its restore at start has finished. */
-    private fun restored(twitch: FakeTwitch): AccountSession = runBlocking {
+    private fun restored(twitch: FakeTwitch): AccountSession = runBlocking { restore(twitch) }
+
+    private suspend fun restore(twitch: FakeTwitch): AccountSession =
         coroutineScope { AccountSession(this, twitch.io(), relogin) }
-    }
 
     @Test
     fun aSavedSessionComesBackWithItsAccountAndFollows() {
@@ -141,7 +150,7 @@ class AccountSessionTest {
         val twitch = FakeTwitch(saved(expiresAtMillis = 0L))
         // The restore at start meets no network and leaves the session as it was.
         twitch.refresh = { throw IOException() }
-        val session = restored(twitch)
+        val session = restore(twitch)
 
         twitch.refresh = { throw TwitchAuthException(500) }
         assertNull(session.userAccess())
@@ -158,7 +167,7 @@ class AccountSessionTest {
     fun accessForARequestRefreshesATokenAboutToExpire() = runBlocking {
         val twitch = FakeTwitch(saved(expiresAtMillis = 0L))
         twitch.refresh = { throw IOException() }
-        val session = restored(twitch)
+        val session = restore(twitch)
 
         twitch.refresh = { TwitchTokens("new-access", "new-refresh", expiresInSeconds = 14_400) }
         val access = session.userAccess()
@@ -166,6 +175,23 @@ class AccountSessionTest {
         assertEquals("new-access", access?.accessToken)
         assertEquals("1", access?.userId)
         assertEquals("new-access", twitch.stored?.accessToken)
+    }
+
+    @Test
+    fun accessForARequestDoesNotWaitForTheRestoreToReadTheAccount() = runBlocking {
+        val twitch = FakeTwitch(saved())
+        val answer = CompletableDeferred<Unit>()
+        twitch.accountAnswer = answer
+        coroutineScope {
+            val session = AccountSession(this, twitch.io(), relogin)
+            try {
+                val access = withTimeout(1.seconds) { session.userAccess() }
+                assertEquals("old-access", access?.accessToken)
+                assertEquals("1", access?.userId)
+            } finally {
+                answer.complete(Unit)
+            }
+        }
     }
 
     private companion object {

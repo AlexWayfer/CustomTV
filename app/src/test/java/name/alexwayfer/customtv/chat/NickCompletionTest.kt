@@ -72,6 +72,34 @@ class NickCompletionTest {
     }
 
     @Test
+    fun whoeverWroteLastComesFirstAfterTheChannelOwner() {
+        val chatters = mapOf(
+            "aamy" to "Amy",
+            "abob" to "Bob",
+            "ahost" to "Host",
+            "azoe" to "Zoe",
+            "aann" to "Ann",
+        )
+        val lastSpokeAt = mapOf("aamy" to 10L, "azoe" to 30L, "ahost" to 40L, "abob" to 30L)
+        assertEquals(
+            listOf("ahost", "abob", "azoe", "aamy", "aann"),
+            matchingSessionNicks(chatters, "a", ChatNick("ahost", "Host"), lastSpokeAt).map { it.login },
+        )
+    }
+
+    @Test
+    fun recencyKeepsTheLatestTimeOfEachChatterAndSkipsSystemLines() {
+        val recency = ChatterRecency()
+        recency.record(testChatMessage(login = "Viewer", timestampMillis = 20L))
+        recency.record(testChatMessage(login = "viewer", timestampMillis = 10L))
+        recency.record(testChatMessage(login = "other", timestampMillis = 5L).copy(notice = ChatNotice.Welcome))
+        recency.record(testChatMessage(login = "", timestampMillis = 5L))
+        assertEquals(mapOf("viewer" to 20L), recency.lastSpokeAt)
+        recency.clear()
+        assertEquals(emptyMap<String, Long>(), recency.lastSpokeAt)
+    }
+
+    @Test
     fun aMatchingChannelOwnerIsTheFirstSuggestion() {
         val chatters = mapOf(
             "helen" to "Helen",

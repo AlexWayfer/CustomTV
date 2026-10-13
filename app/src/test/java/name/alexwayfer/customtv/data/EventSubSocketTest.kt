@@ -61,12 +61,12 @@ class EventSubSocketTest {
         due.forEach { it.run() }
     }
 
-    private fun welcome(sessionId: String, keepaliveSeconds: Long = 10) {
+    private fun welcome(keepaliveSeconds: Long = 10) {
         val (ws, listener) = current
         listener.onMessage(
             ws,
             """{"metadata":{"message_type":"session_welcome"},""" +
-                """"payload":{"session":{"id":"$sessionId","keepalive_timeout_seconds":$keepaliveSeconds}}}""",
+                """"payload":{"session":{"id":"$SESSION_ID","keepalive_timeout_seconds":$keepaliveSeconds}}}""",
         )
     }
 
@@ -83,10 +83,10 @@ class EventSubSocketTest {
     @Test
     fun aWelcomeStartsTheSessionAndTheWaitForTheNextMessage() {
         socket.connect()
-        welcome("s1", keepaliveSeconds = 30)
+        welcome(keepaliveSeconds = 30)
 
-        assertEquals(listOf("s1"), welcomes)
-        assertEquals("s1", socket.sessionId)
+        assertEquals(listOf(SESSION_ID), welcomes)
+        assertEquals(SESSION_ID, socket.sessionId)
         assertEquals(30L, socket.keepaliveSeconds)
         assertEquals(listOf(35L), tasks.filter { !it.cancelled }.map { it.delaySeconds })
     }
@@ -94,7 +94,7 @@ class EventSubSocketTest {
     @Test
     fun eachMessageRestartsTheWaitAndOtherMessagesGoToTheOwner() {
         socket.connect()
-        welcome("s1")
+        welcome()
         message("notification")
 
         assertEquals(listOf("notification"), messages)
@@ -104,7 +104,7 @@ class EventSubSocketTest {
     @Test
     fun aSocketSilentPastItsKeepaliveIsReplaced() {
         socket.connect()
-        welcome("s1")
+        welcome()
         val first = current.first
 
         runPlanned(15)
@@ -119,7 +119,7 @@ class EventSubSocketTest {
     @Test
     fun twitchEndingTheSessionReconnectsAfterAPause() {
         socket.connect()
-        welcome("s1")
+        welcome()
         message("session_reconnect")
 
         assertNull(socket.sessionId)
@@ -183,11 +183,15 @@ class EventSubSocketTest {
     @Test
     fun theOwnerHearsEveryDrop() {
         socket.connect()
-        welcome("s1")
+        welcome()
         message("session_reconnect")
         socket.close()
 
         // The first connect drops nothing yet but tells the owner all the same, as a new login starts clean.
         assertEquals(3, disconnects)
+    }
+
+    private companion object {
+        const val SESSION_ID = "s1"
     }
 }

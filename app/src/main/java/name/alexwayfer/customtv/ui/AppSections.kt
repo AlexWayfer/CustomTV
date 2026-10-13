@@ -107,9 +107,12 @@ private fun AppHome(scene: AppScene) {
     )
 }
 
-/** The sections over Home: the whispers, the account, a channel's profile, and the settings. */
+/**
+ * The sections over Home: the whispers, the account, a channel's profile, and the settings. A [hidden] section stays
+ * composed past the right edge, under picture-in-picture.
+ */
 @Composable
-internal fun AppSections(scene: AppScene) {
+internal fun AppSections(scene: AppScene, hidden: Boolean) {
     val shell = scene.shell
     val layout = scene.layout
     val density = LocalDensity.current
@@ -123,7 +126,8 @@ internal fun AppSections(scene: AppScene) {
             )
             // The app's bar covers the system's, so a screen's own Scaffold must not keep clear of it again.
             .then(if (layout.bottomBarShown) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier)
-            .then(if (shell.section == AppSection.Home) Modifier.clearAndSetSemantics {} else Modifier),
+            .then(if (shell.section == AppSection.Home) Modifier.clearAndSetSemantics {} else Modifier)
+            .offscreenWhen(hidden, layout.screenWidthPx),
         contentAlignment = Alignment.TopStart,
         transitionSpec = {
             if (targetState == AppSection.ChannelProfile) {

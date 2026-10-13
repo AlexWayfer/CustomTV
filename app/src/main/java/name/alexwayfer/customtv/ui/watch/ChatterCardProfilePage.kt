@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -68,7 +69,18 @@ internal fun ColumnScope.ChatterProfilePage(
         ChatterCardFacts(load, chatter.subscription)
         ChatterCardBadges(chatter.badgeLines)
         ChatterCardLabels(userId = chatter.userId, onManage = { nav.open(ChatterCardPage.Labels) })
-        ChatterRecentMessagesItem(chatter.messages.size, onOpen = { nav.open(ChatterCardPage.Messages) })
+        ChatterCardCountItem(
+            title = stringResource(R.string.chatter_card_last_messages_count, chatter.messages.size),
+            icon = R.drawable.ic_chatter_recent_messages,
+            enabled = chatter.messages.isNotEmpty(),
+            onOpen = { nav.open(ChatterCardPage.Messages) },
+        )
+        ChatterCardCountItem(
+            title = chatterMentionsTitle(chatter.mentions.size),
+            icon = R.drawable.ic_chatter_recent_mentions,
+            enabled = chatter.mentions.isNotEmpty(),
+            onOpen = { nav.open(ChatterCardPage.Mentions) },
+        )
         ChatterCardPortraitItem(
             channelId = LocalEmotePreviewChannel.current.twitchUserId,
             userId = chatter.userId,
@@ -79,15 +91,16 @@ internal fun ColumnScope.ChatterProfilePage(
     }
 }
 
-/** The chatter's recent messages in this chat, under a title that stays in place while they scroll. */
+/** The chatter's recent messages or mentions in this chat, under a title that stays in place while they scroll. */
 @Composable
 internal fun ColumnScope.ChatterMessagesPage(
+    title: String,
     messages: List<ChatMessage>,
     scroll: ChatterPageScroll,
     renderMessage: @Composable (ChatMessage) -> Unit,
     onBack: () -> Unit,
 ) {
-    ChatterRecentMessagesHeader(count = messages.size, onBack = onBack)
+    ChatterRecentMessagesHeader(title = title, onBack = onBack)
     Column(
         modifier = Modifier
             .weight(1f, fill = false)
@@ -226,24 +239,22 @@ private fun ChatterCardBadges(badgeLines: List<ChatterBadgeLine>) {
     }
 }
 
-/** How many recent messages the chatter has here; dimmed, and not a button, without any. */
+/** How many recent messages or mentions the chatter has here; dimmed, and not a button, without any. */
 @Composable
-private fun ChatterRecentMessagesItem(count: Int, onOpen: () -> Unit) {
-    val recentMessagesAlpha by animateFloatAsState(
-        if (count == 0) 0.38f else 1f,
-        label = "chatter recent messages",
+private fun ChatterCardCountItem(title: String, @DrawableRes icon: Int, enabled: Boolean, onOpen: () -> Unit) {
+    val itemAlpha by animateFloatAsState(
+        if (enabled) 1f else 0.38f,
+        label = "chatter card count item",
     )
     ListItem(
-        headlineContent = {
-            Text(stringResource(R.string.chatter_card_last_messages_count, count))
-        },
+        headlineContent = { Text(title) },
         leadingContent = {
-            Icon(painterResource(R.drawable.ic_chatter_recent_messages), contentDescription = null)
+            Icon(painterResource(icon), contentDescription = null)
         },
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = count > 0, onClick = onOpen)
-            .graphicsLayer { alpha = recentMessagesAlpha },
+            .clickable(enabled = enabled, onClick = onOpen)
+            .graphicsLayer { alpha = itemAlpha },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )
 }

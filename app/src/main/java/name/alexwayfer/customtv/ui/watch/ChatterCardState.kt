@@ -107,6 +107,8 @@ internal data class ChatterCardChatter(
     val subscription: ChatterSubscription?,
     /** Their recent messages in this chat. */
     val messages: List<ChatMessage>,
+    /** The recent messages in this chat that mention them. */
+    val mentions: List<ChatMessage>,
     /** The message the card was opened from, as the chat shows it now. */
     val sourceMessage: ChatMessage?,
     /** Someone else's card, which offers whispers and, with an ID, moderation and reports. */
@@ -136,37 +138,47 @@ internal class ChatterPageScroll(
     val stopAtTop: NestedScrollConnection,
 )
 
-/** The scroll of the profile and the messages pages, and the banner that folds as the profile scrolls. */
+/** The scroll of each page, and the banner that folds as the profile scrolls. */
 internal class ChatterCardScroll(
     val profile: ChatterPageScroll,
     val messages: ChatterPageScroll,
+    val mentions: ChatterPageScroll,
     val headerCollapse: ChatterHeaderCollapse,
 )
 
-/** A drag back up through either page stops at its top; closing the sheet takes a new drag. */
+/** A drag back up through any page stops at its top; closing the sheet takes a new drag. */
 @Composable
 internal fun rememberChatterCardScroll(): ChatterCardScroll {
     val profileState = rememberScrollState()
-    val messagesState = rememberScrollState()
     val headerCollapse = rememberChatterHeaderCollapse(profileState)
     val profileOverscroll = rememberOverscrollEffect()
-    val messagesOverscroll = rememberOverscrollEffect()
     val stopProfileAtTop = rememberStopAtScrollTop(profileState, profileOverscroll) {
         profileState.value == 0 && headerCollapse.collapsedPx == 0f
     }
-    val stopMessagesAtTop = rememberStopAtScrollTop(messagesState, messagesOverscroll)
     return ChatterCardScroll(
         profile = ChatterPageScroll(profileState, profileOverscroll, stopProfileAtTop),
-        messages = ChatterPageScroll(messagesState, messagesOverscroll, stopMessagesAtTop),
+        messages = rememberChatterPageScroll(),
+        mentions = rememberChatterPageScroll(),
         headerCollapse = headerCollapse,
     )
 }
 
-/** The messages page opens on the newest message and stays there as the author writes, unless scrolled up. */
 @Composable
-internal fun FollowChatterMessagesEnd(page: ChatterCardPage, scroll: ScrollState) {
+private fun rememberChatterPageScroll(): ChatterPageScroll {
+    val state = rememberScrollState()
+    val overscroll = rememberOverscrollEffect()
+    return ChatterPageScroll(state, overscroll, rememberStopAtScrollTop(state, overscroll))
+}
+
+/** The messages and the mentions pages open on the newest message and stay there as it comes, unless scrolled up. */
+@Composable
+internal fun FollowChatterMessagesEnd(page: ChatterCardPage, cardScroll: ChatterCardScroll) {
     LaunchedEffect(page) {
-        if (page != ChatterCardPage.Messages) return@LaunchedEffect
+        val scroll = when (page) {
+            ChatterCardPage.Messages -> cardScroll.messages.state
+            ChatterCardPage.Mentions -> cardScroll.mentions.state
+            else -> return@LaunchedEffect
+        }
         var following = true
         var previousMax = -1
         snapshotFlow { scroll.value to scroll.maxValue }.collect { (value, max) ->

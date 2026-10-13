@@ -86,7 +86,8 @@ internal fun rememberChatCompletion(input: ChatInput, pickerOpen: Boolean, emote
         if (nickQueryText == null || chatters == null) {
             emptyList()
         } else {
-            matchingSessionNicks(chatters, nickQueryText, owner)
+            // Read here, not as a key: the times change with every message, and the list need not follow them.
+            matchingSessionNicks(chatters, nickQueryText, owner, input.compose.chatterLastSpokeAt())
         }
     }
     val emoteQuery = emoteQueryAtCursor(

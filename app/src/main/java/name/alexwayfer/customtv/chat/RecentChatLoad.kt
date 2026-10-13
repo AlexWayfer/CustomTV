@@ -12,8 +12,10 @@ internal class RecentChatLoad(
     private val scope: CoroutineScope,
     private val messages: MutableStateFlow<List<ChatMessage>>,
     private val sessionChatters: MutableStateFlow<Map<String, String>>,
-    private val recentAuthorMessages: MutableStateFlow<Map<String, List<ChatMessage>>>,
+    private val chatterRecency: ChatterRecency,
+    private val chatterHistory: MutableStateFlow<ChatterHistory>,
     private val currentChannel: () -> String?,
+    private val mentionSelf: () -> ChatMentionSelf,
 ) {
     private val _state = MutableStateFlow(RecentChatLoadState.Idle)
     val state: StateFlow<RecentChatLoadState> = _state
@@ -52,8 +54,9 @@ internal class RecentChatLoad(
                     }
                     merge?.let { applied ->
                         sessionChatters.value = applied.chatters
-                        recentAuthorMessages.update { history ->
-                            prependRecentAuthorMessages(history, applied.recent, applied.movedFirstLogins)
+                        applied.recent.forEach(chatterRecency::record)
+                        chatterHistory.update { history ->
+                            prependChatterHistory(history, applied.recent, applied.movedFirstLogins, mentionSelf())
                         }
                     }
                 }

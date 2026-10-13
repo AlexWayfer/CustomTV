@@ -9,7 +9,6 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
-import name.alexwayfer.customtv.telegram.TelegramSession
 
 private const val APP_UPDATE_WORK_NAME = "app-update"
 
@@ -19,7 +18,7 @@ internal class AppUpdateWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        TelegramSession.updates.checkInBackground()
+        AppUpdates.checkInBackground()
         return Result.success()
     }
 }

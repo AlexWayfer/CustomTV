@@ -26,10 +26,11 @@ class ChatViewModel(
 ) : ViewModel() {
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages
-    private val _recentAuthorMessages = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
-    val recentAuthorMessages: StateFlow<Map<String, List<ChatMessage>>> = _recentAuthorMessages
+    private val _chatterHistory = MutableStateFlow(ChatterHistory())
+    internal val chatterHistory: StateFlow<ChatterHistory> = _chatterHistory
     private val _sessionChatters = MutableStateFlow<Map<String, String>>(emptyMap())
     internal val sessionChatters: StateFlow<Map<String, String>> = _sessionChatters
+    internal val chatterRecency = ChatterRecency()
 
     /** Messages as they arrive in live chat, without recent chat history. */
     internal val liveIrcMessages: SharedFlow<ChatMessage> = client.messages
@@ -60,12 +61,14 @@ class ChatViewModel(
         viewModelScope,
         _messages,
         _sessionChatters,
-        _recentAuthorMessages,
+        chatterRecency,
+        _chatterHistory,
         currentChannel = { currentChannel },
+        mentionSelf = { mentionSelf },
     )
     internal val recentChatLoadState: StateFlow<RecentChatLoadState> = recentChat.state
     private val notices = ChatConnectionNotices(_messages, onWelcomed = recentChat::start)
-    private val deletions = ChatDeletions(_messages, _recentAuthorMessages)
+    private val deletions = ChatDeletions(_messages, _chatterHistory)
 
     private var collectJob: Job? = null
     private val reconnect = ChatReconnect(
@@ -76,6 +79,7 @@ class ChatViewModel(
     private var currentChannel: String? = null
     private var currentChannelId: String? = null
     private var raidToken: String? = null
+    private var mentionSelf = ChatMentionSelf()
     private var inForeground = true
     private var pendingRewardEvents: List<ChatMessage> = emptyList()
 
@@ -98,6 +102,7 @@ class ChatViewModel(
                         if (seen.chatters !== _sessionChatters.value) {
                             _sessionChatters.value = seen.chatters
                         }
+                        chatterRecency.record(enriched)
                         val chatterMessage = if (seen.firstInSession) {
                             enriched.copy(firstInSession = true)
                         } else {
@@ -117,8 +122,8 @@ class ChatViewModel(
                             result.colorSource?.let { colors.remember(it) }
                             result.messages.also { updatedMessages = it }
                         }
-                        _recentAuthorMessages.update { history ->
-                            rememberRecentAuthorMessages(history, previousMessages, updatedMessages)
+                        _chatterHistory.update { history ->
+                            rememberChatterHistory(history, previousMessages, updatedMessages, mentionSelf)
                         }
                     }
                 }
@@ -156,6 +161,11 @@ class ChatViewModel(
         currentChannelId?.let { pubSub.listen(it, normalized) }
     }
 
+    /** Who the signed-in user is, for the mentions on their own chatter card. */
+    internal fun setMentionSelf(self: ChatMentionSelf) {
+        mentionSelf = self
+    }
+
     internal fun hideChannelEvent(id: String) = liveEvents.hide(id)
 
     /** Rows another live source adds or changes, such as messages held for moderators. */
@@ -173,7 +183,7 @@ class ChatViewModel(
         }
         val sameChannel = normalized == currentChannel
         if (!sameChannel) {
-            _recentAuthorMessages.value = emptyMap()
+            _chatterHistory.value = ChatterHistory()
             sevenTvEvents.disconnect()
             bttvEvents.disconnect()
             pubSub.disconnect()
@@ -187,6 +197,7 @@ class ChatViewModel(
         notices.reset()
         pendingRewardEvents = emptyList()
         _sessionChatters.value = emptyMap()
+        chatterRecency.clear()
         _messages.value = listOf(chatNoticeMessage(ChatNotice.Connecting, CHAT_WELCOME_NOTICE_ID))
         recentChat.reset(loadOnConnect = loadRecentChat)
         colors.clear()
@@ -210,10 +221,8 @@ class ChatViewModel(
             _messages.update { messages ->
                 messages.map { CheermoteMatcher.apply(it, loaded) }
             }
-            _recentAuthorMessages.update { history ->
-                history.mapValues { (_, messages) ->
-                    messages.map { CheermoteMatcher.apply(it, loaded) }
-                }
+            _chatterHistory.update { history ->
+                history.map { CheermoteMatcher.apply(it, loaded) }
             }
         }
         emotes.open(normalized)

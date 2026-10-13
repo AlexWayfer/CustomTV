@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.MeasureScope
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.node.LayoutModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.round
@@ -28,6 +29,11 @@ private data class PlacementAnimationElement(val durationMillis: Int) : Modifier
 
     override fun update(node: PlacementAnimationNode) {
         node.durationMillis = durationMillis
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "placementAnimation"
+        properties["durationMillis"] = durationMillis
     }
 }
 

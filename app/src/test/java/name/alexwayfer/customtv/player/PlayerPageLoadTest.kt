@@ -111,6 +111,29 @@ class PlayerPageLoadTest {
     }
 
     @Test
+    fun onlyTheFirstAnswerOfALoadCounts() {
+        load.start()
+        assertTrue(load.respond())
+        assertFalse(load.respond())
+    }
+
+    @Test
+    fun aRestartCountsItsAnswerAgain() {
+        load.start()
+        load.respond()
+        load.start()
+        assertTrue(load.respond())
+    }
+
+    @Test
+    fun aFailedOrNotStartedLoadHasNoAnswer() {
+        assertFalse(load.respond())
+        load.start()
+        load.fail()
+        assertFalse(load.respond())
+    }
+
+    @Test
     fun nothingAwaitsTheResponseBeforeALoadStarts() {
         assertFalse(load.awaitingResponse)
     }

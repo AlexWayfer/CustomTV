@@ -1,5 +1,19 @@
 # CustomTV (free version)
 
+## v1.8.0 (2026-10-14)
+
+*   Add Chatter Labels, previously a Premium feature
+*   Add recent mentions to the chatter card
+*   Add a setting to keep a stopped chat in place after sending
+*   Check for updates on GitHub, without a Telegram account
+*   Reduce the app size
+*   Show the best emote and nick suggestions right above the chat field
+*   Order nick suggestions by who wrote last
+*   Show the followed channels sooner after the app starts
+*   Keep mention alerts silent while the app is in the background
+*   Reload the player when it hangs while loading
+*   Fix returning to the open section after picture-in-picture with a mini player
+
 ## v1.7.0 (2026-10-13)
 
 *   Add a long-press menu to links in chat

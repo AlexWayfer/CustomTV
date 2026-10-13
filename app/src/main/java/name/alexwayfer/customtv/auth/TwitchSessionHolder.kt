@@ -95,13 +95,17 @@ internal class TwitchSessionHolder(
         }
     }
 
-    /** The session with a fresh access token, refreshed first when it is about to expire. */
+    /**
+     * The session with a fresh access token, refreshed first when it is about to expire. Null when the saved session
+     * was dropped while this call waited for another refresh, such as the restore at start.
+     */
     suspend fun refreshIfDue(
         session: TwitchSession,
         generation: Int,
         deviceGrant: Boolean = false,
     ): TwitchSession? {
         return withTwitchSessionRefreshLock {
+            if (!deviceGrant && this.session == null) return@withTwitchSessionRefreshLock null
             val latest = latestStored(session, deviceGrant)
             if (!shouldRefreshAccessToken(latest.expiresAtMillis, System.currentTimeMillis())) {
                 latest

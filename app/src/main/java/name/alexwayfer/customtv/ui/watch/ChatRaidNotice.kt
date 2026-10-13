@@ -164,7 +164,7 @@ private fun RaidNoticeTitle(chatTextSize: Int) {
     }
 }
 
-/** "Raiding [avatar] [channel] with [viewers]", the channel's name cut short before the rest. */
+/** The lead, the target channel's avatar and name, and the viewer count, the name cut short before the rest. */
 @Composable
 private fun RaidTarget(raid: OutgoingRaid, chatTextSize: Int) {
     val bodySize = chatSp(chatTextSize, 14, 16)

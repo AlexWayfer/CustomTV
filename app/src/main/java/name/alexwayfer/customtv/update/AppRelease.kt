@@ -4,17 +4,18 @@ import name.alexwayfer.customtv.ui.UiText
 
 private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
 
-/** An APK posted in the edition's Telegram topic. */
+/** An APK the edition's releases offer: a Telegram file in Premium, a GitHub release asset in free. */
 internal data class AppRelease(
-    val fileId: Int,
+    /** The file's ID where it is posted, which its download names. */
+    val id: Long,
     val version: AppVersion,
-    /** Set when Telegram already holds the whole file on this device. */
+    /** Set when the whole file is already on this device. */
     val downloadedPath: String?,
 )
 
 /** A posted file counts as a release only when it is an APK and its file name names a version. */
 internal fun appRelease(
-    fileId: Int,
+    id: Long,
     fileName: String,
     mimeType: String,
     downloadedPath: String?,
@@ -22,7 +23,7 @@ internal fun appRelease(
     val apk = mimeType == APK_MIME_TYPE || fileName.endsWith(".apk", ignoreCase = true)
     if (!apk) return null
     val version = AppVersion.ofRelease(fileName) ?: return null
-    return AppRelease(fileId, version, downloadedPath?.takeIf { it.isNotEmpty() })
+    return AppRelease(id, version, downloadedPath?.takeIf { it.isNotEmpty() })
 }
 
 /** The newest posted release when it is newer than the installed build. */
@@ -34,17 +35,18 @@ internal fun installedDownloads(releases: List<AppRelease>, installed: AppVersio
     releases.filter { it.downloadedPath != null && it.version <= installed }
 
 /** How much of a file is downloaded, from 0 to 1. Telegram may know only the expected size. */
-internal fun downloadFraction(downloaded: Long, size: Long, expectedSize: Long): Float {
+internal fun downloadFraction(downloaded: Long, size: Long, expectedSize: Long = 0L): Float {
     val total = if (size > 0) size else expectedSize
     if (total <= 0) return 0f
     return (downloaded.toDouble() / total).toFloat().coerceIn(0f, 1f)
 }
 
+/** The download of a release, named by its [AppRelease.id]. */
 internal sealed interface AppUpdateDownload {
     data object Idle : AppUpdateDownload
-    data class Running(val fileId: Int, val fraction: Float) : AppUpdateDownload
-    data class Ready(val fileId: Int, val path: String) : AppUpdateDownload
-    data class Failed(val fileId: Int, val message: UiText) : AppUpdateDownload
+    data class Running(val releaseId: Long, val fraction: Float) : AppUpdateDownload
+    data class Ready(val releaseId: Long, val path: String) : AppUpdateDownload
+    data class Failed(val releaseId: Long, val message: UiText) : AppUpdateDownload
 }
 
 internal sealed interface AppUpdateAction {
@@ -56,12 +58,12 @@ internal sealed interface AppUpdateAction {
 
 /** What the update block offers for [release]; a download of another file does not count. */
 internal fun appUpdateAction(release: AppRelease, download: AppUpdateDownload): AppUpdateAction = when {
-    download is AppUpdateDownload.Running && download.fileId == release.fileId ->
+    download is AppUpdateDownload.Running && download.releaseId == release.id ->
         AppUpdateAction.Downloading(download.fraction)
-    download is AppUpdateDownload.Ready && download.fileId == release.fileId ->
+    download is AppUpdateDownload.Ready && download.releaseId == release.id ->
         AppUpdateAction.Install(download.path)
     release.downloadedPath != null -> AppUpdateAction.Install(release.downloadedPath)
-    download is AppUpdateDownload.Failed && download.fileId == release.fileId ->
+    download is AppUpdateDownload.Failed && download.releaseId == release.id ->
         AppUpdateAction.Download(download.message)
     else -> AppUpdateAction.Download(null)
 }

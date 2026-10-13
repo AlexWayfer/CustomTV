@@ -27,9 +27,7 @@ import name.alexwayfer.customtv.data.RecentChannelsStore
 import name.alexwayfer.customtv.data.StreamStartAlertsController
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
-import name.alexwayfer.customtv.telegram.TelegramConfig
-import name.alexwayfer.customtv.telegram.TelegramSession
-import name.alexwayfer.customtv.update.scheduleAppUpdateChecks
+import name.alexwayfer.customtv.update.AppUpdates
 
 /** The share of the app's memory that decoded images may hold. */
 private const val IMAGE_MEMORY_CACHE_SHARE = 0.15
@@ -53,21 +51,7 @@ class CustomTvApplication : Application() {
         ExperimentalFeature.start(this)
         RecentChannelsStore.start(this)
         FollowedChannelsAtStart.start(this)
-        if (BuildConfig.TELEGRAM_API_HASH.isNotBlank()) {
-            TelegramSession.start(
-                this,
-                TelegramConfig(
-                    apiId = BuildConfig.TELEGRAM_API_ID,
-                    apiHash = BuildConfig.TELEGRAM_API_HASH,
-                    openChatId = BuildConfig.TELEGRAM_OPEN_CHAT_ID,
-                    openTopicId = BuildConfig.TELEGRAM_OPEN_TOPIC_ID,
-                    premiumChatId = BuildConfig.TELEGRAM_PREMIUM_CHAT_ID,
-                    premiumTopicId = BuildConfig.TELEGRAM_PREMIUM_TOPIC_ID,
-                    premiumEdition = BuildConfig.PREMIUM,
-                ),
-            )
-            scheduleAppUpdateChecks(this)
-        }
+        AppUpdates.start(this)
         Coil.setImageLoader(
             ImageLoader.Builder(this)
                 .respectCacheHeaders(false)

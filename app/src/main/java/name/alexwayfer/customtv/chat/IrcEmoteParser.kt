@@ -76,7 +76,7 @@ internal object IrcEmoteParser {
         for (range in ranges) {
             val (start, endInclusive) = range
             // The cursor is never below zero, so this also skips a negative start.
-            if (start < cursor || start > endInclusive || endInclusive >= codePoints.size) continue
+            if (start !in cursor..endInclusive || endInclusive >= codePoints.size) continue
             if (start > cursor) {
                 parts += ChatPart.Text(String(codePoints, cursor, start - cursor))
             }

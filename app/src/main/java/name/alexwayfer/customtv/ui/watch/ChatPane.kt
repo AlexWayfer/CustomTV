@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.StateFlow
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatRaiders
+import name.alexwayfer.customtv.chat.ChatterHistory
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.chat.SuspiciousChatters
 import name.alexwayfer.customtv.chat.emoteSources
@@ -58,7 +59,7 @@ internal fun ColumnScope.ChatPane(
     channelProfile: ChannelProfile,
     /** Read here, so a new message recomposes the chat and not the screen that holds it. */
     messages: () -> List<ChatMessage>,
-    recentAuthorMessages: StateFlow<Map<String, List<ChatMessage>>>,
+    chatterHistory: StateFlow<ChatterHistory>,
     badgeUrls: Map<String, String>,
     sevenTvEmotes: Map<String, SevenTvEmote>,
     ffzEmotes: Map<String, SevenTvEmote>,
@@ -112,7 +113,7 @@ internal fun ColumnScope.ChatPane(
     val listSettings = chatListSettings(chatSettings, settings, channelProfile, appearance, mentions)
     val feed = ChatFeed(
         messages = messages,
-        recentAuthorMessages = recentAuthorMessages,
+        chatterHistory = chatterHistory,
         listState = listState,
         highlightPins = highlightPins,
         stickToBottom = stickToBottom,

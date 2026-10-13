@@ -60,7 +60,7 @@ internal class LiveEmoteChanges(
         return message
     }
 
-    private fun applyBttvRemoval(channelId: String, message: ChatMessage, change: ChatEmoteChange): ChatMessage? {
+    private fun applyBttvRemoval(channelId: String, message: ChatMessage, change: ChatEmoteChange): ChatMessage {
         val resolvedName = change.emoteName.ifBlank {
             change.emoteId
                 ?.let { BttvRepository.channelEmoteNameById(channelId, it) }

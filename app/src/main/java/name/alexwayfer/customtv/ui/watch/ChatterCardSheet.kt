@@ -56,6 +56,7 @@ import name.alexwayfer.customtv.chat.CalendarAge
 import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatterFollow
+import name.alexwayfer.customtv.chat.ChatterHistory
 import name.alexwayfer.customtv.chat.ChatterProfile
 import name.alexwayfer.customtv.chat.ChatterSubscription
 import name.alexwayfer.customtv.chat.chatterCardOffersWhisper
@@ -101,7 +102,7 @@ internal val LocalChatterCardCache = staticCompositionLocalOf<ChatterCardCache?>
 @Composable
 internal fun ChatterCardHost(
     selfLogin: String,
-    recentAuthorMessages: StateFlow<Map<String, List<ChatMessage>>>,
+    chatterHistory: StateFlow<ChatterHistory>,
     fieldCardOpen: OneShotRequest<ChatterCardRequest>?,
     /** A chat row; `replyable` is false for a message from the moderation logs, which is not in this chat. */
     renderMessage: @Composable (message: ChatMessage, replyable: Boolean) -> Unit,
@@ -121,7 +122,7 @@ internal fun ChatterCardHost(
             ChatterCardSheet(
                 card = card,
                 selfLogin = selfLogin,
-                recentAuthorMessages = recentAuthorMessages,
+                chatterHistory = chatterHistory,
                 renderMessage = { renderMessage(it, true) },
                 renderLoggedMessage = { renderMessage(it, false) },
                 onDismiss = {
@@ -138,20 +139,22 @@ internal fun ChatterCardHost(
 internal fun ChatterCardSheet(
     card: ChatterCardRequest,
     selfLogin: String,
-    recentAuthorMessages: StateFlow<Map<String, List<ChatMessage>>>,
+    chatterHistory: StateFlow<ChatterHistory>,
     renderMessage: @Composable (ChatMessage) -> Unit,
     renderLoggedMessage: @Composable (ChatMessage) -> Unit,
     onDismiss: () -> Unit,
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
-    val history by recentAuthorMessages.collectAsStateWithLifecycle()
-    val userMessages = history[card.login.lowercase()].orEmpty()
+    val history by chatterHistory.collectAsStateWithLifecycle()
+    val key = card.login.lowercase()
+    val userMessages = history.messages[key].orEmpty()
+    val userMentions = history.mentions[key].orEmpty()
     val nav = remember(card.login) { ChatterCardNavigation() }
     val load = rememberChatterCardLoad(card.login, card.userId)
-    val chatter = chatterCardChatter(card, selfLogin, load.profile, userMessages)
+    val chatter = chatterCardChatter(card, selfLogin, load.profile, userMessages, userMentions)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scroll = rememberChatterCardScroll()
-    FollowChatterMessagesEnd(nav.page, scroll.messages.state)
+    FollowChatterMessagesEnd(nav.page, scroll)
     val dismissSheet = rememberHideThenDismiss(sheetState, onDismiss)
     val openProfile = LocalOpenChatterProfile.current
     ModalBottomSheet(
@@ -216,13 +219,14 @@ private fun rememberHideThenDismiss(sheetState: SheetState, onDismiss: () -> Uni
     }
 }
 
-/** The chatter of the [card] as far as their loaded [profile] tells, with their recent [messages] here. */
+/** The chatter of the [card] as far as their loaded [profile] tells, with their [messages] and [mentions] here. */
 @Composable
 private fun chatterCardChatter(
     card: ChatterCardRequest,
     selfLogin: String,
     profile: ChatterProfile?,
     messages: List<ChatMessage>,
+    mentions: List<ChatMessage>,
 ): ChatterCardChatter {
     val shownLogin = profile?.login?.takeIf { it.isNotBlank() } ?: card.login
     // A card opened by `/user` for someone who has not written here gets the ID from the loaded profile.
@@ -236,6 +240,7 @@ private fun chatterCardChatter(
         badgeLines = rememberChatterBadgeLines(card.badges, card.badgeUrls),
         subscription = remember(card.badges) { chatterSubscription(card.badges) },
         messages = messages,
+        mentions = mentions,
         // The row in the chat follows a deletion, so the card shows that copy of the message.
         sourceMessage = card.message?.let { source -> messages.find { it.id == source.id } ?: source },
         othersCard = chatterCardOffersWhisper(
@@ -282,7 +287,20 @@ private fun ChatterCardPageContent(
             }
             ChatterCardPage.Portrait -> ChatterPortraitPageFor(chatter, load, onDismiss, onBack = nav::back)
             // Each page's header stays in place while the rest scrolls under it.
-            ChatterCardPage.Messages -> ChatterMessagesPage(chatter.messages, scroll.messages, renderMessage, nav::back)
+            ChatterCardPage.Messages -> ChatterMessagesPage(
+                title = stringResource(R.string.chatter_card_last_messages_count, chatter.messages.size),
+                messages = chatter.messages,
+                scroll = scroll.messages,
+                renderMessage = renderMessage,
+                onBack = nav::back,
+            )
+            ChatterCardPage.Mentions -> ChatterMessagesPage(
+                title = chatterMentionsTitle(chatter.mentions.size),
+                messages = chatter.mentions,
+                scroll = scroll.mentions,
+                renderMessage = renderMessage,
+                onBack = nav::back,
+            )
             ChatterCardPage.Profile -> ChatterProfilePage(chatter, load, scroll, nav, renderMessage, onDismiss)
         }
     }

@@ -72,7 +72,7 @@ internal class StreamMedia3Player(
                     setPlaylist(listOf(mediaItemData(target)))
                     setCurrentMediaItemIndex(0)
                     if (target is TwitchPlaybackTarget.Video) {
-                        setContentPositionMs(PositionSupplier { StreamPlayback.positionMs })
+                        setContentPositionMs { StreamPlayback.positionMs }
                     }
                 }
             }

@@ -7,6 +7,9 @@ internal enum class ChatterCardPage {
     /** The chatter's recent messages in this chat. */
     Messages,
 
+    /** The recent messages in this chat that mention the chatter. */
+    Mentions,
+
     /** The channel's moderation logs on the chatter. */
     ModLogs,
 

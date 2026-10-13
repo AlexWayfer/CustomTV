@@ -59,6 +59,12 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         checked = settings.keepKeyboardAfterSend,
         onCheckedChange = viewModel.chat::setKeepKeyboardAfterSend,
     )
+    SettingsToggle(
+        label = stringResource(R.string.scroll_to_latest_after_send),
+        hint = stringResource(R.string.scroll_to_latest_after_send_hint),
+        checked = settings.scrollToLatestAfterSend,
+        onCheckedChange = viewModel.chat::setScrollToLatestAfterSend,
+    )
 }
 
 /** How a `/me` message looks: in italics, or in the chatter's name color. */

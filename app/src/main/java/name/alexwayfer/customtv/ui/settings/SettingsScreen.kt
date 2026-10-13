@@ -180,7 +180,7 @@ private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: Strin
     ChatterLabelsSettingsEntry(onOpen = { onOpen(SettingsPage.ChatterLabels) })
     ExperimentalSettingsEntry(accountName, onOpen = { onOpen(SettingsPage.Experimental) })
     Column(modifier = Modifier.settingsScrollAnchor(anchor)) {
-        TelegramSettings()
+        UpdateSettings()
     }
     PremiumSettings()
     LanguageSettings()

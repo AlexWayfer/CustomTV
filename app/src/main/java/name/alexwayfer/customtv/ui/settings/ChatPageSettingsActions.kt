@@ -47,6 +47,10 @@ class ChatPageSettingsActions(private val scope: CoroutineScope, private val sto
         scope.launch { store.setKeepKeyboardAfterSend(enabled) }
     }
 
+    fun setScrollToLatestAfterSend(enabled: Boolean) {
+        scope.launch { store.setScrollToLatestAfterSend(enabled) }
+    }
+
     fun setMarkRaiders(enabled: Boolean) {
         scope.launch {
             store.setMarkRaiders(enabled)

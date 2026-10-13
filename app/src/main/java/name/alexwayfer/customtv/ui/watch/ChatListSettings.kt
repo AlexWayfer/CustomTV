@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.StateFlow
 import name.alexwayfer.customtv.chat.ChatMessage
+import name.alexwayfer.customtv.chat.ChatterHistory
 import name.alexwayfer.customtv.data.KeywordPhrase
 import name.alexwayfer.customtv.data.LinkPreviewMode
 
@@ -39,7 +40,7 @@ internal data class ChatListSettings(
 internal data class ChatFeed(
     /** Read where shown, so a new message recomposes the chat and not the screen that holds it. */
     val messages: () -> List<ChatMessage>,
-    val recentAuthorMessages: StateFlow<Map<String, List<ChatMessage>>>,
+    val chatterHistory: StateFlow<ChatterHistory>,
     val listState: LazyListState,
     val highlightPins: TemporaryHighlightPins,
     val stickToBottom: Boolean,

@@ -30,7 +30,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.roundToInt
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.diagnostics.AppLog
-import name.alexwayfer.customtv.telegram.TelegramSession
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.asString
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
@@ -46,9 +45,9 @@ import name.alexwayfer.customtv.update.appInstallStep
 import name.alexwayfer.customtv.update.appUpdateAction
 import name.alexwayfer.customtv.update.showsHintAfterSettings
 
-/** A newer release: download it from Telegram with progress, then install it. */
+/** A newer release: download it from the edition's releases with progress, then install it. */
 @Composable
-internal fun AppUpdateBlock(release: AppRelease, download: AppUpdateDownload) {
+internal fun AppUpdateBlock(release: AppRelease, download: AppUpdateDownload, onDownload: () -> Unit) {
     val version = release.version.toString()
     Column {
         GroupStatus(stringResource(R.string.app_update_available, version))
@@ -63,7 +62,7 @@ internal fun AppUpdateBlock(release: AppRelease, download: AppUpdateDownload) {
                 is AppUpdateAction.Download -> Column {
                     SmallButton(
                         text = stringResource(R.string.app_update_download, version),
-                        onClick = { TelegramSession.download.start(release.fileId) },
+                        onClick = onDownload,
                         modifier = Modifier.padding(top = 8.dp),
                     )
                     UpdateError(action.error)

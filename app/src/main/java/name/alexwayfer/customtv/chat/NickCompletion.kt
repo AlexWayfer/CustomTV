@@ -25,16 +25,19 @@ internal fun rememberSessionChatter(
     current: Map<String, String>,
     message: ChatMessage,
 ): SessionChatterUpdate {
-    if (!message.countsAsSessionAuthor()) return SessionChatterUpdate(current, false)
-    if (RewardMessageDeduper.isPubSub(message) && message.rawText.isNotBlank()) {
-        return SessionChatterUpdate(current, false)
-    }
-    val login = message.userLogin.trim().lowercase()
-    if (login.isEmpty()) return SessionChatterUpdate(current, false)
+    val login = message.sessionAuthorLogin() ?: return SessionChatterUpdate(current, false)
     val displayName = message.displayName.trim().ifBlank { message.userLogin.trim() }
     val known = current[login] ?: return SessionChatterUpdate(current + (login to displayName), firstInSession = true)
     if (known == displayName) return SessionChatterUpdate(current, false)
     return SessionChatterUpdate(current + (login to displayName), firstInSession = false)
+}
+
+/** The lowercase login a message counts for as a chatter of the session; null for a system line. */
+internal fun ChatMessage.sessionAuthorLogin(): String? {
+    if (!countsAsSessionAuthor()) return null
+    // A PubSub reward with text is followed by its IRC copy, which is the message that counts.
+    if (RewardMessageDeduper.isPubSub(this) && rawText.isNotBlank()) return null
+    return userLogin.trim().lowercase().ifEmpty { null }
 }
 
 internal fun nickQueryAtCursor(text: String, cursor: Int): NickQuery? {
@@ -54,13 +57,16 @@ internal fun matchingSessionNicks(
     chatters: Map<String, String>,
     query: String,
     channelOwner: ChatNick? = null,
+    lastSpokeAt: Map<String, Long> = emptyMap(),
 ): List<ChatNick> {
     if (query.isEmpty()) return emptyList()
+    // Whoever wrote last comes first; chatters with the same time, or none, go by name.
+    val order = compareByDescending<ChatNick> { lastSpokeAt[it.login] ?: Long.MIN_VALUE }.then(nickAlphabet)
     val matches = chatters
         .mapNotNull { (login, displayName) ->
             ChatNick(login, displayName).takeIf { it.matchesNickQuery(query) }
         }
-        .sortedWith(nickAlphabet)
+        .sortedWith(order)
     val owner = channelOwner
         ?.takeIf { it.login.isNotBlank() && it.matchesNickQuery(query) }
         ?: return matches

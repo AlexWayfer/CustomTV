@@ -11,6 +11,26 @@ import org.junit.Test
 
 class FollowedRefreshPolicyTest {
     @Test
+    fun theFirstLoadAtStartShowsTheRefreshWhileItWaitsForAccess() {
+        assertTrue(followedAccessWaitShown(false, lastAtMillis = null, nowMillis = 1_000, "1", "1"))
+    }
+
+    @Test
+    fun aLoadThatAlreadyRunsShowsTheRefreshItself() {
+        assertFalse(followedAccessWaitShown(true, lastAtMillis = null, nowMillis = 1_000, "1", "1"))
+    }
+
+    @Test
+    fun aWaitRightAfterTheLastLoadShowsNoRefresh() {
+        assertFalse(followedAccessWaitShown(false, lastAtMillis = 1_000, nowMillis = 2_000, "1", "1"))
+    }
+
+    @Test
+    fun aWaitWithoutAKnownAccountShowsNoRefresh() {
+        assertFalse(followedAccessWaitShown(false, lastAtMillis = null, nowMillis = 1_000, "1", null))
+    }
+
+    @Test
     fun theMinuteRefreshReadsOnlyWhoIsLive() {
         assertFalse(followedLoadIsFull(liveOnly = true, listEmpty = false, lastFullFailed = false))
     }

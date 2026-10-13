@@ -13,4 +13,9 @@
     <string name="notification_prompt">Get notified about app updates and crashes</string>
     <string name="notification_prompt_enable">Enable</string>
     <string name="notification_prompt_dismiss">Not now</string>
+    <string name="app_update_current_version">Current version: %1$s, free</string>
+    <string name="github_open">Open GitHub</string>
+    <string name="github_did_not_answer">GitHub did not answer</string>
+    <string name="github_error">GitHub answered with error %1$d</string>
+    <string name="github_download_damaged">The downloaded file is damaged. Download it again</string>
 </resources>

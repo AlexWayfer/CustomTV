@@ -78,7 +78,7 @@ You never type your Twitch password into the app. It logs in with Twitch's devic
 
 3. Open the project in Android Studio and run the `freeDebug` variant, or build it with `./gradlew assembleFreeDebug`.
 
-The update check reads the releases from a Telegram group and stays off without `telegram.properties`.
+The update check reads the latest release of this repository on GitHub and needs no setup.
 
 ## Contributing
 

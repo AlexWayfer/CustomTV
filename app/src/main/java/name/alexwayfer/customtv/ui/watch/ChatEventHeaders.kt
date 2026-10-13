@@ -64,7 +64,10 @@ internal fun ChatRaidLine(
     Text(text = annotated, lineHeight = lineHeight)
 }
 
-/** "[count] [from] [channel] [joined]": the numbers and the raiding channel in bold. */
+/**
+ * [countLabel], [fromLabel], [fromDisplayName], and [joinedLabel] apart by spaces: the numbers and the raiding
+ * channel in bold.
+ */
 private fun AnnotatedString.Builder.appendRaidArrival(
     countLabel: String,
     fromLabel: String,

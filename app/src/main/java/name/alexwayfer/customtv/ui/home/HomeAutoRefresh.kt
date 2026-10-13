@@ -54,7 +54,8 @@ internal fun RecentsAutoRefresh(
 
 /**
  * Loads the whole follow list while [active] (signed in, Home in sight, the app in front), with the [earlyAccess]
- * when it is at hand, then its live channels every [FOLLOWED_AUTO_REFRESH_INTERVAL_MS] until the login is refused.
+ * when it is at hand and with the refresh shown while it waits for access otherwise, then its live channels every
+ * [FOLLOWED_AUTO_REFRESH_INTERVAL_MS] until the login is refused.
  */
 @Composable
 internal fun FollowsAutoRefresh(
@@ -70,7 +71,7 @@ internal fun FollowsAutoRefresh(
         if (early != null) {
             follows.refresh(early.accessToken, early.userId, liveOnly = false, automatic = true)
         }
-        val current = access()
+        val current = if (early == null) follows.awaitAccess(userId, access) else access()
         if (current == null) {
             if (follows.channels.value.isEmpty()) follows.markUnavailable()
             return@LaunchedEffect

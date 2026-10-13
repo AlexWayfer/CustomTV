@@ -13,4 +13,9 @@
     <string name="notification_prompt">Уведомления об обновлениях и сбоях приложения</string>
     <string name="notification_prompt_enable">Включить</string>
     <string name="notification_prompt_dismiss">Не сейчас</string>
+    <string name="app_update_current_version">Текущая версия: %1$s, free</string>
+    <string name="github_open">Открыть GitHub</string>
+    <string name="github_did_not_answer">GitHub не ответил</string>
+    <string name="github_error">GitHub ответил ошибкой %1$d</string>
+    <string name="github_download_damaged">Скачанный файл повреждён. Скачайте его ещё раз</string>
 </resources>

@@ -42,7 +42,7 @@ internal class PlayerPageRecovery(
         startupReloadAttempts += 1
         AppLog.w(
             PLAYER_LOG_TAG,
-            "Not ready after ${sinceLoadMs()} ms, reloading the page (attempt $startupReloadAttempts)",
+            "Not ready after $sinceLoadMs ms, reloading the page (attempt $startupReloadAttempts)",
         )
         reloadPage()
     }
@@ -73,7 +73,8 @@ internal class PlayerPageRecovery(
         handler.postDelayed(pageResponseWatchdog, PAGE_RESPONSE_TIMEOUT_MS)
     }
 
-    fun sinceLoadMs(): Long = SystemClock.elapsedRealtime() - loadStartedAt
+    val sinceLoadMs: Long
+        get() = SystemClock.elapsedRealtime() - loadStartedAt
 
     fun resetAutomaticReloads() {
         automaticReloadAttempts = 0
@@ -90,19 +91,24 @@ internal class PlayerPageRecovery(
     fun confirmPlayback(): Boolean {
         if (playbackConfirmed) return false
         playbackConfirmed = true
-        AppLog.i(PLAYER_LOG_TAG, "Playing after ${sinceLoadMs()} ms")
+        AppLog.i(PLAYER_LOG_TAG, "Playing after $sinceLoadMs ms")
         return true
+    }
+
+    /** The server answered the page; a resource that hangs from here on must not keep the player from starting. */
+    fun pageResponded() {
+        if (pageLoad.respond() && !ready && !playbackConfirmed) scheduleStartupWatchdog()
     }
 
     fun pageLoaded() {
         if (!pageLoad.finish()) return
-        AppLog.i(PLAYER_LOG_TAG, "Page loaded after ${sinceLoadMs()} ms")
+        AppLog.i(PLAYER_LOG_TAG, "Page loaded after $sinceLoadMs ms")
         if (!ready && !playbackConfirmed) scheduleStartupWatchdog()
     }
 
     fun pageFailed(reason: String) {
         if (isReleased() || !pageLoad.fail()) return
-        AppLog.w(PLAYER_LOG_TAG, "Page failed after ${sinceLoadMs()} ms: $reason")
+        AppLog.w(PLAYER_LOG_TAG, "Page failed after $sinceLoadMs ms: $reason")
         if (StreamPlayback.userPaused) return
         if (startupReloadAttempts >= PlayerPageReloads.limit) {
             AppLog.w(PLAYER_LOG_TAG, "No page reloads left")
@@ -114,7 +120,7 @@ internal class PlayerPageRecovery(
     }
 
     fun playerReady() {
-        if (!ready) AppLog.i(PLAYER_LOG_TAG, "Ready after ${sinceLoadMs()} ms")
+        if (!ready) AppLog.i(PLAYER_LOG_TAG, "Ready after $sinceLoadMs ms")
         ready = true
         handler.removeCallbacks(startupWatchdog)
     }

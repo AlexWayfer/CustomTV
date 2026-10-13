@@ -32,6 +32,8 @@ internal fun EmoteCompletionList(
             .fillMaxWidth()
             .heightIn(max = 240.dp),
         contentPadding = PaddingValues(bottom = 4.dp),
+        // The best match sits right over the field, nearest the thumb, and the rest go up from it.
+        reverseLayout = true,
     ) {
         // Lazy: a short query matches hundreds of emotes, and only the visible rows are built.
         items(emotes, key = { it.name }) { emote ->

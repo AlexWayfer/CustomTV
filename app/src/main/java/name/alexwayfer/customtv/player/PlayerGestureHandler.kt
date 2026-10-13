@@ -33,7 +33,7 @@ internal data class PlayerTouchState(
 
 /** What the gestures tell the player: a tap, and the drags with their offset and, at the end, their velocity. */
 internal data class PlayerTouchCallbacks(
-    /** [reachedPage]: the page got the tap too and acts on it on its own, such as toggling its controls. */
+    /** `reachedPage`: the page got the tap too and acts on it on its own, such as toggling its controls. */
     val onTap: (reachedPage: Boolean, x: Float) -> Unit,
     val onVerticalDrag: (Float) -> Unit,
     val onVerticalDragEnd: (Float, Float) -> Unit,

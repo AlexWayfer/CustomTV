@@ -26,9 +26,14 @@ internal class PlayerPageLoad {
         failed = false
     }
 
-    /** The server answered and the page started; a later slow download is not a missing answer. */
-    fun respond() {
-        if (inFlight && !failed) responded = true
+    /**
+     * The server answered and the page started; a later slow download is not a missing answer.
+     * True only for the first answer of the current load.
+     */
+    fun respond(): Boolean {
+        if (!inFlight || failed || responded) return false
+        responded = true
+        return true
     }
 
     /** True only for the first finish of the current load when it did not fail. */

@@ -77,7 +77,7 @@ internal fun BoxScope.PlayerVideoBox(
     )
     val fullWidthPx = frame.contentConstraints?.maxWidth
     Box(
-        modifier = playerBoxModifier(scene, frame, layout)
+        modifier = Modifier.playerBox(this, scene, frame, layout)
             .then(
                 if (scene.fullscreenActive) {
                     Modifier
@@ -115,10 +115,14 @@ internal fun BoxScope.PlayerVideoBox(
     }
 }
 
-private fun BoxScope.playerBoxModifier(scene: PlayerScene, frame: PlayerFrame, layout: FullscreenChatLayout): Modifier =
-    when {
-        scene.inPictureInPicture -> Modifier
-            .align(Alignment.Center)
+private fun Modifier.playerBox(
+    box: BoxScope,
+    scene: PlayerScene,
+    frame: PlayerFrame,
+    layout: FullscreenChatLayout,
+): Modifier =
+    this then when {
+        scene.inPictureInPicture -> with(box) { Modifier.align(Alignment.Center) }
             .fillMaxWidth()
             .aspectRatio(VIDEO_ASPECT_RATIO)
         scene.compactSettled -> Modifier.fillMaxSize()
@@ -191,12 +195,11 @@ private class PlayerTouches(
     fun gestures(): PlayerGestures {
         val inPictureInPicture = scene.inPictureInPicture
         val compactSettled = scene.compactSettled
-        val fullscreen = scene.fullscreen
         return PlayerGestures(
             enableMinimizeSwipe = !inPictureInPicture && !compactSettled,
             enableExpandSwipe = !inPictureInPicture && (
                 (compactSettled && !state.swipeDragging) ||
-                    (fullscreen.available && !scene.minimized && !scene.fullscreenActive && !state.collapsing)
+                    (!scene.minimized && !scene.fullscreenActive && !state.collapsing)
                 ),
             enableHorizontalDismiss = !inPictureInPicture && (compactSettled || layout.chatOff),
             tapExpands = tapExpands,

@@ -397,7 +397,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
             isReleased = { released },
             events = PlayerPageEvents(
                 hideTopOverlay = ::injectHideTopOverlay,
-                onPlayerPageStarted = recovery.pageLoad::respond,
+                onPlayerPageStarted = recovery::pageResponded,
                 onPlayerPageLoaded = recovery::pageLoaded,
                 onPlayerPageFailed = recovery::pageFailed,
                 restorePlayer = ::restorePlayer,
@@ -543,7 +543,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
 
     private fun handleOffline() {
         if (recovery.playbackConfirmed) return
-        AppLog.i(PLAYER_LOG_TAG, "Offline after ${recovery.sinceLoadMs()} ms")
+        AppLog.i(PLAYER_LOG_TAG, "Offline after ${recovery.sinceLoadMs} ms")
         revealSurface()
         onOffline?.invoke()
     }

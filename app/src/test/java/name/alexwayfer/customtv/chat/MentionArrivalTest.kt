@@ -23,13 +23,44 @@ class MentionArrivalTest {
 
     @Test
     fun onlyANewlyArrivedMentionAsksForFeedback() {
-        val seen = chat("old", "hey alex")
-        val fresh = chat("new", "hey alex")
+        val seen = mention("old")
+        val fresh = mention("new")
 
         assertFalse(newMentionArrived(setOf("old"), listOf(seen), "alex", "Alex"))
         assertTrue(newMentionArrived(setOf("old"), listOf(seen, fresh), "alex", "Alex"))
     }
 
-    private fun chat(id: String, text: String) =
-        testChatMessage(id, text, login = id, color = Color.Unspecified, parts = emptyList(), timestampMillis = 0L)
+    @Test
+    fun anAppOnScreenOrInPictureInPictureAlerts() {
+        assertTrue(mentionAlertAudible(appStarted = true, stoppedByLock = false, screenUnlocked = true))
+    }
+
+    @Test
+    fun aScreenLockedOverTheAppAlerts() {
+        assertTrue(mentionAlertAudible(appStarted = false, stoppedByLock = true, screenUnlocked = false))
+    }
+
+    @Test
+    fun anAppInTheBackgroundOfAnUnlockedPhoneStaysSilent() {
+        assertFalse(mentionAlertAudible(appStarted = false, stoppedByLock = false, screenUnlocked = true))
+    }
+
+    @Test
+    fun aScreenLockedOverAnotherAppStaysSilent() {
+        assertFalse(mentionAlertAudible(appStarted = false, stoppedByLock = false, screenUnlocked = false))
+    }
+
+    @Test
+    fun unlockingIntoAnotherAppAfterALockSilencesTheAlerts() {
+        assertFalse(mentionAlertAudible(appStarted = false, stoppedByLock = true, screenUnlocked = true))
+    }
+
+    private fun mention(id: String) = testChatMessage(
+        id,
+        "hey alex",
+        login = id,
+        color = Color.Unspecified,
+        parts = emptyList(),
+        timestampMillis = 0L,
+    )
 }

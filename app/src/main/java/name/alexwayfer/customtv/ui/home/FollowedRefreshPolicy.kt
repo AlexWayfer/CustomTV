@@ -18,6 +18,19 @@ internal fun followedAutomaticRefreshAllowed(
 }
 
 /**
+ * Whether Home shows the refresh while an automatic whole load waits for the account's access, such as a token
+ * refresh at start: only when that load will run, not while another load already shows it or after a recent one.
+ */
+internal fun followedAccessWaitShown(
+    loadRunning: Boolean,
+    lastAtMillis: Long?,
+    nowMillis: Long,
+    lastUserId: String?,
+    userId: String?,
+): Boolean = !loadRunning && userId != null &&
+    followedAutomaticRefreshAllowed(lastAtMillis, nowMillis, lastUserId, userId)
+
+/**
  * Whether a load reads the whole follow list rather than only who of the shown channels is live: the whole list is
  * asked for, none is shown yet, or the last whole load failed and the shown list may be out of date.
  */

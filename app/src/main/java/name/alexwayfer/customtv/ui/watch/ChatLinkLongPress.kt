@@ -14,8 +14,8 @@ internal sealed interface ChatLinkLongPress {
 }
 
 /** Null for a link that gets no touch target of its own. */
-internal fun chatLinkLongPress(link: LinkAnnotation): ChatLinkLongPress? = when {
-    link is LinkAnnotation.Clickable && link.tag == CHAT_AUTHOR_LINK_TAG -> ChatLinkLongPress.SelectMessage
-    link is LinkAnnotation.Url -> ChatLinkLongPress.LinkMenu(link.url)
+internal fun chatLinkLongPress(link: LinkAnnotation): ChatLinkLongPress? = when (link) {
+    is LinkAnnotation.Clickable if link.tag == CHAT_AUTHOR_LINK_TAG -> ChatLinkLongPress.SelectMessage
+    is LinkAnnotation.Url -> ChatLinkLongPress.LinkMenu(link.url)
     else -> null
 }

@@ -17,9 +17,25 @@ class ChatSendFeedbackTest {
     }
 
     @Test
-    fun aSentMessageReturnsTheChatToTheLatestAndClosesAnOpenThread() {
-        assertTrue(chatSendReturnsToLatest(ChatSendResult.Sent, draftMatchesSentMessage = true))
-        assertFalse(chatSendReturnsToLatest(ChatSendResult.Rejected(401, ""), draftMatchesSentMessage = true))
-        assertFalse(chatSendReturnsToLatest(ChatSendResult.Sent, draftMatchesSentMessage = false))
+    fun aSentMessageCompletesTheSend() {
+        assertTrue(chatSendCompleted(ChatSendResult.Sent, draftMatchesSentMessage = true))
+        assertFalse(chatSendCompleted(ChatSendResult.Rejected(401, ""), draftMatchesSentMessage = true))
+        assertFalse(chatSendCompleted(ChatSendResult.Sent, draftMatchesSentMessage = false))
+    }
+
+    @Test
+    fun aStoppedChatJumpsToTheLatestAfterSendWhenTheSettingIsOn() {
+        assertTrue(chatFollowsAfterSend(following = false, scrollToLatestAfterSend = true))
+    }
+
+    @Test
+    fun aStoppedChatStaysInPlaceAfterSendWhenTheSettingIsOff() {
+        assertFalse(chatFollowsAfterSend(following = false, scrollToLatestAfterSend = false))
+    }
+
+    @Test
+    fun aFollowingChatKeepsFollowingAfterSendEitherWay() {
+        assertTrue(chatFollowsAfterSend(following = true, scrollToLatestAfterSend = false))
+        assertTrue(chatFollowsAfterSend(following = true, scrollToLatestAfterSend = true))
     }
 }

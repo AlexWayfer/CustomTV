@@ -25,6 +25,7 @@ import kotlin.math.sin
 
 private const val GLOW_TURN_MILLIS = 6000
 private val GLOW_STEP = 1.dp
+private const val GLOW_ALPHA = 0.3f
 
 /** The angle of [premiumGlowBrush]'s colors, turning slowly all the time. */
 @Composable
@@ -54,7 +55,7 @@ internal data class GlowCorners(
 }
 
 /**
- * How a premium border looks: a [line] at [lineAlpha], and a glow [glow] deep that starts at [glowAlpha] and fades
+ * How a premium border looks: a [line] at [lineAlpha], and a glow [glow] deep that starts faint and fades
  * away from the line, out of the shape when [outward] or into it otherwise. An outward line sits on the edge; an
  * inward one keeps inside it.
  */
@@ -62,7 +63,6 @@ internal class PremiumGlowStyle(
     val line: Dp,
     val lineAlpha: Float,
     val glow: Dp,
-    val glowAlpha: Float,
     val outward: Boolean,
 )
 
@@ -88,7 +88,7 @@ internal fun Modifier.premiumGlow(corners: GlowCorners, style: PremiumGlowStyle,
             drawContent()
             val brush = premiumGlowBrush(size, angle())
             glowPaths.forEachIndexed { layer, path ->
-                drawPath(path, brush, alpha = style.glowAlpha * premiumGlowFade(layer, layers), style = glowStroke)
+                drawPath(path, brush, alpha = GLOW_ALPHA * premiumGlowFade(layer, layers), style = glowStroke)
             }
             drawPath(linePath, brush, alpha = style.lineAlpha, style = lineStroke)
         }

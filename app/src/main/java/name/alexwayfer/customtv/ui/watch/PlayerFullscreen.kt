@@ -118,9 +118,6 @@ internal class PlayerFullscreen(
     private var dragGesture = FullscreenDrag.None
     private var settleJob: Job? = null
 
-    val available: Boolean
-        get() = true
-
     val active: Boolean
         get() = playerFullscreen(expanded.value, displayLandscape.value)
 

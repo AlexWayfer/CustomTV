@@ -64,7 +64,8 @@ class PlayerSessionTest {
 
     @Test
     fun expandingPipShowsTheRecordingFullScreen() {
-        val expanded = PlayerSession(video = video, videoMinimized = true).pipExpanded(watching = false)
+        val expanded = PlayerSession(video = video, videoMinimized = true)
+            .pipExpanded(watching = false, section = AppSection.Home)
 
         assertFalse(expanded.videoMinimized)
         assertEquals(video, expanded.video)
@@ -72,12 +73,48 @@ class PlayerSessionTest {
 
     @Test
     fun expandingPipShowsTheStreamFullScreen() {
-        assertFalse(PlayerSession(liveMinimized = true).pipExpanded(watching = true).liveMinimized)
+        assertFalse(
+            PlayerSession(liveMinimized = true).pipExpanded(watching = true, section = AppSection.Home).liveMinimized,
+        )
     }
 
     @Test
     fun expandingPipWithoutAStreamKeepsItsState() {
-        assertTrue(PlayerSession(liveMinimized = true).pipExpanded(watching = false).liveMinimized)
+        assertTrue(
+            PlayerSession(liveMinimized = true).pipExpanded(watching = false, section = AppSection.Home).liveMinimized,
+        )
+    }
+
+    @Test
+    fun expandingPipFromAMiniStreamOverSettingsReturnsToSettings() {
+        val session = PlayerSession(liveMinimized = true)
+
+        assertTrue(session.pipReturnsToSection(watching = true, section = AppSection.Settings))
+        assertTrue(session.pipExpanded(watching = true, section = AppSection.Settings).liveMinimized)
+    }
+
+    @Test
+    fun expandingPipFromAMiniRecordingOverWhispersReturnsToWhispers() {
+        val session = PlayerSession(video = video, videoMinimized = true)
+
+        assertTrue(session.pipExpanded(watching = false, section = AppSection.Whispers).videoMinimized)
+    }
+
+    @Test
+    fun expandingPipFromAFullStreamOverAProfileShowsItFullScreen() {
+        val session = PlayerSession()
+
+        assertFalse(session.pipReturnsToSection(watching = true, section = AppSection.ChannelProfile))
+        assertFalse(session.pipExpanded(watching = true, section = AppSection.ChannelProfile).liveMinimized)
+    }
+
+    @Test
+    fun theSectionAMiniStreamReturnsToStaysComposedInPip() {
+        val session = PlayerSession(liveMinimized = true)
+
+        assertTrue(session.sectionKeptInPip(inPictureInPicture = true, watching = true, AppSection.Settings))
+        assertFalse(session.sectionKeptInPip(inPictureInPicture = false, watching = true, AppSection.Settings))
+        assertFalse(session.sectionKeptInPip(inPictureInPicture = true, watching = true, AppSection.Home))
     }
 
     @Test

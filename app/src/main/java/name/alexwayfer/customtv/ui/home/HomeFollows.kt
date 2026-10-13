@@ -94,6 +94,19 @@ internal class HomeFollows(private val application: Application, private val sco
         }
     }
 
+    /** Waits for [access] before an automatic whole load, showing the refresh meanwhile when that load will run. */
+    suspend fun <T> awaitAccess(userId: String?, access: suspend () -> T): T {
+        val now = SystemClock.elapsedRealtime()
+        val shown = followedAccessWaitShown(request, lastRefreshAtMillis, now, lastUserId, userId)
+        if (shown) _refreshing.value = true
+        try {
+            return access()
+        } finally {
+            // The load that follows turns it on again before the screen reads it; without access it stays off.
+            if (shown && !request) _refreshing.value = false
+        }
+    }
+
     /**
      * A load already runs, Twitch refused the login so only a whole load may try again, or an automatic load comes
      * too soon after the last one.

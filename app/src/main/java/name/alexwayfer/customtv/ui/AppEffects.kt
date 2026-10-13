@@ -157,7 +157,7 @@ internal fun AppPipEffects(scene: AppScene) {
     val watching = scene.watching
     LaunchedEffect(inPip, watching) {
         if (shell.wasInPip && !inPip) {
-            shell.player = shell.player.pipExpanded(watching)
+            shell.player = shell.player.pipExpanded(watching, shell.section)
         }
         shell.wasInPip = inPip
     }

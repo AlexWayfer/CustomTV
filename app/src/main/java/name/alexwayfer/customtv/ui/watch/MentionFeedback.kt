@@ -55,6 +55,7 @@ internal fun MentionAlerts(
     settings: AppSettings,
 ) {
     val context = LocalContext.current
+    val alertAudible = rememberMentionAlertAudible()
     val settingsState = rememberUpdatedState(settings)
     val loginState = rememberUpdatedState(selfLogin.orEmpty())
     val nameState = rememberUpdatedState(selfDisplayName.orEmpty())
@@ -74,6 +75,7 @@ internal fun MentionAlerts(
             val mentioned = newMentionArrived(seen, current, login, name, alerts.keywordPhrases)
             seen = current.map { it.id }.toSet()
             if (!mentioned) return@collect
+            if (!alertAudible()) return@collect
             if (alerts.mentionVibration) {
                 playMentionVibration(
                     context,

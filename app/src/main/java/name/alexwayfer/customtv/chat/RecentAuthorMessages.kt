@@ -84,7 +84,7 @@ internal fun markRecentAuthorMessagesDeleted(
     return history + (login to markUserMessagesDeleted(messages, login, deletedBy, timeoutSeconds, banned))
 }
 
-private fun ChatMessage.isAuthorHistoryMessage(): Boolean =
+internal fun ChatMessage.isAuthorHistoryMessage(): Boolean =
     userLogin.isNotBlank() && notice == null && when (eventKind) {
         ChatEventKind.Normal,
         ChatEventKind.Announcement,

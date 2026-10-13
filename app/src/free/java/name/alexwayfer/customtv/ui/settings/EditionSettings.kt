@@ -12,7 +12,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -25,11 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import name.alexwayfer.customtv.BuildConfig
 import name.alexwayfer.customtv.R
-import name.alexwayfer.customtv.telegram.TelegramSession
-import name.alexwayfer.customtv.telegram.telegramEditionGroupLink
 import name.alexwayfer.customtv.ui.theme.PremiumGold
 import kotlin.math.roundToInt
 
@@ -139,19 +134,11 @@ private fun PremiumExperimentalFeatures(style: TextStyle, lineSpacing: Dp, featu
     )
 }
 
-/** Opens where Upgrade to Premium leads, by the account's access to the Premium group. */
+/** Opens the Premium purchase, in the currency for the SIM's country. */
 @Composable
 internal fun premiumUpgradeOpener(): () -> Unit {
     val context = LocalContext.current
-    val ui by TelegramSession.ui.collectAsStateWithLifecycle()
-    val premiumTopic = telegramEditionGroupLink(
-        premium = true,
-        openChatId = BuildConfig.TELEGRAM_OPEN_CHAT_ID,
-        openTopicId = BuildConfig.TELEGRAM_OPEN_TOPIC_ID,
-        premiumChatId = BuildConfig.TELEGRAM_PREMIUM_CHAT_ID,
-        premiumTopicId = BuildConfig.TELEGRAM_PREMIUM_TOPIC_ID,
-    )
-    return { openLink(context, premiumUpgradeLink(ui.premiumGroup, premiumTopic, premiumSwitchUrl(context))) }
+    return { openLink(context, premiumSwitchUrl(context)) }
 }
 
 /** Starts the group of Premium features that rely on the experimental login. */

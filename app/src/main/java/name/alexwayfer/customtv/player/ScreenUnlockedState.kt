@@ -55,7 +55,7 @@ private fun update(unlocked: MutableState<Boolean>, context: Context, cause: Str
     }
 }
 
-private fun screenUnlocked(context: Context): Boolean {
+internal fun screenUnlocked(context: Context): Boolean {
     val interactive = context.getSystemService(PowerManager::class.java)?.isInteractive != false
     val locked = context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
     return interactive && !locked

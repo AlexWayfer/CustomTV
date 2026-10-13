@@ -97,7 +97,10 @@ private fun AppScreens(scene: AppScene) {
         }
         AppPlayerHost(scene)
         AppMiniPlayerBack(scene)
-        if (showAppShell(scene.inPip, scene.watching, shell.player.liveMinimized, shell.section)) AppSections(scene)
+        val sectionKeptInPip = shell.player.sectionKeptInPip(scene.inPip, scene.watching, shell.section)
+        if (showAppShell(scene.inPip, scene.watching, shell.player.liveMinimized, shell.section) || sectionKeptInPip) {
+            AppSections(scene, hidden = sectionKeptInPip)
+        }
         AppRecordingPlayer(scene)
         AppLoginPrompts(scene)
         AppSnackbarHost(scene)

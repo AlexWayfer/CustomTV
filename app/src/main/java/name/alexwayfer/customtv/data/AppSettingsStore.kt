@@ -52,6 +52,7 @@ class AppSettingsStore(context: Context) {
             emoteCompletionWithoutColon = prefs[EMOTE_COMPLETION_WITHOUT_COLON]
                 ?: defaults.emoteCompletionWithoutColon,
             keepKeyboardAfterSend = prefs[KEEP_KEYBOARD_AFTER_SEND] ?: defaults.keepKeyboardAfterSend,
+            scrollToLatestAfterSend = prefs[SCROLL_TO_LATEST_AFTER_SEND] ?: defaults.scrollToLatestAfterSend,
             backgroundSoundOnly = prefs[BACKGROUND_SOUND_ONLY] ?: defaults.backgroundSoundOnly,
             streamStartNotifications = prefs[STREAM_START_NOTIFICATIONS]
                 ?: defaults.streamStartNotifications,

@@ -232,7 +232,7 @@ internal class ChatInputActions(
         }
         composer.sending = false
         val draftMatches = chatMessageToSend(compose.draft.text.toString()) == message
-        if (chatSendReturnsToLatest(result, draftMatches)) {
+        if (chatSendCompleted(result, draftMatches)) {
             compose.shareOffer?.onPlainSent?.invoke()
             compose.draft.clearText()
             compose.onSent()

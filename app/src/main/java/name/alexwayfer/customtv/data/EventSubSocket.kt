@@ -8,7 +8,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
-/** Runs [task] after a delay in seconds; the result cancels it, and null means it cannot run any more. */
+/** Runs the task after a delay in seconds; the result cancels it, and null means it cannot run any more. */
 internal typealias EventSubSchedule = (delaySeconds: Long, task: () -> Unit) -> (() -> Unit)?
 
 /** [EventSubSchedule] on [executor]: nothing runs once the executor is shut down. */

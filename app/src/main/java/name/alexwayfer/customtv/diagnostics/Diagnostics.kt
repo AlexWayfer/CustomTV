@@ -15,7 +15,6 @@ import name.alexwayfer.customtv.auth.twitchAuthMessage
 import name.alexwayfer.customtv.data.HTTP_SUCCESS
 import name.alexwayfer.customtv.data.TwitchSessionStore
 import name.alexwayfer.customtv.data.gqlErrorsToReport
-import name.alexwayfer.customtv.telegram.TelegramSession
 import java.io.IOException
 import java.time.ZoneId
 
@@ -141,7 +140,7 @@ internal object Diagnostics {
             accounts = DiagnosticAccounts(
                 twitchLogin = account?.login,
                 twitchUserId = account?.userId,
-                telegramUsername = TelegramSession.ui.value.accountUsername,
+                telegramUsername = reportTelegramUsername,
             ),
             events = DiagnosticJournal.eventsToSend(context),
             zone = ZoneId.systemDefault(),

@@ -21,7 +21,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 21
+        versionCode = 23
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -31,39 +31,36 @@ android {
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
         buildConfigField("String", "TWITCH_CLIENT_ID", "\"$twitchClientId\"")
-        val telegram = Properties().apply {
-            val file = rootProject.file("telegram.properties")
-            if (file.exists()) file.inputStream().use(::load)
-        }
-        val telegramApiId = telegram.getProperty("TELEGRAM_API_ID")?.toIntOrNull() ?: 0
-        val telegramApiHash = telegram.getProperty("TELEGRAM_API_HASH").orEmpty()
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-        val telegramOpenChatId = telegram.getProperty("TELEGRAM_OPEN_CHAT_ID")?.toLongOrNull() ?: 0L
-        val telegramPremiumChatId = telegram.getProperty("TELEGRAM_PREMIUM_CHAT_ID")?.toLongOrNull() ?: 0L
-        val telegramOpenTopicId = telegram.getProperty("TELEGRAM_OPEN_TOPIC_ID")?.toIntOrNull() ?: 0
-        val telegramPremiumTopicId = telegram.getProperty("TELEGRAM_PREMIUM_TOPIC_ID")?.toIntOrNull() ?: 0
-        buildConfigField("int", "TELEGRAM_API_ID", "$telegramApiId")
-        buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
-        buildConfigField("long", "TELEGRAM_OPEN_CHAT_ID", "${telegramOpenChatId}L")
-        buildConfigField("long", "TELEGRAM_PREMIUM_CHAT_ID", "${telegramPremiumChatId}L")
-        buildConfigField("int", "TELEGRAM_OPEN_TOPIC_ID", "$telegramOpenTopicId")
-        buildConfigField("int", "TELEGRAM_PREMIUM_TOPIC_ID", "$telegramPremiumTopicId")
     }
 
     flavorDimensions += "tier"
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.7.0"
+            versionName = "1.8.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.6.0"
+                versionName = "1.7.0"
                 buildConfigField("boolean", "PREMIUM", "true")
+                // Premium logs in to Telegram: its group gives the access and the updates.
+                val telegram = Properties().apply {
+                    val file = rootProject.file("telegram.properties")
+                    if (file.exists()) file.inputStream().use(::load)
+                }
+                val telegramApiId = telegram.getProperty("TELEGRAM_API_ID")?.toIntOrNull() ?: 0
+                val telegramApiHash = telegram.getProperty("TELEGRAM_API_HASH").orEmpty()
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                val telegramPremiumChatId = telegram.getProperty("TELEGRAM_PREMIUM_CHAT_ID")?.toLongOrNull() ?: 0L
+                val telegramPremiumTopicId = telegram.getProperty("TELEGRAM_PREMIUM_TOPIC_ID")?.toIntOrNull() ?: 0
+                buildConfigField("int", "TELEGRAM_API_ID", "$telegramApiId")
+                buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
+                buildConfigField("long", "TELEGRAM_PREMIUM_CHAT_ID", "${telegramPremiumChatId}L")
+                buildConfigField("int", "TELEGRAM_PREMIUM_TOPIC_ID", "$telegramPremiumTopicId")
             }
         }
     }
@@ -160,12 +157,13 @@ dependencies {
     implementation(libs.markdown.renderer.m3)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.browser)
-    implementation(libs.tdlib.android.core)
-    implementation(libs.androidx.work.runtime)
     if (premiumSources) {
-        // Drag to reorder the chatter labels in the settings.
-        "premiumImplementation"(libs.reorderable)
+        // Telegram for the Premium access and updates; its native library is most of an APK's size.
+        "premiumImplementation"(libs.tdlib.android.core)
     }
+    implementation(libs.androidx.work.runtime)
+    // Drag to reorder the chatter labels in the settings.
+    implementation(libs.reorderable)
     debugImplementation(libs.androidx.compose.ui.tooling)
     // Names composables in a Perfetto trace of a debug build.
     debugImplementation(libs.androidx.compose.runtime.tracing)

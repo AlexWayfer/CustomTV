@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import name.alexwayfer.customtv.chat.ChatMentionSelf
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.chat.OutgoingRaid
@@ -17,7 +18,7 @@ import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChatThreadRepository
 import name.alexwayfer.customtv.ui.HoldGestureTips
 
-/** Mentions of the user in the live chat vibrate or sound, as the settings ask. */
+/** Mentions of the user in the live chat vibrate or sound, as the settings ask, and gather on their own card. */
 @Composable
 internal fun LiveMentionFeedback(
     chatViewModel: ChatViewModel,
@@ -25,6 +26,8 @@ internal fun LiveMentionFeedback(
     account: WatchAccount,
     settings: AppSettings,
 ) {
+    val self = ChatMentionSelf(account.login.orEmpty(), account.displayName.orEmpty(), settings.keywordPhrases)
+    LaunchedEffect(chatViewModel, self) { chatViewModel.setMentionSelf(self) }
     MentionFeedback(
         messages = chatViewModel.messages,
         channel = channel,

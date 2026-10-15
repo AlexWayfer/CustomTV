@@ -1,7 +1,6 @@
 package name.alexwayfer.customtv.ui.account
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -22,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +38,8 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import com.mikepenz.markdown.model.MarkdownTypography
@@ -72,7 +74,10 @@ internal fun ChannelAboutPanels(userId: String?, onOpenOnTwitch: () -> Unit) {
         if (value is AboutTab.Shown && attempt == 0) return@produceState
         value = AboutTab.Loading
         value = when (val load = ChannelPanelsRepository.load(id)) {
-            is ChannelPanelsLoad.Loaded -> AboutTab.Shown(load.panels)
+            is ChannelPanelsLoad.Loaded -> {
+                PanelMarkdown.parse(load.panels)
+                AboutTab.Shown(load.panels)
+            }
             ChannelPanelsLoad.LeftOut -> AboutTab.LeftOut
             ChannelPanelsLoad.Failed -> AboutTab.Failed
         }
@@ -135,9 +140,9 @@ private fun PanelList(panels: ChannelPanels, onOpenOnTwitch: () -> Unit) {
 @Composable
 private fun AboutPanel(panel: ChannelPanel) {
     val context = LocalContext.current
-    // An image grows the panel once it arrives.
+    // The text is parsed and an image kept in memory is drawn in the first frame, so the panel opens at its size.
     Column(
-        modifier = Modifier.fillMaxWidth().animateContentSize(),
+        modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         panel.title?.let { title ->
@@ -151,7 +156,8 @@ private fun AboutPanel(panel: ChannelPanel) {
         panel.imageUrl?.let { image ->
             val link = panel.linkUrl
             AsyncImage(
-                model = image,
+                // A fixed size lets Coil take the image from memory at once instead of waiting for the layout.
+                model = remember(image) { ImageRequest.Builder(context).data(image).size(Size.ORIGINAL).build() },
                 contentDescription = if (link != null) stringResource(R.string.profile_panel_link) else null,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,7 +172,9 @@ private fun AboutPanel(panel: ChannelPanel) {
                 contentScale = ContentScale.FillWidth,
             )
         }
-        panel.description?.let { text -> Markdown(text, typography = panelTypography()) }
+        panel.description?.let { text ->
+            Markdown(state = remember(text) { PanelMarkdown.parsed(text) }, typography = panelTypography())
+        }
     }
 }
 

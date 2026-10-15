@@ -112,15 +112,20 @@ internal fun chatModeFollowAfterChange(followersOnly: Boolean, following: Boolea
         else -> FollowForChatMode.NotFollowing
     }
 
-/** The heart beside the channel name: outlined while the user does not follow the channel, filled while they do. */
+/** The heart's touch target, which a place kept for it matches. */
+internal val FollowButtonSize = 40.dp
+
+/** The heart beside a channel's or a category's name: outlined while not followed, filled while followed. */
 @Composable
-internal fun ChannelFollowButton(following: Boolean, action: ChannelFollowAction) {
+internal fun FollowButton(knownFollowing: Boolean, action: FollowAction) {
+    // A follow or an unfollow shows from the tap on, while it is sent.
+    val following = action.shownFollowing(knownFollowing)
     val stateText = stringResource(if (following) R.string.channel_following else R.string.channel_not_following)
     IconButton(
         onClick = action::tap,
         enabled = !action.sending,
         modifier = Modifier
-            .size(40.dp)
+            .size(FollowButtonSize)
             .semantics { stateDescription = stateText },
     ) {
         Crossfade(targetState = following, label = "channelFollowHeart") { shownFollowing ->

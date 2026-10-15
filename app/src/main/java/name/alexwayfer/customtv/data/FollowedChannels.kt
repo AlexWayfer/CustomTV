@@ -22,13 +22,26 @@ internal data class FollowedChannel(
     val streamTitle: String? = null,
     /** When the shown stream preview was taken; a new value loads a new preview. Null while offline. */
     val previewAtMillis: Long? = null,
+    /** The live category's ID, which stays the same in any language its name is shown in. */
+    val categoryId: String? = null,
 )
 
+/** A live stream as Helix lists it; [categoryId] names its category in the app's language through [CategoryNames]. */
 internal data class FollowedLive(
     val categoryName: String?,
     val viewerCount: Int,
     val title: String = "",
+    val categoryId: String? = null,
 )
+
+/** [live] with each category named by [names], its ID's name in the app's language; Helix's English one otherwise. */
+internal fun localizedFollowedLive(
+    live: Map<String, FollowedLive>,
+    names: Map<String, String>,
+): Map<String, FollowedLive> =
+    live.mapValues { (_, stream) ->
+        stream.categoryId?.let(names::get)?.let { stream.copy(categoryName = it) } ?: stream
+    }
 
 internal data class FollowedPage(
     val channels: List<FollowedChannel>,
@@ -50,6 +63,7 @@ internal fun mergeFollowedChannels(
                 avatarUrl = avatarsById[channel.id] ?: channel.avatarUrl,
                 isLive = live != null,
                 categoryName = live?.categoryName,
+                categoryId = live?.categoryId,
                 streamTitle = live?.title,
                 viewerCount = live?.viewerCount,
                 sharedViewerCount = if (live != null) collaboration?.sharedViewerCount else null,
@@ -77,6 +91,7 @@ internal fun refreshFollowedLive(
             channel.copy(
                 isLive = live != null,
                 categoryName = live?.categoryName,
+                categoryId = live?.categoryId,
                 streamTitle = live?.title,
                 viewerCount = live?.viewerCount,
                 sharedViewerCount = when {

@@ -43,6 +43,13 @@ internal fun eventSubSubscriptionBody(request: EventSubRequest): JSONObject {
         )
 }
 
+/**
+ * The token a socket subscribes with: the one read now, so a reconnect after the saved token expired subscribes with a
+ * refreshed one, or the saved token when no fresh one could be read.
+ */
+internal fun eventSubToken(fresh: String?, saved: String?): String? =
+    fresh?.trim()?.takeIf { it.isNotEmpty() } ?: saved
+
 internal val STREAM_STATUS_EVENTSUB_TYPES = listOf(
     EventSubType("channel.update", "2"),
     EventSubType("stream.online", "1"),

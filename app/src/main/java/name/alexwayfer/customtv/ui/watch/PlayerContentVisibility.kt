@@ -28,6 +28,12 @@ internal fun playerContentComposed(
     measuredFullSize: Boolean,
 ): Boolean = !inPictureInPicture && (!compactSettled || measuredFullSize)
 
+/**
+ * Whether the content under the player takes touches: only while the player rests at full size. A finger put down
+ * beside a player on its way to or from the corner would otherwise open a sheet that stops at the moving player.
+ */
+internal fun playerContentTakesTouches(dragging: Boolean, progress: Float): Boolean = !dragging && progress <= 0f
+
 /** Closes a sheet, popup, or picker of the player content when the content hides behind the mini player. */
 @Composable
 internal fun DismissWhenPlayerContentHidden(onDismiss: () -> Unit) {

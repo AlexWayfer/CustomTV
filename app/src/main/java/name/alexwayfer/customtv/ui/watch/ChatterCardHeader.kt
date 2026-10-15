@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -45,23 +49,53 @@ import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 /** Where the dark fade under the text starts, down the banner image. */
 private const val BANNER_SCRIM_START = 0.45f
 
+/** How dark the mention button's round fill is over the banner. */
+private const val MENTION_BUTTON_FILL_ALPHA = 0.45f
+
 private val OnImageTextShadow = Shadow(
     color = Color.Black.copy(alpha = 0.9f),
     offset = Offset(0f, 1f),
     blurRadius = 14f,
 )
 
+/** The card's banner: a tap on the avatar opens the chatter's profile, and the @ button mentions them. */
+@Composable
+internal fun ChatterCardSheetHeader(
+    profile: ChatterProfile?,
+    chatter: ChatterCardChatter,
+    collapse: ChatterHeaderCollapse,
+    pinProgress: () -> Float,
+    onDismiss: () -> Unit,
+    onMention: (() -> Unit)?,
+) {
+    val openProfile = LocalOpenChatterProfile.current
+    ChatterCardHeader(
+        profile = profile,
+        chatter = chatter,
+        collapse = collapse,
+        pinProgress = pinProgress,
+        onOpenProfile = openProfile?.let { open ->
+            {
+                onDismiss()
+                open(chatter.login)
+            }
+        },
+        onMention = onMention,
+    )
+}
+
 /**
  * The chatter's channel banner with their avatar and names over its bottom, folding as the profile scrolls.
  * [pinProgress] is 0 on the profile and 1 on the card's other pages, which keep the banner folded.
  */
 @Composable
-internal fun ChatterCardHeader(
+private fun ChatterCardHeader(
     profile: ChatterProfile?,
     chatter: ChatterCardChatter,
     collapse: ChatterHeaderCollapse,
     pinProgress: () -> Float,
     onOpenProfile: (() -> Unit)?,
+    onMention: (() -> Unit)?,
 ) {
     val imageUrl = profile?.bannerImageUrl
     // The gray fill holds the banner's place, so the card does not jump when the image arrives.
@@ -97,6 +131,7 @@ internal fun ChatterCardHeader(
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
+                .fillMaxWidth()
                 .offset {
                     val maxShiftPx = (ChatterHeaderMargin - ChatterHeaderFoldedMargin).roundToPx()
                     val shown = pinnedCollapsePx(collapse.collapsedPx, collapse.rangePx, pinProgress())
@@ -104,14 +139,46 @@ internal fun ChatterCardHeader(
                 }
                 // No top padding, and never squeezed by the banner: only the fold itself shrinks the avatar.
                 .wrapContentHeight(align = Alignment.Bottom, unbounded = true)
-                .padding(start = ChatterHeaderMargin, end = ChatterHeaderMargin, bottom = ChatterHeaderMargin)
-                .openProfileButton(stringResource(R.string.chatter_card_open_profile), onOpenProfile),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(start = ChatterHeaderMargin, end = ChatterHeaderMargin, bottom = ChatterHeaderMargin),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ChatterAvatar(profile?.avatarUrl, collapse, pinProgress)
-            ChatterCardNames(chatter.name, chatter.login, collapse)
+            Row(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .openProfileButton(stringResource(R.string.chatter_card_open_profile), onOpenProfile),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ChatterAvatar(profile?.avatarUrl, collapse, pinProgress)
+                ChatterCardNames(chatter.name, chatter.login, collapse)
+            }
+            onMention?.let { ChatterMentionButton(it) }
         }
+    }
+}
+
+/**
+ * Mentions the chatter in the draft, beside their names. As tall as the folded avatar, so it never makes the row
+ * taller; the dark fill keeps it seen on a light banner.
+ */
+@Composable
+private fun ChatterMentionButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .size(ChatterAvatarFoldedSize),
+        colors = IconButtonDefaults.iconButtonColors(
+            containerColor = Color.Black.copy(alpha = MENTION_BUTTON_FILL_ALPHA),
+            contentColor = Color.White,
+        ),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_chat_mention),
+            contentDescription = stringResource(R.string.chat_mention),
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 

@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import name.alexwayfer.customtv.R
@@ -39,6 +40,7 @@ import name.alexwayfer.customtv.auth.TwitchAccount
 import name.alexwayfer.customtv.chat.whispersNavEnabled
 import name.alexwayfer.customtv.chat.whispersUnreadCount
 import name.alexwayfer.customtv.ui.components.UnreadCountBadge
+import name.alexwayfer.customtv.ui.explore.exploreNavEnabled
 
 /** One destination of the app navigation, drawn the same at the bottom or on the rail. */
 private class NavEntry(
@@ -58,6 +60,7 @@ internal fun AppNavigationBar(
     section: AppSection,
     account: TwitchAccount?,
     onHome: () -> Unit,
+    onExplore: () -> Unit,
     onWhispers: () -> Unit,
     onAccount: () -> Unit,
     onLogIn: () -> Unit,
@@ -74,6 +77,7 @@ internal fun AppNavigationBar(
                 label = { NavLabel(stringResource(R.string.nav_home), section == AppSection.Home) },
             ),
         )
+        if (exploreNavEnabled()) add(exploreNavEntry(section == AppSection.Explore, onExplore))
         if (whispersNavEnabled()) {
             add(whispersNavEntry(section == AppSection.Whispers, loggedIn, if (loggedIn) onWhispers else onLogIn))
         }
@@ -113,6 +117,20 @@ internal fun AppNavigationBar(
     }
     if (rail) NavRail(entries, modifier) else NavBottomBar(entries, modifier)
 }
+
+/** Explore, the recommended streams. */
+private fun exploreNavEntry(selected: Boolean, onClick: () -> Unit) = NavEntry(
+    selected = selected,
+    onClick = onClick,
+    icon = {
+        NavIcon(
+            selected,
+            ImageVector.vectorResource(R.drawable.ic_explore_filled),
+            ImageVector.vectorResource(R.drawable.ic_explore),
+        )
+    },
+    label = { NavLabel(stringResource(R.string.nav_explore), selected) },
+)
 
 /** Whispers, with the count of unread conversations on the icon. */
 @Composable

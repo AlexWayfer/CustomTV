@@ -60,6 +60,7 @@ class AppSettingsStore(context: Context) {
                 ?: defaults.streamChangeNotifications,
             watchStreakNotifications = prefs[WATCH_STREAK_NOTIFICATIONS]
                 ?: defaults.watchStreakNotifications,
+            whisperUnreadGlow = prefs[WHISPER_UNREAD_GLOW] ?: defaults.whisperUnreadGlow,
             linkPreviewMode = storedLinkPreviewMode(prefs[LINK_PREVIEW_MODE]),
             autoClaimBonus = prefs[AUTO_CLAIM_BONUS] ?: defaults.autoClaimBonus,
             portraitLanguage = storedPortraitLanguage(prefs[PORTRAIT_LANGUAGE]),
@@ -88,6 +89,10 @@ class AppSettingsStore(context: Context) {
         dataStore.edit { prefs ->
             prefs[WATCH_STREAK_NOTIFICATIONS] = enabled
         }
+    }
+
+    suspend fun setWhisperUnreadGlow(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[WHISPER_UNREAD_GLOW] = enabled }
     }
 
     suspend fun setAutoClaimBonus(enabled: Boolean) {

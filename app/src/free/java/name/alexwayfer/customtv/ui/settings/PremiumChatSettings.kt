@@ -25,4 +25,9 @@ internal fun NotificationSettingsEntry(onOpen: () -> Unit) = Unit
 
 @Suppress("unused")
 @Composable
-internal fun NotificationSettings(settings: AppSettings, signedIn: Boolean, viewModel: SettingsViewModel) = Unit
+internal fun NotificationSettings(
+    settings: AppSettings,
+    signedIn: Boolean,
+    viewModel: SettingsViewModel,
+    anchor: SettingsScrollAnchor,
+) = Unit

@@ -20,6 +20,16 @@ fun profileAfterStreamStatus(profile: ChannelProfile, event: StreamStatusEvent):
     }
 }
 
+/**
+ * [event] with its category named by [names], its ID's name in the app's language; Twitch's English name when the
+ * names lack it, and any other event as it came.
+ */
+internal fun localizedStreamStatus(event: StreamStatusEvent, names: Map<String, String>): StreamStatusEvent {
+    val title = event as? StreamStatusEvent.Title ?: return event
+    val name = title.categoryId?.let(names::get) ?: return event
+    return title.copy(categoryName = name)
+}
+
 fun parseStreamStatusNotification(raw: String): StreamStatusEvent? {
     val root = raw.toJsonObjectOrNull() ?: return null
     val metadata = root.optJSONObject("metadata") ?: return null
@@ -34,6 +44,7 @@ fun parseStreamStatusNotification(raw: String): StreamStatusEvent? {
             login = login,
             title = event.optString("title"),
             categoryName = event.optString("category_name").trim().ifBlank { null },
+            categoryId = event.optString("category_id").trim().ifBlank { null },
         )
         "stream.online" -> StreamStatusEvent.Online(
             login = login,

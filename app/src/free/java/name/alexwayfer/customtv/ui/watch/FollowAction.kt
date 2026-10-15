@@ -15,8 +15,11 @@ import name.alexwayfer.customtv.chat.followersPlaqueAction
  * followers-only plaque's Follow open the channel on Twitch, where the user follows or unfollows it.
  */
 @Stable
-internal class ChannelFollowAction(private val open: () -> Unit) {
+internal class FollowAction(private val open: () -> Unit) {
     val sending: Boolean get() = false
+
+    /** Twitch does the follow, so the heart shows what the app knows. */
+    fun shownFollowing(following: Boolean): Boolean = following
 
     fun tap() = open()
 }
@@ -31,12 +34,12 @@ internal fun rememberChannelFollowAction(
     following: Boolean,
     onFollowChanged: (following: Boolean) -> Unit,
     onLogIn: () -> Unit,
-): ChannelFollowAction {
+): FollowAction {
     val context = LocalContext.current
     val signedInState = rememberUpdatedState(signedIn)
     val logIn = rememberUpdatedState(onLogIn)
     return remember(channel, context) {
-        ChannelFollowAction {
+        FollowAction {
             when (val action = followersPlaqueAction(signedInState.value, channel)) {
                 TwitchPlaqueAction.LogIn -> logIn.value()
                 is TwitchPlaqueAction.Open -> context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
@@ -48,4 +51,4 @@ internal fun rememberChannelFollowAction(
 /** The free build follows on Twitch, so it has no dialogs of its own. */
 @Suppress("unused")
 @Composable
-internal fun ChannelFollowDialogs(action: ChannelFollowAction, hidden: Boolean) = Unit
+internal fun FollowDialogs(action: FollowAction, hidden: Boolean) = Unit

@@ -9,12 +9,25 @@ private const val TWITCH_WEB_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
 
 private val twitchGqlJson = "application/json; charset=utf-8".toMediaType()
 
-internal fun twitchGqlRequest(body: String): Request.Builder {
+/**
+ * A public GQL read; [retry] says which answers [GqlTransientRetry] sends again. Twitch answers it in [language], such
+ * as category names and tags.
+ */
+internal fun twitchGqlRequest(
+    body: String,
+    retry: GqlRetryPolicy = GqlRetryPolicy.AnyTransientError,
+    language: String = TwitchLanguage.current(),
+): Request.Builder {
     return Request.Builder()
         .url(TWITCH_GQL_URL)
         .header("Client-ID", TWITCH_WEB_CLIENT_ID)
+        .header(ACCEPT_LANGUAGE, language)
+        .tag(GqlRetryPolicy::class.java, retry)
         .post(body.toRequestBody(twitchGqlJson))
 }
+
+/** The header that picks the language of Twitch's answer. */
+internal const val ACCEPT_LANGUAGE = "Accept-Language"
 
 /** Twitch GQL answers HTTP 400 to a query with more root field aliases than this. */
 private const val GQL_ROOT_ALIAS_LIMIT = 15
@@ -24,6 +37,9 @@ internal fun <T> gqlAliasBatches(items: List<T>): List<List<T>> = items.chunked(
 
 /** Twitch's own server failing, like an HTTP 5xx: the next request may succeed. */
 private val transientGqlErrors = listOf("service timeout", "service error", "service unavailable")
+
+internal fun isTransientGqlMessage(message: String): Boolean =
+    transientGqlErrors.any { message.contains(it, ignoreCase = true) }
 
 /**
  * The errors of a GQL answer a developer has to look at: a changed schema, an outdated persisted
@@ -38,7 +54,7 @@ internal fun gqlErrorsToReport(body: String): List<String> {
             error.optJSONArray("path")?.let { it.optString(it.length() - 1) } == "socialMedias"
         if (withheldLinks) return@mapNotNull null
         error.trimmedText("message")
-    }.filterNot { message -> transientGqlErrors.any { message.contains(it, ignoreCase = true) } }.distinct()
+    }.filterNot(::isTransientGqlMessage).distinct()
 }
 
 /**

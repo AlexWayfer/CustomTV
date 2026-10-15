@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,6 +38,7 @@ import coil.request.ImageRequest
 import name.alexwayfer.customtv.auth.TwitchAccount
 import name.alexwayfer.customtv.auth.TwitchProfileLink
 import name.alexwayfer.customtv.data.ProfileDetailsRepository
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import java.text.NumberFormat
@@ -61,6 +63,7 @@ internal fun ChannelAboutScreen(
     onLeave: () -> Unit,
     onOpenChannel: (String) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
+    onShowCategories: () -> Unit,
     firstTabRequest: Int,
     canWhisper: Boolean,
 ) {
@@ -85,6 +88,7 @@ internal fun ChannelAboutScreen(
         onLeave = onLeave,
         onOpenChannel = onOpenChannel,
         onOpenVideo = onOpenVideo,
+        onShowCategories = onShowCategories,
         firstTabRequest = firstTabRequest,
         canWhisper = canWhisper,
     )
@@ -97,6 +101,7 @@ internal fun AccountAboutScreen(
     onLogOut: () -> Unit,
     onOpenChannel: (String) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
+    onShowCategories: () -> Unit,
 ) {
     val details by produceState(initialValue = ProfileDetailsRepository.cached(account.login), account.login) {
         ProfileDetailsRepository.load(account.login)?.let { value = it }
@@ -117,19 +122,60 @@ internal fun AccountAboutScreen(
         onLogOut = onLogOut,
         onOpenChannel = onOpenChannel,
         onOpenVideo = onOpenVideo,
+        onShowCategories = onShowCategories,
     )
 }
 
+/**
+ * The profile, and a recent category opened over it, which leaves the profile as it was under it: closing the
+ * category shows the same place again.
+ */
 @Composable
 private fun ChannelAboutContent(
     about: ChannelAbout,
     onLeave: () -> Unit,
     onOpenChannel: (String) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
+    onShowCategories: () -> Unit,
     backEnabled: Boolean = true,
     onLogOut: (() -> Unit)? = null,
     firstTabRequest: Int = 0,
     canWhisper: Boolean = false,
+) {
+    var openCategory by remember { mutableStateOf<TwitchCategory?>(null) }
+    Box(Modifier.fillMaxSize()) {
+        ChannelAboutPage(
+            about = about,
+            onLeave = onLeave,
+            onOpenChannel = onOpenChannel,
+            onOpenVideo = onOpenVideo,
+            onOpenCategory = { openCategory = it },
+            backEnabled = backEnabled,
+            onLogOut = onLogOut,
+            firstTabRequest = firstTabRequest,
+            canWhisper = canWhisper,
+        )
+        ProfileCategoryOverlay(
+            category = openCategory,
+            backEnabled = backEnabled,
+            onClose = { openCategory = null },
+            onOpenChannel = onOpenChannel,
+            onShowCategories = onShowCategories,
+        )
+    }
+}
+
+@Composable
+private fun ChannelAboutPage(
+    about: ChannelAbout,
+    onLeave: () -> Unit,
+    onOpenChannel: (String) -> Unit,
+    onOpenVideo: (ProfileVideoPlayback) -> Unit,
+    onOpenCategory: (TwitchCategory) -> Unit,
+    backEnabled: Boolean,
+    onLogOut: (() -> Unit)?,
+    firstTabRequest: Int,
+    canWhisper: Boolean,
 ) {
     BackHandler(enabled = backEnabled, onBack = onLeave)
     var viewportPx by remember { mutableIntStateOf(0) }
@@ -175,6 +221,7 @@ private fun ChannelAboutContent(
                     aboutContent = { ChannelAboutTab(about) },
                     minHeight = tabsMinHeight,
                     tabRowPin = { profileTabRowPinPx(scrollState.value, barPx, tabRowTopPx) },
+                    onOpenCategory = onOpenCategory,
                     modifier = Modifier.padding(top = 16.dp).onSizeChanged { tabsPx = it.height },
                 )
             }

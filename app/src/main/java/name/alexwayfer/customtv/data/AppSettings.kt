@@ -24,6 +24,8 @@ data class AppSettings(
     val streamStartNotifications: Boolean = true,
     val streamChangeNotifications: Boolean = false,
     val watchStreakNotifications: Boolean = true,
+    /** A red glow along the bottom of an expanded player while a whisper is unread. */
+    val whisperUnreadGlow: Boolean = true,
     val linkPreviewMode: LinkPreviewMode = LinkPreviewMode.None,
     val autoClaimBonus: Boolean = false,
     val portraitLanguage: PortraitLanguage = PortraitLanguage.System,

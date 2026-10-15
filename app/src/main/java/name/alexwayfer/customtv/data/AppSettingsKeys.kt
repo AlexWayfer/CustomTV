@@ -30,6 +30,7 @@ internal val BACKGROUND_SOUND_ONLY = booleanPreferencesKey("background_sound_onl
 internal val STREAM_START_NOTIFICATIONS = booleanPreferencesKey("stream_start_notifications")
 internal val STREAM_CHANGE_NOTIFICATIONS = booleanPreferencesKey("stream_change_notifications")
 internal val WATCH_STREAK_NOTIFICATIONS = booleanPreferencesKey("watch_streak_notifications")
+internal val WHISPER_UNREAD_GLOW = booleanPreferencesKey("whisper_unread_glow")
 internal val LINK_PREVIEW_MODE = stringPreferencesKey("link_preview_mode")
 internal val AUTO_CLAIM_BONUS = booleanPreferencesKey("auto_claim_bonus")
 internal val PORTRAIT_LANGUAGE = stringPreferencesKey("portrait_language")

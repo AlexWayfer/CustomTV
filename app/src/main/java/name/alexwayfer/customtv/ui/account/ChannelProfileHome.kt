@@ -4,147 +4,107 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import java.text.NumberFormat
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.player.StreamMediaArtwork
-import name.alexwayfer.customtv.ui.components.VIDEO_ASPECT_RATIO
-import name.alexwayfer.customtv.ui.components.rememberSecondTicker
-import name.alexwayfer.customtv.ui.theme.TwitchLive
-import name.alexwayfer.customtv.ui.watch.StreamViewersIcon
-import name.alexwayfer.customtv.ui.watch.formatStreamUptime
-
-private val CategoryTileMinWidth = 120.dp
-private val CategoryGridSpacing = 12.dp
-private const val CATEGORY_GRID_MIN_COLUMNS = 3
-
-internal sealed interface ProfileHomePrimary {
-    data object Live : ProfileHomePrimary
-    data class PastBroadcast(val video: TwitchVideo) : ProfileHomePrimary
-    data class Suggested(val channel: ChannelProfile) : ProfileHomePrimary
-    data object None : ProfileHomePrimary
-}
-
-/**
- * A live stream comes first; otherwise the recording the build offers; otherwise the first
- * suggested channel that is live. Offline suggestions show nothing.
- */
-internal fun profileHomePrimary(
-    profile: ChannelProfile,
-    pastBroadcast: TwitchVideo?,
-    suggestedChannels: List<ChannelProfile>,
-): ProfileHomePrimary {
-    val suggested = suggestedChannels.firstOrNull { it.isLive }
-    return when {
-        profile.isLive -> ProfileHomePrimary.Live
-        pastBroadcast != null -> ProfileHomePrimary.PastBroadcast(pastBroadcast)
-        suggested != null -> ProfileHomePrimary.Suggested(suggested)
-        else -> ProfileHomePrimary.None
-    }
-}
-
-internal data class RecentCategory(val name: String, val boxArtUrl: String?)
+import name.alexwayfer.customtv.ui.components.CategoryGridSpacing
+import name.alexwayfer.customtv.ui.components.CategoryTile
+import name.alexwayfer.customtv.ui.components.LiveStreamCard
+import name.alexwayfer.customtv.ui.components.categoryGridColumns
 
 /**
  * The categories of the recent recordings, most recent first, each once. Within a recording the
  * last chapter is the most recent; a recording without chapters counts its own category.
  */
-internal fun recentCategories(videos: List<TwitchVideo>, chapters: Map<String, VodCategories>): List<RecentCategory> {
-    val found = linkedMapOf<String, RecentCategory>()
+internal fun recentCategories(videos: List<TwitchVideo>, chapters: Map<String, VodCategories>): List<TwitchCategory> {
+    val found = linkedMapOf<String, TwitchCategory>()
     videos.forEach { video ->
         val categories = chapters[video.id] ?: return@forEach
+        // A chapter without a game, such as "Chapter 1" of a stream started with none, is no category.
         val named = categories.chapters
-            .filter { it.category.isNotBlank() }
+            .filter { it.category.isNotBlank() && it.categoryId != null }
             .sortedByDescending { it.positionSeconds }
-            .map { RecentCategory(it.category, it.boxArtUrl) }
+            .map { TwitchCategory(it.category, it.boxArtUrl, it.categoryId) }
             .ifEmpty {
+                val fallbackId = categories.fallbackCategoryId ?: return@ifEmpty emptyList()
                 listOfNotNull(
                     categories.fallbackCategory?.takeIf { it.isNotBlank() }
-                        ?.let { RecentCategory(it, categories.fallbackBoxArtUrl) },
+                        ?.let { TwitchCategory(it, categories.fallbackBoxArtUrl, fallbackId) },
                 )
             }
         named.forEach { category ->
             val known = found[category.name]
-            if (known?.boxArtUrl == null) found[category.name] = category
+            // A later chapter of the same category fills in what an earlier one lacked.
+            found[category.name] = known?.copy(
+                boxArtUrl = known.boxArtUrl ?: category.boxArtUrl,
+                id = known.id ?: category.id,
+            ) ?: category
         }
     }
     return found.values.toList()
 }
 
-/** Three tiles on a phone; a wider screen adds a column for each [CategoryTileMinWidth]. */
-internal fun categoryGridColumns(width: Dp): Int =
-    ((width + CategoryGridSpacing) / (CategoryTileMinWidth + CategoryGridSpacing)).toInt()
-        .coerceAtLeast(CATEGORY_GRID_MIN_COLUMNS)
-
 @Composable
 internal fun ChannelProfileHome(
     profile: ChannelProfile,
-    recordings: ChannelRecordings,
+    recordings: ChannelRecordingsState,
     onOpenChannel: (String) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
+    onOpenCategory: ((TwitchCategory) -> Unit)? = null,
 ) {
-    val page = (recordings as? ChannelRecordings.Ready)?.page
+    val page = (recordings.recordings as? ChannelRecordings.Ready)?.page
     val videos = page?.videos.orEmpty()
     val chapters = page?.chapters.orEmpty()
     val categories = remember(videos, chapters) { recentCategories(videos, chapters) }
     val primary = profileHomePrimary(profile, profileHomePastBroadcast(videos), page?.suggestedChannels.orEmpty())
+    val notice = profileHomeNotice(
+        recordings = recordings.recordings,
+        hasContent = primary != ProfileHomePrimary.None || categories.isNotEmpty(),
+        chaptersLoading = recordings.chaptersLoading.isNotEmpty(),
+    )
     // The page grows smoothly as the recordings load, and the spinner fades out as they come in.
     Column(Modifier.fillMaxWidth().padding(top = 12.dp).animateContentSize()) {
         when (primary) {
             ProfileHomePrimary.Live -> {
                 ProfileHomeHeading(stringResource(R.string.profile_home_live))
-                ProfileLiveItem(profile, showChannelName = false, onClick = { onOpenChannel(profile.login) })
+                LiveStreamCard(
+                    profile = profile,
+                    previewUrl = rememberProfilePreviewUrl(profile.login),
+                    onClick = { onOpenChannel(profile.login) },
+                    channelShown = false,
+                )
             }
             is ProfileHomePrimary.Suggested -> {
                 ProfileHomeHeading(stringResource(R.string.profile_home_suggested))
-                ProfileLiveItem(
+                LiveStreamCard(
                     profile = primary.channel,
-                    showChannelName = true,
+                    previewUrl = rememberProfilePreviewUrl(primary.channel.login),
                     onClick = { onOpenChannel(primary.channel.login) },
                 )
             }
             is ProfileHomePrimary.PastBroadcast -> ProfileHomePastBroadcast(
                 video = primary.video,
                 channelLogin = profile.login,
-                chapters = chapters[primary.video.id],
+                chapters = recordings.chaptersOf(primary.video.id),
+                onRetryChapters = { recordings.retryChapters(setOf(primary.video.id)) },
                 onOpenVideo = onOpenVideo,
             )
             ProfileHomePrimary.None -> Unit
@@ -152,30 +112,10 @@ internal fun ChannelProfileHome(
         AnimatedVisibility(visible = categories.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
             Column {
                 ProfileHomeHeading(stringResource(R.string.profile_home_recent_categories))
-                RecentCategoryGrid(categories, Modifier.padding(top = 8.dp))
+                RecentCategoryGrid(categories, onOpenCategory, Modifier.padding(top = 8.dp))
             }
         }
-        AnimatedVisibility(
-            visible = recordings == ChannelRecordings.Loading,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .padding(top = 16.dp)
-                    .size(32.dp),
-            )
-        }
-        AnimatedVisibility(
-            visible = recordings != ChannelRecordings.Loading &&
-                primary == ProfileHomePrimary.None &&
-                categories.isEmpty(),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            ProfileHomeEmptyContent()
-        }
+        ProfileHomeNotices(notice, recordings, page?.chaptersFailed.orEmpty())
     }
 }
 
@@ -192,38 +132,24 @@ internal fun ProfileHomeHeading(text: String) {
     )
 }
 
+/** The recent categories as tiles; one with an ID opens through [onOpen], where the build can show a category. */
 @Composable
-private fun ProfileHomeEmptyContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.profile_home_empty_title),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = stringResource(R.string.profile_home_empty_body),
-            modifier = Modifier.padding(top = 8.dp),
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.bodyLarge,
-        )
-    }
-}
-
-@Composable
-private fun RecentCategoryGrid(categories: List<RecentCategory>, modifier: Modifier = Modifier) {
+private fun RecentCategoryGrid(
+    categories: List<TwitchCategory>,
+    onOpen: ((TwitchCategory) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val columns = categoryGridColumns(maxWidth)
         Column(verticalArrangement = Arrangement.spacedBy(CategoryGridSpacing)) {
             categories.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(CategoryGridSpacing)) {
                     row.forEach { category ->
-                        RecentCategoryItem(category, Modifier.weight(1f))
+                        CategoryTile(
+                            category = category,
+                            modifier = Modifier.weight(1f),
+                            onClick = onOpen?.takeIf { category.id != null }?.let { open -> { open(category) } },
+                        )
                     }
                     repeat(columns - row.size) {
                         Spacer(Modifier.weight(1f))
@@ -234,137 +160,7 @@ private fun RecentCategoryGrid(categories: List<RecentCategory>, modifier: Modif
     }
 }
 
+/** A channel's live preview, taken when the page first shows it. */
 @Composable
-private fun RecentCategoryItem(category: RecentCategory, modifier: Modifier = Modifier) {
-    Column(modifier.semantics(mergeDescendants = true) {}) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(BOX_ART_ASPECT_RATIO)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        ) {
-            category.boxArtUrl?.let { boxArt ->
-                AsyncImage(
-                    model = boxArt,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
-        Text(
-            text = category.name,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp),
-            color = MaterialTheme.colorScheme.onSurface,
-            style = MaterialTheme.typography.labelLarge,
-        )
-    }
-}
-
-/** Twitch's box art is a portrait cover. */
-private const val BOX_ART_ASPECT_RATIO = 3f / 4f
-
-@Composable
-private fun ProfileLiveItem(profile: ChannelProfile, showChannelName: Boolean, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        ProfileLivePreview(profile)
-        Column {
-            Text(
-                text = profile.streamTitle?.takeIf { it.isNotBlank() } ?: profile.displayName,
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (showChannelName) {
-                Text(
-                    text = profile.displayName,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            profile.categoryName?.let { category ->
-                Text(
-                    text = category,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-/** The stream's preview with the viewers in one bottom corner and how long it has been live in the other. */
-@Composable
-private fun ProfileLivePreview(profile: ChannelProfile) {
-    val preview = remember(profile.login) { StreamMediaArtwork.previewUrl(profile.login, System.currentTimeMillis()) }
-    val startedAtMillis = profile.streamStartedAtMillis
-    val nowMillis = rememberSecondTicker(running = startedAtMillis != null)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(VIDEO_ASPECT_RATIO)
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        AsyncImage(
-            model = preview,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
-        profile.viewerCount?.let { viewers ->
-            val formatted = NumberFormat.getIntegerInstance().format(viewers)
-            val description = pluralStringResource(R.plurals.stream_viewers, viewers, formatted)
-            LiveBadge(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .clearAndSetSemantics { contentDescription = description },
-            ) {
-                StreamViewersIcon(Color.White, Modifier.size(14.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(formatted, color = Color.White, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-        startedAtMillis?.let { started ->
-            val uptime = formatStreamUptime(started, nowMillis)
-            val description = stringResource(R.string.stream_live_for, uptime)
-            LiveBadge(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .clearAndSetSemantics { contentDescription = description },
-            ) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(TwitchLive))
-                Spacer(Modifier.width(4.dp))
-                Text(uptime, color = Color.White, style = MaterialTheme.typography.labelMedium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun LiveBadge(modifier: Modifier, content: @Composable () -> Unit) {
-    Row(
-        modifier = modifier
-            .padding(8.dp)
-            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        content()
-    }
-}
+private fun rememberProfilePreviewUrl(login: String): String =
+    remember(login) { StreamMediaArtwork.previewUrl(login, System.currentTimeMillis()) }

@@ -11,6 +11,7 @@ internal fun profileHomePastBroadcast(videos: List<TwitchVideo>): TwitchVideo? =
 internal fun ProfileHomePastBroadcast(
     video: TwitchVideo,
     channelLogin: String,
-    chapters: VodCategories?,
+    chapters: VideoChaptersLoad,
+    onRetryChapters: () -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
 ) = Unit

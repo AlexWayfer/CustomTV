@@ -45,6 +45,7 @@ internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePla
         ownFollow = scene.ownFollow,
         replyingToMessageId = chat.replySession?.targetId,
         onReply = scene::replyTo,
+        onMention = scene::mention,
         fieldCardOpen = chat.fieldCardOpen,
         noticesHidden = chat.composerOpen,
         overlayHeight = layout.overlayChat,
@@ -168,6 +169,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
         ),
         replyParentMessageId = replyParentMessageId(chat.replySession),
         replyFocusRequest = chat.replyFocusRequest,
+        mentionRequest = chat.mentionRequest,
         sessionChatters = { data.sessionChatters.value },
         chatterLastSpokeAt = { scene.chatViewModel.chatterRecency.lastSpokeAt },
         // Hidden for the whole reply, keyboard up or not. Called on every pass, so the offer keeps its

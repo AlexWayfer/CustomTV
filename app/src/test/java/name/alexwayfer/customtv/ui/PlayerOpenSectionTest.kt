@@ -99,6 +99,30 @@ class PlayerOpenSectionTest {
     }
 
     @Test
+    fun aCoveringPlayerKeepsExploreBehindIt() {
+        assertEquals(
+            AppSection.Explore,
+            sectionBehindOpenPlayer(section = AppSection.Explore, playerCovering = true),
+        )
+        assertTrue(
+            showAppShell(
+                inPictureInPicture = false,
+                watching = true,
+                minimized = false,
+                section = AppSection.Explore,
+            ),
+        )
+    }
+
+    @Test
+    fun aStreamFromExploreMinimizesOntoExplore() {
+        assertEquals(
+            AppSection.Explore,
+            sectionAfterPlayerMinimizes(AppSection.Explore, watching = true, minimized = false),
+        )
+    }
+
+    @Test
     fun homeStaysHomeBeforeThePlayerCovers() {
         assertEquals(
             AppSection.Home,

@@ -27,6 +27,18 @@ class EventSubSubscriptionsTest {
     }
 
     @Test
+    fun aReconnectSubscribesWithTheFreshTokenInsteadOfTheExpiredSavedOne() {
+        assertEquals("fresh", eventSubToken(" fresh ", "saved"))
+    }
+
+    @Test
+    fun withoutAFreshTokenTheSavedOneIsUsed() {
+        assertEquals("saved", eventSubToken(null, "saved"))
+        assertEquals("saved", eventSubToken("  ", "saved"))
+        assertNull(eventSubToken(null, null))
+    }
+
+    @Test
     fun forbiddenModeratorSubscriptionMeansNotAModeratorAndKeepsTheSocket() {
         assertEquals(EventSubSubscribeOutcome.NotModerator, outcome(403, EventSubCondition.Moderator))
     }

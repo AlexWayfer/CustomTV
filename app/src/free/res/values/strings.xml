@@ -11,11 +11,11 @@
     <string name="premium_upgrade">Upgrade to Premium</string>
     <string name="premium_not_now">Not now</string>
     <string name="notification_prompt">Get notified about app updates and crashes</string>
-    <string name="notification_prompt_enable">Enable</string>
-    <string name="notification_prompt_dismiss">Not now</string>
     <string name="app_update_current_version">Current version: %1$s, free</string>
     <string name="github_open">Open GitHub</string>
     <string name="github_did_not_answer">GitHub did not answer</string>
     <string name="github_error">GitHub answered with error %1$d</string>
     <string name="github_download_damaged">The downloaded file is damaged. Download it again</string>
+    <string name="settings_licenses_hint">Source code, libraries, and icons</string>
+    <string name="credit_app">Source code of this app</string>
 </resources>

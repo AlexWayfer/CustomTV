@@ -21,7 +21,6 @@ import name.alexwayfer.customtv.R
 /** The row in the settings that opens the gestures page. */
 @Composable
 internal fun GesturesSettingsEntry(onOpen: () -> Unit) {
-    SettingsSection(stringResource(R.string.settings_section_help))
     SettingsPageEntry(
         icon = painterResource(R.drawable.ic_swipe),
         title = stringResource(R.string.gestures),

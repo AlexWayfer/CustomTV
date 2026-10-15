@@ -49,17 +49,35 @@ internal enum class SettingsPage {
     ChatterLabels,
     Experimental,
     Gestures,
+    Licenses,
 }
 
-/**
- * The page that holds the section another screen opens Settings at. Only the main list needs a scroll to it: a
- * subpage is that whole section and opens at its top.
- */
+/** The page that holds the section another screen opens Settings at. */
 internal fun settingsPageFor(target: SettingsScrollTarget): SettingsPage = when (target) {
     SettingsScrollTarget.Updates -> SettingsPage.Main
     SettingsScrollTarget.Notifications -> SettingsPage.Notifications
     SettingsScrollTarget.ChatterPortraits -> SettingsPage.ChatterPortraits
+    SettingsScrollTarget.Whispers -> SettingsPage.Notifications
 }
+
+/**
+ * Whether the page scrolls to the target's block, which only a part of it holds. A target that is the whole subpage
+ * opens at its top.
+ */
+internal fun settingsScrollsToBlock(target: SettingsScrollTarget): Boolean = when (target) {
+    SettingsScrollTarget.Updates, SettingsScrollTarget.Whispers -> true
+    SettingsScrollTarget.Notifications, SettingsScrollTarget.ChatterPortraits -> false
+}
+
+/** What a tap on Settings in the navigation does while Settings is already open. */
+internal enum class SettingsReselect {
+    BackToMain,
+    ScrollToTop,
+}
+
+/** A subpage goes back to the main list, the way Back does; the main list scrolls to its top. */
+internal fun settingsReselect(page: SettingsPage): SettingsReselect =
+    if (page == SettingsPage.Main) SettingsReselect.ScrollToTop else SettingsReselect.BackToMain
 
 @StringRes
 internal fun SettingsPage.titleRes(): Int = when (this) {
@@ -72,6 +90,7 @@ internal fun SettingsPage.titleRes(): Int = when (this) {
     SettingsPage.ChatterLabels -> ChatterLabelsSettingsTitle
     SettingsPage.Experimental -> ExperimentalSettingsTitle
     SettingsPage.Gestures -> R.string.gestures
+    SettingsPage.Licenses -> R.string.settings_licenses
 }
 
 /** How far a page slides, as a share of its width. */

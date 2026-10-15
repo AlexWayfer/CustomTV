@@ -112,6 +112,13 @@ private fun PremiumMainFeatures(style: TextStyle, lineSpacing: Dp, featureIndent
 @Composable
 private fun PremiumExperimentalFeatures(style: TextStyle, lineSpacing: Dp, featureIndent: Dp) {
     PremiumBullet(
+        icon = painterResource(R.drawable.ic_explore),
+        text = stringResource(R.string.premium_feature_recommendations),
+        style = style,
+        lineSpacing = lineSpacing,
+        indent = featureIndent,
+    )
+    PremiumBullet(
         icon = rememberVectorPainter(Icons.Outlined.Email),
         text = stringResource(R.string.premium_feature_whispers),
         style = style,

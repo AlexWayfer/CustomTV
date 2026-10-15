@@ -9,4 +9,5 @@ internal fun WhispersBackground(userId: String?, onOpenRequested: () -> Unit) = 
 
 @Suppress("unused")
 @Composable
-internal fun WhispersSection(onClosed: () -> Unit, onOpenChannel: (String) -> Unit) = Unit
+internal fun WhispersSection(onClosed: () -> Unit, onOpenChannel: (String) -> Unit, onOpenSettings: () -> Unit) =
+    Unit

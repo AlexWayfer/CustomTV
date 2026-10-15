@@ -287,6 +287,12 @@
     <string name="channel_avatar">Channel %1$s</string>
     <string name="settings">Settings</string>
     <string name="nav_home">Home</string>
+    <string name="nav_explore">Explore</string>
+    <!--
+        The language Twitch answers in, such as category names: the app's own language with its region, as Twitch
+        translates the category tags only for a tag such as ru-RU, not for a bare ru.
+    -->
+    <string name="twitch_language">en-US</string>
     <string name="nav_whispers">Whispers</string>
     <string name="nav_profile">Profile</string>
     <string name="log_in">Log in</string>
@@ -303,6 +309,8 @@
     <string name="profile_home_recent_categories">Recent categories</string>
     <string name="profile_home_empty_title">No content available</string>
     <string name="profile_home_empty_body">No content is available at this time.</string>
+    <string name="profile_home_categories_incomplete">Not all categories loaded</string>
+    <string name="profile_videos_failed">Couldn’t load past broadcasts</string>
     <string name="profile_about_unavailable">Twitch does not provide this channel’s About content through its API. You can view it on Twitch.</string>
     <string name="profile_open_about">Open About</string>
     <string name="profile_about_empty">No About panels</string>
@@ -427,6 +435,7 @@
     <string name="refresh_emotes_and_labels">Refresh emotes and labels</string>
     <string name="chat_copy">Copy</string>
     <string name="chat_reply">Reply</string>
+    <string name="chat_mention">Mention</string>
     <string name="chat_own_profile">Your profile</string>
     <string name="chat_message_actions">Reply or copy</string>
     <string name="chat_thread_with">Thread with @%1$s</string>
@@ -512,6 +521,7 @@
     <string name="channel_follow">Follow</string>
     <string name="channel_following">Following</string>
     <string name="channel_not_following">Not following</string>
+    <string name="premium_feature_recommendations">Personal recommendations</string>
     <string name="premium_feature_whispers">Whispers</string>
     <string name="premium_feature_channel_points">Channel points</string>
     <string name="premium_feature_poll_voting">Voting in polls and predictions</string>
@@ -543,6 +553,18 @@
     <string name="settings_page_playback_hint">Sound in the background</string>
     <string name="gestures">Gestures</string>
     <string name="gestures_hint">What swipes and long presses do</string>
+    <string name="settings_licenses">Licenses</string>
+    <string name="settings_licenses_hint">Libraries and icons</string>
+    <string name="licenses_show_apache">Show the Apache License 2.0 text</string>
+    <string name="licenses_hide_apache">Hide the Apache License 2.0 text</string>
+    <string name="credit_jetpack">Android Jetpack and Jetpack Compose libraries</string>
+    <string name="credit_kotlin">The Kotlin standard library and kotlinx.coroutines</string>
+    <string name="credit_material_components">Themes of the app’s windows</string>
+    <string name="credit_okhttp">Network requests and live connections</string>
+    <string name="credit_coil">Images, animated emotes, and badges</string>
+    <string name="credit_markdown_renderer">Formatted text of channel About panels</string>
+    <string name="credit_reorderable">Reordering chatter labels by dragging</string>
+    <string name="credit_material_icons">Icons</string>
     <string name="gestures_section_home">Home</string>
     <string name="gestures_section_chat">Chat</string>
     <string name="gestures_section_player">Player</string>
@@ -590,4 +612,6 @@
         <item quantity="one">−%1$d s</item>
         <item quantity="other">−%1$d s</item>
     </plurals>
+    <string name="notification_prompt_enable">Enable</string>
+    <string name="notification_prompt_dismiss">Not now</string>
 </resources>

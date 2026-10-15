@@ -47,6 +47,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun setWhisperUnreadGlow(enabled: Boolean) {
+        viewModelScope.launch { store.setWhisperUnreadGlow(enabled) }
+    }
+
     fun setPortraitLanguage(language: PortraitLanguage) {
         viewModelScope.launch {
             store.setPortraitLanguage(language)

@@ -11,7 +11,8 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-private const val MIN_QUERY_LENGTH = 2
+/** A search asks Twitch only from this many typed characters on. */
+internal const val MIN_SEARCH_QUERY_LENGTH = 2
 
 data class ChannelSearchHit(
     val login: String,
@@ -24,7 +25,7 @@ data class ChannelSearchHit(
 
 fun channelSearchQuery(raw: String): String? {
     val normalized = normalizeChannelInput(raw)
-    return normalized.takeIf { it.length >= MIN_QUERY_LENGTH }
+    return normalized.takeIf { it.length >= MIN_SEARCH_QUERY_LENGTH }
 }
 
 fun channelSearchExtras(

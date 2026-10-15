@@ -137,7 +137,7 @@ private fun rememberChatModeAccess(
 }
 
 /** The channel's follow and the heart that changes it; a change also updates what the chat's modes hold. */
-internal class WatchFollow(val channel: ChannelFollow, val action: ChannelFollowAction)
+internal class WatchFollow(val channel: ChannelFollow, val action: FollowAction)
 
 @Composable
 internal fun rememberWatchFollow(

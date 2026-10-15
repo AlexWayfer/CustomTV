@@ -27,7 +27,12 @@ private fun parseFollowedLiveStream(item: JSONObject): Pair<String, FollowedLive
     val id = item.text("user_id") ?: return null
     val category = item.text("game_name")
     val title = item.trimmedText("title").orEmpty()
-    return id to FollowedLive(categoryName = category, viewerCount = item.optInt("viewer_count"), title = title)
+    return id to FollowedLive(
+        categoryName = category,
+        viewerCount = item.optInt("viewer_count"),
+        title = title,
+        categoryId = item.trimmedText("game_id"),
+    )
 }
 
 internal fun parseLiveFollowedStreamsPage(body: String): FollowedPage? {
@@ -52,6 +57,7 @@ private fun parseLiveFollowedChannel(item: JSONObject): FollowedChannel? {
         categoryName = item.text("game_name"),
         viewerCount = item.optInt("viewer_count"),
         streamTitle = title,
+        categoryId = item.trimmedText("game_id"),
     )
 }
 

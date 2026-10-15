@@ -1,11 +1,34 @@
 package name.alexwayfer.customtv.player
 
+import android.view.MotionEvent
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PlayerVerticalDragTest {
     private val minimizeOnly = PlayerSwipeRules(touchSlop = 8, canMinimize = true, canExpand = false)
+
+    @Test
+    fun theFollowedFingerLiftingBeforeAnotherEndsTheTouch() {
+        assertTrue(playerTouchEnds(MotionEvent.ACTION_POINTER_UP, liftedPointerId = 0, touchPointerId = 0))
+    }
+
+    @Test
+    fun anotherFingerLiftingKeepsTheTouch() {
+        assertFalse(playerTouchEnds(MotionEvent.ACTION_POINTER_UP, liftedPointerId = 1, touchPointerId = 0))
+    }
+
+    @Test
+    fun anUpOrACancelEndsTheTouch() {
+        assertTrue(playerTouchEnds(MotionEvent.ACTION_UP, liftedPointerId = 0, touchPointerId = 0))
+        assertTrue(playerTouchEnds(MotionEvent.ACTION_CANCEL, liftedPointerId = 1, touchPointerId = 0))
+    }
+
+    @Test
+    fun aMoveOrAnotherFingerDownKeepsTheTouch() {
+        assertFalse(playerTouchEnds(MotionEvent.ACTION_MOVE, liftedPointerId = 0, touchPointerId = 0))
+        assertFalse(playerTouchEnds(MotionEvent.ACTION_POINTER_DOWN, liftedPointerId = 1, touchPointerId = 0))
+    }
 
     @Test
     fun downwardSwipeOnScrollableSettingsDoesNotMinimize() {

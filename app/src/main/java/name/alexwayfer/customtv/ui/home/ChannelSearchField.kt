@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -15,35 +14,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarColors
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarState
-import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +38,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,11 +47,8 @@ import name.alexwayfer.customtv.channel.displayNameLabel
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChannelSearchHit
 import name.alexwayfer.customtv.data.FollowedChannel
-import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
-import name.alexwayfer.customtv.ui.theme.TwitchDivider
 import name.alexwayfer.customtv.ui.theme.TwitchHint
 import name.alexwayfer.customtv.ui.theme.TwitchLive
-import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
@@ -86,25 +68,6 @@ private val ChannelSearchHeight = 48.dp
 // The field keeps its own height and padding inside and is cropped evenly, so its text stays centered.
 private fun Modifier.channelSearchHeight() =
     height(ChannelSearchHeight).wrapContentHeight(unbounded = true)
-private val ChannelSearchErrorColor = Color(0xFFEB0400)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun channelSearchInputColors(): TextFieldColors = SearchBarDefaults.inputFieldColors(
-    focusedTextColor = TwitchText,
-    unfocusedTextColor = TwitchText,
-    cursorColor = TwitchPurple,
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun channelSearchBarColors(): SearchBarColors = SearchBarDefaults.colors(
-    containerColor = TwitchSurfaceAlt,
-    dividerColor = TwitchDivider,
-    inputFieldColors = channelSearchInputColors(),
-)
 
 /** The search button beside the title: the full-screen search opens out of it. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,132 +111,27 @@ internal fun ChannelSearchCollapsedField(state: SearchBarState, value: String, m
                 placeholder = { Text(stringResource(R.string.channel_hint), color = TwitchHint) },
                 // The same icon as the search button; the field itself is the action, so it is not announced.
                 trailingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TwitchText) },
-                colors = channelSearchInputColors(),
+                colors = searchInputColors(),
             )
         },
         modifier = modifier,
         shape = ChannelSearchFieldShape,
-        colors = channelSearchBarColors(),
+        colors = searchBarColors(),
     )
 }
 
-/**
- * The full-screen channel search, opened from the button or the field that share [state] and closing back into
- * [collapsedShape]. It stays open while [checking] a typed or picked channel and shows the [error] when that
- * fails; Home closes it once the channel opens.
- */
-@OptIn(ExperimentalMaterial3Api::class)
+/** The channels the search suggests for the [value] typed: the recents, the follows, then what Twitch found. */
 @Composable
-internal fun ChannelSearchExpanded(
-    state: SearchBarState,
-    collapsedShape: Shape,
+internal fun ChannelSearchSuggestions(
     value: String,
-    onValueChange: (String) -> Unit,
     history: List<String>,
     profiles: Map<String, ChannelProfile>,
     followed: List<FollowedChannel>,
     searchHits: List<ChannelSearchHit>,
     liveLogins: Set<String>,
-    error: String?,
-    checking: Boolean,
-    onSubmit: () -> Unit,
     onPick: (String) -> Unit,
-    onExpandedChange: (Boolean) -> Unit,
 ) {
-    // The keyboard belongs to the search's own window while it is open; the screen below ignores it.
-    val open = state.currentValue == SearchBarValue.Expanded
-    val currentOnExpandedChange by rememberUpdatedState(onExpandedChange)
-    DisposableEffect(open) {
-        currentOnExpandedChange(open)
-        onDispose { if (open) currentOnExpandedChange(false) }
-    }
     val matches = channelSearchMatches(history, profiles, followed, searchHits, value)
-    val showChecking = rememberHeldWhileLoading(checking, loading = checking)
-    val text = rememberSearchText(value, onValueChange)
-
-    // The search's window takes its status bar icons from the content color here: light, for the dark screen.
-    CompositionLocalProvider(LocalContentColor provides TwitchText) {
-        ExpandedFullScreenSearchBar(
-            state = state,
-            inputField = { ChannelSearchInputField(text, state, onSubmit, error, showChecking) },
-            collapsedShape = collapsedShape,
-            colors = channelSearchBarColors(),
-        ) {
-            if (error != null) {
-                Text(
-                    text = error,
-                    color = ChannelSearchErrorColor,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
-                )
-            }
-            ChannelSearchSuggestionList(matches, profiles, liveLogins, onPick)
-        }
-    }
-}
-
-/**
- * The text in the search's field. A state rather than a plain string, so text put in from outside, such as a
- * picked suggestion, gets the cursor at its end instead of keeping the cursor where the typing was. Only typing goes
- * up to [onValueChange]: the text put in from [value] itself must not search again or clear the error.
- */
-@Composable
-private fun rememberSearchText(value: String, onValueChange: (String) -> Unit): TextFieldState {
-    val text = rememberTextFieldState(value)
-    LaunchedEffect(value) {
-        if (text.text.toString() != value) text.setTextAndPlaceCursorAtEnd(value)
-    }
-    val currentValue by rememberUpdatedState(value)
-    val currentOnValueChange by rememberUpdatedState(onValueChange)
-    LaunchedEffect(text) {
-        snapshotFlow { text.text.toString() }.collect { typed ->
-            if (typed != currentValue) currentOnValueChange(typed)
-        }
-    }
-    return text
-}
-
-/** The full-screen search's field, with a spinner at its end while a channel is checked. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ChannelSearchInputField(
-    text: TextFieldState,
-    state: SearchBarState,
-    onSubmit: () -> Unit,
-    error: String?,
-    showChecking: Boolean,
-) {
-    SearchBarDefaults.InputField(
-        textFieldState = text,
-        searchBarState = state,
-        onSearch = { onSubmit() },
-        modifier = Modifier
-            .fillMaxWidth()
-            .semantics { if (error != null) error(error) },
-        placeholder = { Text(stringResource(R.string.channel_hint), color = TwitchHint) },
-        trailingIcon = if (showChecking) {
-            {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = TwitchPurple,
-                    trackColor = TwitchDivider,
-                    strokeWidth = 2.dp,
-                )
-            }
-        } else {
-            null
-        },
-        colors = channelSearchInputColors(),
-    )
-}
-
-@Composable
-private fun ChannelSearchSuggestionList(
-    matches: ChannelSearchMatches,
-    profiles: Map<String, ChannelProfile>,
-    liveLogins: Set<String>,
-    onPick: (String) -> Unit,
-) {
     LazyColumn {
         items(matches.history, key = { "history:$it" }) { login ->
             ChannelSearchItem(

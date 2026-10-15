@@ -27,12 +27,16 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.account.AccountLoginScreen
 import name.alexwayfer.customtv.ui.account.AccountScreen
 import name.alexwayfer.customtv.ui.account.ChannelAboutScreen
+import name.alexwayfer.customtv.ui.explore.ExploreSection
+import name.alexwayfer.customtv.ui.home.HomeChannelTarget
 import name.alexwayfer.customtv.ui.home.HomeScreen
-import name.alexwayfer.customtv.ui.home.homeTapScrollsListToTop
+import name.alexwayfer.customtv.ui.home.homeChannelTarget
 import name.alexwayfer.customtv.ui.settings.SettingsScreen
+import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 import name.alexwayfer.customtv.ui.whispers.WhispersSection
@@ -68,13 +72,24 @@ private fun AppNavigation(scene: AppScene, modifier: Modifier) {
         section = shell.section,
         account = scene.account,
         onHome = {
-            if (homeTapScrollsListToTop(shell.section)) shell.homeListToTop = OneShotRequest(Unit)
+            if (navigationTapReselects(shell.section, AppSection.Home)) shell.homeListToTop = OneShotRequest(Unit)
             shell.section = AppSection.Home
+        },
+        onExplore = {
+            if (navigationTapReselects(shell.section, AppSection.Explore)) {
+                shell.exploreReselected = OneShotRequest(Unit)
+            }
+            shell.section = AppSection.Explore
         },
         onWhispers = scene::openWhispers,
         onAccount = { shell.section = AppSection.Account },
         onLogIn = scene::logIn,
-        onSettings = { shell.section = AppSection.Settings },
+        onSettings = {
+            if (navigationTapReselects(shell.section, AppSection.Settings)) {
+                shell.settingsReselected = OneShotRequest(Unit)
+            }
+            shell.section = AppSection.Settings
+        },
         modifier = modifier,
     )
 }
@@ -96,15 +111,31 @@ private fun AppHome(scene: AppScene) {
         scrollListToTop = shell.homeListToTop,
         padForIme = homeUsesImePadding(shell.keepNavigationBarWhileImeCloses, shell.homeSearchOpen),
         onSearchOpenChange = { shell.homeSearchOpen = it },
+        onOpenCategory = scene::openExploreCategory,
         onWatch = { channel -> scene.openChannel(channel, true) },
-        onOpenProfile = { channel ->
-            scene.homeViewModel.addRecent(channel)
-            shell.profileChannel = channel
-            shell.profileOpenedFrom = AppSection.Home
-            shell.section = AppSection.ChannelProfile
-        },
+        onOpenProfile = { channel -> scene.openProfileFrom(AppSection.Home, channel) },
         onLogIn = scene::logIn,
     )
+}
+
+/** Opens [channel]'s profile from a section at the top of the app, which Back from the profile returns to. */
+private fun AppScene.openProfileFrom(section: AppSection, channel: String) {
+    homeViewModel.addRecent(channel)
+    shell.profileChannel = channel
+    shell.profileOpenedFrom = section
+    shell.section = AppSection.ChannelProfile
+}
+
+/** Opens Explore on its categories, as a category's tag filtered them from a profile. */
+private fun AppScene.showExploreCategories() {
+    shell.exploreShowCategories = OneShotRequest(Unit)
+    shell.section = AppSection.Explore
+}
+
+/** Opens [category] in Explore, over its categories, as the search picked it from Home or from Explore itself. */
+private fun AppScene.openExploreCategory(category: TwitchCategory) {
+    shell.exploreOpenCategory = OneShotRequest(category)
+    shell.section = AppSection.Explore
 }
 
 /**
@@ -169,7 +200,16 @@ private fun AppSectionPage(scene: AppScene, page: AppSection) {
                 shell.profileOpenedFrom = AppSection.Whispers
                 shell.section = AppSection.ChannelProfile
             },
+            // As the navigation's Settings does, at the whispers' block.
+            onOpenSettings = {
+                shell.settingsScrollTarget = SettingsScrollTarget.Whispers
+                shell.section = AppSection.Settings
+            },
         )
+    }
+    if (page == AppSection.Explore) {
+        // Kept like Home's, so the list is where it was after another section.
+        scene.homeState.SaveableStateProvider(AppSection.Explore) { ExploreSectionPage(scene) }
     }
     if (page == AppSection.Account) AccountSectionPage(scene)
     if (page == AppSection.ChannelProfile) {
@@ -180,10 +220,34 @@ private fun AppSectionPage(scene: AppScene, page: AppSection) {
             onClose = { shell.section = AppSection.Home },
             signedIn = scene.account != null,
             accountName = scene.account?.displayName,
+            reselected = shell.settingsReselected,
             scrollTo = shell.settingsScrollTarget,
             onScrolled = { shell.settingsScrollTarget = null },
         )
     }
+}
+
+@Composable
+private fun ExploreSectionPage(scene: AppScene) {
+    val shell = scene.shell
+    ExploreSection(
+        homeViewModel = scene.homeViewModel,
+        signedIn = scene.account != null,
+        // A full stream over Explore minimizes on Back first, as over a profile.
+        backEnabled = profileHandlesBack(scene.watching, shell.player.liveMinimized),
+        reselected = shell.exploreReselected,
+        showCategories = shell.exploreShowCategories,
+        openCategory = shell.exploreOpenCategory,
+        onBack = { shell.section = AppSection.Home },
+        onOpen = { channel, live ->
+            when (homeChannelTarget(live)) {
+                HomeChannelTarget.Stream -> scene.openChannel(channel, true)
+                HomeChannelTarget.Profile -> scene.openProfileFrom(AppSection.Explore, channel)
+            }
+        },
+        onOpenCategory = scene::openExploreCategory,
+        onSearchOpenChange = { shell.homeSearchOpen = it },
+    )
 }
 
 @Composable
@@ -210,6 +274,7 @@ private fun AccountSectionPage(scene: AppScene) {
             },
             onOpenChannel = { channel -> scene.openChannel(channel, false) },
             onOpenVideo = scene::openProfileVideo,
+            onShowCategories = scene::showExploreCategories,
         )
     }
 }
@@ -235,6 +300,7 @@ private fun ProfileSectionPage(scene: AppScene, channel: String) {
         },
         onOpenChannel = { target -> scene.openChannel(target, false) },
         onOpenVideo = scene::openProfileVideo,
+        onShowCategories = scene::showExploreCategories,
         firstTabRequest = shell.profileFirstTabRequest,
     )
 }

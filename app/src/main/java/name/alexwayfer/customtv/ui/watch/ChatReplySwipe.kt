@@ -151,12 +151,14 @@ internal fun chatSwipeDismissAlpha(offsetPx: Float, widthPx: Int): Float {
 
 /**
  * The row's slide under the finger and what releasing it does. The callbacks read the latest the row was composed
- * with; [onArmed] ticks when the travel crosses the threshold, and [onSwipeEnd] reports how the swipe ended.
+ * with; [onArmed] ticks when the travel crosses the threshold, [onSwipeEnd] reports how the swipe ended, and
+ * [onOffsetChange] follows each step of the slide.
  */
 private class ChatSwipe(
     private val scope: CoroutineScope,
     private val onSwipingChange: (Boolean) -> Unit,
     private val onSwipeEnd: (ChatSwipeRelease) -> Unit,
+    private val onOffsetChange: (Float) -> Unit,
     private val onArmed: () -> Unit,
     private val onReply: () -> Unit,
     private val onDismiss: () -> Unit,
@@ -164,6 +166,15 @@ private class ChatSwipe(
     val offset = Animatable(0f)
     val arrowShown by derivedStateOf { offset.value > 0f }
     private var swiping = false
+
+    private suspend fun snapTo(target: Float) {
+        offset.snapTo(target)
+        onOffsetChange(target)
+    }
+
+    private suspend fun springTo(target: Float) {
+        offset.animateTo(target, spring()) { onOffsetChange(value) }
+    }
 
     private fun startSwiping() {
         if (swiping) return
@@ -177,6 +188,12 @@ private class ChatSwipe(
         swiping = false
         onSwipingChange(false)
         onSwipeEnd(release)
+    }
+
+    /** A row that leaves ends its swipe and reports rest. */
+    fun leave() {
+        endSwiping(ChatSwipeRelease.Back)
+        onOffsetChange(0f)
     }
 
     /** Follows each touch on the row: a swipe slides it, and its release replies, dismisses, or springs it back. */
@@ -204,13 +221,13 @@ private class ChatSwipe(
                     dragPx = chatSwipeDrag(dragPx, amount * towardStart, canReply, canDismiss)
                     if (!wasArmed && chatSwipeRelease(dragPx, thresholdPx) != ChatSwipeRelease.Back) onArmed()
                     val target = chatSwipeOffset(dragPx, thresholdPx)
-                    scope.launch { offset.snapTo(target) }
+                    scope.launch { snapTo(target) }
                 }.also { finished = true }
             } finally {
                 // A cancelled drag puts the row back and gives the list its scroll again.
                 if (!finished) {
                     endSwiping(ChatSwipeRelease.Back)
-                    scope.launch { offset.animateTo(0f, spring()) }
+                    scope.launch { springTo(0f) }
                 }
             }
             val release = if (lifted) chatSwipeRelease(dragPx, thresholdPx) else ChatSwipeRelease.Back
@@ -222,14 +239,14 @@ private class ChatSwipe(
     private fun settle(release: ChatSwipeRelease, widthPx: Int) {
         when (release) {
             ChatSwipeRelease.Dismiss -> scope.launch {
-                offset.animateTo(-widthPx.toFloat(), spring())
+                springTo(-widthPx.toFloat())
                 onDismiss()
             }
             ChatSwipeRelease.Reply -> {
                 onReply()
-                scope.launch { offset.animateTo(0f, spring()) }
+                scope.launch { springTo(0f) }
             }
-            ChatSwipeRelease.Back -> scope.launch { offset.animateTo(0f, spring()) }
+            ChatSwipeRelease.Back -> scope.launch { springTo(0f) }
         }
     }
 }
@@ -239,7 +256,8 @@ private class ChatSwipe(
  * Releasing past the threshold calls [onReply]; the row springs back either way. With [onDismiss],
  * the row also follows the finger toward the end, and releasing past the threshold there slides it
  * out and calls [onDismiss]. [onSwipingChange] reports the drag, so the list can hold its scroll still, and
- * [onSwipeEnd] reports how it ended, before the reply or the dismissal it starts.
+ * [onSwipeEnd] reports how it ended, before the reply or the dismissal it starts. [onOffsetChange] follows the
+ * slide, toward the start positive, and reports rest again once the row leaves.
  */
 @Composable
 internal fun ChatReplySwipe(
@@ -248,6 +266,7 @@ internal fun ChatReplySwipe(
     onSwipingChange: (Boolean) -> Unit,
     onDismiss: (() -> Unit)? = null,
     onSwipeEnd: (ChatSwipeRelease) -> Unit = {},
+    onOffsetChange: (Float) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -263,11 +282,13 @@ internal fun ChatReplySwipe(
     val canDismiss = onDismiss != null
     val currentOnSwipingChange by rememberUpdatedState(onSwipingChange)
     val currentOnSwipeEnd by rememberUpdatedState(onSwipeEnd)
+    val currentOnOffsetChange by rememberUpdatedState(onOffsetChange)
     val swipe = remember {
         ChatSwipe(
             scope = scope,
             onSwipingChange = { currentOnSwipingChange(it) },
             onSwipeEnd = { currentOnSwipeEnd(it) },
+            onOffsetChange = { currentOnOffsetChange(it) },
             onArmed = { haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
             onReply = {
                 gestureHints?.gestureUsed(GestureHint.Reply)
@@ -277,7 +298,7 @@ internal fun ChatReplySwipe(
         )
     }
     DisposableEffect(Unit) {
-        onDispose { swipe.endSwiping(ChatSwipeRelease.Back) }
+        onDispose { swipe.leave() }
     }
     Box(
         modifier = Modifier

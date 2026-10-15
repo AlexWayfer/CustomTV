@@ -22,9 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -79,6 +80,8 @@ internal fun ColumnScope.ChatPane(
     ownFollow: OwnChannelFollow? = null,
     replyingToMessageId: String? = null,
     onReply: ((ChatMessage) -> Unit)? = null,
+    /** Puts a mention of a chatter into the draft; null for a chat without a field. */
+    onMention: ((login: String, displayName: String) -> Unit)? = null,
     fieldCardOpen: OneShotRequest<ChatterCardRequest>? = null,
     noticesHidden: Boolean = false,
     timelineJumpGeneration: Int = 0,
@@ -128,6 +131,7 @@ internal fun ColumnScope.ChatPane(
         LocalOnChatLinkClick provides onOpenLink,
         LocalOpenChatterProfile provides onOpenChatterProfile,
         LocalOwnChannelFollow provides ownFollow,
+        LocalOnChatMention provides onMention,
     ) {
         ProvideChatRowLocals(channel, channelProfile, nickColors) {
             ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
@@ -346,6 +350,9 @@ private fun rememberOverlayRowMorph(
     return rowMorph
 }
 
+/** How far below the notices a shadow they cast on the chat may reach. */
+internal val ChatNoticeShadowHeight = 10.dp
+
 /** The notices over the list's top. They slide up out of the way while typing and take no room once gone. */
 @Composable
 private fun ChatNoticesOverlay(hidden: Boolean, onHeightChange: (Int) -> Unit, content: @Composable () -> Unit) {
@@ -356,7 +363,12 @@ private fun ChatNoticesOverlay(hidden: Boolean, onHeightChange: (Int) -> Unit, c
     ) {
         AnimatedVisibility(
             visible = !hidden,
-            modifier = Modifier.clipToBounds(),
+            // Clipped at the top, so the notices slide out under the edge; below, a pin's shadow falls on the chat.
+            modifier = Modifier.drawWithContent {
+                clipRect(bottom = size.height + ChatNoticeShadowHeight.toPx()) {
+                    this@drawWithContent.drawContent()
+                }
+            },
             enter = slideInVertically { -it },
             exit = slideOutVertically { -it },
         ) {

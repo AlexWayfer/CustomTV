@@ -337,6 +337,8 @@
     <string name="channel_avatar">Канал %1$s</string>
     <string name="settings">Настройки</string>
     <string name="nav_home">Главная</string>
+    <string name="nav_explore">Обзор</string>
+    <string name="twitch_language">ru-RU</string>
     <string name="nav_whispers">Шёпот</string>
     <string name="nav_profile">Профиль</string>
     <string name="log_in">Войти</string>
@@ -353,6 +355,8 @@
     <string name="profile_home_recent_categories">Недавние категории</string>
     <string name="profile_home_empty_title">Пока ничего нет</string>
     <string name="profile_home_empty_body">Сейчас здесь ничего нет.</string>
+    <string name="profile_home_categories_incomplete">Не все категории загрузились</string>
+    <string name="profile_videos_failed">Не удалось загрузить записи</string>
     <string name="profile_about_unavailable">Twitch не отдаёт раздел «О канале» через свой API. Его можно посмотреть на Twitch.</string>
     <string name="profile_open_about">Открыть «О канале»</string>
     <string name="profile_about_empty">Панелей нет</string>
@@ -477,6 +481,7 @@
     <string name="refresh_emotes_and_labels">Обновить эмоуты и метки</string>
     <string name="chat_copy">Копировать</string>
     <string name="chat_reply">Ответить</string>
+    <string name="chat_mention">Упомянуть</string>
     <string name="chat_own_profile">Ваш профиль</string>
     <string name="chat_message_actions">Ответить или скопировать</string>
     <string name="chat_thread_with">Ветка с @%1$s</string>
@@ -568,6 +573,7 @@
     <string name="channel_follow">Отслеживать</string>
     <string name="channel_following">Отслеживаете</string>
     <string name="channel_not_following">Не отслеживаете</string>
+    <string name="premium_feature_recommendations">Персональные рекомендации</string>
     <string name="premium_feature_whispers">Шёпот</string>
     <string name="premium_feature_channel_points">Баллы канала</string>
     <string name="premium_feature_poll_voting">Голосование в опросах и прогнозах</string>
@@ -599,6 +605,18 @@
     <string name="settings_page_playback_hint">Звук в фоне</string>
     <string name="gestures">Жесты</string>
     <string name="gestures_hint">Что делают свайпы и удержания</string>
+    <string name="settings_licenses">Лицензии</string>
+    <string name="settings_licenses_hint">Библиотеки и иконки</string>
+    <string name="licenses_show_apache">Показать текст Apache License 2.0</string>
+    <string name="licenses_hide_apache">Скрыть текст Apache License 2.0</string>
+    <string name="credit_jetpack">Библиотеки Android Jetpack и Jetpack Compose</string>
+    <string name="credit_kotlin">Стандартная библиотека Kotlin и kotlinx.coroutines</string>
+    <string name="credit_material_components">Темы окон приложения</string>
+    <string name="credit_okhttp">Сетевые запросы и живые подключения</string>
+    <string name="credit_coil">Картинки, анимированные эмоуты и значки</string>
+    <string name="credit_markdown_renderer">Форматированный текст панелей «О канале»</string>
+    <string name="credit_reorderable">Перетаскивание меток чаттеров</string>
+    <string name="credit_material_icons">Иконки</string>
     <string name="gestures_section_home">Главная</string>
     <string name="gestures_section_chat">Чат</string>
     <string name="gestures_section_player">Плеер</string>
@@ -650,4 +668,6 @@
         <item quantity="many">−%1$d с</item>
         <item quantity="other">−%1$d с</item>
     </plurals>
+    <string name="notification_prompt_enable">Включить</string>
+    <string name="notification_prompt_dismiss">Не сейчас</string>
 </resources>

@@ -48,12 +48,14 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.ui.notifications.SettingsNotificationPrompt
+import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
 @Composable
-fun SettingsScreen(
+internal fun SettingsScreen(
     onClose: () -> Unit,
     signedIn: Boolean,
     accountName: String?,
+    reselected: OneShotRequest<Unit>?,
     viewModel: SettingsViewModel = viewModel(),
     scrollTo: SettingsScrollTarget? = null,
     onScrolled: () -> Unit = {},
@@ -64,12 +66,19 @@ fun SettingsScreen(
     LaunchedEffect(scrollTo) {
         if (scrollTo == null) return@LaunchedEffect
         page = settingsPageFor(scrollTo)
-        // A subpage is the whole section and opens at its top; only the main list scrolls to one.
-        if (page != SettingsPage.Main) onScrolled()
+        // A page that holds the target's block reports once it has scrolled there; a whole subpage opens at its top.
+        if (!settingsScrollsToBlock(scrollTo)) onScrolled()
     }
     val body = storedSettingsBody(viewModel)
     val leaveGuard = remember { SettingsLeaveGuard() }
     val backToMain = { leaveGuard.leave { page = SettingsPage.Main } }
+    LaunchedEffect(reselected) {
+        if (reselected?.take() == null) return@LaunchedEffect
+        when (settingsReselect(page)) {
+            SettingsReselect.BackToMain -> backToMain()
+            SettingsReselect.ScrollToTop -> mainScroll.animateScrollTo(0)
+        }
+    }
     BackHandler(onBack = onClose)
     BackHandler(enabled = page != SettingsPage.Main, onBack = backToMain)
     Scaffold(
@@ -90,14 +99,19 @@ fun SettingsScreen(
                     SettingsMainEntries(anchor, accountName, onOpen = { page = it })
                 }
                 SettingsPage.Gestures -> GesturesSettingsPage(pageModifier)
+                SettingsPage.Licenses -> LicensesSettingsPage(pageModifier)
                 // A subpage shows once every stored value is read, so no control animates from a placeholder.
                 // The labels page lays out its own column, with Save floating over it.
                 SettingsPage.ChatterLabels -> if (body != null) {
                     ChatterLabelsSettings(body.labelSeed, leaveGuard, pageModifier)
                 }
                 else -> if (body != null) {
-                    SettingsPageColumn(modifier = pageModifier) {
-                        SettingsSubpage(current, body.settings, signedIn, accountName, viewModel)
+                    SettingsPageColumn(
+                        scrollTo = scrollTo?.takeIf { settingsPageFor(it) == current && settingsScrollsToBlock(it) },
+                        onScrolled = onScrolled,
+                        modifier = pageModifier,
+                    ) { anchor ->
+                        SettingsSubpage(current, body.settings, signedIn, accountName, viewModel, anchor)
                     }
                 }
             }
@@ -184,11 +198,13 @@ private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: Strin
     }
     PremiumSettings()
     LanguageSettings()
-    ProblemReportSettings()
+    SettingsSection(stringResource(R.string.settings_section_help))
     GesturesSettingsEntry(onOpen = { onOpen(SettingsPage.Gestures) })
+    LicensesSettingsEntry(onOpen = { onOpen(SettingsPage.Licenses) })
+    ProblemReportSettings()
 }
 
-/** A subpage laid out in the common column; the main, gestures, and labels pages lay out their own. */
+/** A subpage laid out in the common column; the main, gestures, licenses, and labels pages lay out their own. */
 @Composable
 private fun SettingsSubpage(
     page: SettingsPage,
@@ -196,15 +212,16 @@ private fun SettingsSubpage(
     signedIn: Boolean,
     accountName: String?,
     viewModel: SettingsViewModel,
+    anchor: SettingsScrollAnchor,
 ) {
     when (page) {
         SettingsPage.Chat -> ChatSettings(settings, viewModel)
         SettingsPage.Mentions -> MentionSettings(settings, viewModel)
-        SettingsPage.Notifications -> NotificationSettings(settings, signedIn, viewModel)
+        SettingsPage.Notifications -> NotificationSettings(settings, signedIn, viewModel, anchor)
         SettingsPage.Playback -> PlaybackSettings(settings, viewModel)
         SettingsPage.ChatterPortraits -> ChatterPortraitSettings(settings, viewModel)
         SettingsPage.Experimental -> ExperimentalSettings(accountName, settings, viewModel)
-        SettingsPage.Main, SettingsPage.Gestures, SettingsPage.ChatterLabels -> Unit
+        SettingsPage.Main, SettingsPage.Gestures, SettingsPage.Licenses, SettingsPage.ChatterLabels -> Unit
     }
 }
 

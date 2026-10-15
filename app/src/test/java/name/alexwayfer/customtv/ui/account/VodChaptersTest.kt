@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.ui.account
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VodChaptersTest {
@@ -43,9 +44,9 @@ class VodChaptersTest {
 
     @Test
     fun markersParseTheGameAtEachPosition() {
-        val parsed = parseVodCategories(
+        val parsed = parseVodCategoriesBatch(
             """
-            {"data":{"video":{
+            {"data":{"v0":{
               "game":{"displayName":"Just Chatting"},
               "moments":{"edges":[
                 {"node":{
@@ -61,7 +62,8 @@ class VodChaptersTest {
               ]}
             }}}
             """.trimIndent(),
-        )
+            listOf("42"),
+        )["42"]
 
         assertEquals("Just Chatting", parsed?.fallbackCategory)
         assertEquals(
@@ -74,7 +76,74 @@ class VodChaptersTest {
     }
 
     @Test
+    fun aChapterAndTheRecordingKeepTheirCategorysId() {
+        val parsed = parseVodCategoriesBatch(
+            """
+            {"data":{"v0":{
+              "game":{"id":"509658","displayName":"Just Chatting"},
+              "moments":{"edges":[{"node":{"positionMilliseconds":0,"description":"GTA V",
+                "details":{"__typename":"GameChangeMomentDetails","game":{"id":"32982","displayName":"GTA V"}}}}]}
+            }}}
+            """.trimIndent(),
+            listOf("42"),
+        )["42"]
+
+        assertEquals("509658", parsed?.fallbackCategoryId)
+        assertEquals("32982", parsed?.chapters?.single()?.categoryId)
+    }
+
+    @Test
     fun aMissingVideoDoesNotParse() {
-        assertNull(parseVodCategories("""{"data":{"video":null}}"""))
+        val parsed = parseVodCategoriesBatch("""{"data":{"v0":null}}""", listOf("1"))
+
+        assertEquals(emptyMap<String, VodCategories>(), parsed)
+    }
+
+    @Test
+    fun aRecordingWithoutChaptersHasAnEmptyListNotAFailure() {
+        val parsed = parseVodCategoriesBatch(
+            """{"data":{"v0":{"game":{"displayName":"Art"},"moments":{"edges":[]}}}}""",
+            listOf("1"),
+        )
+
+        assertEquals(mapOf("1" to VodCategories(emptyList(), "Art")), parsed)
+    }
+
+    @Test
+    fun chaptersAServerFailureLeftOutAreUnknownNotEmpty() {
+        val parsed = parseVodCategoriesBatch(
+            """
+            {"errors":[{"message":"service error","path":["v1","moments"]}],
+             "data":{
+               "v0":{"game":{"displayName":"Art"},"moments":{"edges":[]}},
+               "v1":{"game":{"displayName":"Art"},"moments":null},
+               "v2":{"game":{"displayName":"Art"}}
+             }}
+            """.trimIndent(),
+            listOf("10", "11", "12"),
+        )
+
+        assertEquals(setOf("10"), parsed.keys)
+    }
+
+    @Test
+    fun anErrorInsideARecordingLeavesItOutEvenWithItsChapterList() {
+        val parsed = parseVodCategoriesBatch(
+            """
+            {"errors":[{"message":"service error","path":["v0","game"]}],
+             "data":{"v0":{"game":null,"moments":{"edges":[]}}}}
+            """.trimIndent(),
+            listOf("10"),
+        )
+
+        assertEquals(emptyMap<String, VodCategories>(), parsed)
+    }
+
+    @Test
+    fun queryAsksEachRecordingByItsOwnVariable() {
+        val query = vodChaptersQuery(2)
+
+        assertTrue(query, query.startsWith($$"query($v0:ID!,$v1:ID!){v0:video(id:$v0){game{"))
+        assertTrue(query, query.contains($$" v1:video(id:$v1){game{"))
     }
 }

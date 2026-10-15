@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,9 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +40,7 @@ import name.alexwayfer.customtv.data.ChannelFollowStatus
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.showsFollowButton
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
+import name.alexwayfer.customtv.ui.components.StreamTagPill
 import name.alexwayfer.customtv.ui.components.collapsibleTextMaxLines
 import name.alexwayfer.customtv.ui.components.revealLines
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
@@ -149,27 +147,7 @@ private fun StreamTags(tags: List<String>) {
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        tags.forEach { tag ->
-            Text(
-                text = tag,
-                color = TwitchText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 20.sp,
-                style = TextStyle(
-                    lineHeightStyle = LineHeightStyle(
-                        alignment = LineHeightStyle.Alignment.Center,
-                        trim = LineHeightStyle.Trim.None,
-                    ),
-                ),
-                modifier = Modifier
-                    .background(
-                        Color.White.copy(alpha = 0.15f),
-                        RoundedCornerShape(percent = 50),
-                    )
-                    .padding(horizontal = 8.dp),
-            )
-        }
+        tags.forEach { tag -> StreamTagPill(tag) }
     }
 }
 
@@ -217,7 +195,7 @@ internal fun ChannelHeader(
     onViewersClick: (() -> Unit)?,
     onOpenProfile: () -> Unit,
     followStatus: ChannelFollowStatus,
-    followAction: ChannelFollowAction,
+    followAction: FollowAction,
     onOpenSettings: () -> Unit,
     onHeldChange: (Boolean) -> Unit,
     containerColor: Color = TwitchSurface,
@@ -254,7 +232,7 @@ internal fun ChannelHeader(
                         shrinkTowards = Alignment.TopEnd,
                     ),
                 ) {
-                    ChannelFollowButton(followStatus == ChannelFollowStatus.Following, followAction)
+                    FollowButton(followStatus == ChannelFollowStatus.Following, followAction)
                 }
                 AnimatedVisibility(
                     visible = followStatus == ChannelFollowStatus.Following,

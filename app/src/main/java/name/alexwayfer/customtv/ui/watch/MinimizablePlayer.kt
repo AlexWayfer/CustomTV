@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -193,10 +194,17 @@ private fun BoxWithConstraintsScope.PlayerSceneBody(
         miniPaddingPx = miniPaddingPx,
     )
     val layout = rememberFullscreenChatLayout(scene, constraints.maxWidth - 2 * fullscreenSidePx)
-    if (playerContentComposed(scene.inPictureInPicture, scene.compactSettled, frame.contentConstraints != null)) {
-        PlayerContentArea(scene, frame, layout, slots.content)
-    }
+    PlayerContent(scene, frame, layout, slots.content)
     PlayerVideoBox(scene, frame, layout, slots.fullscreenInfo)
+    // The expanded player covers the navigation bar and its unread dot.
+    WhisperUnreadGlow(
+        minimized = scene.minimized,
+        inPictureInPicture = scene.inPictureInPicture,
+        fade = { visualState.chromeAlpha },
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .zIndex(2f),
+    )
     // Over the chat too, so the note about a new chat mode stays whole.
     Box(
         modifier = Modifier
@@ -210,4 +218,19 @@ private fun BoxWithConstraintsScope.PlayerSceneBody(
         )
     }
     if (!scene.inPictureInPicture) slots.overlays(this, scene.compactSettled || scene.fullscreenActive)
+}
+
+/** The content under the player, covered while the player moves so a second finger does not reach it. */
+@Composable
+private fun BoxScope.PlayerContent(
+    scene: PlayerScene,
+    frame: PlayerFrame,
+    layout: FullscreenChatLayout,
+    content: @Composable ColumnScope.(MinimizablePlayerLayout) -> Unit,
+) {
+    if (!playerContentComposed(scene.inPictureInPicture, scene.compactSettled, frame.contentConstraints != null)) return
+    PlayerContentArea(scene, frame, layout, content)
+    if (!playerContentTakesTouches(scene.state.dragging, scene.progress)) {
+        Box(modifier = Modifier.matchParentSize().blockClicks())
+    }
 }

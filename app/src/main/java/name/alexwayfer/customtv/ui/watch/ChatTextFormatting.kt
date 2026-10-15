@@ -26,7 +26,7 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
     look: ChatMessageLook,
     onClick: (String) -> Unit,
 ) {
-    val urls = if (look.enableLinks) findChatUrls(text) else emptyList()
+    val urls = findChatUrls(text)
     val nicks = findChatNicks(text, look.nickColors.keys)
     if (urls.isEmpty() && nicks.isEmpty()) {
         withStyle(bodyStyle) { append(keepCommandPrefixTogether(text)) }
@@ -44,7 +44,7 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
         }
         when (span) {
             is ChatUrlSpan -> {
-                appendChatLink(span, linkStyle, onClick)
+                appendChatLink(span, linkStyle, look.linksClickable, onClick)
                 cursor = span.endExclusive
             }
             is ChatNickSpan -> {
@@ -65,7 +65,17 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
     }
 }
 
-private fun AnnotatedString.Builder.appendChatLink(span: ChatUrlSpan, linkStyle: SpanStyle, onClick: (String) -> Unit) {
+/** The link of [span] in [linkStyle], opening through [onClick] when [clickable]; the same text either way. */
+private fun AnnotatedString.Builder.appendChatLink(
+    span: ChatUrlSpan,
+    linkStyle: SpanStyle,
+    clickable: Boolean,
+    onClick: (String) -> Unit,
+) {
+    if (!clickable) {
+        withStyle(linkStyle) { append(keepUrlPathTogether(span.raw)) }
+        return
+    }
     withLink(
         LinkAnnotation.Url(
             span.href,

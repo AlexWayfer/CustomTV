@@ -11,8 +11,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 
-/** How the viewer let go of a held row: replied to it, copied it, or closed the menu or the swipe without either. */
-internal enum class ChatRowHoldEnd { Reply, Copy, Dismiss }
+/**
+ * How the viewer let go of a held row: replied to it, mentioned its chatter, copied it, or closed the menu or the swipe
+ * without any of them.
+ */
+internal enum class ChatRowHoldEnd { Reply, Mention, Copy, Dismiss }
 
 /**
  * A row the viewer holds: swiped to reply, or selected with a long press for its menu. Holding stops a following chat,
@@ -124,13 +127,13 @@ internal fun chatRowHoldAnchor(canScrollBackward: Boolean, firstVisibleMessageId
 
 /**
  * Whether the chat follows again once a hold ends. A copy always returns to the newest message, even when an earlier
- * hold or a scroll had already stopped the chat. A reply keeps it still until the message is sent. A dismissal of a
- * hold that stopped the chat keeps it still when rows came below meanwhile, so the viewer returns with the button, and
- * follows again otherwise, since nothing below would move.
+ * hold or a scroll had already stopped the chat. A reply or a mention keeps it still until the message is sent. A
+ * dismissal of a hold that stopped the chat keeps it still when rows came below meanwhile, so the viewer returns with
+ * the button, and follows again otherwise, since nothing below would move.
  */
 internal fun chatFollowsAfterRowHold(stoppedFollowing: Boolean, end: ChatRowHoldEnd, rowsBelow: Boolean): Boolean =
     when (end) {
-        ChatRowHoldEnd.Reply -> false
+        ChatRowHoldEnd.Reply, ChatRowHoldEnd.Mention -> false
         ChatRowHoldEnd.Copy -> true
         ChatRowHoldEnd.Dismiss -> stoppedFollowing && !rowsBelow
     }

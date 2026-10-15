@@ -13,7 +13,10 @@ class TwitchVideosTest {
             {"data":{"user":{"videos":{"edges":[{"node":{
               "id":"123","title":" A stream ","previewThumbnailURL":"https://cdn/640x360.jpg",
               "createdAt":"2026-09-20T12:25:00Z","publishedAt":"2026-09-20T12:30:00Z",
-              "viewCount":1234,"lengthSeconds":7384,
+              "viewCount":1234,"lengthSeconds":7384
+            }}]},
+            "chapters":{"edges":[{"node":{
+              "id":"123",
               "game":{"displayName":"Just Chatting","boxArtURL":"jc.jpg"},
               "moments":{"edges":[
                 {"node":{
@@ -35,6 +38,55 @@ class TwitchVideosTest {
         assertEquals(7_384L, video?.durationSeconds)
         assertEquals(listOf(VodChapter(60.0, "Dota 2", "dota.jpg")), page?.chapters?.get("123")?.chapters)
         assertEquals("jc.jpg", page?.chapters?.get("123")?.fallbackBoxArtUrl)
+        assertEquals(emptySet<String>(), page?.chaptersFailed)
+    }
+
+    @Test
+    fun aFailedChaptersAliasKeepsTheRecordingsAndMarksAllTheirChaptersFailed() {
+        val page = parseChannelRecordings(
+            """
+            {"errors":[{"message":"service error","path":["user","chapters"]}],
+             "data":{"user":{"videos":{"edges":[{"node":{"id":"1"}},{"node":{"id":"2"}}]},"chapters":null}}}
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("1", "2"), page?.videos?.map { it.id })
+        assertEquals(emptyMap<String, VodCategories>(), page?.chapters)
+        assertEquals(setOf("1", "2"), page?.chaptersFailed)
+    }
+
+    @Test
+    fun chaptersOneRecordingFailedOnAreFailedAndTheOthersLoad() {
+        val page = parseChannelRecordings(
+            """
+            {"errors":[{"message":"service error","path":["user","chapters","edges",1,"node","moments"]}],
+             "data":{"user":{
+               "videos":{"edges":[{"node":{"id":"1"}},{"node":{"id":"2"}},{"node":{"id":"3"}}]},
+               "chapters":{"edges":[
+                 {"node":{"id":"1","moments":{"edges":[]}}},
+                 {"node":{"id":"2","moments":null}},
+                 {"node":{"id":"3","moments":{"edges":[]}}}
+               ]}
+             }}}
+            """.trimIndent(),
+        )
+
+        assertEquals(setOf("1", "3"), page?.chapters?.keys)
+        assertEquals(setOf("2"), page?.chaptersFailed)
+    }
+
+    @Test
+    fun aRecordingMissingFromTheChaptersAliasHasFailedChapters() {
+        val page = parseChannelRecordings(
+            """
+            {"data":{"user":{
+              "videos":{"edges":[{"node":{"id":"new"}},{"node":{"id":"1"}}]},
+              "chapters":{"edges":[{"node":{"id":"1","moments":{"edges":[]}}}]}
+            }}}
+            """.trimIndent(),
+        )
+
+        assertEquals(setOf("new"), page?.chaptersFailed)
     }
 
     @Test
@@ -74,6 +126,20 @@ class TwitchVideosTest {
 
         assertEquals(listOf("1"), page?.videos?.map { it.id })
         assertEquals(emptyList<Any>(), page?.suggestedChannels)
+    }
+
+    @Test
+    fun theRecordingsAreAskedAgainOnlyWhenAServerFailureTookThem() {
+        val lost = """
+            {"errors":[{"message":"service error","path":["user","videos"]}],"data":{"user":{"videos":null}}}
+        """.trimIndent()
+        val chaptersOnly = """
+            {"errors":[{"message":"service error","path":["user","chapters"]}],
+             "data":{"user":{"videos":{"edges":[{"node":{"id":"1"}}]},"chapters":null}}}
+        """.trimIndent()
+        val schema = """{"errors":[{"message":"Cannot query field"}],"data":{"user":{"videos":null}}}"""
+
+        assertEquals(listOf(true, false, false), listOf(lost, chaptersOnly, schema).map(::recordingsRetried))
     }
 
     @Test

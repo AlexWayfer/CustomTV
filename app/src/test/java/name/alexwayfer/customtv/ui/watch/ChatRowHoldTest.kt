@@ -24,6 +24,12 @@ class ChatRowHoldTest {
     }
 
     @Test
+    fun `a mention keeps the chat still until the message is sent`() {
+        assertFalse(chatFollowsAfterRowHold(stoppedFollowing = true, ChatRowHoldEnd.Mention, rowsBelow = false))
+        assertFalse(chatFollowsAfterRowHold(stoppedFollowing = true, ChatRowHoldEnd.Mention, rowsBelow = true))
+    }
+
+    @Test
     fun `a copy returns to the newest message`() {
         assertTrue(chatFollowsAfterRowHold(stoppedFollowing = true, ChatRowHoldEnd.Copy, rowsBelow = true))
     }

@@ -5,4 +5,5 @@ enum class SettingsScrollTarget {
     Updates,
     Notifications,
     ChatterPortraits,
+    Whispers,
 }

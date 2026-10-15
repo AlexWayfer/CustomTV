@@ -231,6 +231,16 @@
         '  width: max-content !important;',
         '  max-width: calc(100vw - 104px) !important;',
         '}',
+        // Twitch's buffering hint keeps its desktop width of 20rem and grows up past the top of a phone's
+        // player, taking its close button with it. It spans the width between the app's corner buttons
+        // instead, so it takes fewer lines and stays clear of them.
+        '*:has(> .low-latency-notification) {',
+        '  right: 52px !important;',
+        '  margin-right: 0 !important;',
+        '}',
+        '.low-latency-notification {',
+        '  max-width: calc(100vw - 104px) !important;',
+        '}',
         '.disclosure-tool *:not(svg):not(path):not(img),',
         '.dt-attach-top-right *:not(svg):not(path):not(img) {',
         '  max-width: 100% !important;',

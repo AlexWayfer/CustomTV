@@ -177,6 +177,13 @@ private fun ChatFieldRequestEffects(input: ChatInput, composer: ChatComposerStat
         replyFocusRequest?.take() ?: return@LaunchedEffect
         actions.askForField()
     }
+    // Mention puts the nick at the cursor once, then asks for the field as Reply does.
+    val mentionRequest = input.compose.mentionRequest
+    LaunchedEffect(mentionRequest) {
+        val name = mentionRequest?.take() ?: return@LaunchedEffect
+        actions.editor.insertMention(name)
+        actions.askForField()
+    }
 }
 
 @Composable

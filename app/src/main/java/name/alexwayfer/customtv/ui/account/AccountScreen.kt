@@ -14,6 +14,7 @@ internal fun AccountScreen(
     onLogOut: () -> Unit,
     onOpenChannel: (String) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
+    onShowCategories: () -> Unit,
 ) {
     var confirmLogOut by remember { mutableStateOf(false) }
     AccountAboutScreen(
@@ -22,6 +23,7 @@ internal fun AccountScreen(
         onLogOut = { confirmLogOut = true },
         onOpenChannel = onOpenChannel,
         onOpenVideo = onOpenVideo,
+        onShowCategories = onShowCategories,
     )
     if (confirmLogOut) {
         LogOutConfirmDialog(

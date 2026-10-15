@@ -191,7 +191,9 @@ internal class FollowedChannelsRepository(
             if (parsed == null) return FollowedRead.Failed(failure ?: FollowedChannelsResult.Unavailable)
             live += parsed
         }
-        return FollowedRead.OkLive(live)
+        // Helix names a category only in English; the rest of the app shows it in the app's language.
+        val names = CategoryNames.localized(live.values.mapNotNull { it.categoryId })
+        return FollowedRead.OkLive(localizedFollowedLive(live, names))
     }
 
     private fun followedUserDetails(logins: List<String>): FollowedUserDetails {

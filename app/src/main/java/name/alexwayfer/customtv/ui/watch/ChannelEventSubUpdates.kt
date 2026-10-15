@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import name.alexwayfer.customtv.BuildConfig
 import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.chat.ownMessageHoldRows
@@ -20,7 +21,8 @@ internal fun ChannelEventSubUpdates(
     accessToken: suspend () -> String?,
     chatViewModel: ChatViewModel,
 ) {
-    val client = remember { ChannelEventSubClient(BuildConfig.TWITCH_CLIENT_ID) }
+    val readToken = rememberUpdatedState(accessToken)
+    val client = remember { ChannelEventSubClient(BuildConfig.TWITCH_CLIENT_ID, freshToken = { readToken.value() }) }
     DisposableEffect(client) {
         onDispose { client.close() }
     }

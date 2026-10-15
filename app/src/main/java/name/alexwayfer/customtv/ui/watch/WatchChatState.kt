@@ -29,6 +29,7 @@ internal class WatchChatState {
     var showCollaboration by mutableStateOf(false)
     var replySession by mutableStateOf<ChatReplySession?>(null)
     var replyFocusRequest by mutableStateOf<OneShotRequest<Unit>?>(null)
+    var mentionRequest by mutableStateOf<OneShotRequest<String>?>(null)
     var fieldCardOpen by mutableStateOf<OneShotRequest<ChatterCardRequest>?>(null)
     var composerOpen by mutableStateOf(false)
 }

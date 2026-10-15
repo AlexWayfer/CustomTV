@@ -11,9 +11,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 
-/** Home, About, and Chat. The Videos tab and recording playback are Premium. */
+/**
+ * Home, About, and Chat. The Videos tab and recording playback are Premium, and so is Explore, where a recent
+ * category opens, so the categories here open nothing.
+ */
 @Composable
 internal fun ChannelProfileTabs(
     channelLogin: String,
@@ -24,6 +28,7 @@ internal fun ChannelProfileTabs(
     firstTabRequest: Int,
     minHeight: Dp,
     tabRowPin: () -> Int,
+    @Suppress("UNUSED_PARAMETER") onOpenCategory: (TwitchCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by rememberSaveable(channelLogin) { mutableIntStateOf(PROFILE_TAB_FIRST) }
@@ -46,7 +51,7 @@ internal fun ChannelProfileTabs(
         if (tab == PROFILE_TAB_HOME) {
             ChannelProfileHome(
                 profile = profile,
-                recordings = recordings.recordings,
+                recordings = recordings,
                 onOpenChannel = onOpenChannel,
                 onOpenVideo = onOpenVideo,
             )

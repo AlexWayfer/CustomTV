@@ -25,6 +25,7 @@ import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.WhispersFeature
 import name.alexwayfer.customtv.data.RecentChannelsStore
 import name.alexwayfer.customtv.data.StreamStartAlertsController
+import name.alexwayfer.customtv.data.TwitchLanguage
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import name.alexwayfer.customtv.update.AppUpdates
@@ -40,6 +41,7 @@ class CustomTvApplication : Application() {
         super.onCreate()
         AppLog.start(this)
         Diagnostics.start(this)
+        TwitchLanguage.init(this)
         ChannelAvatarRepository.init(this)
         ProfileDetailsRepository.start(this)
         AssetFiles.init(this)

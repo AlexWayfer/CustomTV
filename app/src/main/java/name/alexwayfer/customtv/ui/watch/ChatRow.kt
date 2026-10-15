@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatEventKind
 import name.alexwayfer.customtv.chat.ChatMessage
+import name.alexwayfer.customtv.chat.chatMessageCanBeMentioned
 import name.alexwayfer.customtv.chat.chatMessageCanBeReplied
 import name.alexwayfer.customtv.chat.copyableText
 import name.alexwayfer.customtv.chat.formatChatTimestamp
@@ -59,6 +60,7 @@ internal fun ChatRow(
     val replyFolding = remember { mutableStateOf(false) }
     KeepSelectedMessageVisible(selected, message.id, place) { replyFolding.value }
     val onReply = actions.onReply?.takeIf { chatMessageCanBeReplied(message) }
+    val onMention = LocalOnChatMention.current?.takeIf { chatMessageCanBeMentioned(message) }
     val look = ChatRowLook(
         appearance = appearance,
         sizes = sizes,
@@ -83,7 +85,7 @@ internal fun ChatRow(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onLongClickLabel = stringResource(
-                        if (onReply != null) R.string.chat_message_actions else R.string.chat_copy,
+                        if (onReply != null || onMention != null) R.string.chat_message_actions else R.string.chat_copy,
                     ),
                     onLongClick = select,
                     onClick = { if (selected) actions.onDismissSelection(ChatRowHoldEnd.Dismiss) },
@@ -103,7 +105,7 @@ internal fun ChatRow(
                     }
                 }
                 ChatRowLinkPreview(message.rawText, settings.linkPreviewMode, deletedAppearance.linkPreviewAlpha)
-                if (selected) ChatRowMenu(message, onReply, actions.onDismissSelection)
+                if (selected) ChatRowMenu(message, onReply, onMention, actions.onDismissSelection)
             }
         }
     }
@@ -258,21 +260,31 @@ private fun ChatRowUserMessage(
     }
 }
 
-/** Reply and Copy over a selected row, when the message can be replied to or has text to copy. */
+/**
+ * Reply, Mention, and Copy over a selected row, when the message can be replied to, has a chatter to mention, or has
+ * text to copy.
+ */
 @Composable
 private fun ChatRowMenu(
     message: ChatMessage,
     onReply: ((ChatMessage) -> Unit)?,
+    onMention: ((login: String, displayName: String) -> Unit)?,
     onDismissSelection: (ChatRowHoldEnd) -> Unit,
 ) {
     val context = LocalContext.current
     val copyText = remember(message) { message.copyableText() }
-    if (copyText == null && onReply == null) return
+    if (copyText == null && onReply == null && onMention == null) return
     ChatMessageCopyPopup(
         onReply = onReply?.let { reply ->
             {
                 reply(message)
                 onDismissSelection(ChatRowHoldEnd.Reply)
+            }
+        },
+        onMention = onMention?.let { mention ->
+            {
+                mention(message.userLogin, message.displayName)
+                onDismissSelection(ChatRowHoldEnd.Mention)
             }
         },
         onCopy = copyText?.let { text ->

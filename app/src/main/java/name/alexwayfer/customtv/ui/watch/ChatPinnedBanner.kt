@@ -95,7 +95,7 @@ internal fun ChatPinnedBanner(
             maxLines = collapsibleTextMaxLines(allLines),
             overflow = if (allLines) TextOverflow.Clip else TextOverflow.Ellipsis,
             showGifs = expanded,
-            enableLinks = expanded,
+            linksClickable = expanded,
             foldProgress = { fold },
             modifier = Modifier
                 .padding(
@@ -179,10 +179,11 @@ private fun ColumnScope.PinnedDetails(
     val sentAt = remember(message.timestampMillis) {
         formatChatTimestamp(context, message.timestampMillis)
     }
+    // Cut off from the bottom, as the message above it folds, so the foot does not slide up under the text.
     AnimatedVisibility(
         visible = expanded,
-        enter = expandVertically(),
-        exit = shrinkVertically(),
+        enter = expandVertically(expandFrom = Alignment.Top),
+        exit = shrinkVertically(shrinkTowards = Alignment.Top),
     ) {
         Column {
             Row(

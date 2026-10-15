@@ -34,8 +34,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.account.TwitchUserAccess
 import name.alexwayfer.customtv.ui.components.AppTitle
+import name.alexwayfer.customtv.ui.notifications.HomeAlertsPrompts
 import name.alexwayfer.customtv.ui.notifications.HomeNotificationPrompt
 import name.alexwayfer.customtv.ui.rememberLifecycleResumed
 import name.alexwayfer.customtv.ui.theme.TwitchBg
@@ -63,6 +65,7 @@ internal fun HomeScreen(
     onOpenProfile: (String) -> Unit,
     onLogIn: () -> Unit,
     onSearchOpenChange: (Boolean) -> Unit,
+    onOpenCategory: (TwitchCategory) -> Unit,
     padForIme: Boolean = true,
 ) {
     val recents by viewModel.recents.collectAsStateWithLifecycle()
@@ -101,6 +104,7 @@ internal fun HomeScreen(
         ) {
             HomeTitleRow(searchState, searchShown = searchEntry == HomeSearchEntry.Button)
             HomeNotificationPrompt()
+            HomeAlertsPrompts(signedIn)
             when {
                 signedIn && (followsReady || followedChannels.isNotEmpty()) ->
                     HomeFollowedChannels(viewModel.follows, followAccess, scrollListToTop, open)
@@ -115,7 +119,11 @@ internal fun HomeScreen(
             }
         }
     }
-    HomeChannelSearch(viewModel, searchState, searchEntry, channelInput, signedIn, open, onSearchOpenChange)
+    // Home's search opens on the channels, its categories a page away; a category opens in Explore.
+    HomeChannelSearch(
+        viewModel, searchState, searchEntry, channelInput, signedIn, SearchMode.Channels,
+        categoryShowsUnderSearch = false, open, onOpenCategory, onSearchOpenChange,
+    )
 }
 
 /** Opens a channel from Home: its stream when it is live, its profile otherwise. */
@@ -132,7 +140,7 @@ private fun homeChannelOpener(
 /** The app's title, with the search button beside it while [searchShown]. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HomeTitleRow(searchState: SearchBarState, searchShown: Boolean) {
+internal fun HomeTitleRow(searchState: SearchBarState, searchShown: Boolean) {
     // As tall as the search button, whether it shows or not, so the title stays put.
     Row(
         verticalAlignment = Alignment.CenterVertically,

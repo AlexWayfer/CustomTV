@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import name.alexwayfer.customtv.MainActivity
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatViewModel
+import name.alexwayfer.customtv.chat.chatMentionName
 import name.alexwayfer.customtv.chat.replySessionFor
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChannelProfile
@@ -141,6 +142,11 @@ internal data class WatchScene(
         }
     }
 
+    /** Straight to the field, which keeps its focus and keyboard while the message menu is open. */
+    fun mention(login: String, displayName: String) {
+        chat.mentionRequest = OneShotRequest(chatMentionName(login, displayName))
+    }
+
     fun ownCardRequest(login: String): ChatterCardRequest =
         ownChatterCardRequest(ownBadges, login, account.displayName.orEmpty(), account.userId)
 
@@ -236,7 +242,7 @@ private fun WatchOverlays(scene: WatchScene, compactSettled: Boolean) {
             },
         )
     }
-    ChannelFollowDialogs(scene.follow.action, hidden = compactSettled)
+    FollowDialogs(scene.follow.action, hidden = compactSettled)
     ChatOpenLinkOverlay(
         url = chat.pendingChatLink,
         onDismiss = { chat.pendingChatLink = null },

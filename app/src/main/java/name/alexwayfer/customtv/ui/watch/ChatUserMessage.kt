@@ -69,7 +69,7 @@ internal fun ChatUserMessage(
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     showGifs: Boolean = true,
-    enableLinks: Boolean = true,
+    linksClickable: Boolean = true,
     onEmoteLongClick: (() -> Unit)? = null,
     foldProgress: (() -> Float)? = null,
 ) {
@@ -96,7 +96,7 @@ internal fun ChatUserMessage(
         chatterLabels = LocalChatterLabels.current,
         nickColors = nickColors,
         readableColors = readableColors,
-        enableLinks = enableLinks,
+        linksClickable = linksClickable,
         includeAuthor = includeAuthor,
         timestampText = timestampText,
     )

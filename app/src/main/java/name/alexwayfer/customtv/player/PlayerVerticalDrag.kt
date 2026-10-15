@@ -1,5 +1,19 @@
 package name.alexwayfer.customtv.player
 
+import android.view.MotionEvent
+
+/**
+ * Whether [actionMasked] ends the touch the player follows, the one whose finger [touchPointerId] went down first: an
+ * up, a cancel, or that finger lifting while another, such as one put down beside the player, stays. No later event
+ * of the touch reaches the player then, so waiting for an up would leave a drag unfinished.
+ */
+internal fun playerTouchEnds(actionMasked: Int, liftedPointerId: Int, touchPointerId: Int): Boolean =
+    when (actionMasked) {
+        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> true
+        MotionEvent.ACTION_POINTER_UP -> liftedPointerId == touchPointerId
+        else -> false
+    }
+
 internal fun shouldStartPlayerVerticalDrag(
     deltaY: Float,
     deltaX: Float,

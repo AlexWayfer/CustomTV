@@ -5,7 +5,8 @@ import org.json.JSONObject
 
 private const val GITHUB_REPOSITORY = "AlexWayfer/CustomTV"
 internal const val GITHUB_LATEST_RELEASE_URL = "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/latest"
-internal const val GITHUB_RELEASES_PAGE_URL = "https://github.com/$GITHUB_REPOSITORY/releases"
+internal const val GITHUB_REPOSITORY_URL = "https://github.com/$GITHUB_REPOSITORY"
+internal const val GITHUB_RELEASES_PAGE_URL = "$GITHUB_REPOSITORY_URL/releases"
 
 private const val SHA256_PREFIX = "sha256:"
 private const val PART_SUFFIX = ".part"

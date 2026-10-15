@@ -62,6 +62,7 @@ import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatReplySession
 import name.alexwayfer.customtv.chat.ChatThreadEntry
 import name.alexwayfer.customtv.chat.asChatMessage
+import name.alexwayfer.customtv.chat.chatMessageCanBeMentioned
 import name.alexwayfer.customtv.chat.copyableTextWithAuthor
 import name.alexwayfer.customtv.chat.formatChatTimestamp
 import name.alexwayfer.customtv.chat.replySessionMarksTarget
@@ -437,8 +438,15 @@ private fun BoxMessage(
             onEmoteLongClick = onSelect,
         )
         if (selected) {
+            val onMention = LocalOnChatMention.current?.takeIf { chatMessageCanBeMentioned(message) }
             ChatMessageCopyPopup(
                 onReply = onReply,
+                onMention = onMention?.let { mention ->
+                    {
+                        mention(message.userLogin, message.displayName)
+                        onDismissSelection()
+                    }
+                },
                 onCopy = onCopy,
                 onDismiss = onDismissSelection,
             )

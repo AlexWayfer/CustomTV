@@ -8,9 +8,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChannelProfileParser
+import name.alexwayfer.customtv.data.GqlRetryPolicy
 import name.alexwayfer.customtv.data.HTTP_CLIENT_ERROR
 import name.alexwayfer.customtv.data.HTTP_SUCCESS
+import name.alexwayfer.customtv.data.gqlErrorWithin
 import name.alexwayfer.customtv.data.gqlFailureCause
+import name.alexwayfer.customtv.data.hasTransientGqlError
 import name.alexwayfer.customtv.data.instantMillisOrNull
 import name.alexwayfer.customtv.data.objects
 import name.alexwayfer.customtv.data.sharedHttpClient
@@ -34,17 +37,20 @@ internal data class TwitchVideo(
 
 /**
  * A channel's recent past broadcasts, newest first, with each one's chapters by video id, and the
- * channels its streamer suggests on the channel's home, in the streamer's order.
+ * channels its streamer suggests on the channel's home, in the streamer's order. [chaptersFailed] holds
+ * the recordings whose chapters did not load; they have no entry in [chapters].
  */
 internal data class ChannelRecordingsPage(
     val videos: List<TwitchVideo>,
     val chapters: Map<String, VodCategories>,
     val suggestedChannels: List<ChannelProfile> = emptyList(),
+    val chaptersFailed: Set<String> = emptySet(),
 )
 
 /**
  * Loads a channel's recordings, their chapters, and its suggested channels in one public GQL
- * request, so they show without a login.
+ * request, so they show without a login. The chapters come in their own alias: Twitch fails on them
+ * far more often than on the recordings, and then fails the whole field it was asked inside.
  */
 internal class ChannelRecordingsRepository(
     private val http: OkHttpClient = sharedHttpClient.newBuilder()
@@ -63,7 +69,7 @@ internal class ChannelRecordingsRepository(
                 val payload = JSONObject()
                     .put("query", RECORDINGS_QUERY)
                     .put("variables", JSONObject().put("login", channelLogin))
-                val request = twitchGqlRequest(payload.toString()).build()
+                val request = twitchGqlRequest(payload.toString(), RecordingsRetry).build()
                 http.newCall(request).execute().use { response ->
                     val body = response.body.string()
                     Diagnostics.reportGql(TAG, "videos", response.code, body)
@@ -72,6 +78,11 @@ internal class ChannelRecordingsRepository(
                             when {
                                 page == null -> AppLog.w(TAG, "videos unreadable: ${gqlFailureCause(body)}")
                                 page.videos.isEmpty() -> AppLog.i(TAG, "videos empty for channel $channelLogin")
+                                page.chaptersFailed.isNotEmpty() -> AppLog.w(
+                                    TAG,
+                                    "chapters failed for ${page.chaptersFailed.size} of ${page.videos.size}: " +
+                                        gqlFailureCause(body),
+                                )
                             }
                         }
                         in HTTP_CLIENT_ERROR -> {
@@ -94,15 +105,24 @@ internal class ChannelRecordingsRepository(
     }
 
     private companion object {
+        const val RECORDINGS_ARGUMENTS = "first:20,type:ARCHIVE,sort:TIME"
         const val RECORDINGS_QUERY =
-            $$"query($login:String!){user(login:$login){videos(first:20,type:ARCHIVE,sort:TIME){edges{node{" +
-                "id title previewThumbnailURL(width:640,height:360) createdAt publishedAt viewCount lengthSeconds " +
-                "$VIDEO_CHAPTER_FIELDS}}}" +
+            $$"query($login:String!){user(login:$login){" +
+                "videos($RECORDINGS_ARGUMENTS){edges{node{" +
+                "id title previewThumbnailURL(width:640,height:360) createdAt publishedAt viewCount lengthSeconds" +
+                "}}}" +
+                "chapters:videos($RECORDINGS_ARGUMENTS){edges{node{id $VIDEO_CHAPTER_FIELDS}}}" +
                 "channel{home{shelves{streamerShelf(first:15){edges{node{" +
                 "id login displayName profileImageURL(width:300) stream{title createdAt viewersCount game{name}}" +
                 "}}}}}}}}"
+
+        val RecordingsRetry = GqlRetryPolicy(::recordingsRetried)
     }
 }
+
+/** The request goes again only when Twitch's server failure took the recordings; chapters are asked apart. */
+internal fun recordingsRetried(body: String): Boolean =
+    hasTransientGqlError(body) && parseChannelRecordings(body) == null
 
 /**
  * A channel that does not exist has no recordings. An answer without data, or one whose errors
@@ -117,23 +137,40 @@ internal fun parseChannelRecordings(body: String): ChannelRecordingsPage? {
         val failed = (json.optJSONArray("errors")?.length() ?: 0) > 0
         return if (failed) null else ChannelRecordingsPage(emptyList(), emptyMap())
     }
-    val videos = mutableListOf<TwitchVideo>()
-    val chapters = mutableMapOf<String, VodCategories>()
-    for (node in edges.objects().mapNotNull { it.optJSONObject("node") }) {
-        val id = node.trimmedText("id") ?: continue
-        val publishedAt = instant(node, "publishedAt")
-        videos += TwitchVideo(
-            id = id,
-            title = node.trimmedText("title").orEmpty(),
-            thumbnailUrl = node.trimmedText("previewThumbnailURL"),
-            startedAtMillis = instant(node, "createdAt") ?: publishedAt,
-            publishedAtMillis = publishedAt,
-            viewCount = node.optLong("viewCount").coerceAtLeast(0L),
-            durationSeconds = node.optLong("lengthSeconds").coerceAtLeast(0L),
-        )
-        chapters[id] = parseVodCategoriesNode(node)
-    }
-    return ChannelRecordingsPage(videos, chapters, suggestedChannels(user))
+    val videos = edges.objects().mapNotNull { it.optJSONObject("node")?.let(::parseTwitchVideo) }
+    val chapters = recordingChapters(json, user)
+    return ChannelRecordingsPage(
+        videos = videos,
+        chapters = chapters,
+        suggestedChannels = suggestedChannels(user),
+        chaptersFailed = videos.map { it.id }.filterNot(chapters::containsKey).toSet(),
+    )
+}
+
+private fun parseTwitchVideo(node: JSONObject): TwitchVideo? {
+    val id = node.trimmedText("id") ?: return null
+    val publishedAt = instant(node, "publishedAt")
+    return TwitchVideo(
+        id = id,
+        title = node.trimmedText("title").orEmpty(),
+        thumbnailUrl = node.trimmedText("previewThumbnailURL"),
+        startedAtMillis = instant(node, "createdAt") ?: publishedAt,
+        publishedAtMillis = publishedAt,
+        viewCount = node.optLong("viewCount").coerceAtLeast(0L),
+        durationSeconds = node.optLong("lengthSeconds").coerceAtLeast(0L),
+    )
+}
+
+/** The chapters of each recording in the `chapters` alias that an error did not reach, by video id. */
+private fun recordingChapters(json: JSONObject, user: JSONObject): Map<String, VodCategories> {
+    val edges = user.optJSONObject("chapters")?.optJSONArray("edges") ?: return emptyMap()
+    return (0 until edges.length()).mapNotNull { index ->
+        val node = edges.optJSONObject(index)?.optJSONObject("node")
+            ?.takeUnless { gqlErrorWithin(json, listOf("user", "chapters", "edges", index)) }
+        val id = node?.trimmedText("id")
+        val categories = node?.let(::parseVodCategoriesNode)
+        if (id == null || categories == null) null else id to categories
+    }.toMap()
 }
 
 /** The streamer's suggested channels; a shelf that is missing or failed suggests none. */

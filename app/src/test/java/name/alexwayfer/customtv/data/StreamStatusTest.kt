@@ -78,6 +78,37 @@ class StreamStatusTest {
     }
 
     @Test
+    fun aChannelUpdateKeepsItsCategoryId() {
+        val event = parseStreamStatusNotification(
+            """
+            {"metadata":{"message_type":"notification"},"payload":{
+              "subscription":{"type":"channel.update"},
+              "event":{"broadcaster_user_login":"foo","title":"Hi","category_name":"Just Chatting",
+                "category_id":"509658"}
+            }}
+            """.trimIndent(),
+        )
+        assertEquals(StreamStatusEvent.Title("foo", "Hi", "Just Chatting", categoryId = "509658"), event)
+    }
+
+    @Test
+    fun aNewCategoryIsNamedInTheAppsLanguage() {
+        val event = StreamStatusEvent.Title("foo", "Hi", "Just Chatting", categoryId = "509658")
+        assertEquals(
+            event.copy(categoryName = "Общение"),
+            localizedStreamStatus(event, mapOf("509658" to "Общение")),
+        )
+    }
+
+    @Test
+    fun withoutItsNameACategoryKeepsTwitchsEnglishOne() {
+        val event = StreamStatusEvent.Title("foo", "Hi", "Just Chatting", categoryId = "509658")
+        assertEquals(event, localizedStreamStatus(event, emptyMap()))
+        val offline = StreamStatusEvent.Offline("foo")
+        assertEquals(offline, localizedStreamStatus(offline, mapOf("509658" to "Общение")))
+    }
+
+    @Test
     fun aStreamOnlineNotificationKeepsTheStartTime() {
         val event = parseStreamStatusNotification(
             """

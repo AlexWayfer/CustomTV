@@ -12,6 +12,7 @@ import name.alexwayfer.customtv.chat.textWithCompletedEmote
 import name.alexwayfer.customtv.chat.textWithCompletedNick
 import name.alexwayfer.customtv.chat.textWithEmoteSearchColon
 import name.alexwayfer.customtv.chat.textWithInsertedEmote
+import name.alexwayfer.customtv.chat.textWithInsertedMention
 import name.alexwayfer.customtv.data.CHAT_MESSAGE_MAX_LENGTH
 import name.alexwayfer.customtv.data.ChatSendResult
 import name.alexwayfer.customtv.data.chatMessageToSend
@@ -71,6 +72,17 @@ internal class ChatDraftEditor(private val input: State<ChatInput>) {
             CHAT_MESSAGE_MAX_LENGTH,
         ) ?: return
         replace(inserted.text, inserted.cursor)
+    }
+
+    /** Puts `@name` at the cursor, as Mention in a message's menu asks. */
+    fun insertMention(name: String) {
+        textWithInsertedMention(
+            draft.text.toString(),
+            draft.selection.start,
+            draft.selection.end,
+            name,
+            CHAT_MESSAGE_MAX_LENGTH,
+        )?.let { replace(it.text, it.cursor) }
     }
 
     /** Puts a `:` at the cursor, so the field's completion takes over the picker's search. */

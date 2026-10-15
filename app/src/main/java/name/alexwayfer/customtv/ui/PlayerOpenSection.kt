@@ -1,10 +1,11 @@
 package name.alexwayfer.customtv.ui
 
 /**
- * A profile, a channel's or the account's own, stays under a stream opened from it, and the stream minimizes onto it.
+ * A profile, a channel's or the account's own, and Explore stay under a stream opened from them, and the stream
+ * minimizes onto them, so the list or the profile is where it was.
  */
 internal fun sectionStaysUnderPlayer(section: AppSection): Boolean =
-    section == AppSection.ChannelProfile || section == AppSection.Account
+    section == AppSection.ChannelProfile || section == AppSection.Account || section == AppSection.Explore
 
 /** A covering player leaves Home behind it, except over a profile, which it returns to. */
 internal fun sectionBehindOpenPlayer(section: AppSection, playerCovering: Boolean): AppSection =

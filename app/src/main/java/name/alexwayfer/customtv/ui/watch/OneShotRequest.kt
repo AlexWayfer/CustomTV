@@ -9,6 +9,9 @@ package name.alexwayfer.customtv.ui.watch
 internal class OneShotRequest<T : Any>(private val value: T) {
     private var taken = false
 
+    /** Not given out yet, so a screen that first shows can start where it asks, before its effect takes it. */
+    val pending: Boolean get() = !taken
+
     fun take(): T? {
         if (taken) return null
         taken = true

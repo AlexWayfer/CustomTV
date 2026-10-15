@@ -48,6 +48,8 @@ internal data class ChatCompose(
     val emotes: ChatInputEmotes,
     val replyParentMessageId: String?,
     val replyFocusRequest: OneShotRequest<Unit>?,
+    /** A nick that Mention in a message's menu puts into the draft. */
+    val mentionRequest: OneShotRequest<String>?,
     /** Read only while a nick is typed or a command sent, so new chatters do not recompose the input. */
     val sessionChatters: () -> Map<String, String>,
     /** When each of [sessionChatters] last wrote, read with them to put the latest nicks first. */

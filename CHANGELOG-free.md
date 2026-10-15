@@ -1,5 +1,23 @@
 # CustomTV (free version)
 
+## v1.9.0 (2026-10-15)
+
+*   Show categories and stream tags in the app's language
+*   Add "Mention" to the message menu
+*   Add a mention button to the chatter card
+*   Add a Licenses page in Settings
+*   Add tags to a channel's live stream on its profile
+*   Improve Settings navigation with a repeated tap on its navbar item
+*   Improve the style of a profile's recent categories
+*   Improve "About" panels display when switching tabs
+*   Highlight links in a folded pinned message
+*   Hide chapters without a category from a profile's recent categories
+*   Retry loading recordings when Twitch fails for a moment
+*   Fix live stream info updates stopping after a reconnect
+*   Fix Twitch's low latency hint covering its close button
+*   Fix the pinned message jumping while it folds
+*   Fix the player swipe when another finger touches the screen
+
 ## v1.8.0 (2026-10-14)
 
 *   Add Chatter Labels, previously a Premium feature

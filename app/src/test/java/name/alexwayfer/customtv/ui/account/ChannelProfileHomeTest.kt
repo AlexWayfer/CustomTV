@@ -1,7 +1,7 @@
 package name.alexwayfer.customtv.ui.account
 
-import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.TwitchCategory
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -52,19 +52,22 @@ class ChannelProfileHomeTest {
             chapters = mapOf(
                 "newest" to VodCategories(
                     chapters = listOf(
-                        VodChapter(0.0, "Just Chatting", "jc.jpg"),
-                        VodChapter(600.0, "Dota 2", "dota.jpg"),
+                        VodChapter(0.0, "Just Chatting", "jc.jpg", categoryId = "509658"),
+                        VodChapter(600.0, "Dota 2", "dota.jpg", categoryId = "29595"),
                     ),
                     fallbackCategory = "Dota 2",
                 ),
                 "older" to VodCategories(
-                    chapters = listOf(VodChapter(0.0, "Art", "art.jpg"), VodChapter(60.0, "Just Chatting", "jc.jpg")),
+                    chapters = listOf(
+                        VodChapter(0.0, "Art", "art.jpg", categoryId = "509660"),
+                        VodChapter(60.0, "Just Chatting", "jc.jpg", categoryId = "509658"),
+                    ),
                     fallbackCategory = "Just Chatting",
                 ),
             ),
         )
 
-        assertEquals(listOf("Dota 2", "Just Chatting", "Art"), categories.map(RecentCategory::name))
+        assertEquals(listOf("Dota 2", "Just Chatting", "Art"), categories.map(TwitchCategory::name))
         assertEquals("dota.jpg", categories.first().boxArtUrl)
     }
 
@@ -72,22 +75,56 @@ class ChannelProfileHomeTest {
     fun aRecordingWithoutChaptersCountsItsOwnCategory() {
         val categories = recentCategories(
             videos = listOf(video("only")),
-            chapters = mapOf("only" to VodCategories(emptyList(), "Minecraft", "mc.jpg")),
+            chapters = mapOf("only" to VodCategories(emptyList(), "Minecraft", "mc.jpg", fallbackCategoryId = "27471")),
         )
 
-        assertEquals(listOf(RecentCategory("Minecraft", "mc.jpg")), categories)
+        assertEquals(listOf(TwitchCategory("Minecraft", "mc.jpg", id = "27471")), categories)
+    }
+
+    @Test
+    fun aChapterWithoutAGameIsNoCategory() {
+        val categories = recentCategories(
+            videos = listOf(video("only")),
+            chapters = mapOf(
+                "only" to VodCategories(
+                    chapters = listOf(
+                        VodChapter(0.0, "Chapter 1"),
+                        VodChapter(1977.0, "Just Chatting", "jc.jpg", categoryId = "509658"),
+                    ),
+                    fallbackCategory = null,
+                ),
+            ),
+        )
+
+        assertEquals(listOf(TwitchCategory("Just Chatting", "jc.jpg", id = "509658")), categories)
+    }
+
+    @Test
+    fun aRecordingWithOnlyGamelessChaptersAndNoGameAddsNoCategory() {
+        val categories = recentCategories(
+            videos = listOf(video("only")),
+            chapters = mapOf("only" to VodCategories(listOf(VodChapter(0.0, "Chapter 1")), fallbackCategory = null)),
+        )
+
+        assertEquals(emptyList<TwitchCategory>(), categories)
+    }
+
+    @Test
+    fun aLaterRecordingFillsInTheBoxArtAnEarlierOneLacked() {
+        val categories = recentCategories(
+            videos = listOf(video("newest"), video("older")),
+            chapters = mapOf(
+                "newest" to VodCategories(listOf(VodChapter(0.0, "Art", null, categoryId = "509660")), "Art"),
+                "older" to VodCategories(listOf(VodChapter(0.0, "Art", "art.jpg", categoryId = "509660")), "Art"),
+            ),
+        )
+
+        assertEquals(listOf(TwitchCategory("Art", "art.jpg", id = "509660")), categories)
     }
 
     @Test
     fun aRecordingWithoutLoadedChaptersAddsNoCategory() {
-        assertEquals(emptyList<RecentCategory>(), recentCategories(listOf(video("unknown")), emptyMap()))
-    }
-
-    @Test
-    fun aPhoneGridKeepsThreeColumnsAndAWideScreenAddsMore() {
-        assertEquals(3, categoryGridColumns(360.dp))
-        assertEquals(3, categoryGridColumns(200.dp))
-        assertEquals(6, categoryGridColumns(800.dp))
+        assertEquals(emptyList<TwitchCategory>(), recentCategories(listOf(video("unknown")), emptyMap()))
     }
 
     private fun video(id: String) = TwitchVideo(id, id, null, null, null, 0, 0)

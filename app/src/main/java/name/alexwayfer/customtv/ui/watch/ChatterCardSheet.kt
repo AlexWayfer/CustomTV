@@ -110,6 +110,7 @@ internal fun ChatterCardHost(
 ) {
     var request by remember { mutableStateOf<ChatterCardRequest?>(null) }
     val sheetKeyboard = LocalSheetKeyboard.current
+    val mention = LocalOnChatMention.current
     LaunchedEffect(fieldCardOpen) {
         val open = fieldCardOpen?.take() ?: return@LaunchedEffect
         sheetKeyboard.open { request = open }
@@ -129,6 +130,13 @@ internal fun ChatterCardHost(
                     request = null
                     sheetKeyboard.onDismiss()
                 },
+                // Not through onDismiss: the field takes the keyboard right away, so it is not hidden first.
+                onMention = mention?.let { mentionChatter ->
+                    { login: String, displayName: String ->
+                        request = null
+                        mentionChatter(login, displayName)
+                    }
+                },
             )
         }
     }
@@ -143,6 +151,8 @@ internal fun ChatterCardSheet(
     renderMessage: @Composable (ChatMessage) -> Unit,
     renderLoggedMessage: @Composable (ChatMessage) -> Unit,
     onDismiss: () -> Unit,
+    /** Closes the card and mentions the chatter in the draft; null where the chat has no field. */
+    onMention: ((login: String, displayName: String) -> Unit)?,
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
     val history by chatterHistory.collectAsStateWithLifecycle()
@@ -156,7 +166,7 @@ internal fun ChatterCardSheet(
     val scroll = rememberChatterCardScroll()
     FollowChatterMessagesEnd(nav.page, scroll)
     val dismissSheet = rememberHideThenDismiss(sheetState, onDismiss)
-    val openProfile = LocalOpenChatterProfile.current
+    val dismissThenMention = rememberHideThenDismiss(sheetState) { onMention?.invoke(chatter.login, chatter.name) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -173,17 +183,13 @@ internal fun ChatterCardSheet(
                 // The sheet stops at the player, so the stream stays in sight.
                 .heightIn(max = chatSheetContentMaxHeight()),
         ) {
-            ChatterCardHeader(
+            ChatterCardSheetHeader(
                 profile = load.profile,
                 chatter = chatter,
                 collapse = scroll.headerCollapse,
                 pinProgress = { pin },
-                onOpenProfile = openProfile?.let { open ->
-                    {
-                        onDismiss()
-                        open(chatter.login)
-                    }
-                },
+                onDismiss = onDismiss,
+                onMention = if (onMention != null) dismissThenMention.value else null,
             )
             // The recent messages and the logs pages come in from the end and go back the way they came.
             AnimatedContent(

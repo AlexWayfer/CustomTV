@@ -104,6 +104,7 @@ internal fun encodeFollowedChannelsCache(
                 .putOpt("avatarUrl", channel.avatarUrl)
                 .put("isLive", channel.isLive)
                 .putOpt("categoryName", channel.categoryName)
+                .putOpt("categoryId", channel.categoryId)
                 .putOpt("viewerCount", channel.viewerCount)
                 .putOpt("sharedViewerCount", channel.sharedViewerCount)
                 .putOpt("collaborationCount", channel.collaborationCount)
@@ -161,6 +162,7 @@ internal fun decodeFollowedChannelsCache(raw: String, userId: String): List<Foll
             avatarUrl = item.stringOrNull("avatarUrl"),
             isLive = item.optBoolean("isLive"),
             categoryName = item.stringOrNull("categoryName"),
+            categoryId = item.stringOrNull("categoryId"),
             viewerCount = item.intOrNull("viewerCount"),
             sharedViewerCount = item.intOrNull("sharedViewerCount"),
             collaborationCount = item.intOrNull("collaborationCount"),

@@ -16,17 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -37,15 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.memory.MemoryCache
-import coil.request.ImageRequest
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.FollowedChannel
 import name.alexwayfer.customtv.data.FollowedLastBroadcastAge
 import name.alexwayfer.customtv.data.followedLastBroadcastAge
 import name.alexwayfer.customtv.data.followedLastBroadcastMillis
+import name.alexwayfer.customtv.ui.components.StreamPreviewImage
 import name.alexwayfer.customtv.ui.components.VIDEO_ASPECT_RATIO
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
@@ -161,7 +153,7 @@ private fun FollowedLivePreview(channel: FollowedChannel) {
             .clip(RoundedCornerShape(6.dp))
             .background(TwitchSurfaceAlt),
     ) {
-        FollowedStreamPreview(url = followedPreviewUrl(channel), modifier = Modifier.fillMaxSize())
+        StreamPreviewImage(url = followedPreviewUrl(channel), modifier = Modifier.fillMaxSize())
         if (channel.viewerCount != null) {
             ChannelListViewers(
                 viewerCount = channel.viewerCount,
@@ -175,27 +167,6 @@ private fun FollowedLivePreview(channel: FollowedChannel) {
             )
         }
     }
-}
-
-/** The preview keeps showing the previous image while a newer one loads, so a refresh never blanks it. */
-@Composable
-private fun FollowedStreamPreview(url: String, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    var shownKey by remember { mutableStateOf<MemoryCache.Key?>(null) }
-    val request = remember(url) {
-        ImageRequest.Builder(context)
-            .data(url)
-            .placeholderMemoryCacheKey(shownKey)
-            .crossfade(true)
-            .build()
-    }
-    AsyncImage(
-        model = request,
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier,
-        onSuccess = { state -> shownKey = state.result.memoryCacheKey },
-    )
 }
 
 @Composable

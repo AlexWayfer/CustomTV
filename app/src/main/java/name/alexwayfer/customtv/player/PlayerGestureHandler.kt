@@ -51,6 +51,9 @@ internal class PlayerGestureHandler(
     private var downY = 0f
     private var downRawX = 0f
     private var downRawY = 0f
+
+    /** The finger the touch follows, the first one down; another finger neither moves nor ends it. */
+    private var touchPointerId = MotionEvent.INVALID_POINTER_ID
     private var controlsShownAtDown = false
     private var downInStatusBarZone = false
     private var dragAxis = DragAxis.None
@@ -66,21 +69,27 @@ internal class PlayerGestureHandler(
         velocityTracker?.recycle()
         velocityTracker = null
         dragAxis = DragAxis.None
+        touchPointerId = MotionEvent.INVALID_POINTER_ID
     }
 
     private fun handle(event: MotionEvent): Boolean {
-        return !state.isReleased() && !state.isAppTap() && when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
+        if (state.isReleased() || state.isAppTap()) return false
+        val action = event.actionMasked
+        return when {
+            action == MotionEvent.ACTION_DOWN -> {
                 onDown(event)
                 false
             }
-            MotionEvent.ACTION_MOVE -> onMove(event)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> onUpOrCancel(event)
+            // The followed finger lifted already; the rest of the touch is another finger's.
+            touchPointerId == MotionEvent.INVALID_POINTER_ID -> false
+            playerTouchEnds(action, event.getPointerId(event.actionIndex), touchPointerId) -> onUpOrCancel(event)
+            action == MotionEvent.ACTION_MOVE -> onMove(event)
             else -> false
         }
     }
 
     private fun onDown(event: MotionEvent) {
+        touchPointerId = event.getPointerId(0)
         downX = event.x
         downY = event.y
         downRawX = event.rawX
@@ -94,8 +103,8 @@ internal class PlayerGestureHandler(
 
     private fun onMove(event: MotionEvent): Boolean {
         velocityTracker?.addMovement(event)
-        val dy = event.rawY - downRawY
-        val dx = event.rawX - downRawX
+        val dy = touchRawY(event) - downRawY
+        val dx = touchRawX(event) - downRawX
         if (dragAxis == DragAxis.None && touchStaysWithControls(controlsShownAtDown, state.touchOnControls())) {
             dragAxis = DragAxis.Page
         }
@@ -134,14 +143,22 @@ internal class PlayerGestureHandler(
         (view.parent as? ViewGroup)?.requestDisallowInterceptTouchEvent(false)
         velocityTracker?.addMovement(event)
         val axis = dragAxis
+        val pointerId = touchPointerId
         dragAxis = DragAxis.None
+        touchPointerId = MotionEvent.INVALID_POINTER_ID
         if (axis == DragAxis.Vertical || axis == DragAxis.Horizontal) {
             val tracker = velocityTracker
             tracker?.computeCurrentVelocity(PIXELS_PER_SECOND)
             if (axis == DragAxis.Vertical) {
-                callbacks.onVerticalDragEnd(event.rawY - downRawY, tracker?.yVelocity ?: 0f)
+                callbacks.onVerticalDragEnd(
+                    touchRawY(event, pointerId) - downRawY,
+                    tracker?.getYVelocity(pointerId) ?: 0f,
+                )
             } else {
-                callbacks.onHorizontalDragEnd(event.rawX - downRawX, tracker?.xVelocity ?: 0f)
+                callbacks.onHorizontalDragEnd(
+                    touchRawX(event, pointerId) - downRawX,
+                    tracker?.getXVelocity(pointerId) ?: 0f,
+                )
             }
             tracker?.recycle()
             velocityTracker = null
@@ -180,6 +197,15 @@ internal class PlayerGestureHandler(
             }
         }
     }
+
+    /** Where the followed finger is on the screen; a finger put down beside the player may come first in [event]. */
+    private fun touchRawX(event: MotionEvent, pointerId: Int = touchPointerId): Float =
+        event.getX(touchIndex(event, pointerId)) + event.rawX - event.x
+
+    private fun touchRawY(event: MotionEvent, pointerId: Int = touchPointerId): Float =
+        event.getY(touchIndex(event, pointerId)) + event.rawY - event.y
+
+    private fun touchIndex(event: MotionEvent, pointerId: Int): Int = event.findPointerIndex(pointerId).coerceAtLeast(0)
 
     /** Ends the touch for the page without a click, so the player does not act on it. */
     private fun cancelPageTouch(event: MotionEvent) {

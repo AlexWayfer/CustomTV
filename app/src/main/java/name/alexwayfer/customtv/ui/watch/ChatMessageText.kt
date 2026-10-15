@@ -61,7 +61,7 @@ internal fun chatTextSizes(textSize: TextUnit, timestampSize: TextUnit, emoteSiz
         )
     }
 
-/** How a chat message's text looks: its colors and sizes, what its author part shows, and whether links work. */
+/** How a chat message's text looks: its colors and sizes, what its author part shows, and whether links open. */
 internal data class ChatMessageLook(
     val nickColor: Color,
     /** A /me message in italics, or in the author's color. */
@@ -73,7 +73,8 @@ internal data class ChatMessageLook(
     /** The colors of the nicks this message mentions. */
     val nickColors: Map<String, Color>,
     val readableColors: Boolean,
-    val enableLinks: Boolean,
+    /** Links open on a tap; otherwise they only look like links, laid out the same, so the text does not reflow. */
+    val linksClickable: Boolean,
     val includeAuthor: Boolean,
     val timestampText: String?,
 ) {

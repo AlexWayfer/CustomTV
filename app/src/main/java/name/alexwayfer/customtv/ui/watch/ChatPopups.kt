@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,9 +57,13 @@ import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import kotlin.math.roundToInt
 
+/** Puts a mention of a chatter into the chat's draft; null where the chat has no field to write in. */
+internal val LocalOnChatMention = compositionLocalOf<((login: String, displayName: String) -> Unit)?> { null }
+
 @Composable
 internal fun ChatMessageCopyPopup(
     onReply: (() -> Unit)?,
+    onMention: (() -> Unit)?,
     onCopy: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
@@ -72,6 +77,13 @@ internal fun ChatMessageCopyPopup(
                     gestureHints?.slowPathUsed(GestureHint.Reply)
                     onReply()
                 },
+            )
+        }
+        if (onMention != null) {
+            ChatMessageActionRow(
+                icon = R.drawable.ic_chat_mention,
+                label = stringResource(R.string.chat_mention),
+                onClick = onMention,
             )
         }
         if (onCopy != null) {

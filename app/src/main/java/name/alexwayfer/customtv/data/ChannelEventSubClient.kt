@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,8 +33,13 @@ private fun reportSubscribeRejected(httpCode: Int, type: String, body: String) {
     Diagnostics.reportRejected(TAG, "helix/eventsub/subscriptions $type", httpCode, twitchAuthMessage(body))
 }
 
+/**
+ * [freshToken] reads the login's token again for each subscribing, refreshed when it is about to expire: the channel
+ * may stay open for hours, longer than the token read when it opened.
+ */
 class ChannelEventSubClient(
     private val clientId: String,
+    private val freshToken: suspend () -> String?,
     private val http: OkHttpClient = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build(),
@@ -82,6 +88,22 @@ class ChannelEventSubClient(
     private var userId: String? = null
 
     /**
+     * The stream status events in the order they came: a new category is named in the app's language before it goes
+     * on, and the events after it wait for it, so an offline never overtakes the title before it.
+     */
+    private val statusQueue = Channel<StreamStatusEvent>(Channel.UNLIMITED)
+
+    init {
+        scope.launch {
+            for (event in statusQueue) {
+                val categoryId = (event as? StreamStatusEvent.Title)?.categoryId
+                val names = if (categoryId == null) emptyMap() else CategoryNames.localized(listOf(categoryId))
+                _events.emit(localizedStreamStatus(event, names))
+            }
+        }
+    }
+
+    /**
      * [userId] is the signed-in user: their own held messages, and what moderators see when they moderate the
      * channel.
      */
@@ -116,6 +138,7 @@ class ChannelEventSubClient(
     fun close() {
         disconnect()
         reconnectExecutor.shutdownNow()
+        statusQueue.close()
     }
 
     private fun onMessage(messageType: String?, text: String) {
@@ -133,7 +156,7 @@ class ChannelEventSubClient(
                     if (type != "channel.suspicious_user.message") AppLog.i(TAG, "notification $type")
                     _userNotifications.tryEmit(text)
                 } else {
-                    parseStreamStatusNotification(text)?.let { _events.tryEmit(it) }
+                    parseStreamStatusNotification(text)?.let { statusQueue.trySend(it) }
                 }
             }
         }
@@ -141,12 +164,15 @@ class ChannelEventSubClient(
 
     private fun subscribe(sessionId: String, types: List<EventSubType>) {
         val id = broadcasterId ?: return
-        val token = accessToken ?: return
         val user = userId
-        types.forEach { type ->
-            if (type.condition != EventSubCondition.Broadcaster && user == null) return@forEach
-            scope.launch {
-                subscribeOnce(EventSubRequest(token, id, user, sessionId, type), attempt = 0)
+        scope.launch {
+            val token = eventSubToken(freshToken(), accessToken) ?: return@launch
+            // The socket may have closed or reconnected while the token was read; its new welcome subscribes again.
+            if (sessionId != socket.sessionId) return@launch
+            accessToken = token
+            types.forEach { type ->
+                if (type.condition != EventSubCondition.Broadcaster && user == null) return@forEach
+                launch { subscribeOnce(EventSubRequest(token, id, user, sessionId, type), attempt = 0) }
             }
         }
     }

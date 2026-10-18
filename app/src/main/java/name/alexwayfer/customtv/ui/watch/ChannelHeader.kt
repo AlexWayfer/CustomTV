@@ -3,6 +3,7 @@ package name.alexwayfer.customtv.ui.watch
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,17 +34,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelFollowStatus
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.data.showsFollowButton
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
 import name.alexwayfer.customtv.ui.components.StreamTagPill
 import name.alexwayfer.customtv.ui.components.collapsibleTextMaxLines
 import name.alexwayfer.customtv.ui.components.revealLines
+import name.alexwayfer.customtv.ui.theme.ChatLink
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
@@ -54,14 +60,17 @@ internal fun StreamInfoPanel(
     profile: ChannelProfile,
     title: String?,
     tags: List<String>,
-    categoryName: String?,
+    category: TwitchCategory?,
     expanded: Boolean,
     onToggle: () -> Unit,
     onOpenProfile: () -> Unit,
+    /** Opens the category in Explore from the panel shown whole; null where Explore is missing. */
+    onOpenCategory: ((TwitchCategory) -> Unit)?,
     meta: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     trailingAction: @Composable () -> Unit = {},
     containerColor: Color = TwitchSurface,
+    subtitle: String? = null,
 ) {
     val displayName = profile.displayName
     val transition = updateTransition(expanded, label = "channelHeader")
@@ -101,20 +110,46 @@ internal fun StreamInfoPanel(
                         HeaderNameAndTitle(displayName, title, onOpenProfile, Modifier.weight(1f))
                         trailingAction()
                     }
+                    subtitle?.let { line -> HeaderSubtitle(line) }
                     if (tags.isNotEmpty()) StreamTags(tags)
                 }
             }
             // Baselines line up, so with a category over several lines the meta stays beside its first line.
             Row(modifier = Modifier.fillMaxWidth().padding(top = 2.dp)) {
                 HeaderBottomLabel(
-                    label = categoryName ?: displayName.takeIf { !showExpandedContent },
+                    label = category?.name ?: displayName.takeIf { !showExpandedContent },
                     expanded = showExpandedContent,
                     progress = { sizeProgress.value },
+                    onClick = categoryClick(category, expanded, onOpenCategory),
                 )
                 Box(modifier = Modifier.alignByBaseline()) { meta() }
             }
         }
     }
+}
+
+/** A line about what plays, such as who cut a clip, under the title of the open panel. */
+@Composable
+private fun HeaderSubtitle(line: String) {
+    Text(
+        text = line,
+        modifier = Modifier.padding(top = 2.dp),
+        color = TwitchTextSecondary,
+        fontSize = 12.sp,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+/** A tap on the category line opens it in Explore; without a click of its own the tap goes to the panel. */
+private fun categoryClick(
+    category: TwitchCategory?,
+    expanded: Boolean,
+    onOpenCategory: ((TwitchCategory) -> Unit)?,
+): (() -> Unit)? {
+    val openable = panelCategoryToOpen(category, expanded) ?: return null
+    if (onOpenCategory == null) return null
+    return { onOpenCategory(openable) }
 }
 
 @Composable
@@ -151,9 +186,24 @@ private fun StreamTags(tags: List<String>) {
     }
 }
 
-/** The category under the title, or the name in the collapsed panel; [progress] is the panel's opening. */
+/**
+ * The category under the title, or the name in the collapsed panel; [progress] is the panel's opening. [onClick] opens
+ * the category; without it a tap goes to the panel.
+ */
 @Composable
-private fun RowScope.HeaderBottomLabel(label: String?, expanded: Boolean, progress: () -> Float) {
+private fun RowScope.HeaderBottomLabel(
+    label: String?,
+    expanded: Boolean,
+    progress: () -> Float,
+    onClick: (() -> Unit)?,
+) {
+    val openLabel = stringResource(R.string.stream_category_open)
+    // A category that opens is in the link color; it fades as the panel closes and the tap goes to the panel.
+    val color by animateColorAsState(
+        targetValue = if (onClick != null) ChatLink else TwitchTextSecondary,
+        animationSpec = tween(HEADER_SIZE_MS, easing = HeaderPanelEasing),
+        label = "headerBottomLabelColor",
+    )
     // A recording's category changes with its chapters: the old one fades out as the new one
     // fades in, and the row takes the new height at the panel's own pace.
     AnimatedContent(
@@ -174,14 +224,23 @@ private fun RowScope.HeaderBottomLabel(label: String?, expanded: Boolean, progre
         var firstLineBottomPx by remember { mutableIntStateOf(0) }
         Text(
             text = shownLabel,
-            color = TwitchTextSecondary,
+            color = color,
             fontSize = 12.sp,
             maxLines = collapsibleTextMaxLines(expanded),
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { layout -> firstLineBottomPx = layout.getLineBottom(0).roundToInt() },
+            // The row stretches the label to the meta; the tap and its ripple keep to the text.
             modifier = Modifier
+                .wrapContentWidth(Alignment.Start)
                 .revealLines({ firstLineBottomPx }, progress)
-                .padding(end = 8.dp),
+                .padding(end = 8.dp)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClickLabel = openLabel, role = Role.Button, onClick = onClick)
+                    } else {
+                        Modifier
+                    },
+                ),
         )
     }
 }
@@ -194,6 +253,7 @@ internal fun ChannelHeader(
     onToggle: () -> Unit,
     onViewersClick: (() -> Unit)?,
     onOpenProfile: () -> Unit,
+    onOpenCategory: ((TwitchCategory) -> Unit)?,
     followStatus: ChannelFollowStatus,
     followAction: FollowAction,
     onOpenSettings: () -> Unit,
@@ -206,10 +266,13 @@ internal fun ChannelHeader(
         profile = profile,
         title = profile.streamTitle,
         tags = if (showTags) profile.tags else emptyList(),
-        categoryName = profile.categoryName,
+        category = profile.categoryName?.let { name ->
+            TwitchCategory(name, profile.categoryBoxArtUrl, profile.categoryId)
+        },
         expanded = expanded,
         onToggle = onToggle,
         onOpenProfile = onOpenProfile,
+        onOpenCategory = onOpenCategory,
         meta = {
             StreamLiveMeta(
                 profile.streamStartedAtMillis,

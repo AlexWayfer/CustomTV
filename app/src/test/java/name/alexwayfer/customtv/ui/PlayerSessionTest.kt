@@ -193,6 +193,37 @@ class PlayerSessionTest {
     }
 
     @Test
+    fun backOnAFullRecordingOpenedOverAStreamReturnsToIt() {
+        val opened = PlayerSession().videoOpened(video, liveMinimized = false, returnChannel = "praden")
+
+        assertEquals("praden", opened.videoBackReturnChannel)
+    }
+
+    @Test
+    fun backOnAMinimizedRecordingKeepsTheReturnForWhenItExpands() {
+        val opened = PlayerSession().videoOpened(video, liveMinimized = false, returnChannel = "praden")
+
+        assertNull(opened.withVideoMinimized(true).videoBackReturnChannel)
+        assertEquals("praden", opened.withVideoMinimized(true).withVideoMinimized(false).videoBackReturnChannel)
+    }
+
+    @Test
+    fun aRecordingOpenedAnotherWayReturnsNowhere() {
+        val linked = PlayerSession().videoOpened(video, liveMinimized = false, returnChannel = "praden")
+
+        assertNull(linked.videoOpened(video, liveMinimized = false).videoBackReturnChannel)
+    }
+
+    @Test
+    fun closingTheRecordingOrOpeningAStreamForgetsTheReturn() {
+        val opened = PlayerSession().videoOpened(video, liveMinimized = false, returnChannel = "praden")
+
+        assertNull(opened.videoClosed().videoReturnChannel)
+        assertNull(opened.liveOpened().videoReturnChannel)
+        assertNull(opened.sleepTimerFired().videoReturnChannel)
+    }
+
+    @Test
     fun withoutAPlayerNothingIsExpandedAfterTheWhispersSection() {
         assertFalse(PlayerSession().fullScreenBeforeWhispers(watching = false))
     }

@@ -52,15 +52,18 @@ class RecordingTapSeekTest {
         tapSeeks(previous, side, sinceLastTapMs, doubleTapTimeoutMs = 300, seriesRunning = seriesRunning)
 
     @Test
-    fun aFirstTapThatWouldHideTheControlsOnASideWaitsForASecond() {
-        assertTrue(firstTapWaits(controlsVisible = true, side = TapSide.Back))
-        assertTrue(firstTapWaits(controlsVisible = true, side = TapSide.Forward))
+    fun aSeekingTapBringsUpHiddenControls() {
+        assertTrue(tapSeekShowsControls(controlsVisible = false, previousTapHid = false))
     }
 
     @Test
-    fun aFirstTapThatShowsTheControlsOrLandsInTheMiddleActsAtOnce() {
-        assertFalse(firstTapWaits(controlsVisible = false, side = TapSide.Forward))
-        assertFalse(firstTapWaits(controlsVisible = true, side = TapSide.Middle))
+    fun aSeekingTapBringsBackTheControlsTheTapBeforeHidBeforeThePageReportsIt() {
+        assertTrue(tapSeekShowsControls(controlsVisible = true, previousTapHid = true))
+    }
+
+    @Test
+    fun aSeekingTapLeavesControlsThatStayUp() {
+        assertFalse(tapSeekShowsControls(controlsVisible = true, previousTapHid = false))
     }
 
     @Test

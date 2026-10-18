@@ -13,7 +13,8 @@ import java.util.concurrent.TimeUnit
 /** The badges Twitch shows beside a user's name in one channel, with the image for each `set/version`. */
 internal class DisplayedChatBadges(val badges: List<ChatBadge>, val imageUrls: Map<String, String>)
 
-internal object OwnChatBadgesRepository {
+/** A user's badges in a channel: the user's own, or a chatter's whose card has no message to take them from. */
+internal object DisplayedChatBadgesRepository {
     private val http = sharedHttpClient.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -48,7 +49,7 @@ internal object OwnChatBadgesRepository {
         }
     }
 
-    private const val TAG = "OwnChatBadges"
+    private const val TAG = "DisplayedChatBadges"
 }
 
 internal fun parseDisplayedChatBadges(body: String): DisplayedChatBadges? {

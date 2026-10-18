@@ -43,6 +43,7 @@
     <string name="chat_rule_numbered" translatable="false">%1$d. %2$s</string>
     <string name="chat_rules_confirm">OK, got it</string>
     <string name="chat_send">Send</string>
+    <string name="chat_cancel_send">Cancel sending</string>
     <string name="chat_command_user_argument">[username]</string>
     <string name="chat_command_user_description">Display profile information about a user on this channel</string>
     <string name="chat_send_failed">Couldn’t send that message</string>
@@ -120,6 +121,7 @@
     </plurals>
     <string name="chatter_card_back_to_profile">Back to profile</string>
     <string name="chatter_card_open_profile">Open profile</string>
+    <string name="stream_category_open">Open in Explore</string>
     <string name="chatter_card_socials">Socials</string>
     <string name="chatter_card_labels">Labels</string>
     <string name="chatter_card_no_labels">No labels assigned</string>
@@ -359,6 +361,12 @@
     <string name="app_update_open_group">Open group</string>
     <string name="settings_section_premium">Premium</string>
     <string name="settings_section_language">Language</string>
+    <string name="settings_section_app_links">Opening links</string>
+    <string name="app_links_setting">Open Twitch links in the app</string>
+    <string name="app_links_setting_off">Off. In Android’s settings, tap Add link and tick twitch.tv and www.twitch.tv</string>
+    <string name="app_links_setting_on">On</string>
+    <string name="app_links_prompt">Twitch links can open in the app instead of the browser.</string>
+    <string name="app_links_prompt_set_up">Set up</string>
     <string name="app_update_check">Check updates</string>
     <string name="app_update_none">New versions not found</string>
     <string name="app_update_none_latest">New versions not found. Latest found: %1$s</string>
@@ -418,6 +426,8 @@
     <string name="chat_open_link">Open</string>
     <string name="expand">Expand</string>
     <string name="minimize">Minimize</string>
+    <string name="player_zoom_reset">Reset zoom</string>
+    <string name="player_zoom_scale" translatable="false">%1$.1f×</string>
     <string name="sleep_timer">Sleep timer</string>
     <string name="sleep_timer_on">On</string>
     <string name="sleep_timer_left">The player closes in %1$s</string>

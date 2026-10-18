@@ -56,6 +56,14 @@ internal data class ProfileVideoOpenDecision(
     val closeLivePlayer: Boolean,
 )
 
+/**
+ * The stream a recording or a clip opened from a link returns to on Back: the [channel] watched full screen as the
+ * link came, such as from its own chat. A minimized stream, or none, leaves nothing to return to, and Back minimizes
+ * the player.
+ */
+internal fun linkedVideoReturnChannel(watching: Boolean, liveMinimized: Boolean, channel: String?): String? =
+    channel?.takeIf { watching && !liveMinimized }
+
 internal fun profileVideoOpenDecision(
     section: AppSection,
     minimized: Boolean,

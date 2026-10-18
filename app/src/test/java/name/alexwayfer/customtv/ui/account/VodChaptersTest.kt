@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.account
 
+import name.alexwayfer.customtv.data.TwitchCategory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -17,10 +18,10 @@ class VodChaptersTest {
             fallbackCategory = "Old",
         )
 
-        assertEquals("Just Chatting", vodCategoryAt(categories, 0.0))
-        assertEquals("Just Chatting", vodCategoryAt(categories, 119.9))
-        assertEquals("Grand Theft Auto V", vodCategoryAt(categories, 120.0))
-        assertEquals("Just Chatting", vodCategoryAt(categories, 500.0))
+        assertEquals("Just Chatting", vodChapterCategoryAt(categories, 0.0)?.name)
+        assertEquals("Just Chatting", vodChapterCategoryAt(categories, 119.9)?.name)
+        assertEquals("Grand Theft Auto V", vodChapterCategoryAt(categories, 120.0)?.name)
+        assertEquals("Just Chatting", vodChapterCategoryAt(categories, 500.0)?.name)
     }
 
     @Test
@@ -30,16 +31,38 @@ class VodChaptersTest {
             fallbackCategory = "Other",
         )
 
-        assertEquals("Art", vodCategoryAt(categories, 0.0))
+        assertEquals("Art", vodChapterCategoryAt(categories, 0.0)?.name)
     }
 
     @Test
     fun anEmptyChapterListUsesTheVideosOwnCategory() {
         val categories = VodCategories(chapters = emptyList(), fallbackCategory = "Minecraft")
 
-        assertEquals("Minecraft", vodCategoryAt(categories, 30.0))
-        assertNull(vodCategoryAt(VodCategories(emptyList(), null), 30.0))
-        assertNull(vodCategoryAt(VodCategories(emptyList(), "  "), 30.0))
+        assertEquals("Minecraft", vodChapterCategoryAt(categories, 30.0)?.name)
+        assertNull(vodChapterCategoryAt(VodCategories(emptyList(), null), 30.0))
+        assertNull(vodChapterCategoryAt(VodCategories(emptyList(), "  "), 30.0))
+    }
+
+    @Test
+    fun theCategoryAtAPositionCarriesItsChaptersIdAndBoxArt() {
+        val categories = VodCategories(
+            chapters = listOf(
+                VodChapter(0.0, "Just Chatting", "jc.jpg", "509658"),
+                VodChapter(120.0, "Chapter 2"),
+            ),
+            fallbackCategory = "Old",
+        )
+
+        assertEquals(TwitchCategory("Just Chatting", "jc.jpg", "509658"), vodChapterCategoryAt(categories, 60.0))
+        // A chapter without a game has no ID to open.
+        assertEquals(TwitchCategory("Chapter 2", null, null), vodChapterCategoryAt(categories, 130.0))
+    }
+
+    @Test
+    fun withoutChaptersTheCategoryIsTheVideosOwnWithItsId() {
+        val categories = VodCategories(emptyList(), "Minecraft", "mc.jpg", "27471")
+
+        assertEquals(TwitchCategory("Minecraft", "mc.jpg", "27471"), vodChapterCategoryAt(categories, 30.0))
     }
 
     @Test

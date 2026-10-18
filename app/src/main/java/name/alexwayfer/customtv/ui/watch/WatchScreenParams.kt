@@ -3,10 +3,11 @@ package name.alexwayfer.customtv.ui.watch
 import name.alexwayfer.customtv.chat.ChatterFollow
 import name.alexwayfer.customtv.chat.FollowForChatMode
 import name.alexwayfer.customtv.chat.SubForChatMode
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 
 /** Where the stream screen leads: the player's moves and the app's other sections. */
-data class WatchNavigation(
+internal data class WatchNavigation(
     val onMinimize: () -> Unit,
     val onExpand: () -> Unit,
     val onClose: () -> Unit,
@@ -18,6 +19,8 @@ data class WatchNavigation(
     val onOpenChannel: (String) -> Unit = {},
     val onOpenChannelProfile: (String) -> Unit = {},
     val onOpenSettings: (SettingsScrollTarget) -> Unit = {},
+    /** Opens the stream's category in Explore; null in an edition without Explore. */
+    val onOpenCategory: ((TwitchCategory) -> Unit)? = null,
     /** The player minimized over a section that opened from it, such as a channel profile or the settings. */
     val onMinimizeOverSection: () -> Unit = {},
     /** Back returns to the channel watched before, which the back stack holds, instead of minimizing. */

@@ -30,10 +30,11 @@ internal fun tapSeeks(
     (seriesRunning || side == previous && sinceLastTapMs in 0..doubleTapTimeoutMs)
 
 /**
- * A first tap that would hide the controls waits for a second one on a side, which seeks with the controls up instead.
- * A tap that shows them, or one in the middle, acts at once.
+ * A seeking tap brings the controls up with the time they show: when they are hidden, or when the tap before it hid
+ * them, which the page may not have reported yet.
  */
-internal fun firstTapWaits(controlsVisible: Boolean, side: TapSide): Boolean = controlsVisible && side != TapSide.Middle
+internal fun tapSeekShowsControls(controlsVisible: Boolean, previousTapHid: Boolean): Boolean =
+    !controlsVisible || previousTapHid
 
 /**
  * The series' move after one more tap on [side]: [TAP_SEEK_STEP_SECONDS] back or forward from [offsetSeconds], counted
@@ -63,9 +64,9 @@ internal data class TapSeekPlayer(
 )
 
 /**
- * Taps on a recording's video: a single one shows or hides the controls through [TapSeekPlayer.chromeTap], a quick
- * second one on a side starts seeking back or forward with the controls up. While the series shows, taps on either
- * side change it.
+ * Taps on a recording's video: a single one shows or hides the controls at once through [TapSeekPlayer.chromeTap], a
+ * quick second one on a side starts seeking back or forward and brings the controls back up. While the series shows,
+ * taps on either side change it.
  */
 internal class RecordingTapSeek(
     private val handler: Handler,
@@ -78,7 +79,7 @@ internal class RecordingTapSeek(
     private var seriesRunning = false
     private var seriesStartSeconds = 0.0
     private var seriesOffsetSeconds = 0.0
-    private val pendingHide = Runnable { player.chromeTap(player.controlsVisible()) }
+    private var lastTapHid = false
     private val seriesEnd = Runnable { endSeries() }
 
     fun onTap(x: Float, width: Float) {
@@ -87,7 +88,6 @@ internal class RecordingTapSeek(
         val seeks = tapSeeks(lastSide, side, at - lastTapAt, doubleTapTimeoutMs, seriesRunning)
         lastSide = side
         lastTapAt = at
-        handler.removeCallbacks(pendingHide)
         if (seeks) {
             if (!seriesRunning) {
                 seriesRunning = true
@@ -100,24 +100,21 @@ internal class RecordingTapSeek(
             player.onSeries(TapSeekSeries(seriesOffsetSeconds.roundToInt()))
             handler.removeCallbacks(seriesEnd)
             handler.postDelayed(seriesEnd, TAP_SEEK_HOLD_MS)
-            // The controls stay up with the time they show; reported hidden, the tap only brings them up.
-            if (!player.controlsVisible()) player.chromeTap(false)
+            if (tapSeekShowsControls(player.controlsVisible(), lastTapHid)) player.chromeTap(false)
+            lastTapHid = false
             return
         }
         // A tap in the middle ends the series at once.
         endSeries()
         val visible = player.controlsVisible()
-        if (firstTapWaits(visible, side)) {
-            handler.postDelayed(pendingHide, doubleTapTimeoutMs)
-        } else {
-            player.chromeTap(visible)
-        }
+        player.chromeTap(visible)
+        lastTapHid = visible
     }
 
     fun cancel() {
-        handler.removeCallbacks(pendingHide)
         endSeries()
         lastSide = null
+        lastTapHid = false
     }
 
     private fun endSeries() {

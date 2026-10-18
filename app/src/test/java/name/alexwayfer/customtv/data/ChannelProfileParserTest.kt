@@ -16,7 +16,8 @@ class ChannelProfileParserTest {
                   "login":"",
                   "displayName":"",
                   "stream":null,
-                  "broadcastSettings":{"title":"Offline title","game":{"name":"Just Chatting"}}
+                  "broadcastSettings":{"title":"Offline title",
+                    "game":{"id":"509658","name":"Just Chatting","boxArtURL":"jc.jpg"}}
                 }}}
             """.trimIndent(),
             requestedLogin = "requested",
@@ -26,6 +27,8 @@ class ChannelProfileParserTest {
         assertEquals("requested", parsed.profile.displayName)
         assertEquals("Offline title", parsed.profile.streamTitle)
         assertEquals("Just Chatting", parsed.profile.categoryName)
+        assertEquals("509658", parsed.profile.categoryId)
+        assertEquals("jc.jpg", parsed.profile.categoryBoxArtUrl)
         assertFalse(parsed.profile.isLive)
         assertNull(parsed.profile.viewerCount)
     }

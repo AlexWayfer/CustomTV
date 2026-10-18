@@ -41,6 +41,21 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
     /** Brings the video back as it played before [soundOnly]: the player's own choice or the fixed quality. */
     val videoQuality: String get() = script("video-quality.js")
 
+    /**
+     * Plays the quality of [mode], `best` or `auto`, saving the viewer's own first, or brings that one back with
+     * `user`, handing it to sound only when that plays now.
+     */
+    fun quality(mode: String): String = call("quality.js", "'$mode'")
+
+    /** Hides the audience plaque over a [zoomed] picture, which the page zooms along, or shows it again. */
+    fun zoomOverlays(zoomed: Boolean): String = call("zoom-overlays.js", zoomed.toString())
+
+    /**
+     * Opens room of [gapDp] between a recording's time labels and its seek bar, where the app draws over the page, or
+     * closes it with 0. The page's CSS pixel is a dp.
+     */
+    fun seekbarGap(gapDp: Int): String = call("seekbar-gap.js", gapDp.toString())
+
     /** Moves a recording to [seconds] through Twitch's player, or through the video when the player is not found. */
     fun seek(seconds: Double): String = call("seek.js", seconds.toString())
 

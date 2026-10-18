@@ -9,6 +9,7 @@ import name.alexwayfer.customtv.diagnostics.Diagnostics
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.coroutines.executeAsync
 import org.json.JSONObject
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
@@ -40,7 +41,8 @@ internal class ChatSendRepository(
                 val request = helixRequest(SEND_URL, accessToken, clientId)
                     .post(payload.toString().toRequestBody(JSON))
                     .build()
-                http.newCall(request).execute().use { response ->
+                // Cancelling the send, as its progress button does, stops the request too.
+                http.newCall(request).executeAsync().use { response ->
                     val body = response.body.string()
                     val result = parseChatSendResponse(response.code, body)
                     when (result) {

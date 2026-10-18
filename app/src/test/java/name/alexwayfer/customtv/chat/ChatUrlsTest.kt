@@ -31,6 +31,14 @@ class ChatUrlsTest {
     }
 
     @Test
+    fun linksSchemeAfterAtWithoutTheAt() {
+        val spans = findChatUrls("@https://kappa.lol/ae6pdm @www.twitch.tv")
+
+        assertEquals(listOf("https://kappa.lol/ae6pdm", "www.twitch.tv"), spans.map { it.raw })
+        assertEquals(1, spans[0].start)
+    }
+
+    @Test
     fun ignoresFileNamesButKeepsFileExtensionsInUrls() {
         assertTrue(findChatUrls("New Text Document.txt and photo.PNG").isEmpty())
 

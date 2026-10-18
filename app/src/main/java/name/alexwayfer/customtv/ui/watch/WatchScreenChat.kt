@@ -1,14 +1,12 @@
 package name.alexwayfer.customtv.ui.watch
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.TwitchPlaqueAction
 import name.alexwayfer.customtv.chat.replyParentMessageId
@@ -17,12 +15,18 @@ import name.alexwayfer.customtv.chat.replySessionChooses
 import name.alexwayfer.customtv.chat.subscribersPlaqueAction
 import name.alexwayfer.customtv.chat.threadReplyHidesChrome
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
+import name.alexwayfer.customtv.links.openOutsideApp
+import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 
 /** The live chat with its notices over it and the reply thread under it. */
 @Composable
 internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePlayerLayout) {
     val chat = scene.chat
     val data = scene.data
+    ChatRecapPresenceEffect(
+        channelId = scene.profile.id,
+        shown = !scene.placement.minimized && !scene.placement.inPictureInPicture,
+    )
     ChatPane(
         channel = scene.channel,
         channelProfile = scene.profile,
@@ -55,7 +59,7 @@ internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePla
         chatSettingsViewModel = scene.chatSettingsViewModel,
         settingsViewModel = scene.settingsViewModel,
         notices = { appearance -> WatchChatNotices(scene, layout, appearance) },
-        listTop = { RecentChatLoadingIndicator(data.recentChatLoadState.value) },
+        listTop = { RecentChatLoadingIndicator(data.recentChatLoadState.value, data.reconnecting.value) },
         belowList = { appearance -> WatchThreadPanel(scene, appearance) },
     )
 }
@@ -198,6 +202,14 @@ private fun WatchScene.chatMenu() = ChatMenu(
     onOpenOwnProfile = account.login?.takeIf { it.isNotBlank() }?.let { login ->
         { chat.fieldCardOpen = OneShotRequest(ownCardRequest(login)) }
     },
+    recap = profile.id?.takeIf { it.isNotBlank() }?.let { channelId ->
+        ChatRecapSource(
+            channelId = channelId,
+            channelName = profile.displayName.ifBlank { channel },
+            messageTimes = { data.messages.value.map { it.timestampMillis } },
+            onOpenSettings = { dismissToSettings(SettingsScrollTarget.ChatterPortraits) },
+        )
+    },
 )
 
 private fun WatchScene.inputBarLook(layout: MinimizablePlayerLayout, context: Context) = ChatInputBarLook(
@@ -208,7 +220,7 @@ private fun WatchScene.inputBarLook(layout: MinimizablePlayerLayout, context: Co
     onSubscribe = {
         when (val action = subscribersPlaqueAction(account.signedIn, channel)) {
             TwitchPlaqueAction.LogIn -> account.onLogIn()
-            is TwitchPlaqueAction.Open -> context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
+            is TwitchPlaqueAction.Open -> openOutsideApp(context, action.url)
         }
     },
     channelPoints = { visible ->

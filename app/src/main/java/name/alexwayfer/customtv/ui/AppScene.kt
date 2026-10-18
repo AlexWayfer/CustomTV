@@ -144,15 +144,35 @@ internal data class AppScene(
     val account: TwitchAccount? get() = accountState.account
     val recordingOpen: Boolean get() = shell.player.video != null
 
+    /** A stream or a recording waits in the corner, where Back from what it opened can expand it again. */
+    val playerMinimized: Boolean
+        get() = (watching && shell.player.liveMinimized && !shell.player.liveClosedWithPip) ||
+            (recordingOpen && shell.player.videoMinimized)
+
     /**
      * One player is on screen at a time: PlayerSession closes the recording when a stream opens,
      * and the open decision closes every stream in the back stack when a recording opens.
      */
-    fun openProfileVideo(video: ProfileVideoPlayback) {
+    fun openProfileVideo(video: ProfileVideoPlayback, returnChannel: String? = null) {
         val decision = profileVideoOpenDecision(shell.section, shell.player.liveMinimized, watching)
-        shell.player = shell.player.videoOpened(video, liveMinimized = decision.minimized)
+        shell.player = shell.player.videoOpened(video, liveMinimized = decision.minimized, returnChannel)
         shell.section = decision.section
         if (decision.closeLivePlayer) navController.popBackStack("home", inclusive = false)
+    }
+
+    /** A recording or a clip from a link closes the stream like any recording; Back on it opens that stream again. */
+    fun openLinkedPlayback(video: ProfileVideoPlayback) {
+        val channel = currentEntry.value?.arguments?.getString("channel")
+        openProfileVideo(video, linkedVideoReturnChannel(watching, shell.player.liveMinimized, channel))
+    }
+
+    /**
+     * Back from a recording or a clip opened over [channel]'s stream: it closes as the stream opens in its place,
+     * without the rise from Home, as Back to the channel watched before does.
+     */
+    fun returnFromVideoToStream(channel: String) {
+        AppLog.i(PLAYER_NAV_LOG_TAG, "back from the recording to $channel")
+        openChannel(channel, fromHome = false)
     }
 
     fun openChannel(channel: String, fromHome: Boolean) {

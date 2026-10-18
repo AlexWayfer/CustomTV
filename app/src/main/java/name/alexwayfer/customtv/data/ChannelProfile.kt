@@ -7,6 +7,9 @@ data class ChannelProfile(
     val id: String? = null,
     val streamTitle: String? = null,
     val categoryName: String? = null,
+    /** Opens the category in Explore; null when the answer brought none, such as for a stream without one. */
+    val categoryId: String? = null,
+    val categoryBoxArtUrl: String? = null,
     val streamStartedAtMillis: Long? = null,
     val currentStreamVideoId: String? = null,
     val viewerCount: Int? = null,

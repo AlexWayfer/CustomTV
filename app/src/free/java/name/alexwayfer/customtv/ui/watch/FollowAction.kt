@@ -1,14 +1,13 @@
 package name.alexwayfer.customtv.ui.watch
 
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.net.toUri
 import name.alexwayfer.customtv.chat.TwitchPlaqueAction
 import name.alexwayfer.customtv.chat.followersPlaqueAction
+import name.alexwayfer.customtv.links.openOutsideApp
 
 /**
  * Following in the app goes through the experimental login, which is Premium. Here the heart and the
@@ -42,7 +41,7 @@ internal fun rememberChannelFollowAction(
         FollowAction {
             when (val action = followersPlaqueAction(signedInState.value, channel)) {
                 TwitchPlaqueAction.LogIn -> logIn.value()
-                is TwitchPlaqueAction.Open -> context.startActivity(Intent(Intent.ACTION_VIEW, action.url.toUri()))
+                is TwitchPlaqueAction.Open -> openOutsideApp(context, action.url)
             }
         }
     }

@@ -27,7 +27,7 @@ import name.alexwayfer.customtv.ui.watch.SleepTimerEffect
 import name.alexwayfer.customtv.ui.whispers.WhispersBackground
 import name.alexwayfer.customtv.update.AppUpdateOpenRequest
 
-/** What reaches the app from outside the screen: notifications, login requests, updates, and whispers. */
+/** What reaches the app from outside the screen: notifications, links, login requests, updates, and whispers. */
 @Composable
 internal fun AppRequestEffects(scene: AppScene) {
     val shell = scene.shell
@@ -51,6 +51,7 @@ internal fun AppRequestEffects(scene: AppScene) {
             scene.openChannel(channel, shell.section == AppSection.Home)
         }
     }
+    AppTwitchLinkEffect(scene)
     LaunchedEffect(Unit) {
         // Starting the login also shows the profile, where it finishes.
         StreamAlertsLoginRequest.requested.collect { requested ->

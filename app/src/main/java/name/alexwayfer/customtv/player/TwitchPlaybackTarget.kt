@@ -7,14 +7,18 @@ internal sealed interface TwitchPlaybackTarget {
         override val key: String = "channel:${login.lowercase()}"
     }
 
-    /** A recording, with what its media session shows: [title] is already the one on screen, never blank. */
+    /**
+     * A recording, or with [clipSlug] a clip, with what its media session shows: [title] is already the one on
+     * screen, never blank. Both play from start to end and seek alike; only the page that plays them differs.
+     */
     data class Video(
         val id: String,
         val channel: String,
         val title: String,
         val thumbnailUrl: String?,
         val durationSeconds: Long,
+        val clipSlug: String? = null,
     ) : TwitchPlaybackTarget {
-        override val key: String = "video:${id.removePrefix("v")}"
+        override val key: String = clipSlug?.let { "clip:$it" } ?: "video:${id.removePrefix("v")}"
     }
 }

@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
@@ -61,8 +60,17 @@ internal class AppShellState(
     /** Explore is to show its categories, such as after a category's tag in a profile filtered them. */
     var exploreShowCategories by mutableStateOf<OneShotRequest<Unit>?>(null)
 
-    /** Explore is to open this category over its categories, such as one picked in the search. */
-    var exploreOpenCategory by mutableStateOf<OneShotRequest<TwitchCategory>?>(null)
+    /** Explore is to open this category over its categories, such as one picked in the search or the player's. */
+    var exploreOpenCategory by mutableStateOf<OneShotRequest<ExploreCategoryOpen>?>(null)
+
+    /** Explore is to close its open category, which Back left under the player expanding over it. */
+    var exploreCloseCategory by mutableStateOf<OneShotRequest<Unit>?>(null)
+
+    /** The section the player covered as its category opened in Explore; Back from that category returns to it. */
+    var categoryPlayerSection by mutableStateOf(AppSection.Home)
+
+    /** Back from the player's category expands the player, and the category closes once the player covers it. */
+    var exploreCategoryClosesUnderPlayer by mutableStateOf(false)
     var settingsReselected by mutableStateOf<OneShotRequest<Unit>?>(null)
     var openPlayerFromHome by mutableStateOf(true)
     var sectionBeforeWhispers by mutableStateOf(AppSection.Home)

@@ -48,10 +48,8 @@ internal fun SwipeAway(onDismiss: () -> Unit, modifier: Modifier = Modifier, con
     Box(
         modifier = modifier
             .onSizeChanged { widthPx = it.width }
-            .graphicsLayer {
-                translationX = offset.value
-                alpha = swipeAwayAlpha(offset.value, widthPx)
-            }
+            // Ahead of the layer that moves the card: under it, the finger is measured from the moved card, and each
+            // step the card takes is lost from the next delta, so the card followed at half the finger's speed.
             .draggable(
                 state = rememberDraggableState { delta -> scope.launch { offset.snapTo(offset.value + delta) } },
                 orientation = Orientation.Horizontal,
@@ -64,7 +62,11 @@ internal fun SwipeAway(onDismiss: () -> Unit, modifier: Modifier = Modifier, con
                         offset.animateTo(0f, ChatSwipeSettleTween)
                     }
                 },
-            ),
+            )
+            .graphicsLayer {
+                translationX = offset.value
+                alpha = swipeAwayAlpha(offset.value, widthPx)
+            },
     ) {
         content()
     }

@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.ui.explore
 
 import androidx.compose.runtime.Composable
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.ExploreCategoryOpen
 import name.alexwayfer.customtv.ui.home.HomeViewModel
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
@@ -17,7 +18,9 @@ internal fun ExploreSection(
     backEnabled: Boolean,
     reselected: OneShotRequest<Unit>?,
     showCategories: OneShotRequest<Unit>?,
-    openCategory: OneShotRequest<TwitchCategory>?,
+    openCategory: OneShotRequest<ExploreCategoryOpen>?,
+    closeCategory: OneShotRequest<Unit>?,
+    onBackToPlayer: (() -> Unit)?,
     onBack: () -> Unit,
     onOpen: (login: String, live: Boolean) -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,

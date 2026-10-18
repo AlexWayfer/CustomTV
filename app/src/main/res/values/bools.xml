@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 11 and older ignore the paths of the twitch.tv link filter and use it without the user adding the
+         links, so Chrome would hand every twitch.tv page of the app's own Custom Tabs to the app. -->
+    <bool name="app_links_supported">false</bool>
+</resources>

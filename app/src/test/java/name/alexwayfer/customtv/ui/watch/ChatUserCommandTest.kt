@@ -3,7 +3,9 @@ package name.alexwayfer.customtv.ui.watch
 import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.testChatMessage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatUserCommandTest {
@@ -57,14 +59,16 @@ class ChatUserCommandTest {
         assertEquals("id-someuser", request.userId)
         assertEquals(listOf(badge), request.badges)
         assertEquals(mapOf("subscriber/12" to "url"), request.badgeUrls)
+        assertTrue(request.badgesKnown)
     }
 
     @Test
-    fun aChatterWithoutMessagesHereOpensByLoginAlone() {
+    fun aChatterWithoutMessagesHereOpensByLoginAloneAndLoadsTheBadges() {
         val request = chatterCardRequestForLogin("someuser", listOf(message("other", "Other", emptyList())), emptyMap())
         assertEquals("someuser", request.displayName)
         assertNull(request.userId)
         assertEquals(emptyList<ChatBadge>(), request.badges)
+        assertFalse(request.badgesKnown)
     }
 
     private fun message(login: String, displayName: String, badges: List<ChatBadge>) = testChatMessage(

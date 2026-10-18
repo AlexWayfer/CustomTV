@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.data.HTTP_CLIENT_ERROR
 import name.alexwayfer.customtv.data.HTTP_SUCCESS
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.data.gqlAliasBatches
 import name.alexwayfer.customtv.data.gqlErrorWithin
 import name.alexwayfer.customtv.data.gqlFailureCause
@@ -36,18 +37,25 @@ internal data class VodCategories(
     val fallbackCategoryId: String? = null,
 )
 
-internal fun vodCategoryAt(categories: VodCategories, positionSeconds: Double): String? {
+/**
+ * The category at [positionSeconds]: its chapter's, or the recording's own when it has no chapters. Its ID, which
+ * opens it in Explore, is null for a chapter without a game.
+ */
+internal fun vodChapterCategoryAt(categories: VodCategories, positionSeconds: Double): TwitchCategory? {
     val ordered = categories.chapters
         .filter { it.category.isNotBlank() }
         .sortedBy { it.positionSeconds }
-    if (ordered.isEmpty()) return categories.fallbackCategory?.takeIf { it.isNotBlank() }
-    val at = positionSeconds.coerceAtLeast(0.0)
-    var current = ordered.first().category
-    for ((startSeconds, category) in ordered) {
-        if (startSeconds > at) break
-        current = category
+    if (ordered.isEmpty()) {
+        val name = categories.fallbackCategory?.takeIf { it.isNotBlank() } ?: return null
+        return TwitchCategory(name, categories.fallbackBoxArtUrl, categories.fallbackCategoryId)
     }
-    return current
+    val at = positionSeconds.coerceAtLeast(0.0)
+    var current = ordered.first()
+    for (chapter in ordered) {
+        if (chapter.positionSeconds > at) break
+        current = chapter
+    }
+    return TwitchCategory(current.category, current.boxArtUrl, current.categoryId)
 }
 
 /**

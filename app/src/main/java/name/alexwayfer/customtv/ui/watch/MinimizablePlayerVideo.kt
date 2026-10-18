@@ -63,6 +63,7 @@ internal fun BoxScope.PlayerVideoBox(
     frame: PlayerFrame,
     layout: FullscreenChatLayout,
     fullscreenInfo: @Composable () -> Unit,
+    seekbarOverlay: PlayerSeekbarOverlay?,
 ) {
     val touches = PlayerTouches(
         scene,
@@ -93,6 +94,8 @@ internal fun BoxScope.PlayerVideoBox(
             events = touches.events(),
             gestures = touches.gestures(),
             inPictureInPicture = scene.inPictureInPicture,
+            fullscreen = scene.fullscreenActive,
+            seekbarGap = seekbarOverlay?.gap ?: 0.dp,
             // The web page keeps its full size in the mini player too; only the picture shrinks.
             // A resize would show the old frame unscaled until the page draws at the new size.
             modifier = if (scene.inPictureInPicture || scene.fullscreenActive || fullWidthPx == null) {
@@ -101,6 +104,7 @@ internal fun BoxScope.PlayerVideoBox(
                 Modifier.playerScaledFromFullWidth(fullWidthPx)
             },
         )
+        if (seekbarOverlay != null) PlayerSeekbarLayer(scene, seekbarOverlay)
         if (!scene.inPictureInPicture && !scene.compactSettled && scene.progress < MINIMIZE_BUTTON_UNTIL) {
             MinimizeButton(scene)
             FullscreenPlayerButtons(scene, frame, layout, fullscreenInfo)
@@ -113,6 +117,20 @@ internal fun BoxScope.PlayerVideoBox(
             )
         }
     }
+}
+
+/** The screen's layer over a recording's seek bar, once the page has told where the bar sits. */
+@Composable
+private fun BoxScope.PlayerSeekbarLayer(scene: PlayerScene, overlay: PlayerSeekbarOverlay) {
+    val seekbar = scene.ui.seekbar ?: return
+    if (scene.inPictureInPicture || scene.compactSettled) return
+    val shown = playerSeekbarOverlayShown(
+        controlsVisible = scene.chrome.playerControls,
+        videoLoading = scene.chrome.videoLoading,
+        settingsMenuOpen = scene.ui.twitchSettingsOpen,
+        progress = scene.progress,
+    )
+    overlay.content(this, PlayerSeekbarSpot(seekbar, shown))
 }
 
 private fun Modifier.playerBox(
@@ -183,12 +201,14 @@ private class PlayerTouches(
         onTap = ::tap,
         onControlsVisible = ::controlsVisible,
         onControlBarHeightPx = { scene.ui.measuredControlBarPx = it },
+        onSeekbar = { scene.ui.seekbar = it },
         onSettingsMenuOpen = { scene.ui.twitchSettingsOpen = it },
         onWaitingForVideo = { chrome.videoLoading = it },
         onDismissDrag = ::dismissDrag,
         onDismissDragEnd = ::dismissDragEnd,
         onHorizontalDrag = ::horizontalDrag,
         onHorizontalDragEnd = ::horizontalDragEnd,
+        onZoomIn = ::zoomIn,
         chrome = chrome.player,
     )
 
@@ -234,6 +254,12 @@ private class PlayerTouches(
                 chrome.player.request(showChrome)
             }
         }
+    }
+
+    /** A zoomed picture shows neither the chrome nor the player's controls. */
+    private fun zoomIn() {
+        chrome.followPlayer(false)
+        chrome.player.request(false)
     }
 
     private fun dismissDrag(offsetY: Float) {

@@ -74,14 +74,14 @@ internal class ChannelRecordingsState(
     private suspend fun loadChapters(videoIds: Set<String>) {
         val asked = videoIds - chaptersLoading
         if (asked.isEmpty()) return
-        chaptersLoading += asked
+        chaptersLoading = chaptersLoading + asked
         try {
             val loaded = chaptersRepository.loadMany(asked)
             (recordings as? ChannelRecordings.Ready)?.let { ready ->
                 recordings = ChannelRecordings.Ready(pageWithChapters(ready.page, asked, loaded))
             }
         } finally {
-            chaptersLoading -= asked
+            chaptersLoading = chaptersLoading - asked
         }
     }
 }

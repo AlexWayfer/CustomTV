@@ -27,6 +27,7 @@ import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.data.WatchingChannel
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.account.PremiumVideoPlayer
+import name.alexwayfer.customtv.ui.explore.exploreNavEnabled
 import name.alexwayfer.customtv.ui.watch.WATCH_CHANNEL_ROUTE
 import name.alexwayfer.customtv.ui.watch.WatchAccount
 import name.alexwayfer.customtv.ui.watch.WatchNavigation
@@ -157,6 +158,7 @@ private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
         shell.settingsScrollTarget = target
         shell.section = AppSection.Settings
     },
+    onOpenCategory = if (exploreNavEnabled()) this::openCategoryFromPlayer else null,
     onMinimizeOverSection = { shell.player = shell.player.withLiveMinimized(true) },
     returnsToPreviousChannel = watchBackReturnsToPreviousChannel(
         navController.previousBackStackEntry?.destination?.route,
@@ -168,6 +170,7 @@ private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
     onMinimize = {
         AppLog.i(PLAYER_NAV_LOG_TAG, "minimize")
         shell.profileClosesUnderPlayer = false
+        shell.exploreCategoryClosesUnderPlayer = false
         shell.section = sectionAfterPlayerMinimizes(shell.section, watching, shell.player.liveMinimized)
         shell.player = shell.player.withLiveMinimized(true)
     },
@@ -178,6 +181,7 @@ private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
     onFullPlayerExpanded = {
         shell.section = sectionAfterPlayerExpands(shell.section, shell.profileClosesUnderPlayer)
         shell.profileClosesUnderPlayer = false
+        closeExploreCategoryUnderPlayer()
     },
     onMinimizeDragDismissesKeyboard = { shell.keepNavigationBarWhileImeCloses = true },
     onExpand = {
@@ -188,6 +192,7 @@ private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
     onClose = {
         AppLog.i(PLAYER_NAV_LOG_TAG, "close the stream")
         shell.profileClosesUnderPlayer = false
+        shell.exploreCategoryClosesUnderPlayer = false
         shell.player = shell.player.withLiveMinimized(false)
         navController.popBackStack()
     },
@@ -228,16 +233,25 @@ internal fun BoxScope.AppRecordingPlayer(scene: AppScene) {
     val player = shell.player
     PremiumVideoPlayer(
         playback = player.video,
-        onClose = { shell.player = shell.player.videoClosed() },
+        onClose = {
+            shell.exploreCategoryClosesUnderPlayer = false
+            shell.player = shell.player.videoClosed()
+        },
         onOpenChannelProfile = { channel ->
             shell.profileChannel = channel
             shell.profileOpenedFrom = null
             shell.profileFirstTabRequest++
             shell.section = AppSection.ChannelProfile
         },
+        onOpenCategory = scene::openCategoryFromPlayer,
         minimized = player.videoMinimized,
-        onMinimize = { shell.player = shell.player.withVideoMinimized(true) },
+        onMinimize = {
+            shell.exploreCategoryClosesUnderPlayer = false
+            shell.player = shell.player.withVideoMinimized(true)
+        },
         onExpand = { shell.player = shell.player.withVideoMinimized(false) },
+        onExpanded = scene::closeExploreCategoryUnderPlayer,
+        onBack = player.videoBackReturnChannel?.let { channel -> { scene.returnFromVideoToStream(channel) } },
         appNavigationBarHeightPx = scene.layout.bottomBarHeightPx,
         inPictureInPicture = scene.inPip,
         selfLogin = scene.account?.login.orEmpty(),

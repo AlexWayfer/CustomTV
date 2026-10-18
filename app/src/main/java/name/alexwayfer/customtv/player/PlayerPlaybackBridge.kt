@@ -3,13 +3,17 @@ package name.alexwayfer.customtv.player
 import android.os.Handler
 import android.webkit.JavascriptInterface
 
-/** What the player page reports: playback, position and seeks, readiness, the channel going offline, and errors. */
+/**
+ * What the player page reports: playback, position and seeks, readiness, the channel going offline, Twitch's
+ * audience gate waiting for a tap, and errors.
+ */
 internal data class PlayerPlaybackEvents(
     val onPlaybackState: (Boolean) -> Unit,
     val onPositionSeconds: (Double) -> Unit,
     val onSeekSeconds: (Double) -> Unit,
     val onPlayerReady: () -> Unit,
     val onOffline: () -> Unit,
+    val onAudienceGate: () -> Unit,
     val onPlayerError: () -> Unit,
     val onPlayerReload: () -> Unit,
 )
@@ -50,6 +54,12 @@ internal class PlayerPlaybackBridge(
     @Suppress("unused")
     fun onOffline() {
         handler.post(events.onOffline)
+    }
+
+    @JavascriptInterface
+    @Suppress("unused")
+    fun onAudienceGate() {
+        handler.post(events.onAudienceGate)
     }
 
     @JavascriptInterface

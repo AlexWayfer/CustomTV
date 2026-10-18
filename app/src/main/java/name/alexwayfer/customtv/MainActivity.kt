@@ -16,6 +16,12 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import name.alexwayfer.customtv.links.OutsideLinkRoute
+import name.alexwayfer.customtv.links.TwitchLinkRequest
+import name.alexwayfer.customtv.links.linkHandlerPackage
+import name.alexwayfer.customtv.links.openInBrowser
+import name.alexwayfer.customtv.links.outsideLinkRoute
+import name.alexwayfer.customtv.links.twitchLinkTarget
 import name.alexwayfer.customtv.ui.CustomTvApp
 import name.alexwayfer.customtv.ui.PremiumAccessGate
 import name.alexwayfer.customtv.ui.theme.CustomTvTheme
@@ -89,8 +95,17 @@ class MainActivity : ComponentActivity() {
     }
 
     fun openExternalLink(url: String) {
+        val route = outsideLinkRoute(linkHandlerPackage(packageManager, url), packageName, twitchLinkTarget(url))
+        if (route == OutsideLinkRoute.App) {
+            TwitchLinkRequest.offer(url)
+            return
+        }
         leavingForExternalLink = true
         enterPip()
+        if (route == OutsideLinkRoute.Browser) {
+            if (!openInBrowser(this, url)) leavingForExternalLink = false
+            return
+        }
         try {
             startActivity(
                 Intent(Intent.ACTION_VIEW, url.toUri()).apply {

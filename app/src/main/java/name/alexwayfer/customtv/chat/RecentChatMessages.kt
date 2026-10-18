@@ -11,7 +11,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-private const val TAG = "RecentChat"
+internal const val RECENT_CHAT_TAG = "RecentChat"
 private const val RECENT_MESSAGES_URL = "https://recent-messages.robotty.de/api/v2/recent-messages/"
 private const val RECENT_MESSAGE_COUNT = 50
 private const val RECENT_CHAT_ATTEMPTS = 2
@@ -28,29 +28,33 @@ internal fun recentChatRetryable(httpCode: Int?, failure: Exception?): Boolean =
     else -> failure is IOException
 }
 
-internal suspend fun loadRecentChatMessages(channel: String): RecentChatLoadResult = withContext(Dispatchers.IO) {
+/** The latest [count] messages of [channel]'s chat, oldest first. */
+internal suspend fun loadRecentChatMessages(
+    channel: String,
+    count: Int = RECENT_MESSAGE_COUNT,
+): RecentChatLoadResult = withContext(Dispatchers.IO) {
     if (channel.isBlank()) return@withContext RecentChatLoadResult()
     val request = Request.Builder()
         .url(RECENT_MESSAGES_URL + channel)
         .header("User-Agent", "CustomTV Android")
         .build()
     var attempt = 1
-    var outcome = fetchRecentChat(request, attempt)
+    var outcome = fetchRecentChat(request, attempt, count)
     while (outcome.retryable && attempt < RECENT_CHAT_ATTEMPTS) {
         attempt += 1
-        outcome = fetchRecentChat(request, attempt)
+        outcome = fetchRecentChat(request, attempt, count)
     }
     outcome.result
 }
 
 private class RecentChatAttempt(val result: RecentChatLoadResult, val retryable: Boolean = false)
 
-private fun fetchRecentChat(request: Request, attempt: Int): RecentChatAttempt = try {
+private fun fetchRecentChat(request: Request, attempt: Int, count: Int): RecentChatAttempt = try {
     recentChatHttp.newCall(request).execute().use { response ->
         if (response.isSuccessful) {
-            RecentChatAttempt(RecentChatLoadResult(parseRecentChat(response.body.string())))
+            RecentChatAttempt(RecentChatLoadResult(parseRecentChat(response.body.string(), count)))
         } else {
-            AppLog.w(TAG, "recent messages failed status=${response.code} (attempt $attempt)")
+            AppLog.w(RECENT_CHAT_TAG, "recent messages failed status=${response.code} (attempt $attempt)")
             RecentChatAttempt(
                 RecentChatLoadResult(failed = true),
                 retryable = recentChatRetryable(response.code, null),
@@ -64,7 +68,7 @@ private fun fetchRecentChat(request: Request, attempt: Int): RecentChatAttempt =
 }
 
 private fun failedRecentChat(failure: Exception, attempt: Int): RecentChatAttempt {
-    AppLog.w(TAG, "recent messages failed: ${failure.javaClass.simpleName} (attempt $attempt)")
+    AppLog.w(RECENT_CHAT_TAG, "recent messages failed: ${failure.javaClass.simpleName} (attempt $attempt)")
     return RecentChatAttempt(
         RecentChatLoadResult(failed = true),
         retryable = recentChatRetryable(null, failure),
@@ -72,7 +76,7 @@ private fun failedRecentChat(failure: Exception, attempt: Int): RecentChatAttemp
 }
 
 /** The latest messages of the answer, oldest first; none when it has no list. */
-private fun parseRecentChat(body: String): List<ChatMessage> {
+private fun parseRecentChat(body: String, count: Int): List<ChatMessage> {
     val raw = JSONObject(body).optJSONArray("messages") ?: return emptyList()
     return buildList {
         for (index in 0 until raw.length()) {
@@ -80,5 +84,5 @@ private fun parseRecentChat(body: String): List<ChatMessage> {
                 ?.let(IrcMessageParser::parsePrivMsg)
                 ?.let(::add)
         }
-    }.sortedBy { it.timestampMillis }.takeLast(RECENT_MESSAGE_COUNT)
+    }.sortedBy { it.timestampMillis }.takeLast(count)
 }

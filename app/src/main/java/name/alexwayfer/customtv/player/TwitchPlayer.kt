@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.createBitmap
@@ -44,6 +45,7 @@ import androidx.lifecycle.compose.currentStateAsState
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.settings.beforeRestore
+import kotlin.math.roundToInt
 
 internal const val PLAYER_LOG_TAG = "Player"
 
@@ -54,12 +56,16 @@ internal data class PlayerEvents(
     val onTap: (playerControlsVisible: Boolean, reachedPage: Boolean) -> Unit = { _, _ -> },
     val onControlsVisible: (Boolean) -> Unit = {},
     val onControlBarHeightPx: (Int) -> Unit = {},
+    /** Where a recording's seek bar sits on the page. */
+    val onSeekbar: (PlayerSeekbar) -> Unit = {},
     val onSettingsMenuOpen: (Boolean) -> Unit = {},
     val onWaitingForVideo: (Boolean) -> Unit = {},
     val onDismissDrag: (offsetY: Float) -> Unit = {},
     val onDismissDragEnd: (offsetY: Float, velocityY: Float) -> Unit = { _, _ -> },
     val onHorizontalDrag: (offsetX: Float) -> Unit = {},
     val onHorizontalDragEnd: (offsetX: Float, velocityX: Float) -> Unit = { _, _ -> },
+    /** A pinch zoomed the picture in: the chrome and the player's controls hide. */
+    val onZoomIn: () -> Unit = {},
     /** Takes the page's control matcher, so the app's own buttons line up with the player's controls. */
     val chrome: PlayerChrome? = null,
 )
@@ -79,14 +85,18 @@ internal fun TwitchPlayer(
     modifier: Modifier = Modifier,
     gestures: PlayerGestures = PlayerGestures(),
     inPictureInPicture: Boolean = false,
+    fullscreen: Boolean = false,
+    /** Room between a recording's time labels and its seek bar, where the screen draws over the page. */
+    seekbarGap: Dp = 0.dp,
 ) {
     val context = LocalContext.current
     val serviceOwner = remember { Any() }
     var host by remember { mutableStateOf<TwitchWebViewHost?>(null) }
     var waitingForVideo by remember(target.key) { mutableStateOf(true) }
     var tapSeekSeries by remember(target.key) { mutableStateOf<TapSeekSeries?>(null) }
+    var zoom by remember { mutableStateOf(PlayerZoomTransform()) }
     val showWebView = rememberPlayerWebViewStarts()
-    PlayerHostEffects(host, inPictureInPicture, serviceOwner)
+    PlayerHostEffects(host, inPictureInPicture, fullscreen, seekbarGap, serviceOwner)
     Box(modifier.background(ComposeColor.Black)) {
         if (showWebView) {
             AndroidView(
@@ -97,6 +107,7 @@ internal fun TwitchPlayer(
                 update = { view ->
                     view.bind(events, gestures)
                     view.onTapSeekSeries = { tapSeekSeries = it }
+                    view.onZoom = { zoom = it }
                     val waiting = { value: Boolean ->
                         waitingForVideo = value
                         events.onWaitingForVideo(value)
@@ -136,6 +147,7 @@ internal fun TwitchPlayer(
             )
         }
         TapSeekIndicator(series = tapSeekSeries.takeUnless { inPictureInPicture })
+        PlayerZoomResetButton(zoom.scale.takeIf { zoom.zoomed && !inPictureInPicture }) { host?.zoom?.reset() }
     }
 }
 
@@ -152,9 +164,22 @@ private fun rememberPlayerWebViewStarts(): Boolean {
     return playerWebViewStarts(framesDrawn)
 }
 
-/** Keeps the page playing out of sight, plays sound only where nobody sees it, and passes on picture-in-picture. */
+/**
+ * Keeps the page playing out of sight, plays sound only where nobody sees it, and passes on picture-in-picture, full
+ * screen, and the room over a recording's seek bar.
+ */
 @Composable
-private fun PlayerHostEffects(host: TwitchWebViewHost?, inPictureInPicture: Boolean, serviceOwner: Any) {
+private fun PlayerHostEffects(
+    host: TwitchWebViewHost?,
+    inPictureInPicture: Boolean,
+    fullscreen: Boolean,
+    seekbarGap: Dp,
+    serviceOwner: Any,
+) {
+    DisposableEffect(host, seekbarGap) {
+        host?.seekbarGap?.set(seekbarGap.value.roundToInt())
+        onDispose { }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val context = LocalContext.current
@@ -184,6 +209,10 @@ private fun PlayerHostEffects(host: TwitchWebViewHost?, inPictureInPicture: Bool
         host?.setPictureInPicture(inPictureInPicture)
         onDispose { }
     }
+    DisposableEffect(host, fullscreen) {
+        host?.quality?.setFullscreen(fullscreen)
+        onDispose { }
+    }
 }
 
 /** Hands the page's reports to [events] and sets which gestures move the player. */
@@ -191,6 +220,7 @@ private fun TwitchWebViewHost.bind(events: PlayerEvents, gestures: PlayerGesture
     onTap = events.onTap
     onControlsVisible = events.onControlsVisible
     onControlBarHeightPx = events.onControlBarHeightPx
+    onSeekbar = events.onSeekbar
     onSettingsMenuOpen = events.onSettingsMenuOpen
     onPositionSeconds = events.onPositionSeconds
     onSeekSeconds = events.onSeekSeconds
@@ -198,6 +228,7 @@ private fun TwitchWebViewHost.bind(events: PlayerEvents, gestures: PlayerGesture
     onDismissDragEnd = events.onDismissDragEnd
     onHorizontalDrag = events.onHorizontalDrag
     onHorizontalDragEnd = events.onHorizontalDragEnd
+    onZoomIn = events.onZoomIn
     enableMinimizeSwipe = gestures.enableMinimizeSwipe
     enableExpandSwipe = gestures.enableExpandSwipe
     enableHorizontalDismiss = gestures.enableHorizontalDismiss
@@ -212,10 +243,23 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     var onTap: ((playerControlsVisible: Boolean, reachedPage: Boolean) -> Unit)? = null
     var onControlsVisible: ((Boolean) -> Unit)? = null
     var onControlBarHeightPx: ((Int) -> Unit)? = null
+    var onSeekbar: ((PlayerSeekbar) -> Unit)? = null
     var onSettingsMenuOpen: ((Boolean) -> Unit)? = null
     var onPositionSeconds: ((Double) -> Unit)? = null
     var onSeekSeconds: ((Double) -> Unit)? = null
     var onTapSeekSeries: ((TapSeekSeries?) -> Unit)? = null
+    var onZoom: ((PlayerZoomTransform) -> Unit)? = null
+    var onZoomIn: (() -> Unit)? = null
+    private var zoomedIn = false
+    val quality = PlayerQuality(webView, scripts, isReleased = { released })
+    val zoom = PlayerZoomGesture(webView, onSettled = quality::settleZoom) { transform ->
+        if (transform.zoomed != zoomedIn && !released) {
+            if (transform.zoomed) onZoomIn?.invoke()
+            webView.evaluateJavascript(scripts.zoomOverlays(transform.zoomed), null)
+        }
+        zoomedIn = transform.zoomed
+        onZoom?.invoke(transform)
+    }
     @Volatile private var touchOnScrollableContent = false
     @Volatile private var touchOnControls = false
     @Volatile private var touchOnVideo = false
@@ -233,6 +277,11 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     var enableExpandSwipe = false
     var enableHorizontalDismiss = false
     var tapExpands = false
+        set(value) {
+            field = value
+            // The mini player shows the whole picture.
+            if (value) zoom.reset()
+        }
     private val mainHandler = Handler(Looper.getMainLooper())
     private var loadedTarget: TwitchPlaybackTarget? = null
     private var surfaceRevealed = false
@@ -255,6 +304,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     )
     val keepAlive = PlayerKeepAlive(appContext, mainHandler, webView, scripts, isReleased = { released })
     private var soundOnly = false
+    val seekbarGap = PlayerSeekbarGap(webView, scripts, isReleased = { released })
     private var pictureInPicture = false
     private var reportedPlaying = false
     private val playbackCommands = StreamPlayback.Commands(
@@ -311,6 +361,11 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     },
                     onPlayerReady = recovery::playerReady,
                     onOffline = ::handleOffline,
+                    // Twitch's audience gate waits for a tap, and the video may not start under it: the page shows.
+                    onAudienceGate = {
+                        if (!surfaceRevealed) AppLog.i(PLAYER_LOG_TAG, "Audience gate after ${recovery.sinceLoadMs} ms")
+                        revealSurface()
+                    },
                     onPlayerError = recovery::playerError,
                     onPlayerReload = recovery::errorScreenReload,
                 ),
@@ -331,6 +386,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     controlBarPx = controlBarHeightPx(fraction, webView.height)
                     onControlBarHeightPx?.invoke(controlBarPx)
                 },
+                onSeekbar = { seekbar -> onSeekbar?.invoke(seekbar) },
                 onSettingsMenu = { open -> onSettingsMenuOpen?.invoke(open) },
                 onHoverAreaMissing = {
                     AppLog.w(PLAYER_LOG_TAG, "Recording controls cannot hide: the player's hover area is missing")
@@ -349,6 +405,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                 canMinimize = { enableMinimizeSwipe },
                 canExpand = { enableExpandSwipe },
                 canDismissHorizontally = { enableHorizontalDismiss },
+                canZoom = { surfaceRevealed && !tapExpands && !pictureInPicture },
                 controlsVisible = { controls.visible },
                 touchOnControls = { touchOnControls },
                 touchOnScrollableContent = { touchOnScrollableContent },
@@ -379,6 +436,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     onHorizontalDragEnd?.invoke(offset, velocity)
                 },
             ),
+            zoom = zoom,
         ).also { it.install() }
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
@@ -423,6 +481,8 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         loadedTarget = target
         positionSeconds = 0.0
         tapSeek.cancel()
+        zoom.reset()
+        quality.pageLoading()
         AppLog.i(PLAYER_LOG_TAG, "Loading ${target.key}")
         recovery.start(resetStartupReloads)
         controls.setVisible(false)
@@ -447,11 +507,14 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         tapSeek.cancel()
         onTap = null
         onTapSeekSeries = null
+        onZoom = null
+        onZoomIn = null
         onControlsVisible?.invoke(false)
         onControlsVisible = null
         onSettingsMenuOpen?.invoke(false)
         onSettingsMenuOpen = null
         onControlBarHeightPx = null
+        onSeekbar = null
         onDismissDrag = null
         onDismissDragEnd = null
         onHorizontalDrag = null
@@ -492,11 +555,13 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         webView.evaluateJavascript(scripts.hideTopOverlay, null)
         // A page that loaded again in picture-in-picture starts with the control bar.
         if (pictureInPicture) webView.evaluateJavascript(scripts.pictureInPicture(true), null)
+        seekbarGap.pageLoaded()
     }
 
     fun setPictureInPicture(value: Boolean) {
         if (released || pictureInPicture == value) return
         pictureInPicture = value
+        if (value) zoom.reset()
         webView.evaluateJavascript(scripts.pictureInPicture(value), null)
     }
 
@@ -535,6 +600,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
             revealSurface()
         }
         if (started) webView.evaluateJavascript(scripts.fullVolume, null)
+        if (started) quality.playing()
         // A page that loaded again in the background starts with video.
         if (started && soundOnly) webView.evaluateJavascript(scripts.soundOnly, null)
         if (playing && recovery.confirmPlayback()) onPlaybackStarted?.invoke()

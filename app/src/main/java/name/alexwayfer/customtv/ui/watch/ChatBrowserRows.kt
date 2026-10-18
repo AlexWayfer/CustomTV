@@ -7,10 +7,11 @@ internal data class ChatBrowserRows(val openInBrowser: Boolean, val experimental
 
 /**
  * The chat settings send the viewer to the site for Channel Points, polls, and predictions until the experimental
- * login brings them into the app. While it can start, a logged-in viewer is offered it next to the site.
+ * login brings them into the app. While it can start, a logged-in viewer is offered it next to the site. Both are
+ * for the live chat, so a recording's or a clip's replayed chat offers neither.
  */
-internal fun chatBrowserRows(offer: ExperimentalLoginOffer, loggedIn: Boolean): ChatBrowserRows =
+internal fun chatBrowserRows(offer: ExperimentalLoginOffer, loggedIn: Boolean, liveChat: Boolean): ChatBrowserRows =
     ChatBrowserRows(
-        openInBrowser = offer != ExperimentalLoginOffer.LoggedIn,
-        experimentalLogin = loggedIn && offer == ExperimentalLoginOffer.CanLogIn,
+        openInBrowser = liveChat && offer != ExperimentalLoginOffer.LoggedIn,
+        experimentalLogin = liveChat && loggedIn && offer == ExperimentalLoginOffer.CanLogIn,
     )

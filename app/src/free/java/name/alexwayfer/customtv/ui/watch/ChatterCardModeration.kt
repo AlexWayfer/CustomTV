@@ -9,7 +9,7 @@ private val NoModTools = ChatterModTools()
 
 @Suppress("unused")
 @Composable
-internal fun rememberChatterModTools(userId: String?, login: String?, badges: List<ChatBadge>): ChatterModTools =
+internal fun rememberChatterModTools(userId: String?, login: String?, badges: List<ChatBadge>?): ChatterModTools =
     NoModTools
 
 /** The free chatter card has no Moderation section. */

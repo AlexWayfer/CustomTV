@@ -13,10 +13,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.NotificationPromptStore
+import name.alexwayfer.customtv.ui.home.HomeAppLinksPrompt
+import name.alexwayfer.customtv.ui.home.homePromptPending
 
 /**
  * Offers update and crash notifications on Home while they are off, until Not now or a refusal answers it; turning
- * them on later clears that answer.
+ * them on later clears that answer. The twitch.tv links card waits under it until it is answered.
  */
 @Composable
 internal fun HomeNotificationPrompt() {
@@ -25,7 +27,8 @@ internal fun HomeNotificationPrompt() {
     val dismissed by store.dismissed.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     val enabler = rememberNotificationEnabler(firstAsk = true) { scope.launch { store.markDismissed() } }
-    PromptVisibility(homeNotificationPromptVisible(enabler.enabled, dismissed)) {
+    val visible = homeNotificationPromptVisible(enabler.enabled, dismissed)
+    PromptVisibility(visible) {
         PromptCard(
             text = stringResource(R.string.notification_prompt),
             action = PromptAction(stringResource(R.string.notification_prompt_enable), enabler.enable),
@@ -35,6 +38,7 @@ internal fun HomeNotificationPrompt() {
             },
         )
     }
+    HomeAppLinksPrompt(otherPromptPending = homePromptPending(dismissed, visible))
 }
 
 /** Keeps the offer in Settings for as long as notifications are off, answered on Home or not. */

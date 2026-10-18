@@ -50,6 +50,7 @@ import name.alexwayfer.customtv.chat.sectionsWithFrequentlyUsed
 import name.alexwayfer.customtv.chat.EmoteUse
 import name.alexwayfer.customtv.data.ChatSendError
 import name.alexwayfer.customtv.data.ChatSendRepository
+import name.alexwayfer.customtv.data.ChatSettings
 import name.alexwayfer.customtv.data.chatRulesFingerprint
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.ui.settings.animatedControlValue
@@ -101,6 +102,7 @@ internal fun ChatInputBar(
     ChatInputBarBody(input, composer, field, panel, actions)
     if (composer.rulesOpen) ChatInputRulesSheet(input, actions, onDismiss = { composer.rulesOpen = false })
     ChatInputMenuSheet(input, composer, field)
+    if (composer.recapOpen) ChatInputRecapSheet(input, composer)
 }
 
 /** How the picker, the keyboard, and a warning hand the room under the field to one another. */
@@ -310,6 +312,7 @@ private fun ColumnScope.ChatFieldRow(
                 ChatFieldEnd(
                     visible = sideButtons.endButton,
                     icon = chatFieldEndIcon(composer.sending, hasMessage = hasMessage),
+                    cancelable = composer.sendCancelable,
                     onClick = { actions.tapEndButton(hasMessage) },
                 )
             }
@@ -318,14 +321,14 @@ private fun ColumnScope.ChatFieldRow(
 }
 
 @Composable
-private fun RowScope.ChatFieldEnd(visible: Boolean, icon: ChatFieldEndIcon, onClick: () -> Unit) {
+private fun RowScope.ChatFieldEnd(visible: Boolean, icon: ChatFieldEndIcon, cancelable: Boolean, onClick: () -> Unit) {
     AnimatedVisibility(
         visible = visible,
         enter = expandHorizontally(expandFrom = Alignment.End) + slideInHorizontally { it },
         exit = shrinkHorizontally(shrinkTowards = Alignment.End) + slideOutHorizontally { it },
     ) {
         IconButton(onClick = onClick) {
-            ChatFieldEndIconContent(icon)
+            ChatFieldEndIconContent(icon, cancelable)
         }
     }
     // Without the end button the row's narrow end padding would put the field at the edge;
@@ -413,6 +416,33 @@ private fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, fi
         },
         onDismiss = {
             field.menuOpen = false
+            input.sheetKeyboard.onDismiss()
+        },
+        recapRow = { hideThen ->
+            menu.recap?.let { source ->
+                ChatRecapRow(
+                    source = source,
+                    onOpen = {
+                        hideThen {
+                            field.menuOpen = false
+                            composer.recapOpen = true
+                        }
+                    },
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun ChatInputRecapSheet(input: ChatInput, composer: ChatComposerState) {
+    val source = input.menu.recap ?: return
+    ChatRecapSheet(
+        source = source,
+        // The stored default until the settings are read.
+        readableColors = input.menu.settings?.readableColors ?: ChatSettings().readableColors,
+        onDismiss = {
+            composer.recapOpen = false
             input.sheetKeyboard.onDismiss()
         },
     )

@@ -182,6 +182,27 @@
       hideOverlayFrom(el, vw, vh);
     }
   }
+  // A recording's controls lie over the lower half of the video, and a tap on their empty room or their time labels
+  // would reach neither the video nor a control: it neither shows nor hides them. Only the controls themselves take a
+  // touch; the rest goes through to the video, where the app shows or hides them. Hidden controls take none.
+  var RECORDING_CONTROLS_TOUCH_CSS = [
+    '.player-controls { pointer-events: none !important; }',
+    '.player-controls button, .player-controls a, .player-controls input, .player-controls [role="button"],',
+    '.player-controls [role="slider"], .player-controls [data-a-target="player-seekbar"],',
+    '.player-controls [data-a-target="player-settings-menu"], .player-controls [data-a-target="player-settings-menu"] *,',
+    '.player-controls [role="menu"], .player-controls [role="menu"] *,',
+    '.player-controls [role="dialog"], .player-controls [role="dialog"] * {',
+    '  pointer-events: auto !important;',
+    '}',
+    '.video-player__inactive .player-controls, .video-player__inactive .player-controls * {',
+    '  pointer-events: none !important;',
+    '}',
+    // Twitch keeps the chapter list above the time labels and the seek bar, which leaves a phone's player room for
+    // two chapters: it reaches down over them to just above the buttons, where its own button closes it, and up to
+    // near the top.
+    '.chapter-select-button__chapters [role="dialog"] { margin-bottom: 4px !important; }',
+    '.chapter-select-button__chapters [role="dialog"] > * { max-height: calc(100vh - 52px) !important; }',
+  ].join('\n');
   function injectInto(doc) {
     if (!doc) return;
     var style = doc.getElementById('customtv-hide-top');
@@ -199,6 +220,9 @@
         '[data-a-target="player-overlay-subscribe-button"] { display: none !important; }',
         // The player plays at full volume (FULL_VOLUME_JS); the system volume sets the loudness.
         '.volume-slider__slider-container { display: none !important; }',
+        recordingPage ? RECORDING_CONTROLS_TOUCH_CSS : '',
+        // A clip turns its sound on as it starts (setUpClip), but Twitch's hint to tap for sound stays a few seconds.
+        clipPage ? '.click-to-unmute__container { display: none !important; }' : '',
         '[data-a-target*="overlay-gift"] { display: none !important; }',
         '[data-a-target="follow-button"] { display: none !important; }',
         '[data-a-target="subscribe-button"] { display: none !important; }',
@@ -331,8 +355,30 @@
     if (playing) offlineCheckDone = true;
     try { CustomTvPlayback.onState(playing); } catch (e) {}
   }
-  // Only a recording reads the position; a live stream would pay a bridge call per timeupdate.
-  var recordingPage = /[?&]video=/.test(location.search);
+  // Only a recording or a clip reads the position; a live stream would pay a bridge call per timeupdate.
+  var recordingPage = /[?&](video|clip)=/.test(location.search);
+  var clipPage = /[?&]clip=/.test(location.search);
+  // A clip plays with sound, though its embed starts muted whatever the URL asks, and over and over: at its end
+  // Twitch covers it with recommendations, and nothing plays on from there. Each once per video, so a mute the user
+  // chooses stays. Twitch plays a clip muted under its audience gate and keeps it muted once the viewer accepts, so
+  // the sound waits for the gate to go. The gate can show a moment after playback starts and mute a clip that was
+  // already turned up; that one is turned up again once the gate goes.
+  function setUpClip(doc, v) {
+    if (!clipPage) return;
+    var p = customTvPlayer(doc);
+    if (!p || !p.setLooping || !p.setMuted) return;
+    if (!v.__customTvClipLooped) {
+      v.__customTvClipLooped = true;
+      p.setLooping(true);
+    }
+    if (doc.querySelector(AUDIENCE_GATE)) {
+      v.__customTvClipUnmuted = false;
+      return;
+    }
+    if (v.__customTvClipUnmuted) return;
+    v.__customTvClipUnmuted = true;
+    if (p.isMuted && p.isMuted()) p.setMuted(false);
+  }
   function notifyPosition(v) {
     if (!recordingPage || !v || !isFinite(v.currentTime) || v.currentTime < 0) return;
     try { CustomTvPlayback.onPosition(v.currentTime); } catch (e) {}
@@ -384,6 +430,21 @@
     button.addEventListener('click', function() {
       try { CustomTvPlayback.onPlayerReload(); } catch (e) {}
     });
+  }
+  // Twitch's audience gate waits for a tap, and a stream, a recording, or a clip may not start under it, while the
+  // app shows the page only once the video plays: the app shows it for the gate.
+  var reportedAudienceGate = false;
+  function notifyAudienceGate() {
+    if (reportedAudienceGate) return;
+    var docs = customTvDocs();
+    for (var d = 0; d < docs.length; d++) {
+      var gate = docs[d].querySelector && docs[d].querySelector(AUDIENCE_GATE);
+      if (gate && visible(gate)) {
+        reportedAudienceGate = true;
+        try { CustomTvPlayback.onAudienceGate(); } catch (e) {}
+        return;
+      }
+    }
   }
   function notifyPlayerError() {
     var button = playerErrorButton();
@@ -456,12 +517,55 @@
     reportedControlBar = fraction;
     try { CustomTvControls.onControlBar(fraction); } catch (e) {}
   }
-  // Twitch's settings menu rises over the bottom corner, where the app's chat buttons sit.
+  function pageOffset(el) {
+    var left = 0, top = 0;
+    for (var node = el; node; node = node.offsetParent) {
+      left += node.offsetLeft;
+      top += node.offsetTop;
+    }
+    return { left: left, top: top };
+  }
+  // Where a recording's seek bar sits, as shares of the page: the bar's left and right edges, its top, and the top of
+  // the area that takes its touches. Offsets ignore the transforms that slide the bar while it shows or hides.
+  function readSeekbar() {
+    if (!recordingPage || clipPage) return null;
+    var docs = customTvDocs();
+    for (var i = 0; i < docs.length; i++) {
+      var d = docs[i];
+      if (!d.querySelector) continue;
+      var area = d.querySelector('[data-a-target="player-seekbar"]');
+      var bar = area && area.querySelector('.seekbar-bar');
+      if (!bar || !bar.offsetWidth) continue;
+      var width = d.documentElement.clientWidth;
+      var height = d.documentElement.clientHeight;
+      if (!width || !height) continue;
+      var barAt = pageOffset(bar);
+      return [
+        barAt.left / width,
+        (barAt.left + bar.offsetWidth) / width,
+        barAt.top / height,
+        pageOffset(area).top / height,
+      ].map(function(share) { return Math.round(share * 1000) / 1000; });
+    }
+    return null;
+  }
+  var reportedSeekbar = null;
+  function notifySeekbar() {
+    var seekbar = readSeekbar();
+    if (!seekbar || seekbar.join() === reportedSeekbar) return;
+    reportedSeekbar = seekbar.join();
+    try { CustomTvControls.onSeekbar(seekbar[0], seekbar[1], seekbar[2], seekbar[3]); } catch (e) {}
+  }
+  // Twitch's settings menu rises over the bottom corner, where the app's chat buttons sit, and a recording's chapter
+  // list over the seek bar, where the app draws the chat's heat.
   function readSettingsMenuOpen() {
     var docs = customTvDocs();
     for (var i = 0; i < docs.length; i++) {
       var d = docs[i];
-      if (d.querySelector && d.querySelector('[data-a-target="player-settings-menu"]')) return true;
+      if (!d.querySelector) continue;
+      if (d.querySelector('[data-a-target="player-settings-menu"]')) return true;
+      var chapters = d.querySelector(CHAPTER_LIST);
+      if (chapters && chapters.offsetHeight) return true;
     }
     return false;
   }
@@ -475,6 +579,7 @@
   var reportedControls = null;
   function notifyControls() {
     notifyControlBar();
+    notifySeekbar();
     notifySettingsMenu();
     var controls = readControlsVisible();
     if (controls === reportedControls) return;
@@ -487,8 +592,17 @@
     root.__customTvChromeObs = true;
     var obs = new MutationObserver(notifyControls);
     obs.observe(root, { attributes: true, attributeFilter: ['class'] });
-    // The settings menu comes and goes as an element under the player.
-    new MutationObserver(notifySettingsMenu).observe(root, { childList: true, subtree: true });
+    // The settings menu comes and goes as a modal dialog that Twitch puts at the end of the body, not under the player.
+    // The chapter list stays in place and only opens or closes: a tap on the controls checks again once it has.
+    if (doc.body && !doc.body.__customTvSettingsObs) {
+      doc.body.__customTvSettingsObs = true;
+      new MutationObserver(notifySettingsMenu).observe(doc.body, { childList: true, subtree: true });
+      doc.addEventListener('click', function(event) {
+        if (!(event.target && event.target.closest && event.target.closest('.player-controls'))) return;
+        setTimeout(notifySettingsMenu, 50);
+        setTimeout(notifySettingsMenu, 300);
+      }, true);
+    }
     notifyControls();
   }
   // The layer over the video that plays or pauses a recording on a click; buttons and notes sit apart.
@@ -533,6 +647,73 @@
         event.target.closest('.disclosure-tool, [class*="disclosure-tool"]'));
       try { CustomTvControls.onTouchStart(scrollable, controls, video, disclosure); } catch (e) {}
     }, { capture: true, passive: true });
+    armSeekbarHold(doc);
+  }
+  // Twitch hides its controls five seconds after they showed, and a pointer move does not put that off while they
+  // show. Having the pointer leave the player and enter it again does: the enter starts Twitch's five seconds anew,
+  // and React applies the leave and the enter together, so the controls never hide in between.
+  function reenterPlayer(doc) {
+    var area = doc.querySelector('[data-a-target="video-ref"]');
+    if (!area) return false;
+    try {
+      area.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: doc.body }));
+      area.dispatchEvent(new MouseEvent('mouseenter', { relatedTarget: doc.body }));
+    } catch (e) {}
+    return true;
+  }
+  // The chapter list closes with the controls, even while a finger scrolls it: while it is open, the controls stay.
+  var CHAPTER_LIST = '.chapter-select-button__chapters [role="dialog"]';
+  function keepChapterListUp() {
+    var docs = customTvDocs();
+    for (var i = 0; i < docs.length; i++) {
+      var list = docs[i].querySelector && docs[i].querySelector(CHAPTER_LIST);
+      if (list && list.offsetHeight) reenterPlayer(docs[i]);
+    }
+  }
+  // A finger that holds the seek bar moves no pointer at all: while it holds, the controls stay.
+  // Twitch's preview of the time and the frame follows only a pointer over the bar, while a finger's drag moves only
+  // the thumb: the pointer comes over the bar with the finger, follows it, and leaves the bar as it lifts.
+  var SEEKBAR = '[data-a-target="player-seekbar"]';
+  function armSeekbarHold(doc) {
+    var bar = null;
+    var timer = null;
+    function point(type, touch) {
+      var r = bar.getBoundingClientRect();
+      try {
+        bar.dispatchEvent(new MouseEvent(type, {
+          bubbles: true, relatedTarget: type === 'mousemove' ? null : doc.body,
+          clientX: touch.clientX, clientY: r.top + r.height / 2,
+        }));
+      } catch (e) {}
+    }
+    function stop(touch) {
+      if (timer) clearInterval(timer);
+      timer = null;
+      if (bar && bar.isConnected && touch) point('mouseout', touch);
+      bar = null;
+    }
+    function reenter() {
+      if (!bar || !bar.isConnected || !reenterPlayer(doc)) stop();
+    }
+    doc.addEventListener('touchstart', function(event) {
+      var held = event.target && event.target.closest && event.target.closest(SEEKBAR);
+      var touch = event.touches && event.touches[0];
+      if (!held || !touch) return;
+      stop();
+      bar = held;
+      point('mouseover', touch);
+      point('mousemove', touch);
+      timer = setInterval(reenter, 1000);
+    }, { capture: true, passive: true });
+    doc.addEventListener('touchmove', function(event) {
+      var touch = event.touches && event.touches[0];
+      if (bar && bar.isConnected && touch) point('mousemove', touch);
+    }, { capture: true, passive: true });
+    ['touchend', 'touchcancel'].forEach(function(type) {
+      doc.addEventListener(type, function(event) {
+        if (!event.touches || !event.touches.length) stop(event.changedTouches && event.changedTouches[0]);
+      }, { capture: true, passive: true });
+    });
   }
   function armPlaybackSync(targetDoc) {
     if (!targetDoc || !targetDoc.documentElement || targetDoc.documentElement.__customTvSync) return;
@@ -541,8 +722,12 @@
       if (v.__customTvBound) return;
       v.__customTvBound = true;
       notifyPlayerReady();
-      v.addEventListener('playing', function() { notifyPlaybackIfRendered(v); });
+      v.addEventListener('playing', function() {
+        setUpClip(targetDoc, v);
+        notifyPlaybackIfRendered(v);
+      });
       v.addEventListener('timeupdate', function() {
+        setUpClip(targetDoc, v);
         notifyPlaybackIfRendered(v);
         notifyPosition(v);
       });
@@ -579,16 +764,20 @@
   notifyOffline();
   armPlayerReload();
   notifyPlayerError();
+  notifyAudienceGate();
   if (window.__customTvOverlayBooted) return;
   window.__customTvOverlayBooted = true;
   // The DOM observers and iframe loads schedule inject(); layout changes only on resize.
   window.addEventListener('resize', schedule);
   window.addEventListener('resize', notifyControlBar);
+  window.addEventListener('resize', notifySeekbar);
   setInterval(function() {
     notifyControls();
+    keepChapterListUp();
     notifyOffline();
     armPlayerReload();
     notifyPlayerError();
+    notifyAudienceGate();
     var d = playerDoc();
     if (isAdBreak(d)) {
       notifyPlaybackIfRendered(d && d.querySelector('video'));

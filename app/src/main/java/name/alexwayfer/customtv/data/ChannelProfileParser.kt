@@ -16,13 +16,16 @@ internal object ChannelProfileParser {
         val broadcastSettings = user.optJSONObject("broadcastSettings")
         val points = user.optJSONObject("channel")?.optJSONObject("communityPointsSettings")
         val highlight = highlightReward(points)
+        val game = streamGame(stream) ?: streamGame(broadcastSettings)
         val profile = ChannelProfile(
             login = login.lowercase(),
             displayName = displayName,
             avatarUrl = user.text("profileImageURL"),
             id = user.text("id"),
             streamTitle = stream?.text("title") ?: broadcastSettings?.text("title"),
-            categoryName = gameName(stream) ?: gameName(broadcastSettings),
+            categoryName = game?.text("name"),
+            categoryId = game?.text("id"),
+            categoryBoxArtUrl = game?.text("boxArtURL"),
             streamStartedAtMillis = stream?.text("createdAt")
                 ?.let(::instantMillisOrNull),
             currentStreamVideoId = stream?.optJSONObject("archiveVideo")?.text("id"),
@@ -84,7 +87,9 @@ internal object ChannelProfileParser {
         )
     }
 
-    private fun gameName(obj: JSONObject?): String? = obj?.optJSONObject("game")?.text("name")
+    /** The named category of a stream or of the channel's settings; its ID and box art come from the same one. */
+    private fun streamGame(obj: JSONObject?): JSONObject? =
+        obj?.optJSONObject("game")?.takeIf { it.text("name") != null }
 
     private fun streamTags(stream: JSONObject?): List<String> {
         val tags = stream?.optJSONArray("freeformTags") ?: return emptyList()

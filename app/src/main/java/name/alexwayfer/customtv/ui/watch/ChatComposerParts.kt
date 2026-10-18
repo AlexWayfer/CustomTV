@@ -11,12 +11,14 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -39,6 +41,7 @@ import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
+import kotlin.time.Duration.Companion.seconds
 
 /** What the list above the chat field offers for the word being typed. */
 internal sealed interface ChatCompletion {
@@ -188,9 +191,37 @@ internal fun chatFieldEndIcon(sending: Boolean, hasMessage: Boolean): ChatFieldE
     else -> ChatFieldEndIcon.Menu
 }
 
-/** The end button's icon; one icon fades and shrinks away as the next one grows in. */
+/**
+ * How long a send runs before a tap on its progress cancels it. It is well past a double tap's 300 ms, so the second
+ * tap of a double tap on Send lands on the progress harmlessly.
+ */
+internal val CHAT_SEND_CANCEL_DELAY = 1.seconds
+
+/** What a tap on the button at the field's end does. */
+internal enum class ChatFieldEndTap { CancelSend, Nothing, Send, Menu }
+
+/**
+ * A send that has run for [CHAT_SEND_CANCEL_DELAY] is cancelled; one that has just started ignores the tap; otherwise
+ * a typed message is sent and an empty field opens the menu.
+ */
+internal fun chatFieldEndTap(sending: Boolean, cancelable: Boolean, hasMessage: Boolean): ChatFieldEndTap = when {
+    sending -> if (cancelable) ChatFieldEndTap.CancelSend else ChatFieldEndTap.Nothing
+    hasMessage -> ChatFieldEndTap.Send
+    else -> ChatFieldEndTap.Menu
+}
+
+/**
+ * A cancelled send leaves its draft to fix, so the field takes the keyboard back when the send had hidden it. The open
+ * emote picker stays, and a focused field already has the keyboard.
+ */
+internal fun chatCancelFocusesField(fieldFocused: Boolean, pickerOpen: Boolean): Boolean = !fieldFocused && !pickerOpen
+
+/**
+ * The end button's icon; one icon fades and shrinks away as the next one grows in. A send that can be [cancelable]
+ * grows a cross inside its progress.
+ */
 @Composable
-internal fun ChatFieldEndIconContent(icon: ChatFieldEndIcon) {
+internal fun ChatFieldEndIconContent(icon: ChatFieldEndIcon, cancelable: Boolean) {
     AnimatedContent(
         targetState = icon,
         transitionSpec = { (fadeIn() + scaleIn()).togetherWith(fadeOut() + scaleOut()) },
@@ -198,11 +229,21 @@ internal fun ChatFieldEndIconContent(icon: ChatFieldEndIcon) {
         label = "chatFieldEndIcon",
     ) { shown ->
         when (shown) {
-            ChatFieldEndIcon.Sending -> CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp,
-                color = TwitchPurple,
-            )
+            ChatFieldEndIcon.Sending -> Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = TwitchPurple,
+                )
+                AnimatedVisibility(visible = cancelable, enter = fadeIn() + scaleIn(), exit = fadeOut() + scaleOut()) {
+                    Icon(
+                        Icons.Filled.Close,
+                        stringResource(R.string.chat_cancel_send),
+                        modifier = Modifier.size(14.dp),
+                        tint = TwitchPurple,
+                    )
+                }
+            }
             ChatFieldEndIcon.Send -> Icon(
                 Icons.AutoMirrored.Filled.Send,
                 stringResource(R.string.chat_send),

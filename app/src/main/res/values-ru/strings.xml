@@ -47,6 +47,7 @@
     <string name="view_chat_rules">Правила чата</string>
     <string name="chat_rules_confirm">Понятно</string>
     <string name="chat_send">Отправить</string>
+    <string name="chat_cancel_send">Отменить отправку</string>
     <string name="chat_command_user_argument">[имя пользователя]</string>
     <string name="chat_command_user_description">Показать профиль пользователя на этом канале</string>
     <string name="chat_send_failed">Не удалось отправить сообщение</string>
@@ -141,6 +142,7 @@
     </plurals>
     <string name="chatter_card_back_to_profile">Назад к профилю</string>
     <string name="chatter_card_open_profile">Открыть профиль</string>
+    <string name="stream_category_open">Открыть в Обзоре</string>
     <string name="chatter_card_socials">Соцсети</string>
     <string name="chatter_card_labels">Метки</string>
     <string name="chatter_card_no_labels">Меток нет</string>
@@ -409,6 +411,12 @@
     <string name="app_update_open_group">Открыть группу</string>
     <string name="settings_section_premium">Premium</string>
     <string name="settings_section_language">Язык</string>
+    <string name="settings_section_app_links">Открытие ссылок</string>
+    <string name="app_links_setting">Открывать ссылки Twitch в приложении</string>
+    <string name="app_links_setting_off">Выключено. В настройках Android нажмите «Добавить ссылку» и отметьте twitch.tv и www.twitch.tv</string>
+    <string name="app_links_setting_on">Включено</string>
+    <string name="app_links_prompt">Ссылки Twitch могут открываться в приложении, а не в браузере.</string>
+    <string name="app_links_prompt_set_up">Настроить</string>
     <string name="app_update_check">Проверить обновления</string>
     <string name="app_update_none">Новых версий нет</string>
     <string name="app_update_none_latest">Новых версий нет. Последняя найденная: %1$s</string>
@@ -464,6 +472,7 @@
     <string name="chat_open_link">Открыть</string>
     <string name="expand">Развернуть</string>
     <string name="minimize">Свернуть</string>
+    <string name="player_zoom_reset">Сбросить масштаб</string>
     <string name="sleep_timer">Таймер сна</string>
     <string name="sleep_timer_on">Включён</string>
     <string name="sleep_timer_left">Плеер закроется через %1$s</string>

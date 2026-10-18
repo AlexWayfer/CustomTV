@@ -28,6 +28,7 @@ import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChatSettings
 import name.alexwayfer.customtv.data.CollaborationResult
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.data.collaborationRowOpensChannel
 import name.alexwayfer.customtv.player.TwitchPlaybackTarget
 import name.alexwayfer.customtv.player.streamInfoShownUnderPlayer
@@ -39,7 +40,7 @@ import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun WatchScreen(
+internal fun WatchScreen(
     channel: String,
     chatViewModel: ChatViewModel,
     navigation: WatchNavigation,
@@ -130,16 +131,20 @@ internal data class WatchScene(
         )
     }
 
+    /** The category opens in Explore as the player minimizes onto it, as the profile does. */
+    fun dismissToCategory(category: TwitchCategory) {
+        val open = navigation.onOpenCategory ?: return
+        playerState.minimize(before = { open(category) }, after = navigation.onMinimizeOverSection)
+    }
+
     fun dismissToSettings(target: SettingsScrollTarget) {
         playerState.minimize(before = { navigation.onOpenSettings(target) }, after = navigation.onMinimizeOverSection)
     }
 
+    /** Straight to the field, as [mention] goes: a keyboard already up stays up. */
     fun replyTo(message: ChatMessage) {
-        val known = data.messages.value
-        sheetKeyboard.open {
-            chat.replySession = replySessionFor(message, known)
-            if (chat.replySession != null) chat.replyFocusRequest = OneShotRequest(Unit)
-        }
+        chat.replySession = replySessionFor(message, data.messages.value)
+        if (chat.replySession != null) chat.replyFocusRequest = OneShotRequest(Unit)
     }
 
     /** Straight to the field, which keeps its focus and keyboard while the message menu is open. */
@@ -211,6 +216,7 @@ private fun WatchChannelHeader(scene: WatchScene, expanded: Boolean, overVideo: 
         // Toggles what the panel shows, so a tap on the panel shown whole over a full screen player hides the controls.
         onToggle = { scene.chrome.show(!expanded) },
         onOpenProfile = { scene.dismissToChannelProfile(scene.channel) },
+        onOpenCategory = scene.navigation.onOpenCategory?.let { scene::dismissToCategory },
         followStatus = scene.follow.channel.status,
         followAction = scene.follow.action,
         onOpenSettings = { scene.dismissToSettings(SettingsScrollTarget.Notifications) },

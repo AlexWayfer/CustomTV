@@ -70,7 +70,11 @@ internal fun rememberNotificationEnabler(firstAsk: Boolean, onRefused: () -> Uni
         } else {
             null
         }
-        if (action == NotificationPromptAction.RequestPermission) {
+        // The action asks for the permission only from Android 13 on, which lint cannot see through it.
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            action == NotificationPromptAction.RequestPermission
+        ) {
             permission.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             openNotificationSettings(context)

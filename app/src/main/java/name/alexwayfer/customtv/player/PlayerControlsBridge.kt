@@ -14,6 +14,7 @@ internal class PlayerControlsBridge(
         onDisclosure: Boolean,
     ) -> Unit,
     private val onControlBarFraction: (Double) -> Unit,
+    private val onSeekbar: (PlayerSeekbar) -> Unit,
     private val onSettingsMenu: (Boolean) -> Unit,
     private val onHoverAreaMissing: () -> Unit,
 ) {
@@ -33,6 +34,14 @@ internal class PlayerControlsBridge(
         onPageTouch.invoke(scrollable, onControls, onVideo, onDisclosure)
     }
 
+    /** Where a recording's seek bar sits, as shares of the page; see [PlayerSeekbar]. */
+    @JavascriptInterface
+    @Suppress("unused")
+    fun onSeekbar(left: Double, right: Double, barTop: Double, touchTop: Double) {
+        val seekbar = playerSeekbarOrNull(left, right, barTop, touchTop) ?: return
+        handler.post { onSeekbar.invoke(seekbar) }
+    }
+
     /** The page could not hide a recording's controls: the player area the pointer leaves is not where it was. */
     @JavascriptInterface
     @Suppress("unused")
@@ -40,7 +49,7 @@ internal class PlayerControlsBridge(
         handler.post(onHoverAreaMissing)
     }
 
-    /** Whether Twitch's settings menu is open over the player. */
+    /** Whether Twitch's settings menu, or a recording's chapter list, is open over the player. */
     @JavascriptInterface
     @Suppress("unused")
     fun onSettingsMenu(open: Boolean) {

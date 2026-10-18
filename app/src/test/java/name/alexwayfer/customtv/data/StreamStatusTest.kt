@@ -30,6 +30,27 @@ class StreamStatusTest {
     }
 
     @Test
+    fun aNewCategoryTakesItsIdAndDropsTheOldBoxArt() {
+        val withCategory = profile.copy(categoryName = "Art", categoryId = "509660", categoryBoxArtUrl = "art.jpg")
+        val next = profileAfterStreamStatus(
+            withCategory,
+            StreamStatusEvent.Title(login = "foo", title = "t", categoryName = "Just Chatting", categoryId = "509658"),
+        )
+        assertEquals("509658", next?.categoryId)
+        assertNull(next?.categoryBoxArtUrl)
+    }
+
+    @Test
+    fun theSameCategoryKeepsItsBoxArt() {
+        val withCategory = profile.copy(categoryName = "Art", categoryId = "509660", categoryBoxArtUrl = "art.jpg")
+        val next = profileAfterStreamStatus(
+            withCategory,
+            StreamStatusEvent.Title(login = "foo", title = "New title", categoryName = "Art", categoryId = "509660"),
+        )
+        assertEquals("art.jpg", next?.categoryBoxArtUrl)
+    }
+
+    @Test
     fun aBlankCategoryClearsTheCategory() {
         val next = profileAfterStreamStatus(
             profile,

@@ -15,7 +15,7 @@ import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 
 /**
- * Home, About, and Chat. The Videos tab and recording playback are Premium, and so is Explore, where a recent
+ * Home, About, and Chat. The Videos and Clips tabs and their playback are Premium, and so is Explore, where a recent
  * category opens, so the categories here open nothing.
  */
 @Composable

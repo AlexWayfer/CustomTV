@@ -25,6 +25,7 @@ import name.alexwayfer.customtv.auth.TWITCH_AUTH_TAG
 import name.alexwayfer.customtv.auth.loginSheetHeightPx
 import name.alexwayfer.customtv.auth.twitchLinkSettingsAction
 import name.alexwayfer.customtv.diagnostics.AppLog
+import name.alexwayfer.customtv.links.linkHandlerPackage
 import name.alexwayfer.customtv.ui.watch.BROWSER_SHEET_CORNER_RADIUS_DP
 import kotlin.time.Duration.Companion.seconds
 
@@ -39,27 +40,17 @@ internal fun twitchLinkHandlingAllowed(context: Context): Boolean? {
     }
 }
 
-internal fun loginLinkHandlerPackage(packageManager: PackageManager): String? {
-    val intent = Intent(Intent.ACTION_VIEW, "https://www.twitch.tv/activate".toUri())
-    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        packageManager.resolveActivity(
-            intent,
-            PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY.toLong()),
-        )
-    } else {
-        @Suppress("DEPRECATION")
-        packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-    }
-    return info?.activityInfo?.packageName
-}
+internal fun loginLinkHandlerPackage(packageManager: PackageManager): String? =
+    linkHandlerPackage(packageManager, "https://www.twitch.tv/activate")
 
-internal fun openTwitchLinkSettings(context: Context) {
+/** Android's Open by default page of [packageName]: the Twitch app's, or this app's own. */
+internal fun openLinkSettings(context: Context, packageName: String) {
     val intent = Intent(twitchLinkSettingsAction(Build.VERSION.SDK_INT))
-        .setData("package:$TWITCH_APP_PACKAGE".toUri())
+        .setData("package:$packageName".toUri())
     try {
         context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        AppLog.w(TWITCH_AUTH_TAG, "twitch link settings unavailable")
+        AppLog.w(TWITCH_AUTH_TAG, "link settings unavailable")
     }
 }
 

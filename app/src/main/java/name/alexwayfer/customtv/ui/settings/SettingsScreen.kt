@@ -198,6 +198,7 @@ private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: Strin
     }
     PremiumSettings()
     LanguageSettings()
+    AppLinksSettings()
     SettingsSection(stringResource(R.string.settings_section_help))
     GesturesSettingsEntry(onOpen = { onOpen(SettingsPage.Gestures) })
     LicensesSettingsEntry(onOpen = { onOpen(SettingsPage.Licenses) })

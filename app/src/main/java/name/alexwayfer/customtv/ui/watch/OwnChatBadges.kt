@@ -14,7 +14,7 @@ import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.latestOwnChatMessage
 import name.alexwayfer.customtv.chat.ownChatBadgesNow
 import name.alexwayfer.customtv.data.DisplayedChatBadges
-import name.alexwayfer.customtv.data.OwnChatBadgesRepository
+import name.alexwayfer.customtv.data.DisplayedChatBadgesRepository
 
 /** The signed-in user's badges in this channel, for their own chatter card. */
 internal class OwnChatBadges(
@@ -35,7 +35,7 @@ internal fun rememberOwnChatBadges(
     LaunchedEffect(userId, channelId) {
         if (userId.isNullOrBlank() || channelId.isNullOrBlank()) return@LaunchedEffect
         loadedAtMillis = System.currentTimeMillis()
-        loaded = OwnChatBadgesRepository.load(userId, channelId)
+        loaded = DisplayedChatBadgesRepository.load(userId, channelId)
     }
     val currentMessages by rememberUpdatedState(messages)
     // Only a new own message changes this, so other chat messages do not recompose the caller.

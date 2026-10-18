@@ -1,5 +1,19 @@
 # CustomTV (free version)
 
+## v1.10.0 (2026-10-18)
+
+*   Open twitch.tv links in the app
+*   Zoom the player with a pinch
+*   Play full screen in Auto quality
+*   Cancel a hanging chat message from its progress button
+*   Keep the keyboard up while scrolling or replying in chat
+*   Bring back chat messages missed during a reconnect
+*   Show the chat loading bar while the chat reconnects
+*   Fix Twitch's content classification gate before playback
+*   Fix badges and moderator actions in a chatter card opened by the `/user` command
+*   Fix links right after an `@` in chat
+*   Fix wide turned emotes covering neighbouring messages
+
 ## v1.9.0 (2026-10-15)
 
 *   Show categories and stream tags in the app's language

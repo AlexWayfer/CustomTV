@@ -29,9 +29,8 @@ class ChatTextFormattingTest {
 
     @Test
     fun aLinkThatDoesNotOpenKeepsTheTextAndTheLookOfOneThatDoes() {
-        val text = "Modpack: https://www.curseforge.com/minecraft/modpacks/cobbleverse"
-        val clickable = formatted(text, linksClickable = true)
-        val styledOnly = formatted(text, linksClickable = false)
+        val clickable = formatted(linksClickable = true)
+        val styledOnly = formatted(linksClickable = false)
 
         assertEquals(clickable.text, styledOnly.text)
         assertEquals(1, clickable.getLinkAnnotations(0, clickable.length).size)
@@ -42,8 +41,8 @@ class ChatTextFormattingTest {
         assertEquals(styledOnly.length, linkSpan.end)
     }
 
-    private fun formatted(text: String, linksClickable: Boolean) = buildAnnotatedString {
-        appendChatTextWithLinks(text, BODY_STYLE, LINK_STYLE, look(linksClickable), onClick = {})
+    private fun formatted(linksClickable: Boolean) = buildAnnotatedString {
+        appendChatTextWithLinks(LINK_TEXT, BODY_STYLE, LINK_STYLE, look(linksClickable), onClick = {})
     }
 
     private fun look(linksClickable: Boolean) = ChatMessageLook(
@@ -61,6 +60,7 @@ class ChatTextFormattingTest {
     )
 
     private companion object {
+        const val LINK_TEXT = "Modpack: https://www.curseforge.com/minecraft/modpacks/cobbleverse"
         val BODY_STYLE = SpanStyle(color = Color.White)
         val LINK_STYLE = SpanStyle(color = Color.Blue)
     }

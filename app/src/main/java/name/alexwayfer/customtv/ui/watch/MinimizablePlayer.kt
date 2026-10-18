@@ -42,6 +42,7 @@ import kotlin.math.roundToInt
 private class PlayerSlots(
     val overlays: @Composable BoxScope.(compactSettled: Boolean) -> Unit,
     val fullscreenInfo: @Composable () -> Unit,
+    val seekbarOverlay: PlayerSeekbarOverlay?,
     val content: @Composable ColumnScope.(MinimizablePlayerLayout) -> Unit,
 )
 
@@ -62,6 +63,8 @@ internal fun MinimizablePlayer(
     overlays: @Composable BoxScope.(compactSettled: Boolean) -> Unit = {},
     // The stream info over a full screen player, shown with its controls.
     fullscreenInfo: @Composable () -> Unit = {},
+    // A layer over a recording's seek bar, such as the chat's heat.
+    seekbarOverlay: PlayerSeekbarOverlay? = null,
     content: @Composable ColumnScope.(MinimizablePlayerLayout) -> Unit,
 ) {
     val activity = LocalActivity.current as MainActivity
@@ -99,7 +102,12 @@ internal fun MinimizablePlayer(
     val swipeOffsetX = if (state.swipeDragging) state.swipeDragX else state.swipeX.value
     val visualState = playerVisualState(scene, with(density) { MiniPlayerWidth.toPx() }, swipeOffsetX)
     BoxWithConstraints(modifier = modifier.playerFrame(scene, visualState, swipeOffsetX, Modifier.blockClicks())) {
-        PlayerSceneBody(scene, visualState, appNavigationBarHeightPx, PlayerSlots(overlays, fullscreenInfo, content))
+        PlayerSceneBody(
+            scene,
+            visualState,
+            appNavigationBarHeightPx,
+            PlayerSlots(overlays, fullscreenInfo, seekbarOverlay, content),
+        )
     }
 }
 
@@ -195,7 +203,7 @@ private fun BoxWithConstraintsScope.PlayerSceneBody(
     )
     val layout = rememberFullscreenChatLayout(scene, constraints.maxWidth - 2 * fullscreenSidePx)
     PlayerContent(scene, frame, layout, slots.content)
-    PlayerVideoBox(scene, frame, layout, slots.fullscreenInfo)
+    PlayerVideoBox(scene, frame, layout, slots.fullscreenInfo, slots.seekbarOverlay)
     // The expanded player covers the navigation bar and its unread dot.
     WhisperUnreadGlow(
         minimized = scene.minimized,

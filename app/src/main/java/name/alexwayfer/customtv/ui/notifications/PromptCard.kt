@@ -25,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchText
@@ -41,8 +43,8 @@ internal fun PromptVisibility(visible: Boolean, content: @Composable () -> Unit)
 }
 
 /**
- * A card that asks for something notifications need. With [dismiss], the text has both actions centered below it;
- * without it, [action] sits at the end of the text.
+ * A card that asks for something notifications or links need. With [dismiss], the text has both actions centered
+ * below it; without it, [action] sits at the end of the text.
  */
 @Composable
 internal fun PromptCard(
@@ -50,6 +52,7 @@ internal fun PromptCard(
     action: PromptAction,
     modifier: Modifier = Modifier,
     dismiss: PromptAction? = null,
+    icon: Painter = rememberVectorPainter(Icons.Outlined.Notifications),
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -65,7 +68,7 @@ internal fun PromptCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(imageVector = Icons.Outlined.Notifications, contentDescription = null)
+            Icon(painter = icon, contentDescription = null)
             Text(
                 text = text,
                 modifier = Modifier

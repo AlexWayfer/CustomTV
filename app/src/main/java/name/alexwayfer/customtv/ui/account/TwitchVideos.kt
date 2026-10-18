@@ -147,7 +147,7 @@ internal fun parseChannelRecordings(body: String): ChannelRecordingsPage? {
     )
 }
 
-private fun parseTwitchVideo(node: JSONObject): TwitchVideo? {
+internal fun parseTwitchVideo(node: JSONObject): TwitchVideo? {
     val id = node.trimmedText("id") ?: return null
     val publishedAt = instant(node, "publishedAt")
     return TwitchVideo(

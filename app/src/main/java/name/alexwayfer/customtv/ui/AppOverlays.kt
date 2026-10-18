@@ -19,10 +19,11 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import name.alexwayfer.customtv.auth.TWITCH_APP_PACKAGE
 import name.alexwayfer.customtv.ui.account.TwitchLinkWarningDialog
 import name.alexwayfer.customtv.ui.account.TwitchPermissionsDialog
 import name.alexwayfer.customtv.ui.account.TwitchSessionEndedDialog
-import name.alexwayfer.customtv.ui.account.openTwitchLinkSettings
+import name.alexwayfer.customtv.ui.account.openLinkSettings
 import name.alexwayfer.customtv.ui.account.openTwitchLoginPage
 import name.alexwayfer.customtv.ui.account.releaseLoginBrowser
 
@@ -70,7 +71,7 @@ internal fun AppLoginPrompts(scene: AppScene) {
             onDispose { lifecycle.removeObserver(observer) }
         }
         TwitchLinkWarningDialog(
-            onOpenSettings = { openTwitchLinkSettings(activity) },
+            onOpenSettings = { openLinkSettings(activity, TWITCH_APP_PACKAGE) },
             onDismiss = { accountViewModel.deviceLogin.dismissTwitchLinkWarning() },
         )
     }

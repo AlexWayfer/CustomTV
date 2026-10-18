@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.copyableTextWithAuthor
 import name.alexwayfer.customtv.chat.formatChatTimestamp
@@ -160,7 +161,12 @@ private fun ChatListMessages(
         verticalArrangement = Arrangement.Bottom,
     ) {
         items(messages, key = { message -> message.id }) { message ->
-            Box(modifier = Modifier.overlayChatRowMorph(rowLook.overlayRowMorph, message.id)) {
+            val displayMessage = rememberDisplayMessage(message, rowLook.settings.appearance)
+            Box(
+                modifier = Modifier
+                    .zIndex(chatRowZIndex(displayMessage))
+                    .overlayChatRowMorph(rowLook.overlayRowMorph, message.id),
+            ) {
                 rowLook.Message(
                     message,
                     scroll.rowHold.selectedMessageId == message.id,

@@ -4,7 +4,6 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.State
 import androidx.compose.ui.text.TextRange
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.PickerEmote
 import name.alexwayfer.customtv.chat.chatSendWarned
@@ -167,16 +166,21 @@ internal class ChatInputActions(
         }
     }
 
-    /** The end button sends the draft, or opens the chat menu when there is nothing to send. */
+    /** The end button sends the draft, cancels a slow send, or opens the chat menu when there is nothing to send. */
     fun tapEndButton(hasMessage: Boolean) {
-        if (composer.sending) return
-        if (hasMessage) {
-            submit()
-            return
+        when (chatFieldEndTap(composer.sending, composer.sendCancelable, hasMessage)) {
+            ChatFieldEndTap.CancelSend -> {
+                composer.cancelSend()
+                if (chatCancelFocusesField(field.focused, composer.pickerOpen)) focusField()
+            }
+            ChatFieldEndTap.Nothing -> Unit
+            ChatFieldEndTap.Send -> submit()
+            ChatFieldEndTap.Menu -> {
+                if (field.menuOpen) return
+                composer.pickerOpen = false
+                input.value.sheetKeyboard.open { field.menuOpen = true }
+            }
         }
-        if (field.menuOpen) return
-        composer.pickerOpen = false
-        input.value.sheetKeyboard.open { field.menuOpen = true }
     }
 
     fun submit() {
@@ -192,14 +196,13 @@ internal class ChatInputActions(
             openRules(ChatRulesTrigger.Send)
             return
         }
-        composer.sending = true
         composer.sendError = null
         if (chatSendHidesKeyboard(now.compose.keepKeyboardAfterSend)) {
             now.focusManager.clearFocus(force = true)
             now.keyboard?.hide()
         }
         // The send works with the chat it was tapped in, even if the screen moves on, such as with a raid.
-        scope.launch {
+        composer.startSend(scope) {
             if (sharing != null) share(sharing, message, now.compose) else send(message, now)
         }
     }
@@ -220,7 +223,6 @@ internal class ChatInputActions(
 
     private suspend fun share(sharing: ChatShareOffer, message: String, compose: ChatCompose) {
         val error = sharing.share(message)
-        composer.sending = false
         if (error == null) {
             compose.draft.clearText()
             compose.onSent()
@@ -242,7 +244,6 @@ internal class ChatInputActions(
         } else {
             sent.repository.send(token, channelId, userId, message, compose.replyParentMessageId)
         }
-        composer.sending = false
         val draftMatches = chatMessageToSend(compose.draft.text.toString()) == message
         if (chatSendCompleted(result, draftMatches)) {
             compose.shareOffer?.onPlainSent?.invoke()

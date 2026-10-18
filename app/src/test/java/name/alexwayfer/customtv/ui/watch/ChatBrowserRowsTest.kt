@@ -8,34 +8,41 @@ class ChatBrowserRowsTest {
     fun withoutTheExperimentalLoginOnlyTheSiteIsOffered() =
         assertEquals(
             ChatBrowserRows(openInBrowser = true, experimentalLogin = false),
-            chatBrowserRows(ExperimentalLoginOffer.Unavailable, loggedIn = true),
+            chatBrowserRows(ExperimentalLoginOffer.Unavailable, loggedIn = true, liveChat = true),
         )
 
     @Test
     fun aLoggedInViewerIsOfferedTheExperimentalLoginNextToTheSite() =
         assertEquals(
             ChatBrowserRows(openInBrowser = true, experimentalLogin = true),
-            chatBrowserRows(ExperimentalLoginOffer.CanLogIn, loggedIn = true),
+            chatBrowserRows(ExperimentalLoginOffer.CanLogIn, loggedIn = true, liveChat = true),
         )
 
     @Test
     fun aLoggedOutViewerIsNotOfferedTheExperimentalLogin() =
         assertEquals(
             ChatBrowserRows(openInBrowser = true, experimentalLogin = false),
-            chatBrowserRows(ExperimentalLoginOffer.CanLogIn, loggedIn = false),
+            chatBrowserRows(ExperimentalLoginOffer.CanLogIn, loggedIn = false, liveChat = true),
         )
 
     @Test
     fun aLoginInProgressIsNotOfferedAgain() =
         assertEquals(
             ChatBrowserRows(openInBrowser = true, experimentalLogin = false),
-            chatBrowserRows(ExperimentalLoginOffer.InProgress, loggedIn = true),
+            chatBrowserRows(ExperimentalLoginOffer.InProgress, loggedIn = true, liveChat = true),
         )
 
     @Test
     fun theExperimentalLoginHidesTheSite() =
         assertEquals(
             ChatBrowserRows(openInBrowser = false, experimentalLogin = false),
-            chatBrowserRows(ExperimentalLoginOffer.LoggedIn, loggedIn = true),
+            chatBrowserRows(ExperimentalLoginOffer.LoggedIn, loggedIn = true, liveChat = true),
+        )
+
+    @Test
+    fun aReplayedChatOffersNeitherTheSiteNorTheExperimentalLogin() =
+        assertEquals(
+            ChatBrowserRows(openInBrowser = false, experimentalLogin = false),
+            chatBrowserRows(ExperimentalLoginOffer.CanLogIn, loggedIn = true, liveChat = false),
         )
 }

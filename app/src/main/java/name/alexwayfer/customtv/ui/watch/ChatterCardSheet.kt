@@ -79,6 +79,8 @@ internal data class ChatterCardRequest(
     val badgeUrls: Map<String, String>,
     /** The message the card was opened from, for the moderator to delete. */
     val message: ChatMessage? = null,
+    /** False for a chatter with no message to take [badges] from: the card loads them. */
+    val badgesKnown: Boolean = true,
 )
 
 internal class OwnChannelFollow(
@@ -237,14 +239,16 @@ private fun chatterCardChatter(
     val shownLogin = profile?.login?.takeIf { it.isNotBlank() } ?: card.login
     // A card opened by `/user` for someone who has not written here gets the ID from the loaded profile.
     val knownUserId = card.userId ?: profile?.userId
+    val badges = rememberChatterCardBadges(card, knownUserId)
+    val shownBadges = badges.badges.orEmpty()
     return ChatterCardChatter(
         login = shownLogin,
         name = profile?.displayName?.takeIf { it.isNotBlank() } ?: card.displayName,
         userId = knownUserId,
         selfLogin = selfLogin,
-        badgeUrls = card.badgeUrls,
-        badgeLines = rememberChatterBadgeLines(card.badges, card.badgeUrls),
-        subscription = remember(card.badges) { chatterSubscription(card.badges) },
+        badgeUrls = badges.imageUrls,
+        badgeLines = rememberChatterBadgeLines(shownBadges, badges.imageUrls),
+        subscription = remember(shownBadges) { chatterSubscription(shownBadges) },
         messages = messages,
         mentions = mentions,
         // The row in the chat follows a deletion, so the card shows that copy of the message.
@@ -255,7 +259,7 @@ private fun chatterCardChatter(
             LocalOwnChannelFollow.current?.userId,
             selfLogin,
         ),
-        modTools = rememberChatterModTools(knownUserId, shownLogin, card.badges),
+        modTools = rememberChatterModTools(knownUserId, shownLogin, badges.badges),
     )
 }
 

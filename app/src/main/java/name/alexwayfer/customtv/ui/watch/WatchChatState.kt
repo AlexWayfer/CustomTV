@@ -41,6 +41,7 @@ internal class WatchChatState {
 internal data class WatchChatData(
     val messages: State<List<ChatMessage>>,
     val recentChatLoadState: State<RecentChatLoadState>,
+    val reconnecting: State<Boolean>,
     val sessionChatters: State<Map<String, String>>,
     val badgeUrls: State<Map<String, String>>,
     val sevenTvEmotes: State<Map<String, SevenTvEmote>>,
@@ -56,6 +57,7 @@ internal data class WatchChatData(
 internal fun collectWatchChatData(chatViewModel: ChatViewModel): WatchChatData = WatchChatData(
     messages = chatViewModel.messages.collectAsStateWithLifecycle(),
     recentChatLoadState = chatViewModel.recentChatLoadState.collectAsStateWithLifecycle(),
+    reconnecting = chatViewModel.reconnecting.collectAsStateWithLifecycle(),
     sessionChatters = chatViewModel.sessionChatters.collectAsStateWithLifecycle(),
     badgeUrls = chatViewModel.badgeUrls.collectAsStateWithLifecycle(),
     sevenTvEmotes = chatViewModel.sevenTvEmotes.collectAsStateWithLifecycle(),

@@ -28,7 +28,10 @@ internal fun chatUserCommand(text: String, chatters: Map<String, String>): ChatU
     return if (TWITCH_LOGIN.matches(login)) ChatUserCommand.Open(login) else ChatUserCommand.Invalid
 }
 
-/** The card for [login], with the name, ID, and badges of their latest message in this chat when there is one. */
+/**
+ * The card for [login], with the name, ID, and badges of their latest message in this chat when there is one;
+ * without one, the card loads the badges.
+ */
 internal fun chatterCardRequestForLogin(
     login: String,
     messages: List<ChatMessage>,
@@ -41,5 +44,6 @@ internal fun chatterCardRequestForLogin(
         userId = latest?.userId,
         badges = latest?.badges.orEmpty(),
         badgeUrls = badgeUrls,
+        badgesKnown = latest != null,
     )
 }

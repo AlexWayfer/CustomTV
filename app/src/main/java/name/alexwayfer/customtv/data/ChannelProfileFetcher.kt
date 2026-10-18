@@ -62,11 +62,13 @@ internal object ChannelProfileFetcher {
         }
     }
 
-    private const val PROFILE_QUERY = $$"query($login:String!){user(login:$login){" +
+    /** The category's name, and its ID and box art, with which the panel under the stream opens it in Explore. */
+    private const val CATEGORY_FIELDS = "id name boxArtURL(width:144,height:192)"
+    private const val PROFILE_QUERY =$$"query($login:String!){user(login:$login){" +
         "id login displayName profileImageURL(width:150) primaryColorHex " +
         "stream{title createdAt archiveVideo{id} viewersCount collaborationViewersCount " +
-        "game{name} freeformTags{name}} " +
-        "broadcastSettings{title game{name}} " +
+        "game{$CATEGORY_FIELDS} freeformTags{name}} " +
+        "broadcastSettings{title game{$CATEGORY_FIELDS}} " +
         "channel{collaboration{collaborators{status user{login profileImageURL(width:150)}}} " +
         "communityPointsSettings{image{url} defaultImage{url} " +
         "automaticRewards{type cost defaultCost backgroundColor} " +
@@ -74,8 +76,8 @@ internal object ChannelProfileFetcher {
         "chatSettings{rules}}}"
     private const val HOME_PROFILE_FIELDS =
         "id login displayName profileImageURL(width:150) primaryColorHex " +
-            "stream{title createdAt archiveVideo{id} viewersCount collaborationViewersCount game{name}} " +
-            "broadcastSettings{title game{name}} " +
+            "stream{title createdAt archiveVideo{id} viewersCount collaborationViewersCount game{$CATEGORY_FIELDS}} " +
+            "broadcastSettings{title game{$CATEGORY_FIELDS}} " +
             "channel{collaboration{collaborators{status user{login profileImageURL(width:150)}}}}"
 }
 

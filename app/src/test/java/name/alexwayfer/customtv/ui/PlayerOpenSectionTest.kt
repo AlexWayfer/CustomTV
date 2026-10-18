@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -191,6 +192,18 @@ class PlayerOpenSectionTest {
                 watching = true,
             ),
         )
+    }
+
+    @Test
+    fun aRecordingLinkOverAFullStreamReturnsToThatStream() {
+        assertEquals("praden", linkedVideoReturnChannel(watching = true, liveMinimized = false, channel = "praden"))
+    }
+
+    @Test
+    fun aRecordingLinkOverAMinimizedStreamOrNoneReturnsNowhere() {
+        assertNull(linkedVideoReturnChannel(watching = true, liveMinimized = true, channel = "praden"))
+        assertNull(linkedVideoReturnChannel(watching = false, liveMinimized = false, channel = null))
+        assertNull(linkedVideoReturnChannel(watching = true, liveMinimized = false, channel = null))
     }
 
     @Test

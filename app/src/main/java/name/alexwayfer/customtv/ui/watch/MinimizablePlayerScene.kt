@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.Dp
 import name.alexwayfer.customtv.data.FullscreenChatMode
 import name.alexwayfer.customtv.data.FullscreenChatSide
 import name.alexwayfer.customtv.data.GestureHint
+import name.alexwayfer.customtv.player.PlayerSeekbar
 import name.alexwayfer.customtv.player.TwitchPlaybackTarget
 import name.alexwayfer.customtv.ui.GestureHintReporter
 
@@ -45,6 +46,9 @@ internal data class PlayerActions(
 @Stable
 internal class PlayerSceneState {
     var measuredControlBarPx by mutableStateOf<Int?>(null)
+
+    // Where a recording's seek bar sits.
+    var seekbar by mutableStateOf<PlayerSeekbar?>(null)
     var composerPanelPx by mutableIntStateOf(0)
     var chatComposerOpen by mutableStateOf(false)
 

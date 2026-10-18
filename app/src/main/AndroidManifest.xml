@@ -62,6 +62,38 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Android 12 and later hand twitch.tv links to the app only once the user adds them in its
+             Open by default settings: the domain is Twitch's, so it cannot be verified. The filter takes only
+             the pages twitchLinkTarget opens: Chrome hands a page the filter takes from the app's own Custom
+             Tabs, such as the one after login, to the app. -->
+        <activity
+            android:name=".links.TwitchLinkActivity"
+            android:enabled="@bool/app_links_supported"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:scheme="http" />
+                <data android:host="twitch.tv" />
+                <data android:host="www.twitch.tv" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/about" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/about/" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/schedule" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/schedule/" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/videos" />
+                <data android:pathAdvancedPattern="/[A-Za-z0-9_]+/videos/" />
+                <data android:pathAdvancedPattern="/videos/[0-9]+" />
+                <data android:pathAdvancedPattern="/videos/[0-9]+/" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".diagnostics.DiagnosticReportActivity"
             android:excludeFromRecents="true"

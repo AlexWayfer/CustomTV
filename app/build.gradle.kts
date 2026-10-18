@@ -21,7 +21,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 25
+        versionCode = 27
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -37,14 +37,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.9.0"
+            versionName = "1.10.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.8.0"
+                versionName = "1.9.0"
                 buildConfigField("boolean", "PREMIUM", "true")
                 // Premium logs in to Telegram: its group gives the access and the updates.
                 val telegram = Properties().apply {
@@ -117,6 +117,22 @@ android {
     // A unit test of code that logs through AppLog reaches android.util.Log, which only answers on a device.
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric reads the app's resources and merged manifest.
+        unitTests.isIncludeAndroidResources = true
+        // Robolectric reaches into the JDK's internals, which Java 17 and newer close (robolectric.org/getting-started).
+        unitTests.all {
+            it.jvmArgs(
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.base/java.util=ALL-UNNAMED",
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+                "--add-opens=java.base/java.net=ALL-UNNAMED",
+                "--add-opens=java.base/java.security=ALL-UNNAMED",
+                "--add-opens=java.base/java.text=ALL-UNNAMED",
+                "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+            )
+        }
     }
 }
 
@@ -151,6 +167,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.coroutines)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.svg)
@@ -170,6 +187,12 @@ dependencies {
     debugImplementation(libs.androidx.tracing.perfetto.binary)
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    // Android and Compose on the JVM, so tests can render a composable and touch it on a virtual clock.
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Compose's tests wait on Espresso, whose version they bring (3.5) fails on Android 17's input manager.
+    testImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
 }

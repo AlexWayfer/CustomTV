@@ -78,7 +78,9 @@ internal fun ProfileTabPager(
     }
     Column(modifier) {
         // Each tab is as wide as its title, and the row scrolls when they do not fit, as with a large font. It reaches
-        // the screen's edges, and its first title lines up with the profile's text.
+        // the screen's edges, and its first tab starts at the profile's text, so its title stands further in.
+        // Material 3 sets the first scrollable tab off the leading edge, so it is clear that more tabs follow; its
+        // 52dp is less here, to keep the row close to the text.
         PrimaryScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             // Pinned under the profile's bar, the row covers the pages that scroll on under it.
@@ -88,7 +90,7 @@ internal fun ProfileTabPager(
                 .zIndex(1f)
                 .graphicsLayer { translationY = tabRowPin().toFloat() },
             containerColor = MaterialTheme.colorScheme.background,
-            edgePadding = ProfileSideMargin - TabTitleSidePadding,
+            edgePadding = ProfileSideMargin,
         ) {
             tabTitles.forEachIndexed { index, title ->
                 Tab(
@@ -117,6 +119,3 @@ internal fun ProfileTabPager(
         }
     }
 }
-
-/** The room Material 3 keeps on each side of a tab's title. */
-private val TabTitleSidePadding = 16.dp

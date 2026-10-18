@@ -65,9 +65,11 @@ private fun unbalanced(raw: String, end: Int, open: Char, close: Char): Boolean 
 }
 
 private val CHAT_URL_REGEX = Regex(
-    // A link with a scheme or `www.`, or a bare domain with an optional port and path.
-    """(?i)(?<![\p{L}\p{N}_@])(?:(?:https?://|www\.)[^\s<>\[\]"']+|""" +
-        """(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?::[0-9]{1,5})?(?:[/?#][^\s<>\[\]"']*)?)""",
+    // A link with a scheme or `www.`, which may follow an `@` ("@https://..."), or a bare domain
+    // with an optional port and path, which may not, so an email stays plain text.
+    """(?i)(?<![\p{L}\p{N}_])(?:https?://|www\.)[^\s<>\[\]"']+|""" +
+        """(?<![\p{L}\p{N}_@])(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(?::[0-9]{1,5})?""" +
+        """(?:[/?#][^\s<>\[\]"']*)?""",
 )
 
 private val BARE_DOMAIN_REGEX = Regex(

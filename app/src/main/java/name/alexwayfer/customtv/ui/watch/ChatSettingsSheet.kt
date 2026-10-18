@@ -56,7 +56,8 @@ import name.alexwayfer.customtv.ui.settings.SettingsStepSlider
 @Composable
 internal fun ChatSettingsSheet(
     channelLogin: String,
-    browserSheetHeightPx: () -> Int,
+    /** Null over a recording's or a clip's replayed chat: the site and the experimental login are for the live one. */
+    browserSheetHeightPx: (() -> Int)?,
     readableColors: Boolean,
     timestamps: Boolean,
     textSize: Int,
@@ -72,6 +73,8 @@ internal fun ChatSettingsSheet(
     /** Null when the channel has no rules to show. */
     onViewChatRules: (() -> Unit)?,
     onDismiss: () -> Unit,
+    /** The chat recap's row, given a way to close the sheet before its action; none over a replayed chat. */
+    recapRow: @Composable (hideThen: (() -> Unit) -> Unit) -> Unit = {},
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
     val scope = rememberCoroutineScope()
@@ -111,6 +114,7 @@ internal fun ChatSettingsSheet(
             onViewChatRules?.let { view ->
                 ChatSettingsRow(stringResource(R.string.view_chat_rules), Modifier.clickable { hideThen(view) })
             }
+            recapRow(hideThen)
             ChatSettingsToggle(stringResource(R.string.readable_colors), readableColors, onReadableColorsChange)
             ChatSettingsToggle(stringResource(R.string.timestamps), timestamps, onTimestampsChange)
             ChatTextSizeSlider(textSize, onTextSizeChange)
@@ -157,12 +161,16 @@ private fun ChatTextSizeSlider(textSize: Int, onTextSizeChange: (Int) -> Unit) {
 @Composable
 private fun ColumnScope.ChatBrowserRows(
     channelLogin: String,
-    browserSheetHeightPx: () -> Int,
+    browserSheetHeightPx: (() -> Int)?,
     loggedIn: Boolean,
     onExperimentalLogin: () -> Unit,
 ) {
     val context = LocalContext.current
-    val browserRows = chatBrowserRows(experimentalLoginOffer(), loggedIn = loggedIn)
+    val browserRows = chatBrowserRows(
+        experimentalLoginOffer(),
+        loggedIn = loggedIn,
+        liveChat = browserSheetHeightPx != null,
+    )
     AnimatedVisibility(
         visible = browserRows.openInBrowser,
         enter = expandVertically(),
@@ -172,7 +180,7 @@ private fun ColumnScope.ChatBrowserRows(
             label = stringResource(R.string.open_chat_in_browser),
             supportingText = stringResource(R.string.open_chat_in_browser_hint),
             modifier = Modifier.clickable {
-                openTwitchChatInBrowser(context, channelLogin, browserSheetHeightPx())
+                browserSheetHeightPx?.let { openTwitchChatInBrowser(context, channelLogin, it()) }
             },
         )
     }

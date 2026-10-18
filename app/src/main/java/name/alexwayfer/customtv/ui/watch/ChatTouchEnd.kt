@@ -11,10 +11,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 internal enum class ChatTouchEnd { Released, Moved, Held }
 
 /**
- * A tap or a scroll on the chat takes the focus from the message field, so the keyboard goes. A finger held still
- * for a long press keeps it: the message menu opens over the keyboard, and the message being typed stays at hand.
+ * Only a tap on the chat takes the focus from the message field, so the keyboard goes. A scroll or a reply swipe
+ * keeps it, so the rows do not jump under the finger as the chat grows; a finger held still for a long press keeps
+ * it too: the message menu opens over the keyboard, and the message being typed stays at hand.
  */
-internal fun chatTouchClearsFocus(end: ChatTouchEnd): Boolean = end != ChatTouchEnd.Held
+internal fun chatTouchClearsFocus(end: ChatTouchEnd): Boolean = end == ChatTouchEnd.Released
 
 /**
  * How a touch still under the long press timeout has ended so far: lifted, moved past the touch slop, or not yet

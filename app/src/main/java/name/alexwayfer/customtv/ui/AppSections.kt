@@ -134,7 +134,7 @@ private fun AppScene.showExploreCategories() {
 
 /** Opens [category] in Explore, over its categories, as the search picked it from Home or from Explore itself. */
 private fun AppScene.openExploreCategory(category: TwitchCategory) {
-    shell.exploreOpenCategory = OneShotRequest(category)
+    shell.exploreOpenCategory = OneShotRequest(ExploreCategoryOpen(category))
     shell.section = AppSection.Explore
 }
 
@@ -238,6 +238,8 @@ private fun ExploreSectionPage(scene: AppScene) {
         reselected = shell.exploreReselected,
         showCategories = shell.exploreShowCategories,
         openCategory = shell.exploreOpenCategory,
+        closeCategory = shell.exploreCloseCategory,
+        onBackToPlayer = if (scene.playerMinimized) scene::expandPlayerOverExploreCategory else null,
         onBack = { shell.section = AppSection.Home },
         onOpen = { channel, live ->
             when (homeChannelTarget(live)) {

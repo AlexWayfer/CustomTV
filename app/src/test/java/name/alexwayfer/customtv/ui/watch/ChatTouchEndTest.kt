@@ -17,12 +17,12 @@ class ChatTouchEndTest {
     }
 
     @Test
-    fun aScrollPastTheSlopHidesTheKeyboard() {
+    fun aScrollOrSwipePastTheSlopKeepsTheKeyboard() {
         assertEquals(
             ChatTouchEnd.Moved,
             chatTouchEndBeforeLongPress(released = false, distancePx = 9f, touchSlopPx = 8f),
         )
-        assertTrue(chatTouchClearsFocus(ChatTouchEnd.Moved))
+        assertFalse(chatTouchClearsFocus(ChatTouchEnd.Moved))
     }
 
     @Test

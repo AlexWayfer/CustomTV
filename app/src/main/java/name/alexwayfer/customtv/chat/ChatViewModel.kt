@@ -67,7 +67,12 @@ class ChatViewModel(
         mentionSelf = { mentionSelf },
     )
     internal val recentChatLoadState: StateFlow<RecentChatLoadState> = recentChat.state
-    private val notices = ChatConnectionNotices(_messages, onWelcomed = recentChat::start)
+    private val notices = ChatConnectionNotices(
+        _messages,
+        onWelcomed = recentChat::start,
+        onReconnected = recentChat::fillReconnectGap,
+    )
+    internal val reconnecting: StateFlow<Boolean> = notices.reconnecting
     private val deletions = ChatDeletions(_messages, _chatterHistory)
 
     private var collectJob: Job? = null

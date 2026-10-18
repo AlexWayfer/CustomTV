@@ -176,6 +176,8 @@ object ChannelAvatarRepository {
 internal fun ChannelProfile.identity(): ChannelProfile = copy(
     streamTitle = null,
     categoryName = null,
+    categoryId = null,
+    categoryBoxArtUrl = null,
     streamStartedAtMillis = null,
     currentStreamVideoId = null,
     viewerCount = null,

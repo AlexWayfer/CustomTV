@@ -21,6 +21,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.chat.emotePanelHeightPx
 import name.alexwayfer.customtv.chat.emotePickerHeightPx
 import name.alexwayfer.customtv.data.CHAT_MESSAGE_MAX_LENGTH
@@ -37,8 +43,48 @@ internal class ChatComposerState {
     var rulesOpen by mutableStateOf(false)
     var rulesTrigger by mutableStateOf(ChatRulesTrigger.MessageField)
     var focusAfterRules by mutableStateOf(false)
+    var recapOpen by mutableStateOf(false)
     var sending by mutableStateOf(false)
+        private set
+
+    /** The send has run for [CHAT_SEND_CANCEL_DELAY], so a tap on its progress cancels it. */
+    var sendCancelable by mutableStateOf(false)
+        private set
     var sendError by mutableStateOf<ChatSendError?>(null)
+    private var sendJob: Job? = null
+
+    /** Runs [send] in [scope] as the send under way, which the end button can cancel once it takes a while. */
+    fun startSend(scope: CoroutineScope, send: suspend () -> Unit) {
+        sending = true
+        sendCancelable = false
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            val unlock = launch {
+                delay(CHAT_SEND_CANCEL_DELAY)
+                sendCancelable = true
+            }
+            try {
+                send()
+            } finally {
+                unlock.cancel()
+                // A cancelled send may finish after the next one has started; that one keeps its progress.
+                if (sendJob === coroutineContext.job) endSend()
+            }
+        }
+        sendJob = job
+        job.start()
+    }
+
+    /** Stops the send under way; the draft stays in the field. */
+    fun cancelSend() {
+        sendJob?.cancel()
+        endSend()
+    }
+
+    private fun endSend() {
+        sending = false
+        sendCancelable = false
+        sendJob = null
+    }
 }
 
 @Composable

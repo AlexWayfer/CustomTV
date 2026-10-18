@@ -5,8 +5,11 @@ import name.alexwayfer.customtv.chat.RecentChatLoadState
 import name.alexwayfer.customtv.ui.LoadingBar
 import name.alexwayfer.customtv.ui.rememberLoadingBarState
 
-/** The bar over the chat's top while the messages from before the open load. */
+/**
+ * The bar over the chat's top while the messages from before the open load, and while a lost chat connects again
+ * and then loads what it missed.
+ */
 @Composable
-internal fun RecentChatLoadingIndicator(state: RecentChatLoadState) {
-    LoadingBar(rememberLoadingBarState(state == RecentChatLoadState.Loading))
+internal fun RecentChatLoadingIndicator(state: RecentChatLoadState, reconnecting: Boolean) {
+    LoadingBar(rememberLoadingBarState(state == RecentChatLoadState.Loading || reconnecting))
 }

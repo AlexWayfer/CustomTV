@@ -4,9 +4,12 @@ package name.alexwayfer.customtv.data
 fun profileAfterStreamStatus(profile: ChannelProfile, event: StreamStatusEvent): ChannelProfile? {
     if (!profile.login.equals(event.login, ignoreCase = true)) return null
     return when (event) {
+        // The event has no box art: the old one stays only while the category is the same.
         is StreamStatusEvent.Title -> profile.copy(
             streamTitle = event.title,
             categoryName = event.categoryName,
+            categoryId = event.categoryId,
+            categoryBoxArtUrl = profile.categoryBoxArtUrl.takeIf { event.categoryId == profile.categoryId },
         )
         is StreamStatusEvent.Online -> profile.copy(
             isLive = true,

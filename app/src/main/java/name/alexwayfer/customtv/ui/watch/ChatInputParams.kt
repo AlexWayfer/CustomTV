@@ -74,6 +74,18 @@ internal data class ChatMenu(
     val onRefreshLabels: () -> Job,
     /** Opens the signed-in user's own chatter card; null when logged out. */
     val onOpenOwnProfile: (() -> Unit)?,
+    /** The live chat a recap retells; null until the channel's ID is known. */
+    val recap: ChatRecapSource?,
+)
+
+/** The live chat a recap retells: its channel, the send times of the messages it shows, and the AI settings. */
+internal class ChatRecapSource(
+    val channelId: String,
+    val channelName: String,
+    /** Oldest first, read when the menu opens. */
+    val messageTimes: () -> List<Long>,
+    /** Opens Settings at the AI model and its API key. */
+    val onOpenSettings: () -> Unit,
 )
 
 /** Where the bar sits, what it shows around the field, and what it tells the screen. */

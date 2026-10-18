@@ -2,11 +2,11 @@
 <resources>
     <string name="refresh_emotes_and_labels">Обновить эмоуты</string>
     <string name="premium_experimental">Экспериментально:</string>
-    <string name="premium_feature_past_broadcasts">Записи трансляций</string>
+    <string name="premium_feature_past_broadcasts">Записи трансляций и клипы</string>
     <string name="premium_feature_notifications">Настраиваемые уведомления</string>
     <string name="premium_feature_moderation">Инструменты модерации</string>
     <string name="premium_feature_chat">Превью ссылок в чате</string>
-    <string name="premium_feature_chatter_portraits">ИИ-портреты чаттеров</string>
+    <string name="premium_feature_ai">ИИ-портреты чаттеров и пересказ чата</string>
     <string name="premium_and_more">И не только!</string>
     <string name="premium_upgrade">Перейти на Premium</string>
     <string name="premium_not_now">Не сейчас</string>

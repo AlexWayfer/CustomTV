@@ -86,7 +86,7 @@ internal fun WatchChannelEffects(scene: WatchScene) {
         accessToken = account.raidToken,
         chatViewModel = chatViewModel,
     )
-    WatchPresenceEffect(channelLogin = scene.channel, isLive = profile.isLive)
+    WatchPresenceEffect(channelLogin = scene.channel, isLive = profile.isLive, chatMessages = chatViewModel.messages)
     val liveStatusHandler = rememberUpdatedState(scene.navigation.onLiveStatus)
     LaunchedEffect(profile.isLive) {
         liveStatusHandler.value(profile.isLive)

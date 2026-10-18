@@ -4,8 +4,11 @@ import androidx.compose.ui.unit.Constraints
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.PickerEmote
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 class ChatComposerPartsTest {
     private val nick = ChatNick("streamer", "Streamer")
@@ -39,6 +42,41 @@ class ChatComposerPartsTest {
     @Test
     fun anEmptyFieldShowsTheMenu() =
         assertEquals(ChatFieldEndIcon.Menu, chatFieldEndIcon(sending = false, hasMessage = false))
+
+    @Test
+    fun aTapOnAJustStartedSendDoesNothing() = assertEquals(
+        ChatFieldEndTap.Nothing,
+        chatFieldEndTap(sending = true, cancelable = false, hasMessage = true),
+    )
+
+    @Test
+    fun aTapOnALongSendCancelsIt() = assertEquals(
+        ChatFieldEndTap.CancelSend,
+        chatFieldEndTap(sending = true, cancelable = true, hasMessage = true),
+    )
+
+    @Test
+    fun aTapWithATypedMessageSendsIt() =
+        assertEquals(ChatFieldEndTap.Send, chatFieldEndTap(sending = false, cancelable = false, hasMessage = true))
+
+    @Test
+    fun aTapOnAnEmptyFieldOpensTheMenu() =
+        assertEquals(ChatFieldEndTap.Menu, chatFieldEndTap(sending = false, cancelable = false, hasMessage = false))
+
+    @Test
+    fun aCancelledSendThatHidTheKeyboardBringsItBack() =
+        assertTrue(chatCancelFocusesField(fieldFocused = false, pickerOpen = false))
+
+    @Test
+    fun aCancelledSendLeavesTheOpenEmotePicker() =
+        assertFalse(chatCancelFocusesField(fieldFocused = false, pickerOpen = true))
+
+    @Test
+    fun aCancelledSendLeavesAFocusedFieldAsItIs() =
+        assertFalse(chatCancelFocusesField(fieldFocused = true, pickerOpen = false))
+
+    @Test
+    fun cancellingWaitsPastADoubleTap() = assertTrue(CHAT_SEND_CANCEL_DELAY > 600.milliseconds)
 
     @Test
     fun theOverlayGetsWhatTheBarLeavesOfTheColumn() =

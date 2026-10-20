@@ -69,6 +69,7 @@ internal fun rememberChatterCardLoad(login: String, userId: String?): ChatterCar
         ProfileDetailsRepository.load(login)?.let { load.profile = it.toChatterProfile() }
         load.loaded = true
     }
+    TopChatterCardRefreshEffect(login)
     val cache = LocalChatterCardCache.current
     val ownFollow = LocalOwnChannelFollow.current
     val broadcasterId = LocalEmotePreviewChannel.current.twitchUserId

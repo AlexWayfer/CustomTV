@@ -1,6 +1,9 @@
 package name.alexwayfer.customtv.data
 
 import java.time.Instant
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.UiText
 import org.json.JSONArray
@@ -13,6 +16,21 @@ import org.junit.Test
 
 class ChatterLabelsRepositoryTest {
     private val chatter = LabeledChatter(userId = "123", login = "chatter", displayName = "Chatter")
+
+    @Test
+    fun refreshesAtOnceWhenNeverChecked() {
+        assertEquals(Duration.ZERO, chatterLabelsRefreshDelay(sinceLastCheck = null, interval = 1.minutes))
+    }
+
+    @Test
+    fun waitsTheRestOfTheIntervalAfterARecentCheck() {
+        assertEquals(40.seconds, chatterLabelsRefreshDelay(sinceLastCheck = 20.seconds, interval = 1.minutes))
+    }
+
+    @Test
+    fun refreshesAtOnceAfterALongerPauseInTheBackground() {
+        assertEquals(Duration.ZERO, chatterLabelsRefreshDelay(sinceLastCheck = 5.minutes, interval = 1.minutes))
+    }
 
     @Test
     fun matchesAssignmentsByStableUserIdAndSkipsDisabledLabels() {

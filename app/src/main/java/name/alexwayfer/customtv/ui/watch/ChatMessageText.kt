@@ -77,6 +77,7 @@ internal data class ChatMessageLook(
     val linksClickable: Boolean,
     val includeAuthor: Boolean,
     val timestampText: String?,
+    val topChatter: TopChatterBadge? = null,
 ) {
     val bodyColor: Color get() = if (actionColor) nickColor else TwitchText
     val bodyFontStyle: FontStyle get() = if (actionItalic) FontStyle.Italic else FontStyle.Normal
@@ -130,6 +131,13 @@ private fun AnnotatedString.Builder.appendChatAuthor(
 ) {
     val sizes = look.sizes
     appendChatTimestamp(look.timestampText, sizes.timestamp)
+    appendTopChatterBadge(
+        look.topChatter,
+        sizes,
+        inlineContent,
+        onClick = actions.openAuthor,
+        onLongClick = actions.longClick,
+    )
     message.badges.forEachIndexed { index, badge ->
         val url = look.badgeUrls[badge.key] ?: return@forEachIndexed
         val key = "badge_$index"

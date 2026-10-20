@@ -3,7 +3,10 @@ package name.alexwayfer.customtv.ui.account
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
@@ -28,9 +31,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
+import name.alexwayfer.customtv.ui.PremiumLockIcon
 
 internal fun profilePageSettled(page: Int, tabCount: Int): ProfilePageSettled =
     if (page >= tabCount) ProfilePageSettled.OpenChat else ProfilePageSettled.ShowTab(page)
+
+/**
+ * Where the row marks a page: the locked tabs sit between the tabs with pages and Chat and have no page of their own,
+ * so Chat stands [lockedCount] further along the row than in the pager.
+ */
+internal fun profileTabRowIndex(page: Int, tabCount: Int, lockedCount: Int): Int =
+    if (page < tabCount) page else page + lockedCount
 
 /**
  * The least height of the tabs, so their pages reach the bottom of [viewportPx] and a swipe below a short page still
@@ -39,9 +50,26 @@ internal fun profilePageSettled(page: Int, tabCount: Int): ProfilePageSettled =
 internal fun profileTabsMinHeightPx(viewportPx: Int, contentPx: Int, tabsPx: Int): Int =
     (viewportPx - (contentPx - tabsPx)).coerceAtLeast(0)
 
+/** A Premium tab the free build shows: its title with a lock, never selected. */
+@Composable
+private fun LockedProfileTab(title: Int, onClick: () -> Unit) {
+    Tab(
+        selected = false,
+        onClick = onClick,
+        text = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(title))
+                PremiumLockIcon(Modifier.padding(start = 4.dp).size(16.dp))
+            }
+        },
+        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
 /**
  * The profile's tabs over pages that follow a swipe, with Chat last. [tabTitles] name the tabs before Chat, and
- * [page] draws the tab at an index.
+ * [page] draws the tab at an index. [lockedTabTitles] follow them with a lock and no page: a swipe passes them by,
+ * and a tap calls [onLockedTab].
  */
 @Composable
 internal fun ProfileTabPager(
@@ -52,6 +80,8 @@ internal fun ProfileTabPager(
     minHeight: Dp,
     tabRowPin: () -> Int,
     modifier: Modifier = Modifier,
+    lockedTabTitles: List<Int> = emptyList(),
+    onLockedTab: () -> Unit = {},
     page: @Composable ColumnScope.(tab: Int) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -82,7 +112,7 @@ internal fun ProfileTabPager(
         // Material 3 sets the first scrollable tab off the leading edge, so it is clear that more tabs follow; its
         // 52dp is less here, to keep the row close to the text.
         PrimaryScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
+            selectedTabIndex = profileTabRowIndex(pagerState.currentPage, tabCount, lockedTabTitles.size),
             // Pinned under the profile's bar, the row covers the pages that scroll on under it.
             modifier = Modifier
                 .bleedPastProfileSides()
@@ -101,6 +131,7 @@ internal fun ProfileTabPager(
                     unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            lockedTabTitles.forEach { title -> LockedProfileTab(title, onLockedTab) }
             // A tap goes the way a swipe does: the pages move to Chat, and resting there opens the stream.
             ChannelChatTab(
                 selected = pagerState.currentPage == tabCount,

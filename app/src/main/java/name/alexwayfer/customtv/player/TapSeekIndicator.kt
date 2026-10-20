@@ -73,5 +73,6 @@ internal fun BoxScope.TapSeekIndicator(series: TapSeekSeries?) {
     }
 }
 
-private val TapSeekIndicatorSize = 64.dp
+/** Also the size of the play and pause button, which takes the same middle. */
+internal val TapSeekIndicatorSize = 64.dp
 private const val TAP_SEEK_PULSE_SCALE = 1.12f

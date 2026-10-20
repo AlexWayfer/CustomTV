@@ -16,7 +16,8 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 internal const val BROWSER_SHEET_CORNER_RADIUS_DP = 16
 
 /**
- * Opens a twitch.tv page in a Custom Tab, signed in with the browser's own Twitch session. A
+ * Opens a page about the channel, such as a twitch.tv page or its MemeAlerts page, in a Custom Tab, signed in
+ * with the browser's own session on that site. A
  * [sheetHeightPx] above zero opens it as a sheet of that height; zero opens it full screen.
  * [onVisibleChanged] hears the tab show and hide while the browser keeps a session with the app;
  * a browser without one reports nothing.

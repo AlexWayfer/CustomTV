@@ -5,7 +5,18 @@ import name.alexwayfer.customtv.chat.NickCompletionEdit
 /** The chat commands the message field handles itself, without sending them. */
 internal enum class ChatCommand(val word: String) {
     User("/user"),
+
+    /** Opens the prediction in the channel points sheet, for the streamer and the channel's moderators. */
+    Prediction("/prediction"),
 }
+
+/** The commands this user has: `/prediction` only for the streamer and the channel's moderators. */
+internal fun availableChatCommands(predictionOpenable: Boolean): List<ChatCommand> =
+    ChatCommand.entries.filter { it != ChatCommand.Prediction || predictionOpenable }
+
+/** `/prediction` alone in [text], in any case and with any spaces around it. */
+internal fun isPredictionCommand(text: String): Boolean =
+    text.trim().equals(ChatCommand.Prediction.word, ignoreCase = true)
 
 /** The command word typed at the start of the field, up to [end], while the cursor is in it. */
 internal data class ChatCommandQuery(val end: Int, val text: String)
@@ -18,8 +29,8 @@ internal fun chatCommandQueryAtCursor(text: String, cursor: Int): ChatCommandQue
     return ChatCommandQuery(end = end, text = text.substring(0, end))
 }
 
-internal fun matchingChatCommands(query: String): List<ChatCommand> =
-    ChatCommand.entries.filter { it.word.startsWith(query, ignoreCase = true) }
+internal fun matchingChatCommands(query: String, commands: List<ChatCommand>): List<ChatCommand> =
+    commands.filter { it.word.startsWith(query, ignoreCase = true) }
 
 /** [text] with its command word replaced by [command] and a space, with the cursor after that space. */
 internal fun textWithCompletedCommand(

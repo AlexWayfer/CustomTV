@@ -4,11 +4,12 @@ import android.os.Handler
 import android.webkit.JavascriptInterface
 
 /**
- * What the player page reports: playback, position and seeks, readiness, the channel going offline, Twitch's
- * audience gate waiting for a tap, and errors.
+ * What the player page reports: playback, a stop Twitch did not ask for, position and seeks, readiness, the
+ * channel going offline, Twitch's audience gate waiting for a tap, and errors.
  */
 internal data class PlayerPlaybackEvents(
     val onPlaybackState: (Boolean) -> Unit,
+    val onInterrupted: () -> Unit,
     val onPositionSeconds: (Double) -> Unit,
     val onSeekSeconds: (Double) -> Unit,
     val onPlayerReady: () -> Unit,
@@ -26,6 +27,13 @@ internal class PlayerPlaybackBridge(
     @Suppress("unused")
     fun onState(playing: Boolean) {
         handler.post { events.onPlaybackState(playing) }
+    }
+
+    /** The video stopped while Twitch's player still means to play it. */
+    @JavascriptInterface
+    @Suppress("unused")
+    fun onInterrupted() {
+        handler.post(events.onInterrupted)
     }
 
     @JavascriptInterface

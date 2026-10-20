@@ -6,6 +6,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.chat.ChannelEvents
+import name.alexwayfer.customtv.chat.PREDICTION_GQL_FIELDS
 import name.alexwayfer.customtv.chat.parseChannelEventsGql
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
@@ -58,8 +59,7 @@ internal object ChannelEventsRepository {
         $$"query($id:ID!){user(id:$id){" +
             "viewablePoll{id title status durationSeconds remainingDurationMilliseconds " +
             "choices{id title votes{total}} votes{total}} " +
-            "channel{activePredictionEvents{id title status createdAt predictionWindowSeconds winningOutcome{id} " +
-            "outcomes{id title totalPoints totalUsers}} " +
+            "channel{activePredictionEvents{$PREDICTION_GQL_FIELDS} lockedPredictionEvents{$PREDICTION_GQL_FIELDS} " +
             "hypeTrain{execution{id updatedAt expiresAt endedAt config{primaryHexColor} " +
             "progress{goal progression total remainingSeconds " +
             "level{value goal rewards{... on HypeTrainEmoteReward{emote{id token}}}}} " +

@@ -38,4 +38,19 @@ class ProfileTabPagerTest {
     fun aSwipePastAboutOpensChatWhenVideosAreMissing() {
         assertEquals(ProfilePageSettled.OpenChat, profilePageSettled(2, tabCount = 2))
     }
+
+    @Test
+    fun aTabWithAPageKeepsItsPlaceInTheRow() {
+        assertEquals(PROFILE_TAB_ABOUT, profileTabRowIndex(PROFILE_TAB_ABOUT, tabCount = 2, lockedCount = 2))
+    }
+
+    @Test
+    fun chatStandsAfterTheLockedTabsInTheRow() {
+        assertEquals(4, profileTabRowIndex(2, tabCount = 2, lockedCount = 2))
+    }
+
+    @Test
+    fun withoutLockedTabsChatKeepsItsPlace() {
+        assertEquals(2, profileTabRowIndex(2, tabCount = 2, lockedCount = 0))
+    }
 }

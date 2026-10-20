@@ -18,22 +18,33 @@ internal object ChatterLabelsGistClient {
     private const val TAG = "ChatterLabels"
     private val client = sharedHttpClient.newBuilder().callTimeout(25, TimeUnit.SECONDS).build()
 
-    fun fetchLabels(credentials: ChatterLabelsCredentials): ChatterLabelsData {
-        val files = fetchFiles(credentials)
-        val labels = JSONArray(readFile(files, LABELS_FILE) ?: "[]")
-        val assignments = JSONArray(readFile(files, ASSIGNMENTS_FILE) ?: "[]")
-        return parseChatterLabels(labels, assignments)
+    /**
+     * The labels with the gist's ETag, or null when the gist still has [etag]: GitHub answers that with 304, which
+     * does not count against the rate limit.
+     */
+    fun fetchLabels(credentials: ChatterLabelsCredentials, etag: String? = null): ChatterLabelsVersion? {
+        val gist = requestFiles(credentials, etag) ?: return null
+        val labels = JSONArray(readFile(gist.files, LABELS_FILE) ?: "[]")
+        val assignments = JSONArray(readFile(gist.files, ASSIGNMENTS_FILE) ?: "[]")
+        return ChatterLabelsVersion(parseChatterLabels(labels, assignments), gist.etag)
     }
 
-    fun fetchFiles(credentials: ChatterLabelsCredentials): JSONObject {
-        val request = gistRequest(credentials).build()
+    fun fetchFiles(credentials: ChatterLabelsCredentials): JSONObject =
+        checkNotNull(requestFiles(credentials, etag = null)).files
+
+    private fun requestFiles(credentials: ChatterLabelsCredentials, etag: String?): GistFiles? {
+        val request = gistRequest(credentials)
+            .apply { if (etag != null) header("If-None-Match", etag) }
+            .build()
         val response = client.newCall(request).execute()
-        val gist = response.use {
+        return response.use {
+            if (it.code == HTTP_NOT_MODIFIED) return null
             if (!it.isSuccessful) throw chatterLabelsReadFailure(it.code)
-            JSONObject(it.body.string())
+            GistFiles(labelFiles(JSONObject(it.body.string())), it.header("ETag"))
         }
-        return labelFiles(gist)
     }
+
+    private class GistFiles(val files: JSONObject, val etag: String?)
 
     /** The files of [gist], when it holds Chatter Labels data. */
     private fun labelFiles(gist: JSONObject): JSONObject {

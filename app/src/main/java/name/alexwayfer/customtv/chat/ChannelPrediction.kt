@@ -6,11 +6,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * A prediction shows while viewers can predict, and again with its result. Once predictions
- * close, while the streamer picks the outcome, and after a cancel, it is hidden.
+ * A prediction shows while viewers can predict, after predictions close while the outcome is
+ * picked, and again with its result. A deleted one is hidden.
  */
 internal enum class ChannelPredictionStatus {
     Active,
+    Locked,
     Resolved,
     Hidden,
 }
@@ -32,6 +33,10 @@ internal data class ChannelPrediction(
     val endsAtMillis: Long,
 )
 
+/** The fields of a GQL `PredictionEvent` that [ChannelPredictionParser.parseGql] reads. */
+internal const val PREDICTION_GQL_FIELDS =
+    "id title status createdAt predictionWindowSeconds winningOutcome{id} outcomes{id title totalPoints totalUsers}"
+
 internal object ChannelPredictionParser {
     /**
      * A `predictions-channel-v1.<channel id>` PubSub frame. The window end counts from the
@@ -52,7 +57,7 @@ internal object ChannelPredictionParser {
         )
     }
 
-    /** One of GQL `channel.activePredictionEvents`; the window end uses the phone clock. */
+    /** One GQL `PredictionEvent`, such as of `channel.activePredictionEvents`; the window end uses the phone clock. */
     fun parseGql(event: JSONObject?): ChannelPrediction? {
         if (event == null) return null
         return parse(
@@ -116,6 +121,7 @@ internal object ChannelPredictionParser {
 
     private fun status(raw: String): ChannelPredictionStatus = when (raw.uppercase()) {
         "ACTIVE" -> ChannelPredictionStatus.Active
+        "LOCKED", "RESOLVE_PENDING" -> ChannelPredictionStatus.Locked
         "RESOLVED" -> ChannelPredictionStatus.Resolved
         else -> ChannelPredictionStatus.Hidden
     }

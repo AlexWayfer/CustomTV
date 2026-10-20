@@ -5,10 +5,15 @@ import java.net.URLDecoder
 import java.time.Instant
 import java.util.Base64
 import java.util.Locale
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -36,6 +41,12 @@ object ChatterLabelsRepository {
     /** Every enabled label, in the extension's order, for the chatter card to assign. */
     internal val labels = _labels.asStateFlow()
 
+    /** The ETag of the gist the shown labels came from, for [refreshLocked] to skip an unchanged one. */
+    private var labelsEtag: String? = null
+
+    @Volatile
+    private var lastCheck: TimeMark? = null
+
     fun init(context: Context) {
         store = ChatterLabelsCredentialsStore(context.applicationContext)
         scope.launch {
@@ -51,15 +62,17 @@ object ChatterLabelsRepository {
         val candidate = ChatterLabelsCredentials(token.trim(), gistId.trim().lowercase(Locale.ROOT))
         if (candidate.token.isEmpty()) throw ChatterLabelsException(R.string.chatter_labels_error_enter_token)
         if (!GIST_ID.matches(candidate.gistId)) throw ChatterLabelsException(R.string.chatter_labels_error_gist_id)
-        val data = withContext(Dispatchers.IO) { ChatterLabelsGistClient.fetchLabels(candidate) }
+        val fresh = withContext(Dispatchers.IO) { checkNotNull(ChatterLabelsGistClient.fetchLabels(candidate)) }
         withContext(Dispatchers.IO) { store.write(candidate) }
         _credentials.value = candidate
-        show(data)
+        labelsEtag = fresh.etag
+        show(fresh.data)
     }
 
     suspend fun disconnect() = mutex.withLock {
         withContext(Dispatchers.IO) { store.clear() }
         _credentials.value = null
+        labelsEtag = null
         show(ChatterLabelsData(emptyList(), emptyMap()))
     }
 
@@ -128,10 +141,26 @@ object ChatterLabelsRepository {
         return scope.launch { mutex.withLock { refreshLocked() } }
     }
 
+    /**
+     * Reads the Gist again every [REFRESH_INTERVAL] until cancelled, so labels changed on another device show up in
+     * an open chat. A check made meanwhile, such as the chat settings' refresh, moves the next one.
+     */
+    suspend fun refreshPeriodically(): Nothing {
+        while (true) {
+            delay(chatterLabelsRefreshDelay(lastCheck?.elapsedNow(), REFRESH_INTERVAL))
+            lastCheck = TimeSource.Monotonic.markNow()
+            refresh().join()
+        }
+    }
+
     private suspend fun refreshLocked() {
+        lastCheck = TimeSource.Monotonic.markNow()
         val saved = _credentials.value ?: return
         try {
-            show(withContext(Dispatchers.IO) { ChatterLabelsGistClient.fetchLabels(saved) })
+            val fresh = withContext(Dispatchers.IO) { ChatterLabelsGistClient.fetchLabels(saved, labelsEtag) }
+                ?: return
+            labelsEtag = fresh.etag
+            show(fresh.data)
         } catch (_: Exception) {
             // Keep the last successfully loaded labels if the network is unavailable.
         }
@@ -144,7 +173,18 @@ object ChatterLabelsRepository {
     }
 
     private val GIST_ID = Regex("[0-9a-f]{32}")
+    private val REFRESH_INTERVAL = 1.minutes
 }
+
+/**
+ * How long to wait before the next periodic check, [sinceLastCheck] after the last one. A chat that comes back from
+ * the background after a longer pause checks at once.
+ */
+internal fun chatterLabelsRefreshDelay(sinceLastCheck: Duration?, interval: Duration): Duration =
+    if (sinceLastCheck == null) Duration.ZERO else (interval - sinceLastCheck).coerceAtLeast(Duration.ZERO)
+
+/** Labels as read from the gist, with its [etag] for asking whether they changed since. */
+internal class ChatterLabelsVersion(val data: ChatterLabelsData, val etag: String?)
 
 /** Why reading the gist failed with HTTP [code]. */
 internal fun chatterLabelsReadFailure(code: Int): ChatterLabelsException = when (code) {

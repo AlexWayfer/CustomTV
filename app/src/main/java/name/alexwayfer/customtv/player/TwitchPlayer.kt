@@ -16,6 +16,7 @@ import android.webkit.WebView
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,6 +83,10 @@ internal data class PlayerGestures(
 internal fun TwitchPlayer(
     target: TwitchPlaybackTarget,
     events: PlayerEvents,
+    /** The screen shows its chrome with the player's controls, so Pause shows in the middle. */
+    controlsUp: Boolean,
+    /** The player rests at its full size, with nothing of the screen's over its middle. */
+    centerFree: Boolean,
     modifier: Modifier = Modifier,
     gestures: PlayerGestures = PlayerGestures(),
     inPictureInPicture: Boolean = false,
@@ -137,18 +142,48 @@ internal fun TwitchPlayer(
                 },
             )
         }
-        if (waitingForVideo && !inPictureInPicture) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .size(36.dp),
-                color = ComposeColor.White,
-                strokeWidth = 3.dp,
-            )
-        }
-        TapSeekIndicator(series = tapSeekSeries.takeUnless { inPictureInPicture })
-        PlayerZoomResetButton(zoom.scale.takeIf { zoom.zoomed && !inPictureInPicture }) { host?.zoom?.reset() }
+        PlayerOverlays(
+            waitingForVideo = waitingForVideo,
+            tapSeekSeries = tapSeekSeries,
+            zoom = zoom,
+            inPictureInPicture = inPictureInPicture,
+            controlsUp = controlsUp,
+            centerFree = centerFree,
+            onResetZoom = { host?.zoom?.reset() },
+        )
     }
+}
+
+/** What the player draws over the page: the loading spinner, the seeking taps' count, Play or Pause, and the zoom. */
+@Composable
+private fun BoxScope.PlayerOverlays(
+    waitingForVideo: Boolean,
+    tapSeekSeries: TapSeekSeries?,
+    zoom: PlayerZoomTransform,
+    inPictureInPicture: Boolean,
+    controlsUp: Boolean,
+    centerFree: Boolean,
+    onResetZoom: () -> Unit,
+) {
+    if (waitingForVideo && !inPictureInPicture) {
+        CircularProgressIndicator(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(36.dp),
+            color = ComposeColor.White,
+            strokeWidth = 3.dp,
+        )
+    }
+    TapSeekIndicator(series = tapSeekSeries.takeUnless { inPictureInPicture })
+    val playback by StreamPlayback.playback.collectAsStateWithLifecycle()
+    PlayerPlayPauseButton(
+        playerCenterButton(
+            playback = playback,
+            controlsUp = controlsUp,
+            centerFree = centerFree && !inPictureInPicture && !waitingForVideo && tapSeekSeries == null,
+        ),
+    )
+    PlayerZoomResetButton(zoom.scale.takeIf { zoom.zoomed && !inPictureInPicture }, onResetZoom)
 }
 
 /** The WebView starts a few frames after the player opens, so the screen around it draws first. */
@@ -349,6 +384,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                 handler = mainHandler,
                 events = PlayerPlaybackEvents(
                     onPlaybackState = ::handlePlaybackState,
+                    onInterrupted = StreamInterruption::report,
                     onPositionSeconds = { seconds ->
                         positionSeconds = seconds
                         StreamPlayback.reportPosition(seconds)

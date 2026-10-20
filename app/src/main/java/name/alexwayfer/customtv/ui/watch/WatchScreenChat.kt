@@ -27,6 +27,7 @@ internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePla
         channelId = scene.profile.id,
         shown = !scene.placement.minimized && !scene.placement.inPictureInPicture,
     )
+    ChannelPanelsPreloadEffect(channelId = scene.profile.id)
     ChatPane(
         channel = scene.channel,
         channelProfile = scene.profile,
@@ -47,6 +48,7 @@ internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePla
         selfLogin = scene.account.login.orEmpty(),
         selfDisplayName = scene.account.displayName.orEmpty(),
         ownFollow = scene.ownFollow,
+        ownBadges = scene.ownBadges?.badges,
         replyingToMessageId = chat.replySession?.targetId,
         onReply = scene::replyTo,
         onMention = scene::mention,
@@ -188,6 +190,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
             chat.stickToBottom = chatFollowsAfterSend(chat.stickToBottom, settings.scrollToLatestAfterSend)
         },
         onOpenChatterCard = scene::openChatterCard,
+        onOpenPrediction = rememberPredictionCommand(scene.profile.id),
     )
 }
 

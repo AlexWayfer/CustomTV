@@ -184,8 +184,8 @@ internal class ChatInputActions(
     }
 
     fun submit() {
-        // `/user` posts nothing, so neither the rules nor slow mode hold it.
-        if (runUserCommand()) return
+        // `/user` and `/prediction` post nothing, so neither the rules nor slow mode hold them.
+        if (runFieldCommand()) return
         val now = input.value
         val sharing = now.compose.shareOffer?.takeIf { it.composing }
         val message = chatTextToSubmit(now.compose.draft.text.toString(), emptyAllowed = sharing?.emptyAllowed == true)
@@ -207,10 +207,22 @@ internal class ChatInputActions(
         }
     }
 
-    /** Opens the card `/user` names; true when the text was that command, valid or not. */
-    private fun runUserCommand(): Boolean {
-        val compose = input.value.compose
-        return when (val command = chatUserCommand(compose.draft.text.toString(), compose.sessionChatters())) {
+    /**
+     * Opens the card `/user` names, or the prediction for `/prediction` with the keyboard going down first; true when
+     * the text was one of them, valid or not. A user without `/prediction` sends it to chat as typed.
+     */
+    private fun runFieldCommand(): Boolean {
+        val now = input.value
+        val compose = now.compose
+        val text = compose.draft.text.toString()
+        val openPrediction = compose.onOpenPrediction
+        if (openPrediction != null && isPredictionCommand(text)) {
+            compose.draft.clearText()
+            composer.pickerOpen = false
+            now.sheetKeyboard.open { openPrediction() }
+            return true
+        }
+        return when (val command = chatUserCommand(text, compose.sessionChatters())) {
             is ChatUserCommand.Open -> {
                 compose.draft.clearText()
                 compose.onOpenChatterCard(command.login)

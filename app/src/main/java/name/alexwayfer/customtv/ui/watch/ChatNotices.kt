@@ -21,6 +21,7 @@ import name.alexwayfer.customtv.chat.ChannelEvents
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.OutgoingRaid
 import name.alexwayfer.customtv.chat.PinnedChat
+import name.alexwayfer.customtv.chat.chatCardEvents
 import name.alexwayfer.customtv.chat.communityGiftPlaqueRemainingMillis
 import name.alexwayfer.customtv.chat.latestCommunityGiftMessage
 import name.alexwayfer.customtv.chat.visibleCommunityGiftMessage
@@ -44,13 +45,14 @@ internal fun ChatNotices(
 ) {
     var hiddenCommunityGiftId by remember { mutableStateOf<String?>(null) }
     val communityGiftMessage = rememberVisibleCommunityGift(messages, hiddenCommunityGiftId)
-    val items = chatNoticeItems(raid, events, communityGiftMessage, pin)
-    val expandKeys = chatNoticeExpandKeys(events, pin)
+    val cardEvents = chatCardEvents(events)
+    val items = chatNoticeItems(raid, cardEvents, communityGiftMessage, pin)
+    val expandKeys = chatNoticeExpandKeys(cardEvents, pin)
     var expandedKey by remember { mutableStateOf<String?>(null) }
     val anyExpanded = expandedKey != null && expandedKey in expandKeys.values
     val committed = remember { CommittedNoticeOrder() }
     val arrivals = nextChatNoticeArrivals(committed.arrivals, items)
-    val ordered = orderedChatNoticePages(chatNoticePagesOf(pin, raid, communityGiftMessage, events), arrivals)
+    val ordered = orderedChatNoticePages(chatNoticePagesOf(pin, raid, communityGiftMessage, cardEvents), arrivals)
     // An expanded notice stays where it is: pages move and switch only while every notice is collapsed.
     val pages = if (anyExpanded) frozenChatNoticePages(committed.pages, ordered) else ordered
     SideEffect {
@@ -60,7 +62,7 @@ internal fun ChatNotices(
     // The block slides down from the top as its first notice arrives and back up after its last one
     // leaves, still showing that last notice on the way out.
     val snapshot = rememberLastNonNull(
-        pages.takeIf { it.isNotEmpty() }?.let { ChatNoticeSnapshot(it, pin, raid, events, communityGiftMessage) },
+        pages.takeIf { it.isNotEmpty() }?.let { ChatNoticeSnapshot(it, pin, raid, cardEvents, communityGiftMessage) },
     )
     AnimatedVisibility(
         visible = pages.isNotEmpty(),

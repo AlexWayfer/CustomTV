@@ -2,12 +2,14 @@ package name.alexwayfer.customtv.ui.settings
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpSize
@@ -43,6 +46,8 @@ internal fun SettingsStepSlider(
     resolve: (Int) -> Int,
     onChange: (Int) -> Unit,
     onPreview: (Int) -> Unit,
+    /** An icon before the title, as a list row has; the slider then starts under the title. */
+    icon: Painter? = null,
 ) {
     var dragging by remember { mutableStateOf<Float?>(null) }
     var pending by remember { mutableStateOf<Int?>(null) }
@@ -53,10 +58,13 @@ internal fun SettingsStepSlider(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
+        icon?.let {
+            Icon(it, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(16.dp))
+        }
+        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
         Text(
             valueText(shown),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -95,7 +103,8 @@ internal fun SettingsStepSlider(
         },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp)
+            // The thumb reaches 8dp past each end; with an icon, the track starts under the title.
+            .padding(start = if (icon != null) 48.dp else 8.dp, end = 8.dp)
             .semantics { contentDescription = title },
     )
 }

@@ -61,6 +61,8 @@ internal data class ChatCompose(
     val onSent: () -> Unit,
     /** Opens the chatter card of a login typed after `/user`. */
     val onOpenChatterCard: (login: String) -> Unit,
+    /** Opens the prediction in the channel points sheet for `/prediction`; null when the user has no such command. */
+    val onOpenPrediction: (() -> Unit)?,
 )
 
 /** The chat menu behind the field's end button: the chat settings and what changes them. */

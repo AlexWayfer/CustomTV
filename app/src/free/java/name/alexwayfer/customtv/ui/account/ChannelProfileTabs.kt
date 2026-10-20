@@ -12,11 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.PremiumBannerRequest
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 
 /**
- * Home, About, and Chat. The Videos and Clips tabs and their playback are Premium, and so is Explore, where a recent
- * category opens, so the categories here open nothing.
+ * Home, About, and Chat. The Videos and Clips tabs and their playback are Premium: they show with a lock, which shows
+ * the Premium banner. So is Explore, where a recent category opens, so the categories here open nothing.
  */
 @Composable
 internal fun ChannelProfileTabs(
@@ -47,6 +48,8 @@ internal fun ChannelProfileTabs(
         minHeight = minHeight,
         tabRowPin = tabRowPin,
         modifier = modifier,
+        lockedTabTitles = listOf(R.string.profile_videos, R.string.profile_clips),
+        onLockedTab = { PremiumBannerRequest.send("the profile's recordings") },
     ) { tab ->
         if (tab == PROFILE_TAB_HOME) {
             ChannelProfileHome(

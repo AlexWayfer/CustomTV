@@ -43,6 +43,34 @@ class PollVotingTest {
     }
 
     @Test
+    fun aChoiceOfAPollTheBuildCanVoteInIsPicked() {
+        assertEquals(PollChoiceTap.Pick, pollChoiceTap(active = true, voting = voting(), premiumLocked = true))
+    }
+
+    @Test
+    fun aChoiceOfAnOpenPollTheFreeBuildCannotVoteInOffersPremium() {
+        assertEquals(PollChoiceTap.Premium, pollChoiceTap(active = true, voting = null, premiumLocked = true))
+    }
+
+    @Test
+    fun aChoiceOfAnOpenPollWithoutVotingOrLockTakesNoTap() {
+        assertEquals(PollChoiceTap.None, pollChoiceTap(active = true, voting = null, premiumLocked = false))
+    }
+
+    @Test
+    fun aChoiceOfAnEndedPollTakesNoTapEvenLocked() {
+        assertEquals(PollChoiceTap.None, pollChoiceTap(active = false, voting = null, premiumLocked = true))
+    }
+
+    @Test
+    fun aChoiceOfAVotedPollTakesNoTap() {
+        assertEquals(
+            PollChoiceTap.None,
+            pollChoiceTap(active = true, voting = voting(selected = "a", voted = "a"), premiumLocked = true),
+        )
+    }
+
+    @Test
     fun voteIsOffUntilAChoiceIsPicked() {
         assertFalse(pollVoteEnabled(voting = voting()))
         assertTrue(pollVoteEnabled(voting = voting(selected = "a")))

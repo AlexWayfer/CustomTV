@@ -10,6 +10,7 @@
     <string name="premium_and_more">И не только!</string>
     <string name="premium_upgrade">Перейти на Premium</string>
     <string name="premium_not_now">Не сейчас</string>
+    <string name="chat_poll_vote_premium_hint">Голосовать в приложении можно в Premium</string>
     <string name="notification_prompt">Уведомления об обновлениях и сбоях приложения</string>
     <string name="app_update_current_version">Текущая версия: %1$s, free</string>
     <string name="github_open">Открыть GitHub</string>

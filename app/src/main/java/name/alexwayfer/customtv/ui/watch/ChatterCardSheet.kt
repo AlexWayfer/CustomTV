@@ -93,6 +93,9 @@ internal class OwnChannelFollow(
 
 internal val LocalOwnChannelFollow = compositionLocalOf<OwnChannelFollow?> { null }
 
+/** The signed-in user's badges in this channel, such as a moderator's; null while unknown or in a recording. */
+internal val LocalOwnChatBadges = compositionLocalOf<List<ChatBadge>?> { null }
+
 internal val LocalOpenChatterCard = compositionLocalOf<(ChatterCardRequest) -> Unit> { {} }
 
 /** Opens a chatter's full channel profile; without one, the card's header is not a button. */
@@ -169,9 +172,11 @@ internal fun ChatterCardSheet(
     FollowChatterMessagesEnd(nav.page, scroll)
     val dismissSheet = rememberHideThenDismiss(sheetState, onDismiss)
     val dismissThenMention = rememberHideThenDismiss(sheetState) { onMention?.invoke(chatter.login, chatter.name) }
+    val sheetInsets = chatSheetWindowInsets()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        contentWindowInsets = { sheetInsets },
     ) {
         BackHandler {
             if (nav.page != ChatterCardPage.Profile) nav.back() else dismissSheet.value()
@@ -183,7 +188,7 @@ internal fun ChatterCardSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 // The sheet stops at the player, so the stream stays in sight.
-                .heightIn(max = chatSheetContentMaxHeight()),
+                .heightIn(max = chatSheetContentMaxHeight(sheetInsets)),
         ) {
             ChatterCardSheetHeader(
                 profile = load.profile,

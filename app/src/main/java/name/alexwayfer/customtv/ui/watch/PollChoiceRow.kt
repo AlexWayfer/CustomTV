@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -49,8 +50,8 @@ import java.text.NumberFormat
 
 /**
  * A choice with its share of the votes. The numbers switch at once; the bar slides to its new share. While the
- * viewer can vote, a radio button picks the choice. Once the poll ends, the leaders get the trophy, as on Twitch; the
- * viewer's choice gets the check.
+ * viewer can vote, a radio button picks the choice; where only Premium can, a tap on it calls [onPick] to offer
+ * Premium. Once the poll ends, the leaders get the trophy, as on Twitch; the viewer's choice gets the check.
  */
 @Composable
 internal fun PollChoiceRow(
@@ -58,13 +59,15 @@ internal fun PollChoiceRow(
     totalVotes: Int,
     leader: Boolean,
     winner: Boolean,
-    pickable: Boolean,
+    tap: PollChoiceTap,
     picked: Boolean,
     voted: Boolean,
     onPick: () -> Unit,
     chatTextSize: Int,
     modifier: Modifier = Modifier,
 ) {
+    val pickable = tap == PollChoiceTap.Pick
+    val premiumLabel = stringResource(R.string.premium_locked)
     val bodySize = chatSp(chatTextSize, 14, 16)
     val locale = LocalConfiguration.current.locales[0]
     val percent = pollChoicePercent(choice.votes, totalVotes)
@@ -84,18 +87,27 @@ internal fun PollChoiceRow(
                 drawRect(PollShareColor, size = Size(size.width * share, size.height))
             }
             .then(
-                if (pickable) {
-                    Modifier.selectable(selected = picked, role = Role.RadioButton, onClick = onPick)
-                } else {
-                    Modifier
+                when (tap) {
+                    PollChoiceTap.Pick ->
+                        Modifier.selectable(selected = picked, role = Role.RadioButton, onClick = onPick)
+                    PollChoiceTap.Premium -> Modifier.clickable(onClick = onPick)
+                    PollChoiceTap.None -> Modifier
                 },
             )
             .clearAndSetSemantics {
                 contentDescription = description
-                if (pickable) {
-                    role = Role.RadioButton
-                    selected = picked
-                    onClick { onPick(); true }
+                when (tap) {
+                    PollChoiceTap.Pick -> {
+                        role = Role.RadioButton
+                        selected = picked
+                        onClick { onPick(); true }
+                    }
+                    // TalkBack offers the tap as what it leads to: the choice is in Premium.
+                    PollChoiceTap.Premium -> {
+                        role = Role.Button
+                        onClick(label = premiumLabel) { onPick(); true }
+                    }
+                    PollChoiceTap.None -> Unit
                 }
             },
     ) {

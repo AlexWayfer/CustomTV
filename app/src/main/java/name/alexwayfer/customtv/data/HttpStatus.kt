@@ -12,6 +12,7 @@ internal val HTTP_CLIENT_ERROR = 400..499
 /** 5xx: the server failed; a later try may go through. */
 internal val HTTP_SERVER_ERROR = 500..599
 
+internal const val HTTP_NOT_MODIFIED = 304
 internal const val HTTP_BAD_REQUEST = 400
 internal const val HTTP_UNAUTHORIZED = 401
 internal const val HTTP_FORBIDDEN = 403

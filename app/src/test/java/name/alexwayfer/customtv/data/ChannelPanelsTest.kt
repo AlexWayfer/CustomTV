@@ -43,7 +43,13 @@ class ChannelPanelsTest {
     @Test
     fun aChannelWithoutPanelsHasAnEmptyList() {
         val panels = parseChannelPanels("""{"data":{"user":{"panels":[]}}}""")!!
-        assertEquals(ChannelPanels(emptyList(), 0), panels)
+        assertEquals(ChannelPanels(emptyList(), 0, null), panels)
+    }
+
+    @Test
+    fun theChannelDescriptionComesWithThePanels() {
+        val panels = parseChannelPanels("""{"data":{"user":{"description":" Memes below ","panels":[]}}}""")!!
+        assertEquals("Memes below", panels.channelDescription)
     }
 
     @Test

@@ -48,11 +48,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.PremiumBannerStore
 import name.alexwayfer.customtv.diagnostics.AppLog
+import name.alexwayfer.customtv.diagnostics.ownPackageInfo
 import name.alexwayfer.customtv.ui.settings.PremiumFeatureList
 import name.alexwayfer.customtv.ui.settings.goldButtonColors
 import name.alexwayfer.customtv.ui.settings.premiumUpgradeOpener
@@ -61,7 +63,8 @@ import name.alexwayfer.customtv.ui.theme.TwitchBg
 
 /**
  * Offers Premium on a full screen from time to time: when a stream or a recording closes back to the app, or when
- * the user comes back to the home screen, after leaving a player by the recents screen or picture-in-picture.
+ * the user comes back to the home screen, after leaving a player by the recents screen or picture-in-picture. A
+ * [PremiumBannerRequest] shows it at once.
  * [startSettled] tells that the app has decided whether it reopens a channel on start.
  */
 @Composable
@@ -73,15 +76,18 @@ internal fun PremiumBanner(
 ) {
     val context = LocalContext.current
     val store = remember(context) { PremiumBannerStore(context) }
+    val installedAtMillis = remember(context) { ownPackageInfo(context)?.firstInstallTime ?: 0L }
     val scope = rememberCoroutineScope()
     var wasPlayerOpen by remember { mutableStateOf(playerOpen) }
     var returned by remember { mutableStateOf(false) }
     var visible by rememberSaveable { mutableStateOf(false) }
     suspend fun showIfDue(moment: String) {
-        if (!premiumBannerDue(System.currentTimeMillis(), store.shownAtMillis(), store.playerOpens())) return
+        val now = System.currentTimeMillis()
+        if (!premiumBannerDue(now, store.shownAtMillis(), installedAtMillis, store.playerOpens())) return
         AppLog.i(PREMIUM_BANNER_LOG_TAG, "shown $moment")
         visible = true
     }
+    PremiumBannerRequests(onRequest = { visible = true })
     LifecycleStartEffect(Unit) {
         returned = true
         onStopOrDispose { }
@@ -117,6 +123,17 @@ internal fun PremiumBanner(
                 scope.launch { store.markShown(now) }
             },
         )
+    }
+}
+
+/** Shows the banner on each [PremiumBannerRequest], once. */
+@Composable
+private fun PremiumBannerRequests(onRequest: () -> Unit) {
+    val request by PremiumBannerRequest.requests.collectAsStateWithLifecycle()
+    LaunchedEffect(request) {
+        val source = request?.take() ?: return@LaunchedEffect
+        AppLog.i(PREMIUM_BANNER_LOG_TAG, "shown from $source")
+        onRequest()
     }
 }
 

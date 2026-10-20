@@ -99,6 +99,7 @@ internal fun ChatUserMessage(
         linksClickable = linksClickable,
         includeAuthor = includeAuthor,
         timestampText = timestampText,
+        topChatter = topChatterBadge(message.userLogin),
     )
     val inlineContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
     val annotated = remember(message, look, deletedNote, emoteAspects) {

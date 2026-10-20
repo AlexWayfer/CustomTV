@@ -19,6 +19,22 @@ internal data class PollVoting(
 internal fun pollChoicesPickable(active: Boolean, voting: PollVoting?): Boolean =
     active && voting != null && voting.votedChoiceId == null
 
+internal enum class PollChoiceTap {
+    Pick,
+    Premium,
+    None,
+}
+
+/**
+ * What a tap on a choice does: picks it where the build can vote, or, on an open poll the free build cannot vote in
+ * ([premiumLocked]), shows the Premium banner. A poll that ended takes no tap.
+ */
+internal fun pollChoiceTap(active: Boolean, voting: PollVoting?, premiumLocked: Boolean): PollChoiceTap = when {
+    pollChoicesPickable(active, voting) -> PollChoiceTap.Pick
+    active && voting == null && premiumLocked -> PollChoiceTap.Premium
+    else -> PollChoiceTap.None
+}
+
 /**
  * Vote, shown only on an open poll, sends the picked choice once; it stays off while the vote is on its way
  * and after Twitch took it.

@@ -100,7 +100,7 @@ private fun PremiumMainFeatures(style: TextStyle, lineSpacing: Dp, featureIndent
         indent = featureIndent,
     )
     PremiumBullet(
-        icon = painterResource(R.drawable.ic_auto_awesome),
+        icon = painterResource(R.drawable.ic_auto_fix_high),
         text = stringResource(R.string.premium_feature_ai),
         style = style,
         lineSpacing = lineSpacing,

@@ -67,6 +67,8 @@ internal fun ColumnScope.ChatterProfilePage(
             .padding(bottom = 24.dp),
     ) {
         ChatterCardFacts(load, chatter.subscription)
+        // In the order the chat shows them before the name: the top chatter's bubble, the badges, the labels.
+        ChatterCardTopChatterItem(login = chatter.login)
         ChatterCardBadges(chatter.badgeLines)
         ChatterCardLabels(userId = chatter.userId, onManage = { nav.open(ChatterCardPage.Labels) })
         ChatterCardCountItem(

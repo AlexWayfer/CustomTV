@@ -3,6 +3,9 @@ package name.alexwayfer.customtv.player
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object StreamPlayback {
     @Volatile
@@ -24,6 +27,11 @@ object StreamPlayback {
     private val inferredPause = InferredPause(Handler(Looper.getMainLooper()))
 
     private var commands: Commands? = null
+
+    private val mutablePlayback = MutableStateFlow(PlayerPlayback.Starting)
+
+    /** What the screen shows of the playback, such as Play while the viewer paused. */
+    internal val playback: StateFlow<PlayerPlayback> = mutablePlayback.asStateFlow()
 
     class Commands(
         val play: () -> Unit,
@@ -52,6 +60,7 @@ object StreamPlayback {
 
     fun bind(commands: Commands) {
         this.commands = commands
+        StreamInterruption.clear()
         userPaused = false
         isExplicitlyPaused = false
         awaitingPlayback = false
@@ -59,11 +68,12 @@ object StreamPlayback {
         playbackDisabled = false
         position.set(0L)
         inferredPause.cancel()
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     fun prepareForChannel() {
         inferredPause.cancel()
+        StreamInterruption.clear()
         userPaused = false
         isExplicitlyPaused = false
         awaitingPlayback = true
@@ -71,7 +81,7 @@ object StreamPlayback {
         playbackDisabled = false
         playRequestedAt = SystemClock.elapsedRealtime()
         position.set(0L)
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     /** The recording's time as the page reports it while it plays. */
@@ -82,13 +92,13 @@ object StreamPlayback {
     /** The recording jumped to [seconds], by its own seek bar or by [seekTo]. */
     fun reportSeek(seconds: Double) {
         position.setSeconds(seconds)
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     fun seekTo(positionMs: Long) {
         position.set(positionMs)
         commands?.seek?.invoke(ReportedPosition.seconds(positionMs))
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     fun unbind(commands: Commands) {
@@ -100,32 +110,35 @@ object StreamPlayback {
 
     fun play() {
         inferredPause.cancel()
+        StreamInterruption.clear()
         userPaused = false
         isExplicitlyPaused = false
         awaitingPlayback = true
         playRequestedAt = SystemClock.elapsedRealtime()
         commands?.play?.invoke()
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     fun pause() {
         inferredPause.cancel()
+        StreamInterruption.clear()
         userPaused = true
         isExplicitlyPaused = true
         awaitingPlayback = false
         commands?.pause?.invoke()
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     fun stopForDismissal() {
         inferredPause.cancel()
+        StreamInterruption.clear()
         playbackDisabled = true
         userPaused = true
         isExplicitlyPaused = true
         awaitingPlayback = false
         commands?.pause?.invoke()
         commands?.close?.invoke()
-        PlayerPlaybackService.sync()
+        syncState()
     }
 
     fun reportActualState(playing: Boolean) {
@@ -135,25 +148,34 @@ object StreamPlayback {
         }
         if (playing) {
             inferredPause.cancel()
+            StreamInterruption.clear()
             val changed = playingChangesState
             userPaused = false
             isExplicitlyPaused = false
             awaitingPlayback = false
             isPlaybackConfirmed = true
-            if (changed) PlayerPlaybackService.sync()
+            if (changed) syncState()
             return
         }
         if (pauseReportIgnored) return
+        // Twitch's player paused without the app asking, as it may when another app takes the sound.
+        StreamInterruption.report()
         inferredPause.schedule(REBUFFER_GRACE_MS) {
             if (inferredPause.suppressed || userPaused || commands == null) return@schedule
             userPaused = true
             awaitingPlayback = false
-            PlayerPlaybackService.sync()
+            syncState()
         }
     }
 
-    fun setSuppressInferredPause(suppress: Boolean) {
-        inferredPause.suppress(suppress)
+    var inferredPauseSuppressed: Boolean
+        get() = inferredPause.suppressed
+        set(value) = inferredPause.suppress(value)
+
+    /** Tells the media session and the screen what changed. */
+    private fun syncState() {
+        mutablePlayback.value = playerPlayback(userPaused, awaitingPlayback, isPlaybackConfirmed)
+        PlayerPlaybackService.sync()
     }
 
     private const val LOAD_GRACE_MS = 12_000L

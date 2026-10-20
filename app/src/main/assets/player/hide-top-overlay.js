@@ -218,6 +218,8 @@
         '}',
         '[data-a-target="player-overlay-follow-button"] { display: none !important; }',
         '[data-a-target="player-overlay-subscribe-button"] { display: none !important; }',
+        // The app's own button in the middle plays and pauses; Twitch's flash of the same icon there would sit under it.
+        '.player-overlay-background button + .tw-transition { display: none !important; }',
         // The player plays at full volume (FULL_VOLUME_JS); the system volume sets the loudness.
         '.volume-slider__slider-container { display: none !important; }',
         recordingPage ? RECORDING_CONTROLS_TOUCH_CSS : '',
@@ -355,6 +357,9 @@
     if (playing) offlineCheckDone = true;
     try { CustomTvPlayback.onState(playing); } catch (e) {}
   }
+  function notifyInterrupted() {
+    try { CustomTvPlayback.onInterrupted(); } catch (e) {}
+  }
   // Only a recording or a clip reads the position; a live stream would pay a bridge call per timeupdate.
   var recordingPage = /[?&](video|clip)=/.test(location.search);
   var clipPage = /[?&]clip=/.test(location.search);
@@ -394,6 +399,13 @@
     // Sound only has no frames at all; playing sound counts then.
     var picture = (v && v.videoWidth > 0 && v.videoHeight > 0) || !!window.__customTvVideoQuality;
     return v && !v.paused && v.readyState >= 3 && picture && v.currentTime > 0;
+  }
+  // A video that buffers is paused too, while Twitch's player still means to play it; only its own pause counts.
+  // Without the player at hand, a paused video counts as before.
+  function pausedByViewer(doc) {
+    var p = doc && customTvPlayer(doc);
+    if (!p || !p.isPaused) return true;
+    try { return p.isPaused(); } catch (e) { return true; }
   }
   function notifyPlaybackIfRendered(v) {
     if (hasRenderedFrame(v)) notifyPlayback(true);
@@ -738,6 +750,11 @@
       });
       v.addEventListener('pause', function() {
         if (isAdBreak(targetDoc)) return;
+        // Twitch still means to play: the video buffers, or another app took the sound away.
+        if (!pausedByViewer(targetDoc)) {
+          notifyInterrupted();
+          return;
+        }
         notifyPlayback(false);
       });
       notifyPlaybackIfRendered(v);
@@ -786,7 +803,7 @@
     var v = d && d.querySelector('video');
     if (v) {
       if (hasRenderedFrame(v)) notifyPlayback(true);
-      else if (v.paused) notifyPlayback(false);
+      else if (v.paused && pausedByViewer(d)) notifyPlayback(false);
     }
   }, 800);
 })();

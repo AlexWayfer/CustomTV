@@ -10,15 +10,19 @@ internal const val PREMIUM_BANNER_PLAYER_OPENS = 3
 internal val PREMIUM_BANNER_CLOSE_DELAY = 1.seconds
 
 /**
- * The banner waits until the user has opened a player a few times since the last show, or since the install for
- * the first one, so someone who rarely comes back is not met with it on every visit. After a show it also waits a
- * few days. A last show in the future means the clock moved back, so the time has passed rather than waiting for
+ * The banner waits a few days and a few player opens since the last show, or since the install before the first
+ * one, while a new user meets Premium only at its locked features. So someone who rarely comes back is not met with
+ * it on every visit. A start in the future means the clock moved back, so the time has passed rather than waiting for
  * the clock.
  */
-internal fun premiumBannerDue(nowMillis: Long, shownAtMillis: Long?, playerOpens: Int): Boolean {
-    val waited = shownAtMillis == null ||
-        nowMillis < shownAtMillis ||
-        nowMillis - shownAtMillis >= PREMIUM_BANNER_INTERVAL.inWholeMilliseconds
+internal fun premiumBannerDue(
+    nowMillis: Long,
+    shownAtMillis: Long?,
+    installedAtMillis: Long,
+    playerOpens: Int,
+): Boolean {
+    val since = shownAtMillis ?: installedAtMillis
+    val waited = nowMillis < since || nowMillis - since >= PREMIUM_BANNER_INTERVAL.inWholeMilliseconds
     return waited && playerOpens >= PREMIUM_BANNER_PLAYER_OPENS
 }
 

@@ -57,6 +57,10 @@ class ChatPageSettingsActions(private val scope: CoroutineScope, private val sto
         }
     }
 
+    fun setTopChatterBadges(enabled: Boolean) {
+        scope.launch { store.setTopChatterBadges(enabled) }
+    }
+
     fun setLinkPreviewMode(mode: LinkPreviewMode) {
         scope.launch {
             store.setLinkPreviewMode(mode)

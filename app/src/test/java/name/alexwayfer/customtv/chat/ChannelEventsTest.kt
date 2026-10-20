@@ -59,8 +59,14 @@ class ChannelEventsTest {
     }
 
     @Test
-    fun closedPendingAndCanceledPredictionsAreHiddenAndAResolvedOneNamesItsWinner() {
-        listOf("LOCKED", "RESOLVE_PENDING", "CANCEL_PENDING", "CANCELED").forEach { status ->
+    fun closedPredictionsStayDeletedOnesAreHiddenAndAResolvedOneNamesItsWinner() {
+        listOf("LOCKED", "RESOLVE_PENDING").forEach { status ->
+            assertEquals(
+                ChannelPredictionStatus.Locked,
+                ChannelPredictionParser.parseFrame(predictionFrame(status), NOW)?.status,
+            )
+        }
+        listOf("CANCEL_PENDING", "CANCELED").forEach { status ->
             assertEquals(
                 ChannelPredictionStatus.Hidden,
                 ChannelPredictionParser.parseFrame(predictionFrame(status), NOW)?.status,
@@ -79,10 +85,47 @@ class ChannelEventsTest {
         assertEquals(poll, applyPollUpdate(poll, archived.copy(id = "older")))
 
         val prediction = ChannelPredictionParser.parseFrame(predictionFrame("ACTIVE"), NOW)!!
-        val locked = prediction.copy(status = ChannelPredictionStatus.Hidden)
-        assertNull(applyPredictionUpdate(prediction, locked))
-        val resolved = locked.copy(status = ChannelPredictionStatus.Resolved)
+        val canceled = prediction.copy(status = ChannelPredictionStatus.Hidden)
+        assertNull(applyPredictionUpdate(prediction, canceled))
+        val resolved = canceled.copy(status = ChannelPredictionStatus.Resolved)
         assertEquals(resolved, applyPredictionUpdate(null, resolved))
+    }
+
+    @Test
+    fun aClosedPredictionStaysInTheEvents() {
+        val prediction = ChannelPredictionParser.parseFrame(predictionFrame("ACTIVE"), NOW)!!
+        val locked = prediction.copy(status = ChannelPredictionStatus.Locked)
+        assertEquals(locked, applyPredictionUpdate(prediction, locked))
+    }
+
+    @Test
+    fun aClosedPredictionComesWithTheLoadWhenNoneIsOpen() {
+        val events = parseChannelEventsGql(
+            """
+            {"data":{"user":{"viewablePoll":null,"channel":{"activePredictionEvents":[],
+             "lockedPredictionEvents":[{"id":"e1","title":"Тест","status":"LOCKED",
+              "createdAt":"2026-09-29T15:28:33Z","predictionWindowSeconds":60,"winningOutcome":null,
+              "outcomes":[{"id":"o1","title":"Да","totalPoints":10,"totalUsers":1}]}]}}}}
+            """.trimIndent(),
+            NOW,
+        )
+
+        assertEquals(ChannelPredictionStatus.Locked, events?.prediction?.status)
+    }
+
+    @Test
+    fun aClosedPredictionLeavesTheChatCardAtOnce() {
+        val prediction = ChannelPredictionParser.parseFrame(predictionFrame("ACTIVE"), NOW)!!
+        val locked = ChannelEvents(prediction = prediction.copy(status = ChannelPredictionStatus.Locked))
+        assertNull(chatCardEvents(locked).prediction)
+    }
+
+    @Test
+    fun anOpenPredictionAndAResultStayOnTheChatCard() {
+        val open = ChannelEvents(prediction = ChannelPredictionParser.parseFrame(predictionFrame("ACTIVE"), NOW))
+        assertEquals(open, chatCardEvents(open))
+        val resolved = ChannelEvents(prediction = open.prediction?.copy(status = ChannelPredictionStatus.Resolved))
+        assertEquals(resolved, chatCardEvents(resolved))
     }
 
     @Test

@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.diagnostics
 
 import android.content.Context
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.os.Build
@@ -29,14 +30,16 @@ internal fun diagnosticDevice(context: Context) = DiagnosticDevice(
     ),
 )
 
-private fun packageUpdatedMillis(context: Context): Long? = try {
-    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+private fun packageUpdatedMillis(context: Context): Long? = ownPackageInfo(context)?.lastUpdateTime
+
+/** The app's own package: its install and update times. */
+internal fun ownPackageInfo(context: Context): PackageInfo? = try {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
     } else {
         @Suppress("DEPRECATION")
         context.packageManager.getPackageInfo(context.packageName, 0)
     }
-    info.lastUpdateTime
 } catch (_: PackageManager.NameNotFoundException) {
     null
 }

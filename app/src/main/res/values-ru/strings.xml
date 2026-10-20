@@ -50,6 +50,7 @@
     <string name="chat_cancel_send">Отменить отправку</string>
     <string name="chat_command_user_argument">[имя пользователя]</string>
     <string name="chat_command_user_description">Показать профиль пользователя на этом канале</string>
+    <string name="chat_command_prediction_description">Показать или начать прогноз</string>
     <string name="chat_send_failed">Не удалось отправить сообщение</string>
     <string name="chat_send_log_in">Войдите снова, чтобы писать в чат</string>
     <string name="chat_send_not_allowed">Вы не можете писать в чат этого канала</string>
@@ -351,6 +352,13 @@
     <string name="log_out_body">Потом нужно будет войти снова.</string>
     <string name="profile_about">О канале</string>
     <string name="profile_home">Главная</string>
+    <string name="profile_videos">Видео</string>
+    <string name="profile_clips">Клипы</string>
+    <string name="chatter_card_whisper">Шёпот</string>
+    <string name="moderation_section">Модерация</string>
+    <string name="settings_section_notifications">Уведомления</string>
+    <string name="settings_section_chatter_portraits">ИИ-портреты и пересказ</string>
+    <string name="premium_locked">Доступно в Premium</string>
     <string name="profile_chat">Чат</string>
     <string name="profile_home_live">В эфире</string>
     <string name="profile_home_suggested">Рекомендуемый канал</string>
@@ -472,6 +480,8 @@
     <string name="chat_open_link">Открыть</string>
     <string name="expand">Развернуть</string>
     <string name="minimize">Свернуть</string>
+    <string name="player_play">Воспроизвести</string>
+    <string name="player_pause">Пауза</string>
     <string name="player_zoom_reset">Сбросить масштаб</string>
     <string name="sleep_timer">Таймер сна</string>
     <string name="sleep_timer_on">Включён</string>
@@ -679,4 +689,5 @@
     </plurals>
     <string name="notification_prompt_enable">Включить</string>
     <string name="notification_prompt_dismiss">Не сейчас</string>
+    <string name="send_donation">Отправить донат</string>
 </resources>

@@ -9,35 +9,46 @@ class PremiumBannerScheduleTest {
     private val interval = PREMIUM_BANNER_INTERVAL.inWholeMilliseconds
     private val opens = PREMIUM_BANNER_PLAYER_OPENS
     private val shown = now
+    private val installed = now - interval * 10
 
     @Test
-    fun theFirstBannerWaitsForEnoughOpens() {
-        assertFalse(premiumBannerDue(now, null, opens - 1))
+    fun theFirstBannerWaitsForTheIntervalSinceTheInstall() {
+        assertFalse(premiumBannerDue(now + interval - 1, null, now, opens))
     }
 
     @Test
-    fun theFirstBannerComesRightAfterEnoughOpens() {
-        assertTrue(premiumBannerDue(now, null, opens))
+    fun theFirstBannerWaitsForEnoughOpens() {
+        assertFalse(premiumBannerDue(now, null, installed, opens - 1))
+    }
+
+    @Test
+    fun theFirstBannerComesAfterTheIntervalSinceTheInstallAndEnoughOpens() {
+        assertTrue(premiumBannerDue(now + interval, null, now, opens))
     }
 
     @Test
     fun aShownBannerWaitsForTheInterval() {
-        assertFalse(premiumBannerDue(shown + interval - 1, shown, opens))
+        assertFalse(premiumBannerDue(shown + interval - 1, shown, installed, opens))
     }
 
     @Test
     fun aShownBannerWaitsForEnoughOpensAfterTheInterval() {
-        assertFalse(premiumBannerDue(shown + interval * 2, shown, opens - 1))
+        assertFalse(premiumBannerDue(shown + interval * 2, shown, installed, opens - 1))
     }
 
     @Test
     fun aShownBannerComesBackAfterTheIntervalAndEnoughOpens() {
-        assertTrue(premiumBannerDue(shown + interval, shown, opens))
+        assertTrue(premiumBannerDue(shown + interval, shown, installed, opens))
     }
 
     @Test
     fun aClockMovedBehindTheLastShowCountsAsTheIntervalPassed() {
-        assertTrue(premiumBannerDue(shown - 1, shown, opens))
+        assertTrue(premiumBannerDue(shown - 1, shown, installed, opens))
+    }
+
+    @Test
+    fun aClockMovedBehindTheInstallCountsAsTheIntervalPassed() {
+        assertTrue(premiumBannerDue(now - 1, null, now, opens))
     }
 
     @Test

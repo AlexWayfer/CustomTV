@@ -51,6 +51,7 @@ import name.alexwayfer.customtv.player.TwitchPlayer
 import name.alexwayfer.customtv.player.controlsShowChrome
 import name.alexwayfer.customtv.player.minimizeDragHidesKeyboard
 import name.alexwayfer.customtv.player.minimizeDragKeepsNavigationBar
+import name.alexwayfer.customtv.player.playerCenterFree
 import name.alexwayfer.customtv.player.playerTapShowsChrome
 import name.alexwayfer.customtv.ui.components.VIDEO_ASPECT_RATIO
 import name.alexwayfer.customtv.ui.theme.TwitchBg
@@ -92,6 +93,8 @@ internal fun BoxScope.PlayerVideoBox(
         TwitchPlayer(
             target = scene.target,
             events = touches.events(),
+            controlsUp = scene.chrome.minimizeControl,
+            centerFree = playerCenterFree(scene.compactSettled, scene.progress, scene.ui.twitchSettingsOpen),
             gestures = touches.gestures(),
             inPictureInPicture = scene.inPictureInPicture,
             fullscreen = scene.fullscreenActive,

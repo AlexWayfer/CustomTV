@@ -10,6 +10,7 @@
     <string name="premium_and_more">And more!</string>
     <string name="premium_upgrade">Upgrade to Premium</string>
     <string name="premium_not_now">Not now</string>
+    <string name="chat_poll_vote_premium_hint">Voting in the app is available in Premium</string>
     <string name="notification_prompt">Get notified about app updates and crashes</string>
     <string name="app_update_current_version">Current version: %1$s, free</string>
     <string name="github_open">Open GitHub</string>

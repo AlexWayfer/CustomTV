@@ -27,11 +27,13 @@ internal fun ChatNameWithBadges(
     badgeSize: Dp,
     modifier: Modifier = Modifier,
     labelsUserId: String? = null,
+    topChatterLogin: String? = null,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        TopChatterNameIcon(login = topChatterLogin, badgeSize = badgeSize)
         badges.forEach { badge ->
             val url = badgeUrls[badge.key] ?: return@forEach
             AsyncImage(

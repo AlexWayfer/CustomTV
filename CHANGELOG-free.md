@@ -1,5 +1,14 @@
 # CustomTV (free version)
 
+## v1.11.0 (2026-10-20)
+
+*   Add a play and pause button in the middle of the player
+*   Show Premium features where they live, with a lock
+*   Add icons to the chat menu
+*   Refresh chatter labels while the chat is open
+*   Fix chat sheets jumping as they open or a browser tab opens
+*   Fix swiping a snackbar away
+
 ## v1.10.0 (2026-10-18)
 
 *   Open twitch.tv links in the app

@@ -74,7 +74,8 @@ internal fun ChatPollBanner(
     val active = poll.status == ChannelPollStatus.Active
     val leaders = pollLeaderIds(poll)
     val voting = rememberPollVoting(poll, channelId, expanded)
-    val pickable = pollChoicesPickable(active, voting)
+    val lockedPick = pollLockedPick()
+    val tap = pollChoiceTap(active, voting, premiumLocked = lockedPick != null)
     // With a vote of its own the card needs no browser.
     val offerBrowser = active && voting == null
     ChatVoteCard(
@@ -85,7 +86,7 @@ internal fun ChatPollBanner(
         chatTextSize = chatTextSize,
         countdown = if (active) VoteCountdown(poll.endsAtMillis, poll.durationMillis) else null,
         browserLabel = if (offerBrowser) stringResource(R.string.chat_poll_vote_in_browser) else null,
-        note = if (offerBrowser) stringResource(R.string.chat_vote_browser_hint) else null,
+        note = if (offerBrowser) pollBrowserNote() else null,
         action = if (active && voting != null) {
             { PollVoteAction(voting = voting, chatTextSize = chatTextSize) }
         } else {
@@ -108,10 +109,10 @@ internal fun ChatPollBanner(
                         totalVotes = poll.totalVotes,
                         leader = choice.id in leaders,
                         winner = !active && choice.id in leaders,
-                        pickable = pickable,
+                        tap = tap,
                         picked = voting?.selectedChoiceId == choice.id,
                         voted = voting?.votedChoiceId == choice.id,
-                        onPick = { voting?.onSelect(choice.id) },
+                        onPick = { if (voting != null) voting.onSelect(choice.id) else lockedPick?.invoke() },
                         chatTextSize = chatTextSize,
                         modifier = Modifier.placementAnimation(VOTE_ANIMATION_MS),
                     )
@@ -224,7 +225,9 @@ internal fun ChatPredictionBanner(
         } else {
             null
         },
-        headerAction = null,
+        headerAction = {
+            PredictionModMenu(prediction, channelId, expanded, chatDp(chatTextSize, normal = 20, large = 22))
+        },
         onOpenTwitchChat = onOpenTwitchChat,
         onHide = onHide,
         bottomInset = bottomInset,

@@ -54,7 +54,7 @@ internal class PlayerKeepAlive(
         webView.onResume()
         webView.resumeTimers()
         inBackground = background
-        StreamPlayback.setSuppressInferredPause(background)
+        StreamPlayback.inferredPauseSuppressed = background
         handler.removeCallbacks(keepAlive)
         if (background) {
             handler.postDelayed(keepAlive, KEEP_ALIVE_MS)
@@ -63,7 +63,7 @@ internal class PlayerKeepAlive(
 
     fun release() {
         inBackground = false
-        StreamPlayback.setSuppressInferredPause(false)
+        StreamPlayback.inferredPauseSuppressed = false
         try {
             appContext.unregisterReceiver(screenOffReceiver)
         } catch (_: IllegalArgumentException) {

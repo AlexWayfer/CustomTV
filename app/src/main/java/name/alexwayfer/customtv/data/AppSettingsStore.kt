@@ -38,6 +38,7 @@ class AppSettingsStore(context: Context) {
             highlightFirstMessages = prefs[HIGHLIGHT_FIRST_MESSAGES]
                 ?: defaults.highlightFirstMessages,
             markRaiders = prefs[MARK_RAIDERS] ?: defaults.markRaiders,
+            topChatterBadges = prefs[TOP_CHATTER_BADGES] ?: defaults.topChatterBadges,
             highlightMentions = prefs[HIGHLIGHT_MENTIONS] ?: defaults.highlightMentions,
             mentionVibration = prefs[MENTION_VIBRATION] ?: defaults.mentionVibration,
             mentionVibrationMs = prefs[MENTION_VIBRATION_MS] ?: defaults.mentionVibrationMs,

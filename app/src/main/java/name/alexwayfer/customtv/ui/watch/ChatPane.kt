@@ -29,9 +29,13 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.StateFlow
+import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatRaiders
 import name.alexwayfer.customtv.chat.ChatterHistory
@@ -78,6 +82,7 @@ internal fun ColumnScope.ChatPane(
     selfLogin: String = "",
     selfDisplayName: String = "",
     ownFollow: OwnChannelFollow? = null,
+    ownBadges: List<ChatBadge>? = null,
     replyingToMessageId: String? = null,
     onReply: ((ChatMessage) -> Unit)? = null,
     /** Puts a mention of a chatter into the draft; null for a chat without a field. */
@@ -131,9 +136,10 @@ internal fun ColumnScope.ChatPane(
         LocalOnChatLinkClick provides onOpenLink,
         LocalOpenChatterProfile provides onOpenChatterProfile,
         LocalOwnChannelFollow provides ownFollow,
+        LocalOwnChatBadges provides ownBadges,
         LocalOnChatMention provides onMention,
     ) {
-        ProvideChatRowLocals(channel, channelProfile, nickColors) {
+        ProvideChatRowLocals(channel, channelProfile, nickColors, settings.topChatterBadges) {
             ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
             belowList(appearance)
         }
@@ -177,9 +183,15 @@ private fun ColumnScope.ProvideChatRowLocals(
     channel: String,
     channelProfile: ChannelProfile,
     nickColors: () -> Map<String, Color>,
+    topChatterBadges: Boolean,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val chatterLabels by ChatterLabelsRepository.labelsByUserId.collectAsStateWithLifecycle()
+    // Labels changed on another device show up while the chat is on screen.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { ChatterLabelsRepository.refreshPeriodically() }
+    }
     // Chatter cards opened again while this chat is open show what they loaded before at once.
     val chatterCards = remember(channel) { ChatterCardCache() }
     // One state object for the pane's lifetime: rows derive the colors they show from it.
@@ -199,7 +211,9 @@ private fun ColumnScope.ProvideChatRowLocals(
             displayName = channelProfile.displayName.ifBlank { channel },
         ),
     ) {
-        content()
+        ProvideTopChatters(enabled = topChatterBadges, channelLogin = channel, channelId = channelProfile.id) {
+            content()
+        }
     }
 }
 

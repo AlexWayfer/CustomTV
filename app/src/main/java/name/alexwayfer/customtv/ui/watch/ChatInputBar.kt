@@ -418,6 +418,9 @@ private fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, fi
             field.menuOpen = false
             input.sheetKeyboard.onDismiss()
         },
+        firstRow = { openSubpage ->
+            ChannelPanelRows(input.channel.broadcasterId, input.channel.browserSheetHeightPx, openSubpage)
+        },
         recapRow = { hideThen ->
             menu.recap?.let { source ->
                 ChatRecapRow(

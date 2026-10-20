@@ -46,6 +46,7 @@
     <string name="chat_cancel_send">Cancel sending</string>
     <string name="chat_command_user_argument">[username]</string>
     <string name="chat_command_user_description">Display profile information about a user on this channel</string>
+    <string name="chat_command_prediction_description">Show or start a prediction</string>
     <string name="chat_send_failed">Couldn’t send that message</string>
     <string name="chat_send_log_in">Log in again to chat</string>
     <string name="chat_send_not_allowed">You can’t chat in this channel</string>
@@ -305,6 +306,13 @@
     <string name="log_out_body">You will need to log in again.</string>
     <string name="profile_about">About</string>
     <string name="profile_home">Home</string>
+    <string name="profile_videos">Videos</string>
+    <string name="profile_clips">Clips</string>
+    <string name="chatter_card_whisper">Whisper</string>
+    <string name="moderation_section">Moderation</string>
+    <string name="settings_section_notifications">Notifications</string>
+    <string name="settings_section_chatter_portraits">AI portraits and recaps</string>
+    <string name="premium_locked">Available in Premium</string>
     <string name="profile_chat">Chat</string>
     <string name="profile_home_live">Live</string>
     <string name="profile_home_suggested">Suggested channel</string>
@@ -426,6 +434,8 @@
     <string name="chat_open_link">Open</string>
     <string name="expand">Expand</string>
     <string name="minimize">Minimize</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
     <string name="player_zoom_reset">Reset zoom</string>
     <string name="player_zoom_scale" translatable="false">%1$.1f×</string>
     <string name="sleep_timer">Sleep timer</string>
@@ -624,4 +634,5 @@
     </plurals>
     <string name="notification_prompt_enable">Enable</string>
     <string name="notification_prompt_dismiss">Not now</string>
+    <string name="send_donation">Send a donation</string>
 </resources>

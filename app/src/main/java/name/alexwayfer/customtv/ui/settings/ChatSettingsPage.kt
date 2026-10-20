@@ -52,6 +52,7 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         onCheckedChange = viewModel.chat::setHighlightFirstMessages,
     )
     RaiderMarkSettings(settings, viewModel)
+    TopChatterBadgeSettings(settings, viewModel)
     LinkPreviewSettings(settings, viewModel)
     SettingsToggle(
         label = stringResource(R.string.keep_keyboard_after_send),

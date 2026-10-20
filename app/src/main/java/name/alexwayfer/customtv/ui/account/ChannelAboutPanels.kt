@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.account
 
+import android.content.Context
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -125,11 +126,12 @@ private fun PanelList(panels: ChannelPanels, onOpenOnTwitch: () -> Unit) {
         AboutNote(stringResource(R.string.profile_about_empty))
         return
     }
+    val context = LocalContext.current
     Column(
         modifier = Modifier.padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        panels.panels.forEach { panel -> AboutPanel(panel) }
+        panels.panels.forEach { panel -> AboutPanel(panel) { link -> openProfileLink(context, link) } }
     }
     if (panels.extensionCount > 0) {
         AboutNote(stringResource(R.string.profile_about_extensions))
@@ -137,8 +139,16 @@ private fun PanelList(panels: ChannelPanels, onOpenOnTwitch: () -> Unit) {
     }
 }
 
+/**
+ * The image of a panel as [AboutPanel] loads it, so a request made ahead of time leaves the image in memory for the
+ * panel's first frame.
+ */
+internal fun panelImageRequest(context: Context, imageUrl: String): ImageRequest =
+    ImageRequest.Builder(context).data(imageUrl).size(Size.ORIGINAL).build()
+
+/** One About panel; [onOpenLink] opens the link of its image, and its text's links go to the `LocalUriHandler`. */
 @Composable
-private fun AboutPanel(panel: ChannelPanel) {
+internal fun AboutPanel(panel: ChannelPanel, onOpenLink: (String) -> Unit) {
     val context = LocalContext.current
     // The text is parsed and an image kept in memory is drawn in the first frame, so the panel opens at its size.
     Column(
@@ -157,14 +167,14 @@ private fun AboutPanel(panel: ChannelPanel) {
             val link = panel.linkUrl
             AsyncImage(
                 // A fixed size lets Coil take the image from memory at once instead of waiting for the layout.
-                model = remember(image) { ImageRequest.Builder(context).data(image).size(Size.ORIGINAL).build() },
+                model = remember(image) { panelImageRequest(context, image) },
                 contentDescription = if (link != null) stringResource(R.string.profile_panel_link) else null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .then(
                         if (link != null) {
-                            Modifier.clickable(role = Role.Button) { openProfileLink(context, link) }
+                            Modifier.clickable(role = Role.Button) { onOpenLink(link) }
                         } else {
                             Modifier
                         },

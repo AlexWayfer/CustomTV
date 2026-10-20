@@ -18,6 +18,27 @@ class ChatSheetHeightTest {
         assertEquals(0, chatSheetContentMaxHeightPx(sheetMaxPx = 100, dragHandlePx = 132, bottomInsetPx = 68))
 
     @Test
+    fun screenInFrontShowsTheLiveInsets() {
+        val live = ChatSheetInsetsPx(top = 80, bottom = 69)
+
+        assertEquals(live, chatSheetInsetsShown(live, held = ChatSheetInsetsPx(top = 80, bottom = 0), inFront = true))
+    }
+
+    @Test
+    fun browserTabOverTheScreenKeepsTheInsetsFromInFront() {
+        val held = ChatSheetInsetsPx(top = 80, bottom = 69)
+
+        assertEquals(held, chatSheetInsetsShown(ChatSheetInsetsPx(top = 80, bottom = 0), held, inFront = false))
+    }
+
+    @Test
+    fun nothingHeldYetShowsTheLiveInsets() {
+        val live = ChatSheetInsetsPx(top = 80, bottom = 0)
+
+        assertEquals(live, chatSheetInsetsShown(live, held = null, inFront = false))
+    }
+
+    @Test
     fun playerReachingTheBottomLeavesTheSheetUnlimited() {
         assertNull(chatSheetMaxHeightPx(containerHeightPx = 1_080, playerBottomPx = 1_080))
         assertNull(chatSheetMaxHeightPx(containerHeightPx = 1_080, playerBottomPx = 1_200))

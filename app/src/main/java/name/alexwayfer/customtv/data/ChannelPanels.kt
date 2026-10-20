@@ -11,14 +11,19 @@ internal data class ChannelPanel(
     val description: String?,
 )
 
-/** The channel's About panels, and how many are extensions, which only Twitch can show. */
+/**
+ * The channel's About panels, and how many are extensions, which only Twitch can show. [channelDescription] is the
+ * profile's own short description, which comes with the panels for the links it may hold.
+ */
 internal data class ChannelPanels(
     val panels: List<ChannelPanel>,
     val extensionCount: Int,
+    val channelDescription: String?,
 )
 
 internal const val CHANNEL_PANELS_QUERY =
-    $$"query($id:ID!){user(id:$id){panels{id type ... on DefaultPanel{title imageURL linkURL description}}}}"
+    $$"query($id:ID!){user(id:$id){description " +
+        "panels{id type ... on DefaultPanel{title imageURL linkURL description}}}}"
 
 /**
  * The panels in [body]. Null when Twitch left them out, which some networks get instead of the list. A panel with
@@ -47,5 +52,5 @@ internal fun parseChannelPanels(body: String): ChannelPanels? {
         )
         panel.takeIf { it.title != null || it.imageUrl != null || it.description != null }
     }
-    return ChannelPanels(panels, extensions)
+    return ChannelPanels(panels, extensions, user.trimmedText("description"))
 }

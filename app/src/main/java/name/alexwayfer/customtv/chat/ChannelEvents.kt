@@ -21,12 +21,19 @@ internal fun applyPollUpdate(current: ChannelPoll?, update: ChannelPoll): Channe
     else -> current
 }
 
-/** The same rule for predictions: closed, pending, and canceled ones remove only themselves. */
+/** The same rule for predictions: deleted ones remove only themselves. */
 internal fun applyPredictionUpdate(current: ChannelPrediction?, update: ChannelPrediction): ChannelPrediction? = when {
     update.status != ChannelPredictionStatus.Hidden -> update
     current?.id == update.id -> null
     else -> current
 }
+
+/**
+ * The events the cards over chat show. A prediction whose submissions ended leaves its card at once, as a deleted one
+ * does; the channel points sheet still shows it until its result.
+ */
+internal fun chatCardEvents(events: ChannelEvents): ChannelEvents =
+    if (events.prediction?.status == ChannelPredictionStatus.Locked) events.copy(prediction = null) else events
 
 internal fun visibleChannelEvents(
     poll: ChannelPoll?,
@@ -53,10 +60,13 @@ internal fun parseChannelEventsGql(body: String, nowMillis: Long): ChannelEvents
     val poll = ChannelPollParser.parseGql(user.optJSONObject("viewablePoll"), nowMillis)
         ?.takeIf { it.status != ChannelPollStatus.Hidden }
     val channel = user.optJSONObject("channel")
-    val events = channel?.optJSONArray("activePredictionEvents")
-    val prediction = (0 until (events?.length() ?: 0)).firstNotNullOfOrNull { index ->
-        ChannelPredictionParser.parseGql(events?.optJSONObject(index))
-            ?.takeIf { it.status != ChannelPredictionStatus.Hidden }
+    // An open prediction comes first; a closed one waits for its outcome.
+    val prediction = listOf("activePredictionEvents", "lockedPredictionEvents").firstNotNullOfOrNull { key ->
+        val events = channel?.optJSONArray(key)
+        (0 until (events?.length() ?: 0)).firstNotNullOfOrNull { index ->
+            ChannelPredictionParser.parseGql(events?.optJSONObject(index))
+                ?.takeIf { it.status != ChannelPredictionStatus.Hidden }
+        }
     }
     val trains = channel?.optJSONObject("hypeTrain")
     val hypeTrain = HypeTrainParser.execution(trains?.optJSONObject("execution"), nowMillis)

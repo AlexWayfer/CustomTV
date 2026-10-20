@@ -209,6 +209,7 @@ private fun ColumnScope.PinnedDetails(
                     badgeSize = badgeSize,
                     modifier = Modifier.weight(1f),
                     labelsUserId = message.userId,
+                    topChatterLogin = message.userLogin,
                 )
                 Text(
                     text = stringResource(R.string.chat_pinned_sent_at, sentAt),

@@ -7,6 +7,8 @@ data class AppSettings(
     val meMessageItalic: Boolean = true,
     val highlightFirstMessages: Boolean = false,
     val markRaiders: Boolean = true,
+    /** Premium: a badge with the place of each of the channel's top chatters, as StreamElements counts them. */
+    val topChatterBadges: Boolean = true,
     val highlightMentions: Boolean = true,
     val mentionVibration: Boolean = true,
     val mentionVibrationMs: Int = 400,

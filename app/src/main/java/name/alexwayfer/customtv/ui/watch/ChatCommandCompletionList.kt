@@ -51,12 +51,14 @@ internal fun ChatCommandCompletionList(
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
                     )
-                    Text(
-                        text = stringResource(command.argument),
-                        color = TwitchText,
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+                    command.argument?.let { argument ->
+                        Text(
+                            text = stringResource(argument),
+                            color = TwitchText,
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
                 }
                 Text(
                     text = stringResource(command.description),
@@ -68,14 +70,17 @@ internal fun ChatCommandCompletionList(
     }
 }
 
+/** What follows the command word, such as `<nick>`; null for a command that takes nothing. */
 @get:StringRes
-private val ChatCommand.argument: Int
+private val ChatCommand.argument: Int?
     get() = when (this) {
         ChatCommand.User -> R.string.chat_command_user_argument
+        ChatCommand.Prediction -> null
     }
 
 @get:StringRes
 private val ChatCommand.description: Int
     get() = when (this) {
         ChatCommand.User -> R.string.chat_command_user_description
+        ChatCommand.Prediction -> R.string.chat_command_prediction_description
     }

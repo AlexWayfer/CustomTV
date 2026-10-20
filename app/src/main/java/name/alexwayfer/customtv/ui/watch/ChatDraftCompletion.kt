@@ -74,7 +74,7 @@ internal fun rememberChatCompletion(input: ChatInput, pickerOpen: Boolean, emote
     val draftText = draft.text.toString()
     val commandMatches = chatCommandQueryAtCursor(draftText, draft.selection.end)
         ?.takeIf { canSend }
-        ?.let { matchingChatCommands(it.text) }
+        ?.let { matchingChatCommands(it.text, availableChatCommands(input.compose.onOpenPrediction != null)) }
         .orEmpty()
     val nickQuery = nickQueryAtCursor(draftText, draft.selection.end)
     // Matching sorts every candidate, so it runs again only when the query or the candidates change.

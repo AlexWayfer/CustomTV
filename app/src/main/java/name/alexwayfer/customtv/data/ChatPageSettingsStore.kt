@@ -43,6 +43,10 @@ class ChatPageSettingsStore(context: Context) {
         }
     }
 
+    suspend fun setTopChatterBadges(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[TOP_CHATTER_BADGES] = enabled }
+    }
+
     suspend fun setEmoteCompletionWithoutColon(enabled: Boolean) {
         dataStore.edit { prefs ->
             prefs[EMOTE_COMPLETION_WITHOUT_COLON] = enabled

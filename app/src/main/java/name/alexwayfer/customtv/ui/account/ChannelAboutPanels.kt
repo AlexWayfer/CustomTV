@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +48,8 @@ import name.alexwayfer.customtv.data.ChannelPanel
 import name.alexwayfer.customtv.data.ChannelPanels
 import name.alexwayfer.customtv.data.ChannelPanelsLoad
 import name.alexwayfer.customtv.data.ChannelPanelsRepository
+import name.alexwayfer.customtv.ui.components.OutlinedButton
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 
 /** The About tab's state: loading, the panels, or why there are none to show. */
 private sealed interface AboutTab {
@@ -210,7 +211,7 @@ private fun panelTypography(): MarkdownTypography {
         ordered = text,
         bullet = text,
         list = text,
-        textLink = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.primary)),
+        textLink = TextLinkStyles(SpanStyle(color = TwitchPurpleText)),
     )
 }
 

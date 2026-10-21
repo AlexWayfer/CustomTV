@@ -128,6 +128,7 @@
     <string name="chatter_card_no_labels">No labels assigned</string>
     <string name="chatter_card_labels_manage">Manage</string>
     <string name="chatter_card_labels_save">Save</string>
+    <string name="chatter_labels_edit">Edit labels</string>
     <string name="chatter_labels">Chatter Labels</string>
     <string name="chatter_labels_hint">Gist labels beside chat badges</string>
     <string name="chatter_labels_token">GitHub token</string>
@@ -534,6 +535,15 @@
     <string name="diagnostics_text">Send a report to the developer so it can be fixed.</string>
     <string name="diagnostics_send">Send report</string>
     <string name="diagnostics_subject">CustomTV problem report</string>
+    <string name="diagnostics_send_title">Sending a report</string>
+    <string name="diagnostics_privacy_advice">It\'s better to email the report or send it to the developer directly rather than post it in public chats.</string>
+    <string name="diagnostics_privacy_data">The report contains data you may consider personal:</string>
+    <string name="diagnostics_privacy_twitch">Twitch account: %1$s</string>
+    <string name="diagnostics_privacy_telegram">Telegram username: @%1$s</string>
+    <string name="diagnostics_privacy_viewing">Channels and recordings you opened, and when</string>
+    <string name="diagnostics_privacy_device">Phone model, languages, and SIM country</string>
+    <string name="diagnostics_send_email">Send by email</string>
+    <string name="diagnostics_send_other">Another way</string>
     <plurals name="diagnostics_title">
         <item quantity="one">CustomTV ran into a problem</item>
         <item quantity="other">CustomTV ran into %d problems</item>

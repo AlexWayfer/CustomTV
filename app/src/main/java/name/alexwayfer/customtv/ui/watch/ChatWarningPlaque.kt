@@ -20,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +42,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatWarning
 import name.alexwayfer.customtv.chat.warningAcknowledgeWaitSeconds
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt

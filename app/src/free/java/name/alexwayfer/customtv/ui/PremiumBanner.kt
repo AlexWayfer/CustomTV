@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +54,7 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.PremiumBannerStore
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.ownPackageInfo
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.settings.PremiumFeatureList
 import name.alexwayfer.customtv.ui.settings.goldButtonColors
 import name.alexwayfer.customtv.ui.settings.premiumUpgradeOpener

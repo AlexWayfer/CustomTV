@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
@@ -48,9 +47,10 @@ import androidx.compose.ui.window.PopupProperties
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.GestureHint
 import name.alexwayfer.customtv.ui.LocalGestureHints
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.ui.theme.ChatLink
-import name.alexwayfer.customtv.ui.theme.TwitchPurple
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
@@ -240,7 +240,7 @@ internal fun ChatOpenLinkOverlay(
                         TextButton(onClick = { url?.let(onOpen) }) {
                             Text(
                                 stringResource(R.string.chat_open_link),
-                                color = TwitchPurple,
+                                color = TwitchPurpleText,
                                 fontWeight = FontWeight.SemiBold,
                             )
                         }
@@ -268,20 +268,8 @@ private class ChatCopyPopupPositionProvider : PopupPositionProvider {
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ): IntOffset {
-        val margin = 8
-        val maxX = (windowSize.width - popupContentSize.width - margin).coerceAtLeast(0)
-        val x = if (layoutDirection == LayoutDirection.Ltr) {
-            anchorBounds.right - popupContentSize.width - margin
-        } else {
-            anchorBounds.left + margin
-        }.coerceIn(margin, maxX)
-        val above = anchorBounds.top - popupContentSize.height - margin
-        val below = anchorBounds.bottom + margin
-        val maxY = (windowSize.height - popupContentSize.height - margin).coerceAtLeast(0)
-        val canPlaceBelow = below + popupContentSize.height <= windowSize.height - margin
-        val canPlaceAbove = above >= margin
-        if (placeAbove == null) placeAbove = !canPlaceBelow && canPlaceAbove
-        val y = if (placeAbove == true) above.coerceIn(margin, maxY) else below.coerceIn(margin, maxY)
-        return IntOffset(x, y)
+        val placement = chatCopyPopupPlacement(anchorBounds, windowSize, layoutDirection, popupContentSize, placeAbove)
+        placeAbove = placement.above
+        return placement.offset
     }
 }

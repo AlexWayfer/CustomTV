@@ -25,6 +25,15 @@ complexity:
     excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']
 
 style:
+  ForbiddenImport:
+    # Material's text and outlined buttons draw the theme's primary purple text, which reads poorly on the dark
+    # surfaces; ui/components has the same buttons with the readable purple.
+    active: true
+    forbiddenImports:
+      - value: 'androidx.compose.material3.TextButton'
+        reason: 'Use name.alexwayfer.customtv.ui.components.TextButton, whose purple text is readable.'
+      - value: 'androidx.compose.material3.OutlinedButton'
+        reason: 'Use name.alexwayfer.customtv.ui.components.OutlinedButton, whose purple text is readable.'
   ReturnCount:
     # An early return at the top of a function filters its input; only the returns after it count.
     excludeGuardClauses: true

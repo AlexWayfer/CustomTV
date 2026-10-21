@@ -12,7 +12,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -27,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.HomeLogInPromptStore
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchText
 

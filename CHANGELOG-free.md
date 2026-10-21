@@ -1,5 +1,13 @@
 # CustomTV (free version)
 
+## v1.11.1 (2026-10-21)
+
+*   Show chatter labels on the channel profile and edit them there
+*   Make purple text easier to read
+*   Warn about personal data before sending a problem report
+*   Add screen details to crash reports
+*   Fix a crash when copying a chat message in a small window
+
 ## v1.11.0 (2026-10-20)
 
 *   Add a play and pause button in the middle of the player

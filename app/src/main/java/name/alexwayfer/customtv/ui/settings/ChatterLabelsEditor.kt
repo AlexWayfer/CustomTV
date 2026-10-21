@@ -29,7 +29,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,6 +54,7 @@ import name.alexwayfer.customtv.data.ChatterLabelsCredentials
 import name.alexwayfer.customtv.data.readChatterLabelIcon
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.asString
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import sh.calvin.reorderable.ReorderableColumn

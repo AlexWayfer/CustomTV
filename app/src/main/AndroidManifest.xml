@@ -28,6 +28,10 @@
             <data android:scheme="http" />
         </intent>
         <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+        <intent>
             <action android:name="android.support.customtabs.action.CustomTabsService" />
         </intent>
         <intent>
@@ -98,6 +102,7 @@
             android:name=".diagnostics.DiagnosticReportActivity"
             android:excludeFromRecents="true"
             android:exported="false"
+            android:launchMode="singleTop"
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />

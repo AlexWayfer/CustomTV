@@ -26,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedSecureTextField
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,12 +49,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.data.ChatterLabelsCredentials
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.chatterLabelsErrorText
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.asString
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 import org.json.JSONException
 import java.io.IOException
 import java.security.GeneralSecurityException
@@ -224,7 +225,7 @@ private fun ChatterLabelCheckResult(error: UiText?, savedSuccessfully: Boolean) 
         Text(
             text = stringResource(R.string.chatter_labels_saved),
             modifier = Modifier.padding(top = 8.dp),
-            color = MaterialTheme.colorScheme.primary,
+            color = TwitchPurpleText,
             style = MaterialTheme.typography.bodySmall,
         )
     }
@@ -280,8 +281,7 @@ private fun FieldHint(text: AnnotatedString) {
 private fun textWithLink(@StringRes template: Int, @StringRes linkText: Int, url: String): AnnotatedString {
     val text = stringResource(template, LINK_MARK)
     val link = stringResource(linkText)
-    val linkColor = MaterialTheme.colorScheme.primary
-    return remember(text, link, url, linkColor) {
+    return remember(text, link, url) {
         val at = text.indexOf(LINK_MARK)
         buildAnnotatedString {
             if (at < 0) {
@@ -289,7 +289,7 @@ private fun textWithLink(@StringRes template: Int, @StringRes linkText: Int, url
                 return@buildAnnotatedString
             }
             append(text, 0, at)
-            val style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)
+            val style = SpanStyle(color = TwitchPurpleText, textDecoration = TextDecoration.Underline)
             withLink(LinkAnnotation.Url(url, TextLinkStyles(style = style))) { append(link) }
             append(text, at + LINK_MARK.length, text.length)
         }

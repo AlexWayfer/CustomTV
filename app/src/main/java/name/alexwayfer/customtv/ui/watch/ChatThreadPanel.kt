@@ -70,7 +70,7 @@ import name.alexwayfer.customtv.chat.replySessionShowsReplyingTo
 import name.alexwayfer.customtv.chat.threadPanelDragCloses
 import name.alexwayfer.customtv.chat.threadPinnedMaxHeightPx
 import name.alexwayfer.customtv.chat.threadWindow
-import name.alexwayfer.customtv.ui.theme.TwitchPurple
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
@@ -288,7 +288,7 @@ private fun ReplyingToRow(name: String, onCancel: () -> Unit) {
         // A low text button, so the row takes about a line of text rather than a Material button's 48 dp.
         Text(
             text = stringResource(R.string.cancel),
-            color = TwitchPurple,
+            color = TwitchPurpleText,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier

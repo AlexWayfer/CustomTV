@@ -16,7 +16,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettingsStore
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes

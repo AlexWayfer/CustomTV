@@ -7,6 +7,7 @@ import android.content.res.Resources
 import android.os.Build
 import android.telephony.TelephonyManager
 import name.alexwayfer.customtv.BuildConfig
+import name.alexwayfer.customtv.data.TwitchSessionStore
 import java.io.File
 
 /** The build and the device a report comes from. */
@@ -29,6 +30,16 @@ internal fun diagnosticDevice(context: Context) = DiagnosticDevice(
         studioOverlayMillis = File(context.codeCacheDir, ".overlay/id").lastModified(),
     ),
 )
+
+/** The accounts the report names, so the developer can answer. */
+internal fun diagnosticAccounts(context: Context): DiagnosticAccounts {
+    val account = TwitchSessionStore(context).read()?.account
+    return DiagnosticAccounts(
+        twitchLogin = account?.login,
+        twitchUserId = account?.userId,
+        telegramUsername = reportTelegramUsername,
+    )
+}
 
 private fun packageUpdatedMillis(context: Context): Long? = ownPackageInfo(context)?.lastUpdateTime
 

@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 
 /**
  * The last profile tab. It is selected only on the way to it: resting on it opens the channel's stream with chat,
@@ -17,7 +18,7 @@ internal fun ChannelChatTab(selected: Boolean, onClick: () -> Unit) {
         selected = selected,
         onClick = onClick,
         text = { Text(stringResource(R.string.profile_chat)) },
-        selectedContentColor = MaterialTheme.colorScheme.primary,
+        selectedContentColor = TwitchPurpleText,
         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }

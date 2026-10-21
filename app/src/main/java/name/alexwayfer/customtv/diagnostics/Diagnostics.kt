@@ -13,7 +13,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.auth.twitchAuthMessage
 import name.alexwayfer.customtv.data.HTTP_SUCCESS
-import name.alexwayfer.customtv.data.TwitchSessionStore
 import name.alexwayfer.customtv.data.gqlErrorsToReport
 import java.io.IOException
 import java.time.ZoneId
@@ -35,10 +34,14 @@ internal object Diagnostics {
 
     fun start(application: Application) {
         this.application = application
+        val screens = DiagnosticScreenTracker()
+        application.registerActivityLifecycleCallbacks(screens)
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             try {
-                DiagnosticJournal.record(application, crashEvent(thread, error))
+                // A failed read of the window must not cost the crash its record.
+                val screen = runCatching { screens.current() }.getOrNull()
+                DiagnosticJournal.record(application, crashEvent(thread, error, screen))
             } catch (_: Throwable) {
                 // The crash itself must still reach the system handler.
             }
@@ -133,20 +136,14 @@ internal object Diagnostics {
      * The report as plain text, read when the user chooses to send it. [withAppLog] adds the whole log file, for a
      * report sent from the settings about a problem the app did not notice.
      */
-    fun report(context: Context, withAppLog: Boolean): String {
-        val account = TwitchSessionStore(context).read()?.account
-        return diagnosticReport(
+    fun report(context: Context, withAppLog: Boolean): String =
+        diagnosticReport(
             device = diagnosticDevice(context),
-            accounts = DiagnosticAccounts(
-                twitchLogin = account?.login,
-                twitchUserId = account?.userId,
-                telegramUsername = reportTelegramUsername,
-            ),
+            accounts = diagnosticAccounts(context),
             events = DiagnosticJournal.eventsToSend(context),
             zone = ZoneId.systemDefault(),
             appLog = if (withAppLog) AppLog.fileLines() else emptyList(),
         )
-    }
 
     /** The message that goes with the report file. */
     fun shareText(context: Context): String =

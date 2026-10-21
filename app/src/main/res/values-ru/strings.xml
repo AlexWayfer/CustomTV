@@ -149,6 +149,7 @@
     <string name="chatter_card_no_labels">Меток нет</string>
     <string name="chatter_card_labels_manage">Изменить</string>
     <string name="chatter_card_labels_save">Сохранить</string>
+    <string name="chatter_labels_edit">Изменить метки</string>
     <string name="chatter_labels">Метки чаттеров</string>
     <string name="chatter_labels_hint">Метки из Gist рядом со значками в чате</string>
     <string name="chatter_labels_token">Токен GitHub</string>
@@ -583,6 +584,15 @@
     <string name="diagnostics_text">Отправьте отчёт разработчику, чтобы это исправили.</string>
     <string name="diagnostics_send">Отправить отчёт</string>
     <string name="diagnostics_subject">Отчёт о проблеме CustomTV</string>
+    <string name="diagnostics_send_title">Отправка отчёта</string>
+    <string name="diagnostics_privacy_advice">Лучше отправлять отчёт по почте или напрямую разработчику, а не в общие чаты.</string>
+    <string name="diagnostics_privacy_data">В отчёте есть данные, которые вы можете посчитать личными:</string>
+    <string name="diagnostics_privacy_twitch">Аккаунт Twitch: %1$s</string>
+    <string name="diagnostics_privacy_telegram">Имя в Telegram: @%1$s</string>
+    <string name="diagnostics_privacy_viewing">Какие каналы и записи вы открывали и когда</string>
+    <string name="diagnostics_privacy_device">Модель смартфона, языки и страна SIM-карты</string>
+    <string name="diagnostics_send_email">Отправить по почте</string>
+    <string name="diagnostics_send_other">Другим способом</string>
     <plurals name="diagnostics_title">
         <item quantity="one">В CustomTV возникла %d проблема</item>
         <item quantity="few">В CustomTV возникли %d проблемы</item>

@@ -211,6 +211,7 @@ private fun ChannelAboutPage(
             ) {
                 // The sticky header lies over this room while it is open.
                 Spacer(Modifier.height(with(density) { (stickyHeaderPx - headerTopPx).coerceAtLeast(0).toDp() }))
+                ProfileChatterLabels(about.userId, about.login, about.displayName)
                 ProfileDescription(about.description, about.links)
                 ChannelProfileTabs(
                     channelLogin = about.login,

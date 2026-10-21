@@ -24,7 +24,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +56,7 @@ import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.chatterLabelsErrorText
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.asString
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import org.json.JSONException
 
@@ -91,13 +91,16 @@ internal fun ChatterCardLabels(userId: String?, onManage: () -> Unit) {
     }
 }
 
-/** Every label, checked where the chatter has it; Save writes the change to the Gist. */
+/**
+ * Every label, checked where the chatter has it; Save writes the change to the Gist. Without [onBack], as in a sheet
+ * of its own, the title stands alone.
+ */
 @Composable
 internal fun ChatterCardLabelsPage(
     userId: String,
     login: String,
     displayName: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val labels by ChatterLabelsRepository.labels.collectAsStateWithLifecycle()
@@ -187,18 +190,22 @@ private fun ColumnScope.LabelsSaveError(error: UiText?) {
     }
 }
 
-/** Back to the profile, and the page's title. */
+/** Back to the profile when there is one, and the page's title. */
 @Composable
-private fun LabelsPageHeader(onBack: () -> Unit) {
+private fun LabelsPageHeader(onBack: (() -> Unit)?) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = if (onBack == null) 16.dp else 0.dp, end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.chatter_card_back_to_profile),
-            )
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.chatter_card_back_to_profile),
+                )
+            }
         }
         Text(
             text = stringResource(R.string.chatter_card_labels),

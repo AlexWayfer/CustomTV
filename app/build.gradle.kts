@@ -21,7 +21,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 29
+        versionCode = 31
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -37,14 +37,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.11.0"
+            versionName = "1.11.1"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.10.0"
+                versionName = "1.11.0"
                 buildConfigField("boolean", "PREMIUM", "true")
                 // Premium logs in to Telegram: its group gives the access and the updates.
                 val telegram = Properties().apply {

@@ -18,7 +18,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.MainActivity
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.components.TextButton
 
 /** The row in the settings that opens the licenses page. */
 @Composable

@@ -16,7 +16,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +30,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.FullscreenChatMode
+import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
-import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import kotlin.time.Duration.Companion.seconds
@@ -123,7 +122,7 @@ internal fun BoxScope.FullscreenChatModeNoticeBar(notice: FullscreenChatModeNoti
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 TextButton(onClick = onNextMode) {
-                    Text(stringResource(R.string.fullscreen_chat_next_mode), color = TwitchPurple)
+                    Text(stringResource(R.string.fullscreen_chat_next_mode))
                 }
             }
         }

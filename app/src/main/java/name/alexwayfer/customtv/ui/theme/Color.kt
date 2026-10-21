@@ -8,6 +8,12 @@ val TwitchSurface = Color(0xFF18181B)
 val TwitchSurfaceAlt = Color(0xFF1F1F23)
 val TwitchPurple = Color(0xFF9147FF)
 val TwitchPurpleHover = Color(0xFF772CE8)
+
+/**
+ * Purple for text and text buttons: [TwitchPurple] stays under 4.5:1 contrast on the dark surfaces, this one is
+ * above 6:1 on all of them. Fills and icons keep [TwitchPurple].
+ */
+val TwitchPurpleText = Color(0xFFBF94FF)
 val TwitchText = Color(0xFFEFEFF1)
 val TwitchTextSecondary = Color(0xFFADADB8)
 val TwitchHint = Color(0xFF53535F)
@@ -26,7 +32,7 @@ val ChatMention = Color(0xFF8C1D1D).copy(alpha = 0.55f)
 val ChatMentionOnChat = ChatMention.compositeOver(TwitchBg)
 val ChatFlaggedTerm = Color(0xFF8C1D1D)
 val AutoModShield = Color(0xFF00B35C)
-val ChatLink = Color(0xFFBF94FF)
+val ChatLink = TwitchPurpleText
 val ChatRaiderFrame = Color(0xFFE6D21E)
 
 fun parseTwitchHexColor(raw: String?): Color? {

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.ui.PremiumLockIcon
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 
 internal fun profilePageSettled(page: Int, tabCount: Int): ProfilePageSettled =
     if (page >= tabCount) ProfilePageSettled.OpenChat else ProfilePageSettled.ShowTab(page)
@@ -127,7 +128,7 @@ internal fun ProfileTabPager(
                     selected = pagerState.currentPage == index,
                     onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                     text = { Text(stringResource(title)) },
-                    selectedContentColor = MaterialTheme.colorScheme.primary,
+                    selectedContentColor = TwitchPurpleText,
                     unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

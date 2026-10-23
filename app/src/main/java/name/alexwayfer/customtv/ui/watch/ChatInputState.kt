@@ -44,6 +44,13 @@ internal class ChatComposerState {
     var rulesTrigger by mutableStateOf(ChatRulesTrigger.MessageField)
     var focusAfterRules by mutableStateOf(false)
     var recapOpen by mutableStateOf(false)
+
+    /** The plaque with the user's own messages is open over the field, at [historyShownId] or at the newest one. */
+    var historyOpen by mutableStateOf(false)
+    var historyShownId by mutableStateOf<String?>(null)
+
+    /** What Up and Down on a hardware keyboard have put in the field, and the draft to bring back. */
+    var historyRecall = ChatHistoryRecall()
     var sending by mutableStateOf(false)
         private set
 
@@ -97,6 +104,9 @@ internal fun rememberChatFieldState(): ChatFieldState {
 @Stable
 internal class ChatFieldState(val scroll: ScrollState) {
     var menuOpen by mutableStateOf(false)
+
+    /** The menu opens at the chat modes page, as a tap on their plaque asks, instead of at its rows. */
+    var menuAtModes by mutableStateOf(false)
     var focused by mutableStateOf(false)
     val focus = FocusRequester()
     val presses = MutableInteractionSource()

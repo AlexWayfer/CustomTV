@@ -14,8 +14,9 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettings
+import name.alexwayfer.customtv.data.ChatSendOption
 
-/** The chat page: emotes and how messages look. */
+/** The chat page: emotes, how messages look, what sending does, and the messages Premium hides. */
 @Composable
 internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
     SettingsSection(stringResource(R.string.settings_section_emotes), first = true)
@@ -54,18 +55,26 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
     RaiderMarkSettings(settings, viewModel)
     TopChatterBadgeSettings(settings, viewModel)
     LinkPreviewSettings(settings, viewModel)
+    SettingsSection(stringResource(R.string.settings_section_sending))
     SettingsToggle(
         label = stringResource(R.string.keep_keyboard_after_send),
         hint = stringResource(R.string.keep_keyboard_after_send_hint),
         checked = settings.keepKeyboardAfterSend,
-        onCheckedChange = viewModel.chat::setKeepKeyboardAfterSend,
+        onCheckedChange = { viewModel.chat.setSendOption(ChatSendOption.KeepKeyboard, it) },
     )
     SettingsToggle(
         label = stringResource(R.string.scroll_to_latest_after_send),
         hint = stringResource(R.string.scroll_to_latest_after_send_hint),
         checked = settings.scrollToLatestAfterSend,
-        onCheckedChange = viewModel.chat::setScrollToLatestAfterSend,
+        onCheckedChange = { viewModel.chat.setSendOption(ChatSendOption.ScrollToLatest, it) },
     )
+    SettingsToggle(
+        label = stringResource(R.string.sent_message_history),
+        hint = stringResource(R.string.sent_message_history_hint),
+        checked = settings.sentMessageHistory,
+        onCheckedChange = { viewModel.chat.setSendOption(ChatSendOption.SentMessageHistory, it) },
+    )
+    HiddenMessageSettings(settings, viewModel)
 }
 
 /** How a `/me` message looks: in italics, or in the chatter's name color. */

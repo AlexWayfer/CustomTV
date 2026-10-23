@@ -63,6 +63,7 @@ fun CustomTvApp() {
     val imeDismissFocus = remember { ImeDismissFocus() }
     val gestureHints = rememberGestureHintReporter()
     gestureHints.Snackbars(scene.snackbarHostState)
+    CopiedSnackbar(scene.snackbarHostState)
     CompositionLocalProvider(
         LocalImeDismissFocus provides imeDismissFocus,
         LocalUserAccess provides accountViewModel.session::userAccess,

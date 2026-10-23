@@ -33,6 +33,7 @@ import name.alexwayfer.customtv.ui.watch.WatchAccount
 import name.alexwayfer.customtv.ui.watch.WatchNavigation
 import name.alexwayfer.customtv.ui.watch.WatchPlacement
 import name.alexwayfer.customtv.ui.watch.WatchScreen
+import name.alexwayfer.customtv.ui.watch.closeWatchedChannels
 import name.alexwayfer.customtv.ui.watch.watchBackReturnsToPreviousChannel
 
 /** The stream's route: full screen, in the corner, or out of sight while no stream is open. */
@@ -194,7 +195,7 @@ private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
         shell.profileClosesUnderPlayer = false
         shell.exploreCategoryClosesUnderPlayer = false
         shell.player = shell.player.withLiveMinimized(false)
-        navController.popBackStack()
+        navController.closeWatchedChannels()
     },
 )
 
@@ -221,7 +222,7 @@ internal fun AppMiniPlayerBack(scene: AppScene) {
         } else {
             AppLog.i(PLAYER_NAV_LOG_TAG, "close the mini player by Back")
             shell.player = shell.player.withLiveMinimized(false)
-            scene.navController.popBackStack()
+            scene.navController.closeWatchedChannels()
         }
     }
 }
@@ -256,6 +257,7 @@ internal fun BoxScope.AppRecordingPlayer(scene: AppScene) {
         inPictureInPicture = scene.inPip,
         selfLogin = scene.account?.login.orEmpty(),
         selfDisplayName = scene.account?.displayName.orEmpty(),
+        selfUserId = scene.account?.userId,
         modifier = if (player.videoMinimized && !scene.inPip) {
             Modifier
                 .align(Alignment.BottomEnd)

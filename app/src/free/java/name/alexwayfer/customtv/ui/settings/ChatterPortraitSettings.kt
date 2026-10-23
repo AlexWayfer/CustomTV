@@ -12,7 +12,6 @@ import name.alexwayfer.customtv.data.AppSettings
 internal val ChatterPortraitSettingsTitle = R.string.settings
 
 /** The AI portraits row shows locked, and a tap shows the Premium banner. */
-@Suppress("unused")
 @Composable
 internal fun ChatterPortraitSettingsEntry(onOpen: () -> Unit) {
     SettingsLockedEntry(
@@ -22,6 +21,5 @@ internal fun ChatterPortraitSettingsEntry(onOpen: () -> Unit) {
     )
 }
 
-@Suppress("unused")
 @Composable
 internal fun ChatterPortraitSettings(settings: AppSettings, viewModel: SettingsViewModel) = Unit

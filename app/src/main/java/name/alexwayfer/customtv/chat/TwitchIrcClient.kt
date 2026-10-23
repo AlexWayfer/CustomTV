@@ -62,6 +62,11 @@ class TwitchIrcClient(
         openSocket()
     }
 
+    /** The modes Twitch answered a moderator's change with, ahead of the ROOMSTATE that follows it. */
+    internal fun setRoomModes(modes: ChatRoomModes) {
+        _roomModes.value = modes
+    }
+
     fun pause() {
         AppLog.i(CHAT_IRC_TAG, "pause")
         closedByUser = true

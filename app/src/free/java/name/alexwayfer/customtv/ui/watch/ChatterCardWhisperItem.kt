@@ -9,7 +9,6 @@ import androidx.compose.ui.res.stringResource
 import name.alexwayfer.customtv.R
 
 /** Whispers are a Premium feature: the free chatter card shows Whisper locked, and a tap shows the Premium banner. */
-@Suppress("unused")
 @Composable
 internal fun ChatterCardWhisperItem(
     login: String,

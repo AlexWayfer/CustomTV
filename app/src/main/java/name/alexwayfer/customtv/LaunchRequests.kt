@@ -5,6 +5,7 @@ import android.content.Intent
 import name.alexwayfer.customtv.data.STREAM_ALERTS_LOGIN
 import name.alexwayfer.customtv.data.STREAM_START_CHANNEL
 import name.alexwayfer.customtv.data.StreamAlertsLoginRequest
+import name.alexwayfer.customtv.data.StreamAlertsSeen
 import name.alexwayfer.customtv.data.StreamStartRequest
 import name.alexwayfer.customtv.data.WhisperOpenRequest
 import name.alexwayfer.customtv.links.TWITCH_LINK_URL
@@ -15,6 +16,7 @@ import name.alexwayfer.customtv.update.AppUpdateOpenRequest
 /** Hands what a notification or a twitch.tv link asked for, when it opened the app, to the screens that act on it. */
 internal fun offerLaunchRequests(context: Context, intent: Intent) {
     StreamStartRequest.offer(intent.getStringExtra(STREAM_START_CHANNEL))
+    StreamAlertsSeen.opened(context, intent.getStringExtra(STREAM_START_CHANNEL))
     offerStreamAlertsLogin(intent)
     offerAppUpdateOpen(intent)
     WhisperOpenRequest.offer(context, intent)

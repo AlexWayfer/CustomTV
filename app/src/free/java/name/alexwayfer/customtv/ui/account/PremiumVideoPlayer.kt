@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import name.alexwayfer.customtv.data.TwitchCategory
 
-@Suppress("unused")
 @Composable
 internal fun PremiumVideoPlayer(
     playback: ProfileVideoPlayback?,
@@ -21,4 +20,5 @@ internal fun PremiumVideoPlayer(
     inPictureInPicture: Boolean = false,
     selfLogin: String = "",
     selfDisplayName: String = "",
+    selfUserId: String? = null,
 ) = Unit

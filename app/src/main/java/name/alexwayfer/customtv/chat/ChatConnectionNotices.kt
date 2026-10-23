@@ -15,6 +15,7 @@ internal fun chatReconnecting(welcomed: Boolean, state: ChatConnectionState): Bo
  */
 internal class ChatConnectionNotices(
     private val messages: MutableStateFlow<List<ChatMessage>>,
+    private val trim: ChatTrim,
     private val onWelcomed: () -> Unit,
     private val onReconnected: () -> Unit,
 ) {
@@ -75,25 +76,25 @@ internal class ChatConnectionNotices(
 
     private fun appendDisconnectedNotice() {
         messages.update { current ->
-            (current + chatNoticeMessage(ChatNotice.Disconnected, newStatusNoticeId()))
-                .takeLast(MAX_CHAT_MESSAGES)
+            trim.keep(current + chatNoticeMessage(ChatNotice.Disconnected, newStatusNoticeId()))
         }
     }
 
     private fun showReconnectNotice(notice: ChatNotice) {
         messages.update { current ->
-            replaceOrAppendReconnectNotice(
+            val next = replaceOrAppendReconnectNotice(
                 messages = current,
                 notice = notice,
                 newId = newStatusNoticeId(),
-                maxMessages = MAX_CHAT_MESSAGES,
+                maxMessages = MAX_KEPT_CHAT_MESSAGES,
             )
+            trim.keep(next)
         }
     }
 
     private fun showWelcomeNotice() {
         messages.update { current ->
-            replaceOrAppendWelcomeNotice(current, CHAT_WELCOME_NOTICE_ID, MAX_CHAT_MESSAGES)
+            trim.keep(replaceOrAppendWelcomeNotice(current, CHAT_WELCOME_NOTICE_ID, MAX_KEPT_CHAT_MESSAGES))
         }
     }
 }

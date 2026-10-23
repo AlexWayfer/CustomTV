@@ -34,7 +34,7 @@ internal fun parseChatSendResponse(httpCode: Int, body: String): ChatSendResult 
     )
 }
 
-/** What the user reads when a message did not post. */
+/** What the user reads when a message or a chat mode command did not go through. */
 internal sealed interface ChatSendError {
     data object LogIn : ChatSendError
     data object NotAllowed : ChatSendError
@@ -43,6 +43,18 @@ internal sealed interface ChatSendError {
     /** Twitch's own words, such as why a followers-only or slow mode chat dropped the message. */
     data class Twitch(val message: String) : ChatSendError
     data object Failed : ChatSendError
+
+    /** `/slow` with something other than a number of seconds. */
+    data object SlowUsage : ChatSendError
+
+    /** `/followers` with a time it does not understand. */
+    data object FollowersUsage : ChatSendError
+
+    /** Twitch could not be reached to change a chat mode. */
+    data object ChatModeFailed : ChatSendError
+
+    /** The free build: a chat mode command waits for Premium; a tap on the line shows the Premium banner. */
+    data object ChatModesPremium : ChatSendError
 }
 
 /**

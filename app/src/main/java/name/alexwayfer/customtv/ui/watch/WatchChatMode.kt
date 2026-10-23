@@ -16,6 +16,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.ChatModeViewer
 import name.alexwayfer.customtv.chat.ChatRoomModes
@@ -23,6 +24,7 @@ import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.chat.FollowForChatMode
 import name.alexwayfer.customtv.chat.SubForChatMode
 import name.alexwayfer.customtv.chat.chatModePlaques
+import name.alexwayfer.customtv.chat.chatModesExempt
 import name.alexwayfer.customtv.chat.plaqueTicks
 import name.alexwayfer.customtv.chat.slowModeBlocksSend
 import name.alexwayfer.customtv.data.ChannelFollowStatus
@@ -41,7 +43,8 @@ internal class WatchChatMode(
     val roomModes: ChatRoomModes,
     val access: ChatModeAccess,
     val slowModeSend: SlowModeSendState,
-    val viewerIsBroadcaster: Boolean,
+    /** The broadcaster, a moderator, or a VIP: the modes show without a countdown or an offer, and hold no send. */
+    val viewerExempt: Boolean,
     val plaques: List<ChatModePlaque>,
     val slowSendBlocked: Boolean,
 )
@@ -52,29 +55,31 @@ internal fun rememberWatchChatMode(
     profile: ChannelProfile,
     chatViewModel: ChatViewModel,
     account: WatchAccount,
+    ownBadges: List<ChatBadge>?,
 ): WatchChatMode {
     val roomModes by chatViewModel.roomModes.collectAsStateWithLifecycle()
-    val access = rememberChatModeAccess(channel, roomModes, profile.id, account)
+    val ownsChannel = account.login.equals(channel, ignoreCase = true)
+    val access = rememberChatModeAccess(channel, roomModes, profile.id, account, ownsChannel)
     var nowMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val channelName = profile.displayName.ifBlank { channel }
-    val viewerIsBroadcaster = account.login.equals(channel, ignoreCase = true)
+    val viewerExempt = chatModesExempt(ownsChannel, ownBadges)
     val slowModeSend = rememberSlowModeSend(
         channel = channel,
         ownUserId = account.userId,
         liveMessages = chatViewModel.liveIrcMessages,
         slowSeconds = roomModes.slowSeconds,
-        viewerIsBroadcaster = viewerIsBroadcaster,
+        viewerExempt = viewerExempt,
     )
     // One list while its inputs stay, so a chat message that recomposes this screen does not recompose the input.
     val slowDeadlineMillis = slowModeSend.deadlineMillis
     val follow = access.follow
     val subscription = access.subscription
     val plaques = remember(
-        roomModes, viewerIsBroadcaster, follow, subscription, nowMillis, slowDeadlineMillis, channelName,
+        roomModes, viewerExempt, follow, subscription, ownsChannel, nowMillis, slowDeadlineMillis, channelName,
     ) {
         chatModePlaques(
             modes = roomModes,
-            viewer = ChatModeViewer(viewerIsBroadcaster, follow, subscription),
+            viewer = ChatModeViewer(viewerExempt, follow, subscription, ownsChannel),
             nowMillis = nowMillis,
             slowDeadlineMillis = slowDeadlineMillis,
             channelName = channelName,
@@ -92,7 +97,7 @@ internal fun rememberWatchChatMode(
         plaques.filterIsInstance<ChatModePlaque.Slow>().firstOrNull(),
         awaitingOwnEcho = slowModeSend.awaitingOwnEchoUntilMillis != null,
     )
-    return WatchChatMode(roomModes, access, slowModeSend, viewerIsBroadcaster, plaques, slowSendBlocked)
+    return WatchChatMode(roomModes, access, slowModeSend, viewerExempt, plaques, slowSendBlocked)
 }
 
 @Composable
@@ -101,6 +106,7 @@ private fun rememberChatModeAccess(
     roomModes: ChatRoomModes,
     broadcasterId: String?,
     account: WatchAccount,
+    ownsChannel: Boolean,
 ): ChatModeAccess {
     val lifecycleOwner = LocalLifecycleOwner.current
     var followResume by remember { mutableIntStateOf(0) }
@@ -117,17 +123,18 @@ private fun rememberChatModeAccess(
     val followersMinutes = roomModes.followersOnlyMinutes
     val subscribersOnly = roomModes.subscribersOnly
     val signedIn = account.signedIn
-    LaunchedEffect(channel, followersMinutes, signedIn, broadcasterId, followResume) {
+    // The owner always counts as following and subscribed, so neither is asked for their own channel.
+    LaunchedEffect(channel, followersMinutes, signedIn, ownsChannel, broadcasterId, followResume) {
         access.follow = when {
-            followersMinutes == null -> FollowForChatMode.Unknown
+            followersMinutes == null || ownsChannel -> FollowForChatMode.Unknown
             !signedIn -> FollowForChatMode.NotFollowing
             broadcasterId.isNullOrBlank() -> FollowForChatMode.Unknown
             else -> readOwnFollowState.value(broadcasterId)
         }
     }
-    LaunchedEffect(channel, subscribersOnly, signedIn, broadcasterId, followResume) {
+    LaunchedEffect(channel, subscribersOnly, signedIn, ownsChannel, broadcasterId, followResume) {
         access.subscription = when {
-            !subscribersOnly -> SubForChatMode.Unknown
+            !subscribersOnly || ownsChannel -> SubForChatMode.Unknown
             !signedIn -> SubForChatMode.NotSubscribed
             broadcasterId.isNullOrBlank() -> SubForChatMode.Unknown
             else -> readOwnSubscriptionState.value(broadcasterId)

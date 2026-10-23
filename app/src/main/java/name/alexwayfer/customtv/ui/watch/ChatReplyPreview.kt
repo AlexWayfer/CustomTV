@@ -19,13 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatReply
@@ -57,6 +60,7 @@ internal fun ChatReplyPreview(
     val allLines = transition.currentState || transition.targetState
     SideEffect { onFoldChange(transition.currentState != transition.targetState) }
     var firstLineBottomPx by remember { mutableIntStateOf(0) }
+    val hiddenText = stringResource(R.string.chat_reply_parent_hidden)
     Row(
         verticalAlignment = Alignment.Top,
         modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
@@ -70,27 +74,8 @@ internal fun ChatReplyPreview(
                 .offset { IntOffset(0, ((textHeightPx - iconHeightPx) / 2).coerceAtLeast(0)) },
         )
         Text(
-            text = remember(reply, textSize, meMessageItalic) {
-                buildAnnotatedString {
-                    if (reply.parentBody.isBlank()) {
-                        append(reply.parentDisplayName)
-                        return@buildAnnotatedString
-                    }
-                    append(reply.parentDisplayName)
-                    if (reply.parentIsAction) {
-                        append(" ")
-                        if (meMessageItalic) {
-                            withStyle(SpanStyle(fontStyle = FontStyle.Italic, fontSize = textSize)) {
-                                append(reply.parentBody)
-                            }
-                        } else {
-                            append(reply.parentBody)
-                        }
-                    } else {
-                        append(": ")
-                        append(reply.parentBody)
-                    }
-                }
+            text = remember(reply, textSize, meMessageItalic, hiddenText) {
+                replyPreviewText(reply, textSize, meMessageItalic, hiddenText)
             },
             color = TwitchTextSecondary,
             fontSize = textSize,
@@ -103,5 +88,34 @@ internal fun ChatReplyPreview(
                 .onSizeChanged { textHeightPx = it.height }
                 .revealLines({ firstLineBottomPx }, { progress }),
         )
+    }
+}
+
+/** The replied author and their message; a hidden message shows [hiddenText] in its place. */
+private fun replyPreviewText(
+    reply: ChatReply,
+    textSize: TextUnit,
+    meMessageItalic: Boolean,
+    hiddenText: String,
+): AnnotatedString = buildAnnotatedString {
+    append(reply.parentDisplayName)
+    if (reply.parentBody.isBlank()) return@buildAnnotatedString
+    if (reply.parentHidden) {
+        append(": ")
+        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(hiddenText) }
+        return@buildAnnotatedString
+    }
+    if (reply.parentIsAction) {
+        append(" ")
+        if (meMessageItalic) {
+            withStyle(SpanStyle(fontStyle = FontStyle.Italic, fontSize = textSize)) {
+                append(reply.parentBody)
+            }
+        } else {
+            append(reply.parentBody)
+        }
+    } else {
+        append(": ")
+        append(reply.parentBody)
     }
 }

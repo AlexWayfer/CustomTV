@@ -9,6 +9,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -161,6 +162,8 @@ object ChatterLabelsRepository {
                 ?: return
             labelsEtag = fresh.etag
             show(fresh.data)
+        } catch (error: CancellationException) {
+            throw error
         } catch (_: Exception) {
             // Keep the last successfully loaded labels if the network is unavailable.
         }

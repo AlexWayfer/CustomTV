@@ -1,7 +1,15 @@
 package name.alexwayfer.customtv.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+
+/** A switch in the Sending section of the Chat page. */
+enum class ChatSendOption(internal val key: Preferences.Key<Boolean>) {
+    KeepKeyboard(KEEP_KEYBOARD_AFTER_SEND),
+    ScrollToLatest(SCROLL_TO_LATEST_AFTER_SEND),
+    SentMessageHistory(SENT_MESSAGE_HISTORY),
+}
 
 /** Writes the settings of the Chat page; [AppSettingsStore] reads them. */
 class ChatPageSettingsStore(context: Context) {
@@ -53,12 +61,8 @@ class ChatPageSettingsStore(context: Context) {
         }
     }
 
-    suspend fun setKeepKeyboardAfterSend(enabled: Boolean) {
-        dataStore.edit { prefs -> prefs[KEEP_KEYBOARD_AFTER_SEND] = enabled }
-    }
-
-    suspend fun setScrollToLatestAfterSend(enabled: Boolean) {
-        dataStore.edit { prefs -> prefs[SCROLL_TO_LATEST_AFTER_SEND] = enabled }
+    suspend fun setSendOption(option: ChatSendOption, enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[option.key] = enabled }
     }
 
     suspend fun setLinkPreviewMode(mode: LinkPreviewMode) {

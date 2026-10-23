@@ -58,11 +58,15 @@ internal data class ChatRowPlace(
     val bottomOverlayPx: Int,
 )
 
-/** What a row does when it is held, dismissed, replied to, or swiped. */
+/**
+ * What a row does when it is held, dismissed, replied to, or swiped. With [copySwipe], a swipe toward the end copies
+ * the message as the menu's Copy does.
+ */
 internal class ChatRowActions(
     val onSelect: () -> Unit,
     val onDismissSelection: (ChatRowHoldEnd) -> Unit,
     val onReply: ((ChatMessage) -> Unit)?,
     val onReplySwipingChange: (Boolean) -> Unit,
     val onReplySwipeEnd: (ChatSwipeRelease) -> Unit,
+    val copySwipe: Boolean,
 )

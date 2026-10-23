@@ -2,10 +2,16 @@ package name.alexwayfer.customtv.ui.home
 
 import android.app.Application
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -39,19 +45,30 @@ class RecentChannelItemTouchTest {
     private val app = RuntimeEnvironment.getApplication()
     private var watched = 0
     private var removed = 0
+    private var vibrations = 0
+    private val haptics = object : HapticFeedback {
+        override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) {
+            vibrations++
+        }
+    }
 
     @Before
     fun showItem() {
         compose.setContent {
-            RecentChannelItem(
-                channel = "streamer",
-                // No avatar, so nothing loads.
-                refreshedProfile = ChannelProfile(login = "streamer", displayName = "Streamer", avatarUrl = null),
-                onWatch = { watched++ },
-                onRemove = { removed++ },
-                modifier = Modifier.width(320.dp).testTag(ITEM),
-            )
+            CompositionLocalProvider(LocalHapticFeedback provides haptics) { Item() }
         }
+    }
+
+    @Composable
+    private fun Item() {
+        RecentChannelItem(
+            channel = "streamer",
+            // No avatar, so nothing loads.
+            refreshedProfile = ChannelProfile(login = "streamer", displayName = "Streamer", avatarUrl = null),
+            onWatch = { watched++ },
+            onRemove = { removed++ },
+            modifier = Modifier.width(320.dp).testTag(ITEM),
+        )
     }
 
     private val item get() = compose.onNodeWithTag(ITEM)
@@ -96,6 +113,13 @@ class RecentChannelItemTouchTest {
         tapDelete()
 
         assertEquals(1, removed)
+    }
+
+    @Test
+    fun `a long press vibrates once`() {
+        item.performTouchInput { longClick() }
+
+        assertEquals(1, vibrations)
     }
 
     @Test

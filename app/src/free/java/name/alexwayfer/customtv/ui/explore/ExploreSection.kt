@@ -10,7 +10,6 @@ import name.alexwayfer.customtv.ui.watch.OneShotRequest
 @Suppress("FunctionOnlyReturningConstant")
 internal fun exploreNavEnabled(): Boolean = false
 
-@Suppress("unused")
 @Composable
 internal fun ExploreSection(
     homeViewModel: HomeViewModel,
@@ -21,6 +20,7 @@ internal fun ExploreSection(
     openCategory: OneShotRequest<ExploreCategoryOpen>?,
     closeCategory: OneShotRequest<Unit>?,
     onBackToPlayer: (() -> Unit)?,
+    onBackToSettings: () -> Unit,
     onBack: () -> Unit,
     onOpen: (login: String, live: Boolean) -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,

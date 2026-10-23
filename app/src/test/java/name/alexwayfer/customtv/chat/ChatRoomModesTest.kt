@@ -48,6 +48,26 @@ class ChatRoomModesTest {
     }
 
     @Test
+    fun r9kTurnsUniqueChatOnAndOff() {
+        val on = chatRoomModesAfter(ChatRoomModes(), mapOf("r9k" to "1"))
+        assertTrue(on.uniqueChat)
+        assertFalse(chatRoomModesAfter(on, mapOf("r9k" to "0")).uniqueChat)
+        assertTrue(chatRoomModesAfter(on, mapOf("slow" to "0")).uniqueChat)
+    }
+
+    @Test
+    fun aChangeSetsOnlyItsMode() {
+        val current = ChatRoomModes(followersOnlyMinutes = 10, slowSeconds = 30)
+        assertEquals(current.copy(slowSeconds = 5), current.with(ChatModeChange.Slow(5)))
+        assertEquals(current.copy(slowSeconds = null), current.with(ChatModeChange.Slow(null)))
+        assertEquals(current.copy(followersOnlyMinutes = 0), current.with(ChatModeChange.Followers(0)))
+        assertEquals(current.copy(followersOnlyMinutes = null), current.with(ChatModeChange.Followers(null)))
+        assertEquals(current.copy(subscribersOnly = true), current.with(ChatModeChange.Subscribers(true)))
+        assertEquals(current.copy(emoteOnly = true), current.with(ChatModeChange.EmoteOnly(true)))
+        assertEquals(current.copy(uniqueChat = true), current.with(ChatModeChange.UniqueChat(true)))
+    }
+
+    @Test
     fun followersOnlyTurnsOffAtMinusOne() {
         val modes = chatRoomModesAfter(
             ChatRoomModes(followersOnlyMinutes = 10),
@@ -101,10 +121,97 @@ class ChatRoomModesTest {
     }
 
     @Test
-    fun broadcasterSeesRoomModesWithoutAPersonalLimit() {
+    fun broadcasterModeratorsAndVipsAreExemptFromChatModes() {
+        assertTrue(chatModesExempt(isBroadcaster = true, ownBadges = null))
+        listOf("broadcaster", "lead_moderator", "moderator", "vip").forEach { setId ->
+            assertTrue(setId, chatModesExempt(isBroadcaster = false, ownBadges = listOf(ChatBadge(setId, "1"))))
+        }
+    }
+
+    @Test
+    fun subscriberOrUnknownBadgesAreHeldByChatModes() {
+        assertFalse(chatModesExempt(isBroadcaster = false, ownBadges = null))
+        assertFalse(chatModesExempt(isBroadcaster = false, ownBadges = listOf(ChatBadge("subscriber", "12"))))
+    }
+
+    @Test
+    fun ownerFollowsAndSubscribesSoSeesOnlyEmotesAndSlowWithoutACountdown() {
         val plaques = plaques(
             ChatRoomModes(followersOnlyMinutes = 10, subscribersOnly = true, emoteOnly = true, slowSeconds = 10),
-            viewer(follow = FollowForChatMode.NotFollowing, isBroadcaster = true),
+            viewer(
+                follow = FollowForChatMode.NotFollowing,
+                subscription = SubForChatMode.NotSubscribed,
+                exempt = chatModesExempt(isBroadcaster = true, ownBadges = null),
+                ownsChannel = true,
+            ),
+            slowDeadlineMillis = 2_000L,
+            nowMillis = 1_000L,
+        )
+        assertEquals(listOf(ChatModePlaque.Emotes, ChatModePlaque.Slow(10, null)), plaques)
+    }
+
+    @Test
+    fun moderatorSeesRoomModesWithoutAPersonalLimit() {
+        assertRoomModesWithoutAPersonalLimit(
+            chatModesExempt(isBroadcaster = false, ownBadges = listOf(ChatBadge("moderator", "1"))),
+        )
+    }
+
+    @Test
+    fun vipSeesRoomModesWithoutAPersonalLimit() {
+        assertRoomModesWithoutAPersonalLimit(
+            chatModesExempt(isBroadcaster = false, ownBadges = listOf(ChatBadge("vip", "1"))),
+        )
+    }
+
+    @Test
+    fun exemptFollowerOfLongEnoughSeesNoFollowersPlaque() {
+        val followedAt = 1_000_000L
+        val plaques = plaques(
+            ChatRoomModes(followersOnlyMinutes = 10),
+            viewer(follow = FollowForChatMode.Following(followedAt), exempt = true),
+            nowMillis = followedAt + 10 * 60_000L,
+        )
+        assertTrue(plaques.isEmpty())
+    }
+
+    @Test
+    fun exemptFollowerStillShortOfTheTimeSeesFollowersWithoutACountdown() {
+        val followedAt = 1_000_000L
+        val plaques = plaques(
+            ChatRoomModes(followersOnlyMinutes = 10),
+            viewer(follow = FollowForChatMode.Following(followedAt), exempt = true),
+            nowMillis = followedAt + 5 * 60_000L,
+        )
+        assertEquals(listOf(ChatModePlaque.FollowersRoom), plaques)
+    }
+
+    @Test
+    fun exemptViewerWithUnknownFollowOrSubscriptionSeesNeitherPlaque() {
+        val plaques = plaques(
+            ChatRoomModes(followersOnlyMinutes = 10, subscribersOnly = true),
+            viewer(exempt = true),
+        )
+        assertTrue(plaques.isEmpty())
+    }
+
+    @Test
+    fun exemptSubscriberSeesNoSubscribersPlaque() {
+        val plaques = plaques(
+            ChatRoomModes(subscribersOnly = true),
+            viewer(subscription = SubForChatMode.Subscribed, exempt = true),
+        )
+        assertTrue(plaques.isEmpty())
+    }
+
+    private fun assertRoomModesWithoutAPersonalLimit(exempt: Boolean) {
+        val plaques = plaques(
+            ChatRoomModes(followersOnlyMinutes = 10, subscribersOnly = true, emoteOnly = true, slowSeconds = 10),
+            viewer(
+                follow = FollowForChatMode.NotFollowing,
+                subscription = SubForChatMode.NotSubscribed,
+                exempt = exempt,
+            ),
             slowDeadlineMillis = 2_000L,
             nowMillis = 1_000L,
         )
@@ -218,7 +325,7 @@ class ChatRoomModesTest {
 
     @Test
     fun broadcasterModeratorsAndVipsAreExemptFromTheSlowCountdown() {
-        assertNull(slowDeadline(liveMessage(userId = "42"), viewerIsBroadcaster = true))
+        assertNull(slowDeadline(liveMessage(userId = "42"), viewerExempt = true))
         listOf("broadcaster", "lead_moderator", "moderator", "vip").forEach { setId ->
             assertNull(setId, slowDeadline(liveMessage(userId = "42", badges = listOf(ChatBadge(setId, "1")))))
         }
@@ -249,15 +356,16 @@ class ChatRoomModesTest {
     private fun viewer(
         follow: FollowForChatMode = FollowForChatMode.Unknown,
         subscription: SubForChatMode = SubForChatMode.Unknown,
-        isBroadcaster: Boolean = false,
-    ) = ChatModeViewer(isBroadcaster, follow, subscription)
+        exempt: Boolean = false,
+        ownsChannel: Boolean = false,
+    ) = ChatModeViewer(exempt, follow, subscription, ownsChannel)
 
     private fun slowDeadline(
         message: ChatMessage,
         slowSeconds: Int? = 30,
-        viewerIsBroadcaster: Boolean = false,
+        viewerExempt: Boolean = false,
         receivedAtMillis: Long = 0L,
-    ): Long? = slowModeDeadlineAfterOwnMessage(message, slowSeconds, viewerIsBroadcaster, receivedAtMillis)
+    ): Long? = slowModeDeadlineAfterOwnMessage(message, slowSeconds, viewerExempt, receivedAtMillis)
 
     private fun liveMessage(
         userId: String,

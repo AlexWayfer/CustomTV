@@ -3,10 +3,13 @@ package name.alexwayfer.customtv.ui.watch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
@@ -21,7 +24,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,10 +49,15 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatterProfile
+import name.alexwayfer.customtv.data.chatterSharedChatSourceRoomId
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 
 /** Where the dark fade under the text starts, down the banner image. */
 private const val BANNER_SCRIM_START = 0.45f
+
+/** The source channel's avatar before "From X chat", about as tall as the line, and its gap to the text. */
+private val SharedChatSourceAvatarSize = 16.dp
+private val SharedChatSourceAvatarGap = 6.dp
 
 /** How dark the mention button's round fill is over the banner. */
 private const val MENTION_BUTTON_FILL_ALPHA = 0.45f
@@ -69,9 +79,11 @@ internal fun ChatterCardSheetHeader(
     onMention: (() -> Unit)?,
 ) {
     val openProfile = LocalOpenChatterProfile.current
+    val sharedChatSource = sharedChatSourceLook(chatterSharedChatSourceRoomId(chatter.sourceMessage, chatter.messages))
     ChatterCardHeader(
         profile = profile,
         chatter = chatter,
+        sharedChatSource = sharedChatSource,
         collapse = collapse,
         pinProgress = pinProgress,
         onOpenProfile = openProfile?.let { open ->
@@ -92,6 +104,8 @@ internal fun ChatterCardSheetHeader(
 private fun ChatterCardHeader(
     profile: ChatterProfile?,
     chatter: ChatterCardChatter,
+    /** The chat of another channel in a shared chat that the chatter writes from. */
+    sharedChatSource: SharedChatSourceLook?,
     collapse: ChatterHeaderCollapse,
     pinProgress: () -> Float,
     onOpenProfile: (() -> Unit)?,
@@ -143,15 +157,13 @@ private fun ChatterCardHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .openProfileButton(stringResource(R.string.chatter_card_open_profile), onOpenProfile),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            ChatterCardProfileButton(
+                label = stringResource(R.string.chatter_card_open_profile),
+                onOpenProfile = onOpenProfile,
+                modifier = Modifier.weight(1f, fill = false),
             ) {
                 ChatterAvatar(profile?.avatarUrl, collapse, pinProgress)
-                ChatterCardNames(chatter.name, chatter.login, collapse)
+                ChatterCardNames(chatter.name, chatter.login, sharedChatSource, collapse)
             }
             onMention?.let { ChatterMentionButton(it) }
         }
@@ -182,17 +194,52 @@ private fun ChatterMentionButton(onClick: () -> Unit) {
     }
 }
 
-/** The avatar and the name are one button; the pill ripple hugs the round avatar. */
-private fun Modifier.openProfileButton(label: String, onOpenProfile: (() -> Unit)?): Modifier =
-    if (onOpenProfile != null) {
-        clip(CircleShape).clickable(onClickLabel = label, role = Role.Button, onClick = onOpenProfile)
-    } else {
-        this
-    }
-
-/** The display name, and the login under it when it differs. */
+/**
+ * The avatar and the names are one button. Its pill ripple hugs the round avatar on a layer under them, so the pill's
+ * rounded end does not cut off a long line of the names.
+ */
 @Composable
-private fun ChatterCardNames(name: String, login: String, collapse: ChatterHeaderCollapse) {
+private fun ChatterCardProfileButton(
+    label: String,
+    onOpenProfile: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(modifier) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .clip(CircleShape)
+                .indication(interactionSource, ripple()),
+        )
+        Row(
+            modifier = if (onOpenProfile != null) {
+                Modifier.clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClickLabel = label,
+                    role = Role.Button,
+                    onClick = onOpenProfile,
+                )
+            } else {
+                Modifier
+            },
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content,
+        )
+    }
+}
+
+/** The display name, the login under it when it differs, and the chat of a shared chat they write from. */
+@Composable
+private fun ChatterCardNames(
+    name: String,
+    login: String,
+    sharedChatSource: SharedChatSourceLook?,
+    collapse: ChatterHeaderCollapse,
+) {
     // The folded banner fits whichever is taller, the folded avatar or the names.
     Column(modifier = Modifier.onSizeChanged { collapse.fitNames(it.height) }) {
         Text(
@@ -208,6 +255,38 @@ private fun ChatterCardNames(name: String, login: String, collapse: ChatterHeade
                 color = Color.White.copy(alpha = 0.8f),
             )
         }
+        sharedChatSource?.let { ChatterCardSharedChatSource(it) }
+    }
+}
+
+/** The source channel's small avatar and "From X chat". */
+@Composable
+private fun ChatterCardSharedChatSource(source: SharedChatSourceLook) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(SharedChatSourceAvatarGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // A circle holds the place until the channel is known, as in the chat row.
+        Box(
+            modifier = Modifier
+                .size(SharedChatSourceAvatarSize)
+                .clip(CircleShape)
+                .background(TwitchSurfaceAlt),
+        ) {
+            source.avatarUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Text(
+            text = source.description,
+            style = MaterialTheme.typography.bodyMedium.copy(shadow = OnImageTextShadow),
+            color = Color.White.copy(alpha = 0.8f),
+        )
     }
 }
 

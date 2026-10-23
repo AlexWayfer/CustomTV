@@ -19,17 +19,17 @@ private const val GLOW_SIDEWAYS = 0.35f
 /**
  * The background of the free build's Premium banner and the Premium access screen: a purple glow from the top right
  * corner and a gold one from the bottom left, each fading out before the diagonal between the other two corners,
- * whatever the screen's proportions.
+ * whatever the screen's proportions. [strength] scales both glows alike, for a calmer copy of the background.
  */
-internal fun Modifier.premiumBannerBackground(): Modifier = drawWithCache {
+internal fun Modifier.premiumBannerBackground(strength: Float = 1f): Modifier = drawWithCache {
     val glows = premiumBannerGlows(size.width, size.height)
     val purple = Brush.linearGradient(
-        colors = listOf(TwitchPurple.copy(alpha = 0.25f), Color.Transparent),
+        colors = listOf(TwitchPurple.copy(alpha = 0.25f * strength), Color.Transparent),
         start = glows.purpleFrom,
         end = premiumBannerGlowEnd(glows.purpleFrom, glows.purpleTo, PURPLE_GLOW_REACH, GLOW_SIDEWAYS),
     )
     val gold = Brush.linearGradient(
-        colors = listOf(PremiumGold.copy(alpha = 0.15f), Color.Transparent),
+        colors = listOf(PremiumGold.copy(alpha = 0.15f * strength), Color.Transparent),
         start = glows.goldFrom,
         end = premiumBannerGlowEnd(glows.goldFrom, glows.goldTo, GOLD_GLOW_REACH, GLOW_SIDEWAYS),
     )

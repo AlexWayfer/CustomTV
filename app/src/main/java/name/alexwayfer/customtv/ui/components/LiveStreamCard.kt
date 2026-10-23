@@ -1,7 +1,7 @@
 package name.alexwayfer.customtv.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +46,7 @@ private val LiveStreamAvatarSize = 40.dp
  * A live stream as a card: its preview across the width, with the viewers in one bottom corner and how long it has
  * been live in the other, and the title and category under it. With [channelShown] the channel's avatar, with its
  * collaborators', and its name join them, for a stream of another channel than the page's own. [tags] go under the
- * text.
+ * text. A long press goes to [onLongClick], which [onLongClickLabel] names for TalkBack, when there is one.
  */
 @Composable
 internal fun LiveStreamCard(
@@ -56,11 +56,19 @@ internal fun LiveStreamCard(
     modifier: Modifier = Modifier,
     channelShown: Boolean = true,
     tags: (@Composable () -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
+            .combinedClickable(
+                role = Role.Button,
+                onLongClickLabel = onLongClickLabel,
+                // The long press vibrates by itself.
+                onLongClick = onLongClick,
+                onClick = onClick,
+            )
             .padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

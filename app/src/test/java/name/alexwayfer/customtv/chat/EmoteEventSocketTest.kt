@@ -37,8 +37,9 @@ class EmoteEventSocketTest {
         open = { listener -> FakeSocket().also { opened += it to listener } },
         schedule = { delaySeconds, run ->
             if (scheduling) {
-                tasks += Task(delaySeconds, run)
-                ({})
+                val task = Task(delaySeconds, run)
+                tasks += task
+                ({ tasks -= task })
             } else {
                 null
             }
@@ -139,6 +140,15 @@ class EmoteEventSocketTest {
         val second = current.first
         socket.disconnect()
         assertTrue(second.cancelled)
+        assertTrue(tasks.isEmpty())
+    }
+
+    @Test
+    fun aDisconnectCancelsTheReopenPlannedBefore() {
+        socket.listen("123")
+        current.second.onFailure(current.first, IOException(), null)
+        socket.disconnect()
+
         assertTrue(tasks.isEmpty())
     }
 

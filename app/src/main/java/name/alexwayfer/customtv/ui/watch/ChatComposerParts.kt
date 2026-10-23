@@ -11,11 +11,15 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
@@ -26,8 +30,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +42,7 @@ import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.PickerEmote
 import name.alexwayfer.customtv.data.ChatSendError
+import name.alexwayfer.customtv.ui.PremiumLockIcon
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.theme.TwitchLive
@@ -69,6 +76,8 @@ internal fun chatCompletion(
 @Composable
 internal fun ChatCompletionPanel(
     completion: ChatCompletion?,
+    /** The free build: the chat mode commands show a lock. */
+    chatModesLocked: Boolean,
     onPickCommand: (ChatCommand) -> Unit,
     onPickNick: (ChatNick) -> Unit,
     onPickEmote: (PickerEmote) -> Unit,
@@ -92,6 +101,7 @@ internal fun ChatCompletionPanel(
             when (set) {
                 is ChatCompletion.Commands -> ChatCommandCompletionList(
                     commands = set.commands,
+                    chatModesLocked = chatModesLocked,
                     onPick = onPickCommand,
                     modifier = listModifier,
                 )
@@ -149,6 +159,10 @@ internal fun ColumnScope.ChatFieldNotes(
     sendError: ChatSendError?,
     onFollow: () -> Unit,
     onSubscribe: () -> Unit,
+    /** Opens the chat modes page in place of the plaques' details, for the streamer and moderators in Premium. */
+    onOpenModes: (() -> Unit)?,
+    /** What a tap on the send error does, such as showing the Premium banner; null when it is plain text. */
+    onSendErrorTap: (() -> Unit)?,
 ) {
     val shownPlaques = rememberLastNonNull(plaques.takeIf { it.isNotEmpty() })
     AnimatedVisibility(
@@ -161,23 +175,41 @@ internal fun ColumnScope.ChatFieldNotes(
             signedIn = signedIn,
             onFollow = onFollow,
             onSubscribe = onSubscribe,
+            onOpenModes = onOpenModes,
             modifier = Modifier.padding(bottom = 4.dp),
         )
     }
-    val shownError = rememberLastNonNull(sendError)
+    // The error and its tap leave together, so the line keeps its lock while it fades out.
+    val shownError = rememberLastNonNull(sendError?.let { it to onSendErrorTap })
     AnimatedVisibility(
         visible = sendError != null,
         enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
         exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut(),
     ) {
-        shownError?.let { error ->
-            Text(
-                text = chatSendErrorText(error),
-                color = TwitchLive,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 4.dp, end = 8.dp),
-            )
-        }
+        shownError?.let { (error, onTap) -> ChatSendErrorLine(chatSendErrorText(error), onTap) }
+    }
+}
+
+/** The last send error over the field; one with [onTap] reads as a button and shows a lock, as Premium offers do. */
+@Composable
+private fun ChatSendErrorLine(text: String, onTap: (() -> Unit)?) {
+    Row(
+        modifier = Modifier
+            .padding(bottom = 4.dp, end = 8.dp)
+            .then(
+                if (onTap == null) {
+                    Modifier
+                } else {
+                    Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(role = Role.Button, onClick = onTap)
+                },
+            ),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onTap != null) PremiumLockIcon(Modifier.size(14.dp))
+        Text(text = text, color = TwitchLive, fontSize = 12.sp)
     }
 }
 

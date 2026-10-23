@@ -48,7 +48,7 @@ internal class ChatRowHold(
     }
 
     fun onSwipeEnd(release: ChatSwipeRelease, listState: LazyListState) {
-        release(if (release == ChatSwipeRelease.Reply) ChatRowHoldEnd.Reply else ChatRowHoldEnd.Dismiss, listState)
+        release(chatRowHoldEndOfSwipe(release), listState)
     }
 
     fun select(messageId: String, listState: LazyListState) {
@@ -112,6 +112,13 @@ internal class ChatRowHold(
         onAnchorChange(null)
         onStickToBottomChange.value(true)
     }
+}
+
+/** How a swipe of a row ends its hold: as the menu action it does, or as a dismissal when it does none. */
+internal fun chatRowHoldEndOfSwipe(release: ChatSwipeRelease): ChatRowHoldEnd = when (release) {
+    ChatSwipeRelease.Reply -> ChatRowHoldEnd.Reply
+    ChatSwipeRelease.Copy -> ChatRowHoldEnd.Copy
+    ChatSwipeRelease.Dismiss, ChatSwipeRelease.Back -> ChatRowHoldEnd.Dismiss
 }
 
 /** The hold ends once neither a swipe nor an open menu keeps a row held. */

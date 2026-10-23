@@ -6,12 +6,10 @@ import name.alexwayfer.customtv.chat.ChannelPrediction
 import name.alexwayfer.customtv.chat.ChatMessage
 
 /** Watch streaks are a Premium feature: the free build reports no watched minutes. */
-@Suppress("unused")
 @Composable
 internal fun WatchPresenceEffect(channelLogin: String, isLive: Boolean, chatMessages: StateFlow<List<ChatMessage>>) =
     Unit
 
-@Suppress("unused")
 @Composable
 internal fun ChannelPointsChip(
     channelLogin: String,
@@ -20,6 +18,6 @@ internal fun ChannelPointsChip(
     visible: Boolean,
 ) = Unit
 
-@Suppress("unused", "FunctionOnlyReturningConstant")
+@Suppress("FunctionOnlyReturningConstant")
 @Composable
 internal fun rememberChatShareOffer(channelLogin: String, pointsIconUrl: String?): ChatShareOffer? = null

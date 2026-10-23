@@ -6,7 +6,6 @@ import androidx.compose.ui.unit.TextUnit
 import name.alexwayfer.customtv.chat.ChatMessage
 
 /** Moderator tools are Premium: the free build shows every message without a moderator frame. */
-@Suppress("unused")
 @Composable
 internal fun ChatModerationFrame(
     message: ChatMessage,

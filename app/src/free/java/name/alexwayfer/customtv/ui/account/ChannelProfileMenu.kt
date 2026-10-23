@@ -15,7 +15,6 @@ import name.alexwayfer.customtv.ui.watch.openTwitchReportInBrowser
  * Another channel's actions. The free build has no report sheet of its own, so Report opens Twitch's report page
  * in a Custom Tab with the browser's own Twitch session, full screen like the chatter card's Report.
  */
-@Suppress("unused")
 @Composable
 internal fun ChannelProfileMenu(
     login: String,

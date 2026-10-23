@@ -51,7 +51,6 @@ internal fun ChatAuthorTouchTarget(
                 .offset { IntOffset(bounds.left.roundToInt(), bounds.top.roundToInt()) }
                 .size(with(density) { bounds.width.toDp() }, with(density) { bounds.height.toDp() })
                 .combinedClickable(
-                    hapticFeedbackEnabled = false,
                     onClick = onClick,
                     onLongClick = onLongClick,
                 )

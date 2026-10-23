@@ -37,6 +37,9 @@ class ChatViewModel(
     val connectionState: StateFlow<ChatConnectionState> = client.state
     internal val roomModes: StateFlow<ChatRoomModes> = client.roomModes
 
+    /** Shows the modes Twitch answered a moderator's change with, ahead of the ROOMSTATE that follows it. */
+    internal val setRoomModes: (ChatRoomModes) -> Unit = client::setRoomModes
+
     private val badges = ChannelBadges(viewModelScope)
     val badgeUrls: StateFlow<Map<String, String>> = badges.urls
 
@@ -52,7 +55,9 @@ class ChatViewModel(
 
     internal val pins = ChatPins(viewModelScope, { currentChannelId }, colors::remember)
     val pinnedChat: StateFlow<PinnedChat?> = pins.pinned
-    internal val raid = OutgoingRaidTracker(viewModelScope, pubSub, { currentChannelId }, _messages)
+    /** Takes the phrases that hide messages in this channel now, whose rows the chat keeps beside the shown ones. */
+    internal val trim = ChatTrim()
+    internal val raid = OutgoingRaidTracker(viewModelScope, pubSub, { currentChannelId }, _messages, trim)
     internal val outgoingRaid: StateFlow<OutgoingRaid?> = raid.raid
     private val liveEvents = ChannelEventsController(viewModelScope)
     internal val channelEvents: StateFlow<ChannelEvents> = liveEvents.events
@@ -60,20 +65,20 @@ class ChatViewModel(
     private val recentChat = RecentChatLoad(
         viewModelScope,
         _messages,
-        _sessionChatters,
-        chatterRecency,
-        _chatterHistory,
+        trim,
+        ChatterTracking(_sessionChatters, chatterRecency, _chatterHistory),
         currentChannel = { currentChannel },
         mentionSelf = { mentionSelf },
     )
     internal val recentChatLoadState: StateFlow<RecentChatLoadState> = recentChat.state
     private val notices = ChatConnectionNotices(
         _messages,
+        trim,
         onWelcomed = recentChat::start,
         onReconnected = recentChat::fillReconnectGap,
     )
     internal val reconnecting: StateFlow<Boolean> = notices.reconnecting
-    private val deletions = ChatDeletions(_messages, _chatterHistory)
+    private val deletions = ChatDeletions(_messages, _chatterHistory, trim)
 
     private var collectJob: Job? = null
     private val reconnect = ChatReconnect(
@@ -120,12 +125,12 @@ class ChatViewModel(
                             val result = RewardMessageDeduper.apply(
                                 current,
                                 colors.paintReward(chatterMessage),
-                                MAX_CHAT_MESSAGES,
+                                MAX_KEPT_CHAT_MESSAGES,
                                 pendingRewardEvents,
                             )
                             pendingRewardEvents = result.pending
                             result.colorSource?.let { colors.remember(it) }
-                            result.messages.also { updatedMessages = it }
+                            trim.keep(result.messages).also { updatedMessages = it }
                         }
                         _chatterHistory.update { history ->
                             rememberChatterHistory(history, previousMessages, updatedMessages, mentionSelf)
@@ -175,7 +180,7 @@ class ChatViewModel(
 
     /** Rows another live source adds or changes, such as messages held for moderators. */
     internal fun editMessages(transform: (List<ChatMessage>) -> List<ChatMessage>) {
-        _messages.update { current -> transform(current).takeLast(MAX_CHAT_MESSAGES) }
+        _messages.update { current -> trim.keep(transform(current)) }
     }
 
     fun connect(channel: String, loadRecentChat: Boolean) {
@@ -217,7 +222,7 @@ class ChatViewModel(
                 followChannel(channelId)
             } else if (currentChannel == normalized) {
                 channelLookupNotice(lookup)?.let { notice ->
-                    _messages.update { current -> withChannelLookupNotice(current, notice) }
+                    _messages.update { current -> trim.keep(withChannelLookupNotice(current, notice)) }
                 }
             }
         }
@@ -303,5 +308,5 @@ private fun withChannelLookupNotice(messages: List<ChatMessage>, notice: ChatNot
         messages = messages,
         recent = listOf(chatNoticeMessage(notice, "channel-not-found-${System.nanoTime()}")),
         initialNoticeId = CHAT_WELCOME_NOTICE_ID,
-        maxMessages = MAX_CHAT_MESSAGES,
+        maxMessages = MAX_KEPT_CHAT_MESSAGES,
     )

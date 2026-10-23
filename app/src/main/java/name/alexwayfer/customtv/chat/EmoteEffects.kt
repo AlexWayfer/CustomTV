@@ -52,15 +52,6 @@ data class EmoteEffects(
             else -> null
         }
 
-        fun bttvPrefix(text: String): EmoteEffects? {
-            val tokens = text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-            if (tokens.isEmpty()) return null
-            return tokens.fold(EmoteEffects()) { current, token ->
-                val effect = bttv(token) ?: return null
-                current.combine(effect)
-            }
-        }
-
         // These names are also recognized directly by BTTV's modifier parser.
         // They can be applied while FFZ's emote catalog is still loading.
         fun knownFfz(token: String): EmoteEffects? = when (token) {

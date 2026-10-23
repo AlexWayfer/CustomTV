@@ -64,6 +64,7 @@ import name.alexwayfer.customtv.chat.chatterFactCopyText
 import name.alexwayfer.customtv.chat.chatterSubscription
 import name.alexwayfer.customtv.chat.shownUnits
 import name.alexwayfer.customtv.data.ChatterCardCache
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.components.lateralTransform
 import java.time.Instant
 import java.time.ZoneId
@@ -178,6 +179,7 @@ internal fun ChatterCardSheet(
         sheetState = sheetState,
         contentWindowInsets = { sheetInsets },
     ) {
+        NoSheetWindowDim()
         BackHandler {
             if (nav.page != ChatterCardPage.Profile) nav.back() else dismissSheet.value()
         }

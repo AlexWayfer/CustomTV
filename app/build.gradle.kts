@@ -1,4 +1,6 @@
+import dev.detekt.gradle.Detekt
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     alias(libs.plugins.android.application)
@@ -21,7 +23,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 31
+        versionCode = 33
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -37,14 +39,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.11.1"
+            versionName = "1.12.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.11.0"
+                versionName = "1.11.1"
                 buildConfigField("boolean", "PREMIUM", "true")
                 // Premium logs in to Telegram: its group gives the access and the updates.
                 val telegram = Properties().apply {
@@ -200,10 +202,33 @@ dependencies {
 detekt {
     buildUponDefaultConfig = true
     config.setFrom(rootProject.file("config/detekt.yml"))
-    // `verify.ps1 -Detekt` lists the changed sources in a file, one path from the repository root per line.
-    source.setFrom(
-        providers.gradleProperty("detektFileList")
-            .map { list -> rootProject.file(list).readLines().filter(String::isNotBlank).map(rootProject::file) }
-            .orElse(listOf(file("src"))),
-    )
+}
+
+// verify.ps1 -Detekt lists the changed Kotlin files in this file, one path a line: each variant then analyzes only
+// its own of them, and resolves the types of the other files from the variant's compiled classes. Without the
+// property, as before a commit, every variant analyzes all its sources.
+val detektFiles = providers.gradleProperty("detektFilesList")
+    .flatMap { providers.fileContents(rootProject.layout.projectDirectory.file(it)).asText }
+    .orNull
+    ?.lines()
+    ?.filter { it.isNotBlank() }
+    ?.map { file(it.trim()) }
+    ?.toSet()
+if (detektFiles != null) {
+    // An exclude, not a new source: the plugin adds the variant's sources after this action runs.
+    tasks.withType<Detekt>().configureEach {
+        // A local copy: the configuration cache cannot store a reference to the build script.
+        val analyzed = detektFiles
+        exclude { !it.isDirectory && it.file !in analyzed }
+        // The plugin's classpath lacks the variant's own classes with AGP's built-in Kotlin; a test variant gets
+        // the tested classes from its libraries. An explicit value replaces the plugin's, so each names both. The
+        // classes are friends, as the code is mostly internal.
+        val compileName = name.replaceFirst("detekt", "compile") + "Kotlin"
+        if (compileName in tasks.names) {
+            val compile = tasks.named<KotlinJvmCompile>(compileName)
+            val classes = compile.flatMap { it.destinationDirectory }
+            classpath.from(compile.map { it.libraries }, classes)
+            friendPaths.from(compile.map { it.friendPaths }, classes)
+        }
+    }
 }

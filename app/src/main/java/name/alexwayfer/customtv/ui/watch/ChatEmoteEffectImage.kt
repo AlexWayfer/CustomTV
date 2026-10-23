@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.withFrameNanos
@@ -33,20 +34,8 @@ internal fun ChatEmoteEffectImage(
         SharedEmoteImage(url = url, contentDescription = contentDescription, size = size, aspectRatio = aspectRatio)
         return
     }
-    val animated = !LocalPlayerContentHidden.current && (
-        effects.party || effects.rainbow || effects.shake ||
-            effects.hyperShake || effects.jam || effects.bounce
-        )
-    // Frame timestamps share one monotonic origin, even when rows enter the viewport later.
-    val frameTimeNanos by produceState(initialValue = emoteEffectTime(System.nanoTime()), key1 = animated) {
-        if (animated) {
-            while (true) {
-                val frame = withFrameNanos { it }
-                value = emoteEffectTime(frame)
-                delay(nanosUntilNextEmoteEffectFrame(frame).nanoseconds)
-            }
-        }
-    }
+    val animated = !LocalPlayerContentHidden.current && emoteEffectsMove(effects)
+    val frameTimeNanos by rememberEmoteEffectTime(animated)
     SharedEmoteImage(
         url = url,
         contentDescription = contentDescription,
@@ -58,7 +47,25 @@ internal fun ChatEmoteEffectImage(
     )
 }
 
-private fun emoteEffectColorFilter(effects: EmoteEffects, frameTimeNanos: Long): ColorFilter? = when {
+/** Whether [effects] change over time, so the emote needs a new frame now and then. */
+internal fun emoteEffectsMove(effects: EmoteEffects): Boolean =
+    effects.party || effects.rainbow || effects.shake || effects.hyperShake || effects.jam || effects.bounce
+
+/** The time emote effects draw at, ticking while [animated]. */
+@Composable
+internal fun rememberEmoteEffectTime(animated: Boolean): State<Long> =
+    // Frame timestamps share one monotonic origin, even when rows enter the viewport later.
+    produceState(initialValue = emoteEffectTime(System.nanoTime()), key1 = animated) {
+        if (animated) {
+            while (true) {
+                val frame = withFrameNanos { it }
+                value = emoteEffectTime(frame)
+                delay(nanosUntilNextEmoteEffectFrame(frame).nanoseconds)
+            }
+        }
+    }
+
+internal fun emoteEffectColorFilter(effects: EmoteEffects, frameTimeNanos: Long): ColorFilter? = when {
     effects.cursed -> ColorFilter.colorMatrix(cursedColorMatrix())
     effects.hyperRed -> ColorFilter.tint(HyperRedTint, BlendMode.Modulate)
     effects.rainbow -> ColorFilter.tint(
@@ -78,6 +85,26 @@ private const val FULL_TURN_DEGREES = 360f
 private const val RAINBOW_SATURATION = 0.9f
 
 private fun GraphicsLayerScope.applyEmoteMotion(effects: EmoteEffects, frameTimeNanos: Long) {
+    val motion = emoteEffectMotion(effects, frameTimeNanos)
+    scaleX = motion.scaleX
+    scaleY = motion.scaleY
+    rotationZ = motion.rotationDegrees
+    translationX = motion.translationX
+    translationY = motion.translationY
+    transformOrigin = motion.origin
+}
+
+/** How an emote with effects is moved, turned, and scaled on one frame, around [origin]. */
+internal class EmoteMotion(
+    val scaleX: Float,
+    val scaleY: Float,
+    val rotationDegrees: Float,
+    val translationX: Float,
+    val translationY: Float,
+    val origin: TransformOrigin,
+)
+
+internal fun emoteEffectMotion(effects: EmoteEffects, frameTimeNanos: Long): EmoteMotion {
     val hyperShake = FFZ_HYPER_SHAKE.frameAt(effectPhase(frameTimeNanos, 100))
     val bttvShake = BTTV_SHAKE.frameAt(effectPhase(frameTimeNanos, 500), stepped = true)
     val jam = FFZ_JAM.frameAt(effectPhase(frameTimeNanos, 600))
@@ -90,12 +117,14 @@ private fun GraphicsLayerScope.applyEmoteMotion(effects: EmoteEffects, frameTime
     }
     val bounceScaleX = if (effects.bounce) bounce.scaleX else 1f
     val bounceScaleY = if (effects.bounce) bounce.scaleY else 1f
-    scaleX = (if (effects.flipX) -1f else 1f) * effects.widthMultiplier * bounceScaleX
-    scaleY = (if (effects.flipY) -1f else 1f) * bounceScaleY
-    rotationZ = effects.rotationDegrees + if (effects.jam) jam.rotationDegrees else 0f
-    translationX = motion.x
-    translationY = motion.y
-    transformOrigin = if (effects.bounce) BottomCenterOrigin else TransformOrigin.Center
+    return EmoteMotion(
+        scaleX = (if (effects.flipX) -1f else 1f) * effects.widthMultiplier * bounceScaleX,
+        scaleY = (if (effects.flipY) -1f else 1f) * bounceScaleY,
+        rotationDegrees = effects.rotationDegrees + if (effects.jam) jam.rotationDegrees else 0f,
+        translationX = motion.x,
+        translationY = motion.y,
+        origin = if (effects.bounce) BottomCenterOrigin else TransformOrigin.Center,
+    )
 }
 
 private fun effectPhase(frameTimeNanos: Long, durationMillis: Long): Float {

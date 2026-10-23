@@ -14,6 +14,7 @@ internal class OutgoingRaidTracker(
     pubSub: TwitchPubSubClient,
     private val currentChannelId: () -> String?,
     private val messages: MutableStateFlow<List<ChatMessage>>,
+    private val trim: ChatTrim,
 ) {
     private val _raid = MutableStateFlow<OutgoingRaid?>(null)
     val raid: StateFlow<OutgoingRaid?> = _raid
@@ -56,7 +57,7 @@ internal class OutgoingRaidTracker(
         )
         messages.update { current ->
             if (current.any { it.id == message.id }) current
-            else (current + message).takeLast(MAX_CHAT_MESSAGES)
+            else trim.keep(current + message)
         }
     }
 }

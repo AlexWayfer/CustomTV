@@ -14,7 +14,15 @@ class ChatCommandCompletionTest {
         assertEquals(ChatCommandQuery(end = 1, text = "/"), query)
         assertEquals(
             ChatCommand.entries.toList(),
-            matchingChatCommands(query!!.text, availableChatCommands(predictionOpenable = true)),
+            matchingChatCommands(query!!.text, availableChatCommands(predictionOpenable = true, chatModes = true)),
+        )
+    }
+
+    @Test
+    fun aModeratorGetsTheChatModeCommands() {
+        assertEquals(
+            listOf(ChatCommand.Slow, ChatCommand.SlowOff),
+            matchingChatCommands("/slow", availableChatCommands(predictionOpenable = false, chatModes = true)),
         )
     }
 
@@ -32,13 +40,13 @@ class ChatCommandCompletionTest {
     fun theStreamerAndModeratorsGetPrediction() {
         assertEquals(
             listOf(ChatCommand.Prediction),
-            matchingChatCommands("/pre", availableChatCommands(predictionOpenable = true)),
+            matchingChatCommands("/pre", availableChatCommands(predictionOpenable = true, chatModes = false)),
         )
     }
 
     @Test
-    fun aViewerHasNoPredictionCommand() {
-        assertEquals(listOf(ChatCommand.User), availableChatCommands(predictionOpenable = false))
+    fun aViewerHasNoPredictionOrChatModeCommands() {
+        assertEquals(listOf(ChatCommand.User), availableChatCommands(predictionOpenable = false, chatModes = false))
     }
 
     @Test

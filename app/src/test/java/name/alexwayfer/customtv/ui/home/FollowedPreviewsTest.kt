@@ -22,6 +22,18 @@ class FollowedPreviewsTest {
     }
 
     @Test
+    fun liveStreamsOfHiddenCategoriesGoToTheirOwnSection() {
+        val dota = live.copy(id = "3", login = "gamma", categoryId = "29595")
+        val art = live.copy(id = "4", login = "delta", categoryId = "509660")
+        val offlineDota = offline.copy(categoryId = "29595")
+        val sections = followedSections(listOf(live, dota, offlineDota, art), hiddenCategoryIds = setOf("29595"))
+
+        assertEquals(listOf(live, art), sections.live)
+        assertEquals(listOf(dota), sections.hidden)
+        assertEquals(listOf(offlineDota), sections.offline)
+    }
+
+    @Test
     fun liveChannelWithoutPreviewTakesTheCurrentTime() {
         assertEquals(now, followedPreviewAt(isLive = true, knownAtMillis = null, nowMillis = now))
     }

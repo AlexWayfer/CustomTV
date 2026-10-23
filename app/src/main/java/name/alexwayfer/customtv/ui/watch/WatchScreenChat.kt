@@ -15,19 +15,37 @@ import name.alexwayfer.customtv.chat.replySessionChooses
 import name.alexwayfer.customtv.chat.subscribersPlaqueAction
 import name.alexwayfer.customtv.chat.threadReplyHidesChrome
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
+import name.alexwayfer.customtv.data.sharedChatCollaborationLoading
 import name.alexwayfer.customtv.links.openOutsideApp
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 
 /** The live chat with its notices over it and the reply thread under it. */
 @Composable
 internal fun ColumnScope.WatchChatPane(scene: WatchScene, layout: MinimizablePlayerLayout) {
-    val chat = scene.chat
     val data = scene.data
     ChatRecapPresenceEffect(
         channelId = scene.profile.id,
         shown = !scene.placement.minimized && !scene.placement.inPictureInPicture,
     )
     ChannelPanelsPreloadEffect(channelId = scene.profile.id)
+    ProvideSharedChatSources(
+        channelId = scene.profile.id,
+        collaboration = scene.collaboration,
+        collaborationLoading = sharedChatCollaborationLoading(
+            channelId = scene.profile.id,
+            sharedViewerCount = scene.profile.sharedViewerCount,
+            collaboration = scene.collaboration,
+        ),
+        messages = { data.messages.value },
+    ) {
+        WatchChatPaneContent(scene, layout)
+    }
+}
+
+@Composable
+private fun ColumnScope.WatchChatPaneContent(scene: WatchScene, layout: MinimizablePlayerLayout) {
+    val chat = scene.chat
+    val data = scene.data
     ChatPane(
         channel = scene.channel,
         channelProfile = scene.profile,
@@ -130,7 +148,7 @@ internal fun WatchInputBar(scene: WatchScene, layout: MinimizablePlayerLayout) {
     val context = LocalContext.current
     Box(modifier = Modifier.foldedAway { inputBarShown.value }) {
         ChatInputBar(
-            channel = scene.inputChannel(layout),
+            channel = scene.inputChannel(layout, rememberChatModeControl(scene.profile.id, scene.ownBadges?.badges)),
             user = scene.inputUser(),
             compose = watchCompose(scene),
             menu = scene.chatMenu(),
@@ -139,13 +157,15 @@ internal fun WatchInputBar(scene: WatchScene, layout: MinimizablePlayerLayout) {
     }
 }
 
-private fun WatchScene.inputChannel(layout: MinimizablePlayerLayout) = ChatInputChannel(
+private fun WatchScene.inputChannel(layout: MinimizablePlayerLayout, modeControl: ChatModeControl?) = ChatInputChannel(
     login = channel,
     broadcasterId = profile.id,
     owner = ChatNick(login = channel, displayName = profile.displayName.ifBlank { channel }),
     rules = profile.chatRules,
     liveMessages = chatViewModel.liveIrcMessages,
     browserSheetHeightPx = { layout.browserSheetHeightPx() },
+    roomModes = mode.roomModes,
+    modeControl = modeControl,
 )
 
 private fun WatchScene.inputUser() = ChatInputUser(
@@ -183,9 +203,12 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
         shareOffer = rememberChatShareOffer(scene.channel, scene.profile.channelPointsIconUrl)
             ?.takeIf { chat.replySession == null },
         keepKeyboardAfterSend = settings.keepKeyboardAfterSend,
+        historyEnabled = settings.sentMessageHistory,
+        sentHistory = rememberSentHistory(scene.chatViewModel.chatterHistory, scene.account.login),
+        meMessageItalic = settings.meMessageItalic,
         slowSendBlocked = scene.mode.slowSendBlocked,
         onSent = {
-            scene.mode.slowModeSend.onSent(scene.mode.roomModes.slowSeconds, scene.mode.viewerIsBroadcaster)
+            scene.mode.slowModeSend.onSent(scene.mode.roomModes.slowSeconds, scene.mode.viewerExempt)
             chat.replySession = null
             chat.stickToBottom = chatFollowsAfterSend(chat.stickToBottom, settings.scrollToLatestAfterSend)
         },

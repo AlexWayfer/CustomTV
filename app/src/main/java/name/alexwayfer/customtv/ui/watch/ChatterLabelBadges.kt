@@ -37,7 +37,6 @@ internal fun badgeInlineContent(
             .then(
                 if (onClick != null) {
                     Modifier.combinedClickable(
-                        hapticFeedbackEnabled = false,
                         onClick = onClick,
                         onLongClick = onLongClick,
                     )

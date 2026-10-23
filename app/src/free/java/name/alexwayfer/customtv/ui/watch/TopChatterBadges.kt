@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.Dp
 
 // Top chatter badges are Premium: the free build shows none.
 
-@Suppress("unused")
 @Composable
 internal fun ProvideTopChatters(
     enabled: Boolean,
@@ -16,11 +15,10 @@ internal fun ProvideTopChatters(
     content: @Composable () -> Unit,
 ) = content()
 
-@Suppress("unused", "FunctionOnlyReturningConstant")
+@Suppress("FunctionOnlyReturningConstant")
 @Composable
 internal fun topChatterBadge(login: String): TopChatterBadge? = null
 
-@Suppress("unused")
 internal fun AnnotatedString.Builder.appendTopChatterBadge(
     badge: TopChatterBadge?,
     sizes: ChatTextSizes,
@@ -29,14 +27,11 @@ internal fun AnnotatedString.Builder.appendTopChatterBadge(
     onLongClick: () -> Unit,
 ) = Unit
 
-@Suppress("unused")
 @Composable
 internal fun TopChatterNameIcon(login: String?, badgeSize: Dp) = Unit
 
-@Suppress("unused")
 @Composable
 internal fun TopChatterCardRefreshEffect(login: String) = Unit
 
-@Suppress("unused")
 @Composable
 internal fun ChatterCardTopChatterItem(login: String) = Unit

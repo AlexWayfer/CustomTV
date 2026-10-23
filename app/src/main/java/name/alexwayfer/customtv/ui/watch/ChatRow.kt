@@ -13,9 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
@@ -25,6 +23,7 @@ import name.alexwayfer.customtv.chat.chatMessageCanBeMentioned
 import name.alexwayfer.customtv.chat.chatMessageCanBeReplied
 import name.alexwayfer.customtv.chat.copyableText
 import name.alexwayfer.customtv.chat.formatChatTimestamp
+import name.alexwayfer.customtv.data.sharedChatSourceOnUserMessage
 import name.alexwayfer.customtv.ui.theme.ChatFirstMessage
 import name.alexwayfer.customtv.ui.theme.ChatFirstTimeChatter
 import name.alexwayfer.customtv.ui.theme.ChatMention
@@ -55,7 +54,6 @@ internal fun ChatRow(
     // Every shown row runs this again with each new message; the text match runs once per row.
     val mentioned = remember(message, settings.mentions) { settings.mentions.matches(message) }
     val displayMessage = rememberDisplayMessage(message, appearance)
-    val haptic = LocalHapticFeedback.current
     // Read on each frame by the scroll that keeps the row in sight, not by the composition.
     val replyFolding = remember { mutableStateOf(false) }
     KeepSelectedMessageVisible(selected, message.id, place) { replyFolding.value }
@@ -69,12 +67,8 @@ internal fun ChatRow(
         pointsIconUrl = settings.channelPointsIconUrl,
         highlightRewardCost = settings.highlightRewardCost,
     )
-    val select = {
-        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        actions.onSelect()
-    }
-    val replySwipe = onReply != null && !LocalPlayerContentFullscreen.current
-    ChatRowReplySwipe(replySwipe, onReply = { onReply?.invoke(message) }, actions) {
+    val copyText = remember(message) { message.copyableText() }
+    ChatRowSwipe(message, copyText, onReply, actions) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -87,7 +81,8 @@ internal fun ChatRow(
                     onLongClickLabel = stringResource(
                         if (onReply != null || onMention != null) R.string.chat_message_actions else R.string.chat_copy,
                     ),
-                    onLongClick = select,
+                    // Every long press that selects the message vibrates by itself.
+                    onLongClick = actions.onSelect,
                     onClick = { if (selected) actions.onDismissSelection(ChatRowHoldEnd.Dismiss) },
                 ),
         ) {
@@ -101,28 +96,40 @@ internal fun ChatRow(
                     ChatRowHeaders(message, look)
                     ChatRowEventLine(message, look)
                     if (chatRowShowsUserMessage(message)) {
-                        ChatRowUserMessage(message, displayMessage, look, selected, select) { replyFolding.value = it }
+                        ChatRowUserMessage(message, displayMessage, look, selected, actions.onSelect) {
+                            replyFolding.value = it
+                        }
                     }
                 }
                 ChatRowLinkPreview(message.rawText, settings.linkPreviewMode, deletedAppearance.linkPreviewAlpha)
-                if (selected) ChatRowMenu(message, onReply, onMention, actions.onDismissSelection)
+                if (selected) ChatRowMenu(message, copyText, onReply, onMention, actions.onDismissSelection)
             }
         }
     }
 }
 
-/** The row's reply swipe, which tells the list when it starts and how it ends. */
+/**
+ * The row's swipes to reply and to copy [copyText], which tell the list when one starts and how it ends. Full screen
+ * leaves both to the chat's own sideways swipe.
+ */
 @Composable
-private fun ChatRowReplySwipe(
-    enabled: Boolean,
-    onReply: () -> Unit,
+private fun ChatRowSwipe(
+    message: ChatMessage,
+    copyText: String?,
+    onReply: ((ChatMessage) -> Unit)?,
     actions: ChatRowActions,
     content: @Composable () -> Unit,
 ) {
+    val context = LocalContext.current
+    val fullscreen = LocalPlayerContentFullscreen.current
+    val onReplySwipe = onReply?.takeIf { !fullscreen }?.let { reply -> { reply(message) } }
+    val onCopySwipe = copyText?.takeIf { actions.copySwipe && chatSwipeCopies(it, fullscreen) }
+        ?.let { text -> { context.copyChatText(text) } }
     ChatReplySwipe(
-        enabled,
-        onReply = onReply,
+        enabled = onReplySwipe != null || onCopySwipe != null,
+        onReply = onReplySwipe,
         onSwipingChange = actions.onReplySwipingChange,
+        onCopy = onCopySwipe,
         onSwipeEnd = actions.onReplySwipeEnd,
         content = content,
     )
@@ -255,6 +262,7 @@ private fun ChatRowUserMessage(
             badgeSize = sizes.badge,
             badgeUrls = appearance.badgeUrls,
             meMessageItalic = appearance.meMessageItalic,
+            showSharedChatSource = sharedChatSourceOnUserMessage(message.systemText),
             onEmoteLongClick = onSelect,
         )
     }
@@ -267,12 +275,12 @@ private fun ChatRowUserMessage(
 @Composable
 private fun ChatRowMenu(
     message: ChatMessage,
+    copyText: String?,
     onReply: ((ChatMessage) -> Unit)?,
     onMention: ((login: String, displayName: String) -> Unit)?,
     onDismissSelection: (ChatRowHoldEnd) -> Unit,
 ) {
     val context = LocalContext.current
-    val copyText = remember(message) { message.copyableText() }
     if (copyText == null && onReply == null && onMention == null) return
     ChatMessageCopyPopup(
         onReply = onReply?.let { reply ->

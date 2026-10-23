@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.auth.twitchAuthMessage
 import name.alexwayfer.customtv.data.HTTP_SUCCESS
 import name.alexwayfer.customtv.data.gqlErrorsToReport
+import name.alexwayfer.customtv.update.AppUpdates
 import java.io.IOException
 import java.time.ZoneId
 
@@ -200,5 +201,6 @@ internal object Diagnostics {
             DiagnosticJournal.eventsToSend(application).map(::diagnosticHeadline)
                 .ifEmpty { listOf(diagnosticHeadline(event)) },
         )
+        AppUpdates.afterProblem()
     }
 }

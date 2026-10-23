@@ -21,6 +21,15 @@ internal object IrcUserNotice {
         else -> ChatEventKind.System
     }
 
+    /**
+     * The kind of a notice shared from another channel, by its `msg-id` there. Only a subscription or an announcement
+     * keeps its kind; a raid or anything else is a plain line, so it does not act as this channel's own.
+     */
+    fun sharedEventKind(sourceMessageId: String): ChatEventKind = when (val kind = eventKind(sourceMessageId)) {
+        ChatEventKind.Subscription, ChatEventKind.Announcement -> kind
+        else -> ChatEventKind.System
+    }
+
     fun watchStreak(tags: Map<String, String>): ChatWatchStreak? {
         if (tags["msg-id"] != "viewermilestone") return null
         if (tags["msg-param-category"] != "watch-streak") return null

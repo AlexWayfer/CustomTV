@@ -6,7 +6,7 @@ import name.alexwayfer.customtv.ui.watch.OneShotRequest
 /** Opens [category] in Explore as the player minimizes onto it; Back from it brings that player back. */
 internal fun AppScene.openCategoryFromPlayer(category: TwitchCategory) {
     shell.categoryPlayerSection = shell.section
-    shell.exploreOpenCategory = OneShotRequest(ExploreCategoryOpen(category, fromPlayer = true))
+    shell.exploreOpenCategory = OneShotRequest(ExploreCategoryOpen(category, from = ExploreCategoryFrom.Player))
     shell.section = AppSection.Explore
 }
 

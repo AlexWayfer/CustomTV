@@ -36,9 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -171,7 +169,6 @@ private fun RecentChannelRow(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val haptic = LocalHapticFeedback.current
     val profile = refreshedProfile ?: rememberSavedRecentProfile(channel)
     val category = profile.categoryName.takeIf { profile.isLive }
     val viewerCount = profile.viewerCount.takeIf { profile.isLive }
@@ -182,10 +179,8 @@ private fun RecentChannelRow(
             .combinedClickable(
                 interactionSource = null,
                 indication = ripple(color = Color.White),
-                onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onLongClick()
-                },
+                // The long press vibrates by itself.
+                onLongClick = onLongClick,
                 onClick = { onClick(profile.isLive) },
             )
             .padding(horizontal = 12.dp, vertical = 10.dp),

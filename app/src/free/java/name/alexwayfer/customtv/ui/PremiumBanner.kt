@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -57,6 +56,7 @@ import name.alexwayfer.customtv.diagnostics.ownPackageInfo
 import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.settings.PremiumFeatureList
 import name.alexwayfer.customtv.ui.settings.goldButtonColors
+import name.alexwayfer.customtv.ui.settings.goldButtonFill
 import name.alexwayfer.customtv.ui.settings.premiumUpgradeOpener
 import name.alexwayfer.customtv.ui.theme.PremiumGold
 import name.alexwayfer.customtv.ui.theme.TwitchBg
@@ -167,10 +167,15 @@ private fun PremiumBannerDialog(onDismiss: () -> Unit) {
                         verticalArrangement = Arrangement.SpaceBetween,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        // Less than the gap below the list: the large title line keeps room under its letters, so the
-                        // two gaps look even.
-                        PremiumTitle(Modifier.padding(bottom = 12.dp))
+                        // More than the gap below the list: the link that closes it keeps room of its own under its
+                        // text.
+                        PremiumTitle(Modifier.padding(bottom = 24.dp))
                         PremiumFeatureList(
+                            // Upgrade under the full list does what the banner's own Upgrade does.
+                            onUpgrade = {
+                                openUpgrade()
+                                onDismiss()
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 40.dp),
@@ -178,8 +183,8 @@ private fun PremiumBannerDialog(onDismiss: () -> Unit) {
                             lineSpacing = 6.dp,
                             featureIndent = 0.dp,
                         )
-                        // Taller than nothing, so the list sits a bit closer to the title than to the buttons.
-                        Spacer(Modifier.height(12.dp))
+                        // Empty: the link that closes the list keeps room of its own under its text.
+                        Spacer(Modifier)
                     }
                 }
                 PremiumBannerButtons(openUpgrade, onDismiss)
@@ -204,7 +209,9 @@ private fun PremiumBannerButtons(openUpgrade: () -> Unit, onDismiss: () -> Unit)
                 openUpgrade()
                 onDismiss()
             },
-            modifier = Modifier.heightIn(min = 48.dp),
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .goldButtonFill(),
             colors = goldButtonColors(),
             contentPadding = PaddingValues(horizontal = 40.dp),
         ) {

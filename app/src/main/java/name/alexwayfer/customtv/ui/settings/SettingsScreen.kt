@@ -47,12 +47,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
+import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.notifications.SettingsNotificationPrompt
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
 @Composable
 internal fun SettingsScreen(
     onClose: () -> Unit,
+    onOpenCategory: (TwitchCategory) -> Unit,
     signedIn: Boolean,
     accountName: String?,
     reselected: OneShotRequest<Unit>?,
@@ -98,6 +100,7 @@ internal fun SettingsScreen(
                 ) { anchor ->
                     SettingsMainEntries(anchor, accountName, onOpen = { page = it })
                 }
+                SettingsPage.HiddenCategories -> HiddenCategoriesSettingsPage(onOpenCategory, pageModifier)
                 SettingsPage.Gestures -> GesturesSettingsPage(pageModifier)
                 SettingsPage.Licenses -> LicensesSettingsPage(pageModifier)
                 // A subpage shows once every stored value is read, so no control animates from a placeholder.
@@ -190,6 +193,7 @@ private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: Strin
         hint = stringResource(R.string.settings_page_playback_hint),
         onOpen = { onOpen(SettingsPage.Playback) },
     )
+    HiddenCategoriesSettingsEntry(onOpen = { onOpen(SettingsPage.HiddenCategories) })
     ChatterPortraitSettingsEntry(onOpen = { onOpen(SettingsPage.ChatterPortraits) })
     ChatterLabelsSettingsEntry(onOpen = { onOpen(SettingsPage.ChatterLabels) })
     ExperimentalSettingsEntry(accountName, onOpen = { onOpen(SettingsPage.Experimental) })
@@ -222,7 +226,8 @@ private fun SettingsSubpage(
         SettingsPage.Playback -> PlaybackSettings(settings, viewModel)
         SettingsPage.ChatterPortraits -> ChatterPortraitSettings(settings, viewModel)
         SettingsPage.Experimental -> ExperimentalSettings(accountName, settings, viewModel)
-        SettingsPage.Main, SettingsPage.Gestures, SettingsPage.Licenses, SettingsPage.ChatterLabels -> Unit
+        SettingsPage.Main, SettingsPage.Gestures, SettingsPage.Licenses, SettingsPage.ChatterLabels,
+        SettingsPage.HiddenCategories -> Unit
     }
 }
 

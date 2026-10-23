@@ -56,6 +56,7 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.MAX_CHAT_TEXT_SIZE
 import name.alexwayfer.customtv.chat.MIN_CHAT_TEXT_SIZE
 import name.alexwayfer.customtv.chat.chatTextSizeFromStored
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.settings.SettingsStepSlider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,11 +80,15 @@ internal fun ChatSettingsSheet(
     /** Null when the channel has no rules to show. */
     onViewChatRules: (() -> Unit)?,
     onDismiss: () -> Unit,
+    /** The page the menu opens at instead of its rows, such as the chat modes. */
+    initialSubpage: ChatMenuSubpage? = null,
     /**
      * The menu's first rows, such as Send a donation and Open MemeAlerts, given a way to open a page of the menu;
      * none over a replayed chat.
      */
     firstRow: @Composable (openSubpage: (ChatMenuSubpage) -> Unit) -> Unit = {},
+    /** The chat modes' row under the chat rules, for the streamer and moderators; none over a replayed chat. */
+    modesRow: @Composable (openSubpage: (ChatMenuSubpage) -> Unit) -> Unit = {},
     /** The chat recap's row, given a way to close the sheet before its action; none over a replayed chat. */
     recapRow: @Composable (hideThen: (() -> Unit) -> Unit) -> Unit = {},
 ) {
@@ -108,7 +113,8 @@ internal fun ChatSettingsSheet(
         sheetState = sheetState,
         contentWindowInsets = { sheetInsets },
     ) {
-        ChatMenuPages(maxHeight) { openSubpage ->
+        NoSheetWindowDim()
+        ChatMenuPages(maxHeight, initialSubpage) { openSubpage ->
             Column(
                 modifier = Modifier
                     .heightIn(max = maxHeight)
@@ -124,6 +130,7 @@ internal fun ChatSettingsSheet(
                     onExperimentalLogin = { hideThen(onDismiss) },
                 )
                 ChatProfileAndRulesRows(onOpenOwnProfile, onViewChatRules, hideThen)
+                modesRow(openSubpage)
                 recapRow(hideThen)
                 ChatLookToggles(readableColors, timestamps, onReadableColorsChange, onTimestampsChange)
                 ChatTextSizeSlider(textSize, onTextSizeChange)

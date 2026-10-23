@@ -10,6 +10,13 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.diagnostics.AppLog
 
+/** What the chat knows about its chatters: who wrote this session, who wrote last, and their recent messages. */
+internal data class ChatterTracking(
+    val sessionChatters: MutableStateFlow<Map<String, String>>,
+    val recency: ChatterRecency,
+    val history: MutableStateFlow<ChatterHistory>,
+)
+
 /**
  * The chat history loaded once a channel's chat first connects, put before the welcome notice, and again after a
  * reconnect, to put back what the lost connection missed.
@@ -17,13 +24,11 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 internal class RecentChatLoad(
     private val scope: CoroutineScope,
     private val messages: MutableStateFlow<List<ChatMessage>>,
-    private val sessionChatters: MutableStateFlow<Map<String, String>>,
-    private val chatterRecency: ChatterRecency,
-    private val chatterHistory: MutableStateFlow<ChatterHistory>,
+    private val trim: ChatTrim,
+    private val chatters: ChatterTracking,
     private val currentChannel: () -> String?,
     private val mentionSelf: () -> ChatMentionSelf,
-) {
-    private val _state = MutableStateFlow(RecentChatLoadState.Idle)
+) {    private val _state = MutableStateFlow(RecentChatLoadState.Idle)
     val state: StateFlow<RecentChatLoadState> = _state
     private var loadOnConnect = false
     private var started = false
@@ -83,16 +88,16 @@ internal class RecentChatLoad(
                 current,
                 result.messages,
                 disconnectId,
-                sessionChatters.value,
-                MAX_CHAT_MESSAGES,
+                chatters.sessionChatters.value,
+                MAX_KEPT_CHAT_MESSAGES,
             )
-            merge?.messages ?: current
+            merge?.messages?.let(trim::keep) ?: current
         }
         val applied = merge ?: return
         AppLog.i(RECENT_CHAT_TAG, "reconnect gap filled with ${applied.added.size} messages")
-        sessionChatters.value = applied.chatters
-        applied.added.forEach(chatterRecency::record)
-        chatterHistory.update { history ->
+        chatters.sessionChatters.value = applied.chatters
+        applied.added.forEach(chatters.recency::record)
+        chatters.history.update { history ->
             rememberChatterHistory(history, previous, applied.messages, mentionSelf())
         }
     }
@@ -112,19 +117,20 @@ internal class RecentChatLoad(
                     }
                     var merge: RecentChatSessionMerge? = null
                     messages.update { current ->
-                        val next = mergeRecentChatSession(result.messages, current, sessionChatters.value)
+                        val next = mergeRecentChatSession(result.messages, current, chatters.sessionChatters.value)
                         merge = next
-                        insertRecentChatBeforeWelcome(
+                        val inserted = insertRecentChatBeforeWelcome(
                             next.current,
                             next.recent + listOfNotNull(failure),
                             CHAT_WELCOME_NOTICE_ID,
-                            MAX_CHAT_MESSAGES,
+                            MAX_KEPT_CHAT_MESSAGES,
                         )
+                        trim.keep(inserted)
                     }
                     merge?.let { applied ->
-                        sessionChatters.value = applied.chatters
-                        applied.recent.forEach(chatterRecency::record)
-                        chatterHistory.update { history ->
+                        chatters.sessionChatters.value = applied.chatters
+                        applied.recent.forEach(chatters.recency::record)
+                        chatters.history.update { history ->
                             prependChatterHistory(history, applied.recent, applied.movedFirstLogins, mentionSelf())
                         }
                     }

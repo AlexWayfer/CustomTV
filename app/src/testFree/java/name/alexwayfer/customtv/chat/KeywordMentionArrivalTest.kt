@@ -11,14 +11,22 @@ class KeywordMentionArrivalTest {
 
     @Test
     fun aKeywordAsksForNoFeedbackInTheFreeBuild() {
-        assertFalse(newMentionArrived(setOf("old"), listOf(chat("new", "raid")), "alex", "Alex", phrases))
+        assertFalse(newMentionArrived(setOf("old"), listOf(newChat("raid")), "alex", "Alex", phrases))
     }
 
     @Test
     fun aMentionStillAsksForFeedbackWithSavedKeywords() {
-        assertTrue(newMentionArrived(setOf("old"), listOf(chat("new", "hey alex")), "alex", "Alex", phrases))
+        assertTrue(newMentionArrived(setOf("old"), listOf(newChat("hey alex")), "alex", "Alex", phrases))
     }
 
-    private fun chat(id: String, text: String) =
-        testChatMessage(id, text, login = id, color = Color.Unspecified, parts = emptyList(), timestampMillis = 0L)
+    /** A message that is not among the seen ones. */
+    private fun newChat(text: String) =
+        testChatMessage(
+            "new",
+            text,
+            login = "new",
+            color = Color.Unspecified,
+            parts = emptyList(),
+            timestampMillis = 0L,
+        )
 }

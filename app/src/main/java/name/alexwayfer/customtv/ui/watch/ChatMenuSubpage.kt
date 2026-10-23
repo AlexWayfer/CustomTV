@@ -40,11 +40,16 @@ internal class ChatMenuSubpage(@param:StringRes val title: Int, val content: @Co
 /**
  * The chat menu's [rows], or the page one of them opened in their place. A page comes in from the end and goes back
  * the way it came, as the chatter card's pages do; the system Back leaves it for the rows, like its arrow, instead
- * of closing the sheet. Call it inside the sheet, whose window takes Back first.
+ * of closing the sheet. Call it inside the sheet, whose window takes Back first. The menu opens at [initialSubpage]
+ * when there is one, such as the chat modes a tap on their plaque asks for, and its Back still leads to the rows.
  */
 @Composable
-internal fun ChatMenuPages(maxHeight: Dp, rows: @Composable (openSubpage: (ChatMenuSubpage) -> Unit) -> Unit) {
-    var subpage by remember { mutableStateOf<ChatMenuSubpage?>(null) }
+internal fun ChatMenuPages(
+    maxHeight: Dp,
+    initialSubpage: ChatMenuSubpage? = null,
+    rows: @Composable (openSubpage: (ChatMenuSubpage) -> Unit) -> Unit,
+) {
+    var subpage by remember { mutableStateOf(initialSubpage) }
     BackHandler(enabled = subpage != null) { subpage = null }
     AnimatedContent(
         targetState = subpage,

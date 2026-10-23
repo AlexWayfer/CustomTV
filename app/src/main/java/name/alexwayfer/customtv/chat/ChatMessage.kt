@@ -38,6 +38,8 @@ data class ChatMessage(
     val autoModNotice: AutoModNotice? = null,
     val moderationNotice: ChatModerationNotice? = null,
     val warningNotice: ChatWarningNotice? = null,
+    /** The room of another channel in a shared chat that the message was sent in; null for this channel's own. */
+    val sourceRoomId: String? = null,
 )
 
 enum class ChatEventKind {
@@ -104,6 +106,8 @@ data class ChatReply(
     val parentIsAction: Boolean = false,
     val threadParentMsgId: String = "",
     val threadParentUserLogin: String = "",
+    /** The replied message holds a phrase the user hides, so its quote says only that it is hidden. */
+    val parentHidden: Boolean = false,
 )
 
 fun ChatMessage.copyableText(): String? {
@@ -136,7 +140,8 @@ internal fun ChatMessage.copyableTextWithAuthor(timestamp: String): String? {
     }
 }
 
-private fun replyMention(reply: ChatReply): String? {
+/** `@name` of the chatter a reply answers, as Twitch puts it ahead of the reply's text. */
+internal fun replyMention(reply: ChatReply): String? {
     val tag = reply.parentDisplayName.trim().ifEmpty { reply.parentUserLogin.trim() }
     return if (tag.isEmpty()) null else "@$tag"
 }

@@ -48,6 +48,7 @@ import name.alexwayfer.customtv.data.CollaborationResult
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.collaborationRowOpensChannel
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
@@ -81,6 +82,7 @@ internal fun CollaborationSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
+        NoSheetWindowDim()
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())

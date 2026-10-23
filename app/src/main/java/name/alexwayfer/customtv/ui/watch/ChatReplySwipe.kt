@@ -1,11 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.aspectRatio
@@ -16,37 +11,19 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.AwaitPointerEventScope
-import androidx.compose.ui.input.pointer.PointerId
-import androidx.compose.ui.input.pointer.PointerInputChange
-import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import name.alexwayfer.customtv.R
-import name.alexwayfer.customtv.data.GestureHint
-import name.alexwayfer.customtv.ui.LocalGestureHints
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
@@ -81,24 +58,6 @@ internal fun chatSwipeStart(dxPx: Float, dyPx: Float, touchSlopPx: Float): ChatS
     }
 }
 
-/**
- * Follows the finger [downId] until it starts a swipe, and returns the change that started it. Null when the finger
- * lifts, another handler takes the touch, or it moves vertically first.
- */
-private suspend fun AwaitPointerEventScope.awaitSwipeStart(downId: PointerId, touchSlopPx: Float): PointerInputChange? {
-    var travel = Offset.Zero
-    var start = ChatSwipeStart.Wait
-    var change: PointerInputChange? = null
-    while (start == ChatSwipeStart.Wait) {
-        val next = awaitPointerEvent().changes.firstOrNull { it.id == downId }
-        if (next == null || !next.pressed || next.isConsumed) return null
-        travel += next.positionChange()
-        start = chatSwipeStart(travel.x, travel.y, touchSlopPx)
-        change = next
-    }
-    return change.takeIf { start == ChatSwipeStart.Start }
-}
-
 /** How far the row slides toward the start for [dragPx] of finger travel toward the start. */
 internal fun chatReplySwipeOffset(dragPx: Float, thresholdPx: Float): Float {
     if (dragPx <= 0f) return 0f
@@ -120,28 +79,51 @@ internal fun chatReplyArrowOffset(offsetPx: Float, thresholdPx: Float, iconPx: F
     return (1f - progress) * (thresholdPx + iconPx) / 2f
 }
 
-internal enum class ChatSwipeRelease { Reply, Dismiss, Back }
+internal enum class ChatSwipeRelease { Reply, Copy, Dismiss, Back }
+
+/** What a swipe toward the end does: nothing, slides the row out to dismiss it, or copies its text. */
+internal enum class ChatSwipeTowardEnd { None, Dismiss, Copy }
 
 /**
  * The drag after the finger moves [amountTowardStartPx], as signed travel: toward the start replies,
- * toward the end dismisses. A direction with no action stays at rest.
+ * toward the end does [towardEnd]. A direction with no action stays at rest.
  */
-internal fun chatSwipeDrag(dragPx: Float, amountTowardStartPx: Float, canReply: Boolean, canDismiss: Boolean): Float =
+internal fun chatSwipeDrag(
+    dragPx: Float,
+    amountTowardStartPx: Float,
+    canReply: Boolean,
+    towardEnd: ChatSwipeTowardEnd,
+): Float =
     (dragPx + amountTowardStartPx).coerceIn(
-        if (canDismiss) Float.NEGATIVE_INFINITY else 0f,
+        if (towardEnd != ChatSwipeTowardEnd.None) Float.NEGATIVE_INFINITY else 0f,
         if (canReply) Float.POSITIVE_INFINITY else 0f,
     )
 
 /** What releasing the row after [dragPx] of signed travel does. */
-internal fun chatSwipeRelease(dragPx: Float, thresholdPx: Float): ChatSwipeRelease = when {
-    chatReplySwipeReplies(dragPx, thresholdPx) -> ChatSwipeRelease.Reply
-    chatReplySwipeReplies(-dragPx, thresholdPx) -> ChatSwipeRelease.Dismiss
-    else -> ChatSwipeRelease.Back
+internal fun chatSwipeRelease(dragPx: Float, thresholdPx: Float, towardEnd: ChatSwipeTowardEnd): ChatSwipeRelease =
+    when {
+        chatReplySwipeReplies(dragPx, thresholdPx) -> ChatSwipeRelease.Reply
+        !chatReplySwipeReplies(-dragPx, thresholdPx) -> ChatSwipeRelease.Back
+        towardEnd == ChatSwipeTowardEnd.Copy -> ChatSwipeRelease.Copy
+        towardEnd == ChatSwipeTowardEnd.Dismiss -> ChatSwipeRelease.Dismiss
+        else -> ChatSwipeRelease.Back
+    }
+
+/**
+ * How far the row slides toward the start. Toward the end, to copy, it slides as it does to reply; to dismiss, it
+ * follows the finger.
+ */
+internal fun chatSwipeOffset(dragPx: Float, thresholdPx: Float, towardEnd: ChatSwipeTowardEnd): Float = when {
+    dragPx >= 0f -> chatReplySwipeOffset(dragPx, thresholdPx)
+    towardEnd == ChatSwipeTowardEnd.Copy -> -chatReplySwipeOffset(-dragPx, thresholdPx)
+    else -> dragPx
 }
 
-/** How far the row slides toward the start; toward the end, to dismiss, it follows the finger. */
-internal fun chatSwipeOffset(dragPx: Float, thresholdPx: Float): Float =
-    if (dragPx >= 0f) chatReplySwipeOffset(dragPx, thresholdPx) else dragPx
+/**
+ * Whether a swipe toward the end copies a message with [copyText]: not in full screen, where a sideways swipe moves or
+ * hides the chat itself.
+ */
+internal fun chatSwipeCopies(copyText: String?, fullscreen: Boolean): Boolean = copyText != null && !fullscreen
 
 /** A row sliding away to dismiss fades out as it nears the end edge. */
 internal fun chatSwipeDismissAlpha(offsetPx: Float, widthPx: Int): Float {
@@ -150,114 +132,13 @@ internal fun chatSwipeDismissAlpha(offsetPx: Float, widthPx: Int): Float {
 }
 
 /**
- * The row's slide under the finger and what releasing it does. The callbacks read the latest the row was composed
- * with; [onArmed] ticks when the travel crosses the threshold, [onSwipeEnd] reports how the swipe ended, and
- * [onOffsetChange] follows each step of the slide.
- */
-private class ChatSwipe(
-    private val scope: CoroutineScope,
-    private val onSwipingChange: (Boolean) -> Unit,
-    private val onSwipeEnd: (ChatSwipeRelease) -> Unit,
-    private val onOffsetChange: (Float) -> Unit,
-    private val onArmed: () -> Unit,
-    private val onReply: () -> Unit,
-    private val onDismiss: () -> Unit,
-) {
-    val offset = Animatable(0f)
-    val arrowShown by derivedStateOf { offset.value > 0f }
-    private var swiping = false
-
-    private suspend fun snapTo(target: Float) {
-        offset.snapTo(target)
-        onOffsetChange(target)
-    }
-
-    private suspend fun springTo(target: Float) {
-        offset.animateTo(target, spring()) { onOffsetChange(value) }
-    }
-
-    private fun startSwiping() {
-        if (swiping) return
-        swiping = true
-        onSwipingChange(true)
-    }
-
-    /** Ends the swipe once, with what its release does; a cancelled swipe ends as [ChatSwipeRelease.Back]. */
-    fun endSwiping(release: ChatSwipeRelease) {
-        if (!swiping) return
-        swiping = false
-        onSwipingChange(false)
-        onSwipeEnd(release)
-    }
-
-    /** A row that leaves ends its swipe and reports rest. */
-    fun leave() {
-        endSwiping(ChatSwipeRelease.Back)
-        onOffsetChange(0f)
-    }
-
-    /** Follows each touch on the row: a swipe slides it, and its release replies, dismisses, or springs it back. */
-    suspend fun handle(
-        input: PointerInputScope,
-        thresholdPx: Float,
-        towardStart: Float,
-        canReply: Boolean,
-        canDismiss: Boolean,
-    ) {
-        val touchSlopPx = input.viewConfiguration.touchSlop
-        input.awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            val started = awaitSwipeStart(down.id, touchSlopPx) ?: return@awaitEachGesture
-            started.consume()
-            var dragPx = 0f
-            startSwiping()
-            var finished = false
-            val lifted = try {
-                horizontalDrag(down.id) { change ->
-                    // positionChange() reads zero once the change is consumed.
-                    val amount = change.positionChange().x
-                    change.consume()
-                    val wasArmed = chatSwipeRelease(dragPx, thresholdPx) != ChatSwipeRelease.Back
-                    dragPx = chatSwipeDrag(dragPx, amount * towardStart, canReply, canDismiss)
-                    if (!wasArmed && chatSwipeRelease(dragPx, thresholdPx) != ChatSwipeRelease.Back) onArmed()
-                    val target = chatSwipeOffset(dragPx, thresholdPx)
-                    scope.launch { snapTo(target) }
-                }.also { finished = true }
-            } finally {
-                // A cancelled drag puts the row back and gives the list its scroll again.
-                if (!finished) {
-                    endSwiping(ChatSwipeRelease.Back)
-                    scope.launch { springTo(0f) }
-                }
-            }
-            val release = if (lifted) chatSwipeRelease(dragPx, thresholdPx) else ChatSwipeRelease.Back
-            endSwiping(release)
-            settle(release, size.width)
-        }
-    }
-
-    private fun settle(release: ChatSwipeRelease, widthPx: Int) {
-        when (release) {
-            ChatSwipeRelease.Dismiss -> scope.launch {
-                springTo(-widthPx.toFloat())
-                onDismiss()
-            }
-            ChatSwipeRelease.Reply -> {
-                onReply()
-                scope.launch { springTo(0f) }
-            }
-            ChatSwipeRelease.Back -> scope.launch { springTo(0f) }
-        }
-    }
-}
-
-/**
  * Slides [content] toward the start under the finger while a reply arrow slides in from the end.
- * Releasing past the threshold calls [onReply]; the row springs back either way. With [onDismiss],
- * the row also follows the finger toward the end, and releasing past the threshold there slides it
- * out and calls [onDismiss]. [onSwipingChange] reports the drag, so the list can hold its scroll still, and
- * [onSwipeEnd] reports how it ended, before the reply or the dismissal it starts. [onOffsetChange] follows the
- * slide, toward the start positive, and reports rest again once the row leaves.
+ * Releasing past the threshold calls [onReply]; the row springs back either way. With [onCopy], the row
+ * slides toward the end the same way, under a copy icon from the start, and releasing past the threshold
+ * calls [onCopy]. With [onDismiss] instead, the row follows the finger toward the end, and releasing past
+ * the threshold there slides it out and calls [onDismiss]. [onSwipingChange] reports the drag, so the list
+ * can hold its scroll still, and [onSwipeEnd] reports how it ended, before the action it starts.
+ * [onOffsetChange] follows the slide, toward the start positive, and reports rest again once the row leaves.
  */
 @Composable
 internal fun ChatReplySwipe(
@@ -265,6 +146,7 @@ internal fun ChatReplySwipe(
     onReply: (() -> Unit)?,
     onSwipingChange: (Boolean) -> Unit,
     onDismiss: (() -> Unit)? = null,
+    onCopy: (() -> Unit)? = null,
     onSwipeEnd: (ChatSwipeRelease) -> Unit = {},
     onOffsetChange: (Float) -> Unit = {},
     content: @Composable () -> Unit,
@@ -273,56 +155,43 @@ internal fun ChatReplySwipe(
     val thresholdPx = with(density) { CHAT_REPLY_SWIPE_THRESHOLD.toPx() }
     val circlePx = with(density) { CHAT_REPLY_SWIPE_CIRCLE_SIZE.toPx() }
     val towardStart = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else -1f
-    val haptic = LocalHapticFeedback.current
-    val gestureHints = LocalGestureHints.current
-    val scope = rememberCoroutineScope()
-    val currentOnReply by rememberUpdatedState(onReply)
-    val currentOnDismiss by rememberUpdatedState(onDismiss)
     val canReply = onReply != null
-    val canDismiss = onDismiss != null
-    val currentOnSwipingChange by rememberUpdatedState(onSwipingChange)
-    val currentOnSwipeEnd by rememberUpdatedState(onSwipeEnd)
-    val currentOnOffsetChange by rememberUpdatedState(onOffsetChange)
-    val swipe = remember {
-        ChatSwipe(
-            scope = scope,
-            onSwipingChange = { currentOnSwipingChange(it) },
-            onSwipeEnd = { currentOnSwipeEnd(it) },
-            onOffsetChange = { currentOnOffsetChange(it) },
-            onArmed = { haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) },
-            onReply = {
-                gestureHints?.gestureUsed(GestureHint.Reply)
-                currentOnReply?.invoke()
-            },
-            onDismiss = { currentOnDismiss?.invoke() },
-        )
+    val towardEnd = when {
+        onDismiss != null -> ChatSwipeTowardEnd.Dismiss
+        onCopy != null -> ChatSwipeTowardEnd.Copy
+        else -> ChatSwipeTowardEnd.None
     }
-    DisposableEffect(Unit) {
-        onDispose { swipe.leave() }
-    }
+    val swipe = rememberChatSwipe(onReply, onSwipingChange, onDismiss, onCopy, onSwipeEnd, onOffsetChange)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .then(
                 if (enabled) {
-                    Modifier.pointerInput(thresholdPx, towardStart, canReply, canDismiss) {
-                        swipe.handle(this, thresholdPx, towardStart, canReply, canDismiss)
+                    Modifier.pointerInput(thresholdPx, towardStart, canReply, towardEnd) {
+                        swipe.handle(this, thresholdPx, towardStart, canReply, towardEnd)
                     }
                 } else {
                     Modifier
                 },
             ),
     ) {
-        // At rest the arrow sits clipped beyond the end edge; rows not being swiped skip it.
-        if (swipe.arrowShown) {
-            ReplyArrow(arrowOffsetPx = {
+        // At rest the icons sit clipped beyond the row's edges; rows not being swiped skip them.
+        if (swipe.replyArrowShown) {
+            SwipeIcon(R.drawable.ic_reply_arrow, atEnd = true, iconOffsetPx = {
                 -towardStart * chatReplyArrowOffset(swipe.offset.value, thresholdPx, circlePx)
+            })
+        }
+        if (towardEnd == ChatSwipeTowardEnd.Copy && swipe.towardEndShown) {
+            SwipeIcon(R.drawable.ic_chat_copy, atEnd = false, iconOffsetPx = {
+                towardStart * chatReplyArrowOffset(-swipe.offset.value, thresholdPx, circlePx)
             })
         }
         Box(
             modifier = Modifier.graphicsLayer {
                 translationX = swipe.offset.value * towardStart
-                alpha = chatSwipeDismissAlpha(swipe.offset.value, size.width.roundToInt())
+                if (towardEnd == ChatSwipeTowardEnd.Dismiss) {
+                    alpha = chatSwipeDismissAlpha(swipe.offset.value, size.width.roundToInt())
+                }
             },
         ) {
             content()
@@ -330,27 +199,28 @@ internal fun ChatReplySwipe(
     }
 }
 
-/** The reply arrow in its circle at the row's end, shifted by [arrowOffsetPx] as the row slides. */
+/** The swipe's [icon] in its circle at the row's end, or its start, shifted by [iconOffsetPx] as the row slides. */
 @Composable
-private fun BoxScope.ReplyArrow(arrowOffsetPx: () -> Float) {
+private fun BoxScope.SwipeIcon(icon: Int, atEnd: Boolean, iconOffsetPx: () -> Float) {
+    val edgePadding = (CHAT_REPLY_SWIPE_THRESHOLD - CHAT_REPLY_SWIPE_CIRCLE_SIZE) / 2
     Box(
         modifier = Modifier
             .matchParentSize()
             .clipToBounds()
-            .padding(end = (CHAT_REPLY_SWIPE_THRESHOLD - CHAT_REPLY_SWIPE_CIRCLE_SIZE) / 2),
-        contentAlignment = Alignment.CenterEnd,
+            .then(if (atEnd) Modifier.padding(end = edgePadding) else Modifier.padding(start = edgePadding)),
+        contentAlignment = if (atEnd) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(
             modifier = Modifier
                 // A one-line row is lower than the circle: it shrinks to the row height and stays round.
                 .sizeIn(maxWidth = CHAT_REPLY_SWIPE_CIRCLE_SIZE, maxHeight = CHAT_REPLY_SWIPE_CIRCLE_SIZE)
                 .aspectRatio(1f)
-                .graphicsLayer { translationX = arrowOffsetPx() }
+                .graphicsLayer { translationX = iconOffsetPx() }
                 .background(TwitchSurface, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_reply_arrow),
+                painter = painterResource(icon),
                 contentDescription = null,
                 tint = TwitchText,
                 modifier = Modifier.size(CHAT_REPLY_SWIPE_ICON_SIZE),

@@ -41,13 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -360,12 +358,12 @@ private fun ChatThreadRow(
     onReplySwipingChange: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
-    val haptic = LocalHapticFeedback.current
     val message = rememberDisplayMessage(entry.asChatMessage(), appearance)
     val sizes = chatRowSizes(appearance.textSize)
     val timestampText = remember(message.timestampMillis) {
         if (message.timestampMillis > 0L) formatChatTimestamp(context, message.timestampMillis) else null
     }
+    val copyText = remember(message, timestampText) { message.copyableTextWithAuthor(timestampText.orEmpty()) }
     BoxMessage(
         message = message,
         selected = selected,
@@ -373,18 +371,18 @@ private fun ChatThreadRow(
         timestampText = timestampText,
         appearance = appearance,
         sizes = sizes,
-        onSelect = {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onSelect()
-        },
+        // The long press vibrates by itself.
+        onSelect = onSelect,
         onDismissSelection = onDismissSelection,
         onReply = onReply,
         onReplySwipingChange = onReplySwipingChange,
-        onCopy = {
-            val text = message.copyableTextWithAuthor(timestampText.orEmpty()) ?: return@BoxMessage
-            context.copyChatText(text)
-            onCopy()
+        onCopy = copyText?.let { text ->
+            {
+                context.copyChatText(text)
+                onCopy()
+            }
         },
+        copySwipe = chatSwipeCopies(copyText, LocalPlayerContentFullscreen.current),
     )
 }
 
@@ -400,9 +398,15 @@ private fun BoxMessage(
     onDismissSelection: () -> Unit,
     onReply: () -> Unit,
     onReplySwipingChange: (Boolean) -> Unit,
-    onCopy: () -> Unit,
+    onCopy: (() -> Unit)?,
+    copySwipe: Boolean,
 ) {
-    ChatReplySwipe(enabled = true, onReply = onReply, onSwipingChange = onReplySwipingChange) {
+    ChatReplySwipe(
+        enabled = true,
+        onReply = onReply,
+        onSwipingChange = onReplySwipingChange,
+        onCopy = onCopy?.takeIf { copySwipe },
+    ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()

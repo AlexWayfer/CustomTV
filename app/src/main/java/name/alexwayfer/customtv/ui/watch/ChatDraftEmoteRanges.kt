@@ -44,11 +44,8 @@ internal fun chatDraftEmoteGapSteps(plaques: Int, lastCharacter: Boolean): Int =
 internal fun chatDraftEmoteGapStepsBefore(range: TextRange, gaps: Map<Int, Int>): Int =
     gaps[range.start - 1]?.let { plaques -> chatDraftEmoteGapSteps(plaques, lastCharacter = false) } ?: 0
 
-/**
- * Ranges of [text] to highlight as emotes: whole words, split on whitespace, that [isEmoteCode]
- * accepts. A code inside a longer word stays text.
- */
-internal fun chatDraftEmoteRanges(text: CharSequence, isEmoteCode: (String) -> Boolean): List<TextRange> {
+/** The words of [text], split on whitespace, as ranges; a code inside a longer word is part of that word. */
+internal fun chatDraftWords(text: CharSequence): List<TextRange> {
     val ranges = ArrayList<TextRange>()
     var start = 0
     while (start < text.length) {
@@ -58,7 +55,7 @@ internal fun chatDraftEmoteRanges(text: CharSequence, isEmoteCode: (String) -> B
         }
         var end = start
         while (end < text.length && !text[end].isWhitespace()) end++
-        if (isEmoteCode(text.substring(start, end))) ranges.add(TextRange(start, end))
+        ranges.add(TextRange(start, end))
         start = end
     }
     return ranges

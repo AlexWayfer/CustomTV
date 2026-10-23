@@ -185,6 +185,61 @@ class ThirdPartyEmoteMatcherTest {
     }
 
     @Test
+    fun aBttvModifierAfterOtherWordsAppliesToTheTwitchEmoteAfterItsText() {
+        val result = ThirdPartyEmoteMatcher.overlay(
+            listOf(ChatPart.Text("a w! "), ChatPart.Emote("Kappa", "https://static-cdn.jtvnw.net/kappa")),
+            emptyMap(),
+            modifierPlatforms = setOf(EmotePlatform.Bttv),
+        )
+        assertEquals(ChatPart.Text("a "), result[0])
+        assertEquals(EmoteEffects(widthMultiplier = 2f), (result[1] as ChatPart.Emote).effects)
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun aBttvModifierBetweenTwitchEmotesKeepsTheSpaceBeforeIt() {
+        val result = ThirdPartyEmoteMatcher.overlay(
+            listOf(
+                ChatPart.Emote("Kappa", "https://static-cdn.jtvnw.net/kappa"),
+                ChatPart.Text(" v! "),
+                ChatPart.Emote("Kappa", "https://static-cdn.jtvnw.net/kappa"),
+            ),
+            emptyMap(),
+            modifierPlatforms = setOf(EmotePlatform.Bttv),
+        )
+        assertEquals(3, result.size)
+        assertEquals(ChatPart.Text(" "), result[1])
+        assertEquals(true, (result[2] as ChatPart.Emote).effects.flipY)
+    }
+
+    @Test
+    fun anFfzModifierEmoteWithoutAnEmoteBeforeItShowsPlainWithTheBttvModifiersBeforeIt() {
+        val result = ThirdPartyEmoteMatcher.overlay(
+            listOf(ChatPart.Text("h! ffzCursed")),
+            mapOf(
+                "ffzCursed" to SevenTvEmote(
+                    "https://cdn.frankerfacez.com/emote/cursed/2",
+                    effects = EmoteEffects(cursed = true),
+                ),
+            ),
+            modifierPlatforms = setOf(EmotePlatform.Bttv),
+        )
+        val emote = result.single() as ChatPart.Emote
+        assertEquals(EmoteEffects(flipX = true), emote.effects)
+        assertEquals("h!", emote.modifiers.single().name)
+    }
+
+    @Test
+    fun aBttvModifierBeforeTextVanishes() {
+        val result = ThirdPartyEmoteMatcher.overlay(
+            listOf(ChatPart.Text("w! hello")),
+            emptyMap(),
+            modifierPlatforms = setOf(EmotePlatform.Bttv),
+        )
+        assertEquals(listOf(ChatPart.Text("hello")), result)
+    }
+
+    @Test
     fun leavesTextWhenMapIsEmpty() {
         val parts = listOf(ChatPart.Text("Sadge"))
         assertEquals(parts, ThirdPartyEmoteMatcher.overlay(parts, emptyMap()))

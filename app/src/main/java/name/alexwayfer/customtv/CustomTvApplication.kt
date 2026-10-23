@@ -21,6 +21,7 @@ import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ProfileDetailsRepository
 import name.alexwayfer.customtv.data.ExperimentalFeature
 import name.alexwayfer.customtv.data.FollowedChannelsAtStart
+import name.alexwayfer.customtv.data.HiddenCategoriesStore
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.WhispersFeature
 import name.alexwayfer.customtv.data.RecentChannelsStore
@@ -48,6 +49,7 @@ class CustomTvApplication : Application() {
         ChatterLabelsRepository.init(this)
         AppSettingsStore.start(this)
         ChatSettingsStore.start(this)
+        HiddenCategoriesStore.start(this)
         StreamStartAlertsController.start(this)
         WhispersFeature.start(this)
         ExperimentalFeature.start(this)

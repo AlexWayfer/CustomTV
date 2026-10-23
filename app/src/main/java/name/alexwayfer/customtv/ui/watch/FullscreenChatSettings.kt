@@ -44,6 +44,7 @@ import name.alexwayfer.customtv.data.FullscreenChatMode
 import name.alexwayfer.customtv.data.FullscreenChatSide
 import name.alexwayfer.customtv.data.GestureHint
 import name.alexwayfer.customtv.ui.LocalGestureHints
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 
 /** The gear in the full screen player's top corner; opens the full screen chat settings. */
 @Composable
@@ -88,6 +89,7 @@ private fun FullscreenChatSettingsSheet(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
+        NoSheetWindowDim()
         Column(
             modifier = Modifier
                 .nestedScroll(stopAtTop)

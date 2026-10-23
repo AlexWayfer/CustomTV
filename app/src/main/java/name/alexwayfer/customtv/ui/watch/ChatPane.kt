@@ -41,7 +41,9 @@ import name.alexwayfer.customtv.chat.ChatRaiders
 import name.alexwayfer.customtv.chat.ChatterHistory
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.chat.SuspiciousChatters
+import name.alexwayfer.customtv.chat.channelHiddenPhrases
 import name.alexwayfer.customtv.chat.emoteSources
+import name.alexwayfer.customtv.chat.shownChatMessages
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChatSettings
@@ -83,6 +85,8 @@ internal fun ColumnScope.ChatPane(
     selfDisplayName: String = "",
     ownFollow: OwnChannelFollow? = null,
     ownBadges: List<ChatBadge>? = null,
+    /** Whether the user moderates the channel, where the hidden phrases may not apply. */
+    moderates: Boolean = ownBadgesModerate(ownBadges),
     replyingToMessageId: String? = null,
     onReply: ((ChatMessage) -> Unit)? = null,
     /** Puts a mention of a chatter into the draft; null for a chat without a field. */
@@ -119,8 +123,19 @@ internal fun ColumnScope.ChatPane(
     }
     val mentions = ChatMentions(settings.highlightMentions, selfLogin, selfDisplayName, settings.keywordPhrases)
     val listSettings = chatListSettings(chatSettings, settings, channelProfile, appearance, mentions)
+    val hiddenPhrases = channelHiddenPhrases(
+        settings.hiddenPhrases,
+        settings.hidePhrasesWhenModerator,
+        moderates,
+    )
+    val currentMessages by rememberUpdatedState(messages)
+    // Filtered again only when the chat or the phrases change, and still read where shown.
+    val shownMessages = remember(hiddenPhrases, selfLogin) {
+        derivedStateOf { shownChatMessages(currentMessages(), hiddenPhrases, selfLogin) }
+    }
+    val readShownMessages = remember(shownMessages) { { shownMessages.value } }
     val feed = ChatFeed(
-        messages = messages,
+        messages = readShownMessages,
         chatterHistory = chatterHistory,
         listState = listState,
         highlightPins = highlightPins,
@@ -314,7 +329,14 @@ private fun CompactChatPane(
         onReplySwipeEnd = {},
     )
     FullscreenCompactChat(messages = messages, shownAt = shownAt, onExpand = onExpand) { message ->
-        rowLook.Message(message, selected = false, onSelect = {}, onDismissSelection = {}, onReply = null)
+        rowLook.Message(
+            message,
+            selected = false,
+            onSelect = {},
+            onDismissSelection = {},
+            onReply = null,
+            copySwipe = false,
+        )
     }
 }
 

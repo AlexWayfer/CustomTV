@@ -23,7 +23,7 @@ internal val Context.appSettingsDataStore: DataStore<Preferences> by preferences
 
 /**
  * Reads every app setting, and writes the settings of the smaller pages. The Chat and Mentions pages write theirs
- * through [ChatPageSettingsStore] and [MentionPageSettingsStore].
+ * through [ChatPageSettingsStore], [HiddenMessageSettingsStore], and [MentionPageSettingsStore].
  */
 class AppSettingsStore(context: Context) {
     private val dataStore = context.applicationContext.appSettingsDataStore
@@ -54,6 +54,9 @@ class AppSettingsStore(context: Context) {
                 ?: defaults.emoteCompletionWithoutColon,
             keepKeyboardAfterSend = prefs[KEEP_KEYBOARD_AFTER_SEND] ?: defaults.keepKeyboardAfterSend,
             scrollToLatestAfterSend = prefs[SCROLL_TO_LATEST_AFTER_SEND] ?: defaults.scrollToLatestAfterSend,
+            sentMessageHistory = prefs[SENT_MESSAGE_HISTORY] ?: defaults.sentMessageHistory,
+            hiddenPhrases = decodeKeywordPhrases(prefs[HIDDEN_PHRASES]),
+            hidePhrasesWhenModerator = prefs[HIDE_PHRASES_WHEN_MODERATOR] ?: defaults.hidePhrasesWhenModerator,
             backgroundSoundOnly = prefs[BACKGROUND_SOUND_ONLY] ?: defaults.backgroundSoundOnly,
             streamStartNotifications = prefs[STREAM_START_NOTIFICATIONS]
                 ?: defaults.streamStartNotifications,

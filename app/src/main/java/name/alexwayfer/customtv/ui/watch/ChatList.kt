@@ -67,14 +67,12 @@ internal fun ChatList(
         onReplySwipingChange = { scroll.rowHold.onSwipingChange(it, listState) },
         onReplySwipeEnd = { scroll.rowHold.onSwipeEnd(it, listState) },
     )
-    val context = LocalContext.current
     ChatterCardHost(
         selfLogin = settings.mentions.selfLogin,
         chatterHistory = feed.chatterHistory,
         fieldCardOpen = feed.fieldCardOpen,
         renderMessage = { message, replyable ->
-            val copy = { copyChatMessage(context, message) }
-            rowLook.Message(message, selected = false, copy, onDismissSelection = {}, feed.onReply.takeIf { replyable })
+            ChatterCardMessage(rowLook, message, feed.onReply.takeIf { replyable })
         },
     ) {
         Box(
@@ -121,6 +119,7 @@ internal data class ChatListRowLook(
     val onReplySwipingChange: (Boolean) -> Unit,
     val onReplySwipeEnd: (ChatSwipeRelease) -> Unit,
 ) {
+    /** With [copySwipe], a swipe toward the end copies the message, as the menu's Copy does. */
     @Composable
     fun Message(
         message: ChatMessage,
@@ -128,13 +127,21 @@ internal data class ChatListRowLook(
         onSelect: () -> Unit,
         onDismissSelection: (ChatRowHoldEnd) -> Unit,
         onReply: ((ChatMessage) -> Unit)?,
+        copySwipe: Boolean,
     ) {
         ChatRow(
             message = message,
             settings = settings,
             place = place,
             selected = selected,
-            actions = ChatRowActions(onSelect, onDismissSelection, onReply, onReplySwipingChange, onReplySwipeEnd),
+            actions = ChatRowActions(
+                onSelect,
+                onDismissSelection,
+                onReply,
+                onReplySwipingChange,
+                onReplySwipeEnd,
+                copySwipe,
+            ),
         )
     }
 }
@@ -177,6 +184,7 @@ private fun ChatListMessages(
                         }
                     },
                     onReply,
+                    copySwipe = true,
                 )
             }
         }
@@ -202,6 +210,23 @@ private fun BoxScope.MoreMessagesBelow(
     ) {
         MoreMessagesBelowButton(chatTextSize = chatTextSize, onClick = onClick)
     }
+}
+
+/**
+ * A message in the chatter card. A long press copies it at once, and it does not swipe to copy: a page of the card
+ * can take a sideways swipe.
+ */
+@Composable
+private fun ChatterCardMessage(rowLook: ChatListRowLook, message: ChatMessage, onReply: ((ChatMessage) -> Unit)?) {
+    val context = LocalContext.current
+    rowLook.Message(
+        message,
+        selected = false,
+        onSelect = { copyChatMessage(context, message) },
+        onDismissSelection = {},
+        onReply = onReply,
+        copySwipe = false,
+    )
 }
 
 private fun copyChatMessage(context: Context, message: ChatMessage) {

@@ -9,6 +9,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.ColorFilter
@@ -74,9 +75,10 @@ fun SharedEmoteImage(
     }
 }
 
-private fun DrawScope.drawDrawableKeepAspect(drawable: Drawable, colorFilter: ColorFilter?) {
-    val canvasWidth = size.width
-    val canvasHeight = size.height
+/** Draws [drawable] centered in [area] from the scope's origin, scaled to fit without changing its shape. */
+internal fun DrawScope.drawDrawableKeepAspect(drawable: Drawable, colorFilter: ColorFilter?, area: Size = size) {
+    val canvasWidth = area.width
+    val canvasHeight = area.height
     val intrinsicWidth = drawable.intrinsicWidth
     val intrinsicHeight = drawable.intrinsicHeight
     if (intrinsicWidth <= 0 || intrinsicHeight <= 0) {
@@ -94,8 +96,8 @@ private fun DrawScope.drawDrawableKeepAspect(drawable: Drawable, colorFilter: Co
             canvas.nativeCanvas.saveLayer(
                 0f,
                 0f,
-                size.width,
-                size.height,
+                canvasWidth,
+                canvasHeight,
                 Paint().apply { this.colorFilter = colorFilter.asAndroidColorFilter() },
             )
         }

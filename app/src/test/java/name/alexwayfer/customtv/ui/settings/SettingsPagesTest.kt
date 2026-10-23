@@ -36,6 +36,12 @@ class SettingsPagesTest {
     fun aTargetThatIsAWholePageOpensItAtTheTop() {
         assertFalse(settingsScrollsToBlock(SettingsScrollTarget.Notifications))
         assertFalse(settingsScrollsToBlock(SettingsScrollTarget.ChatterPortraits))
+        assertFalse(settingsScrollsToBlock(SettingsScrollTarget.HiddenCategories))
+    }
+
+    @Test
+    fun backFromAHiddenCategoryReturnsToTheirPage() {
+        assertEquals(SettingsPage.HiddenCategories, settingsPageFor(SettingsScrollTarget.HiddenCategories))
     }
 
     @Test

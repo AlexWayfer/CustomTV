@@ -20,8 +20,15 @@ complexity:
   LongParameterList:
     # A composable takes its inputs as plain parameters, as Compose's own components do.
     ignoreAnnotated: ['Composable']
+    # A test's value builder takes each field a case may set as a named default, as a constructor does.
+    excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']
   TooManyFunctions:
     # A test class holds one function per case.
+    excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']
+
+potential-bugs:
+  UnsafeCallOnNullableType:
+    # A `!!` in a test fails that test, which is what it checks.
     excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']
 
 style:
@@ -42,6 +49,13 @@ style:
     excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**', '**/*.kts']
     # detekt's own plus 100, the whole of a percent.
     ignoreNumbers: ['-1', '0', '1', '2', '100']
+  # Off by default, and Kotlin does not warn either: unused imports pile up between Android Studio's inspections.
+  UnusedImport:
+    active: true
+  UnusedParameter:
+    # The free build's no-op counterparts take the premium signatures and ignore them; Android Studio, which does not
+    # flag them, reports a suppression on each as redundant. Its own unused parameter check still covers free.
+    excludes: ['**/free/**']
 
 naming:
   FunctionNaming:

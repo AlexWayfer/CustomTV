@@ -3,6 +3,7 @@ package name.alexwayfer.customtv.ui.watch
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
@@ -125,6 +127,7 @@ internal fun ChatRowEventLine(message: ChatMessage, look: ChatRowLook) {
                 timestampText = timestampText,
                 nickColor = nickColor,
                 chatTextSize = sizes.chatTextSize,
+                badgeSize = sizes.badge,
                 textSize = sizes.text,
                 timestampSize = sizes.timestamp,
                 lineHeight = sizes.lineHeight,
@@ -134,24 +137,40 @@ internal fun ChatRowEventLine(message: ChatMessage, look: ChatRowLook) {
             ChatModerationNoticeLine(message.moderationNotice, timestampText, sizes.text, sizes.lineHeight)
         message.warningNotice != null ->
             ChatWarningNoticeLine(message.warningNotice, timestampText, sizes.text, sizes.lineHeight)
-        !message.systemText.isNullOrBlank() -> Text(
-            text = buildString {
-                if (timestampText != null) {
-                    append(timestampText)
-                    append(" ")
-                }
-                append(message.systemText)
-            },
-            color = when (message.eventKind) {
-                ChatEventKind.Subscription -> TwitchText
-                ChatEventKind.System -> TwitchTextSecondary
-                else -> look.accent
-            },
-            fontSize = sizes.text,
-            fontWeight = FontWeight.Medium,
-            lineHeight = sizes.lineHeight,
-        )
+        !message.systemText.isNullOrBlank() -> ChatSystemTextLine(message, message.systemText, look)
     }
+}
+
+/** A notice's own line; one shared from another channel starts with that channel's avatar. */
+@Composable
+private fun ChatSystemTextLine(message: ChatMessage, text: String, look: ChatRowLook) {
+    val sizes = look.sizes
+    val source = sharedChatSourceLook(message.sourceRoomId)
+    val sourceSizes = chatTextSizes(sizes.text, sizes.timestamp, sizes.emote, sizes.badge)
+    val inlineContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
+    val annotated = remember(text, look.timestampText, source, sourceSizes, inlineContent) {
+        inlineContent.clear()
+        buildAnnotatedString {
+            look.timestampText?.let { timestamp ->
+                append(timestamp)
+                append(" ")
+            }
+            appendSharedChatSource(source, sourceSizes, inlineContent)
+            append(text)
+        }
+    }
+    Text(
+        text = annotated,
+        inlineContent = inlineContent,
+        color = when (message.eventKind) {
+            ChatEventKind.Subscription -> TwitchText
+            ChatEventKind.System -> TwitchTextSecondary
+            else -> look.accent
+        },
+        fontSize = sizes.text,
+        fontWeight = FontWeight.Medium,
+        lineHeight = sizes.lineHeight,
+    )
 }
 
 /** What the parts of a chat row draw with: the chat's look, the row's sizes and timestamp, and its colors. */

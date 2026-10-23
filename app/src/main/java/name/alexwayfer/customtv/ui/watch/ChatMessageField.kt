@@ -1,5 +1,10 @@
 package name.alexwayfer.customtv.ui.watch
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -7,25 +12,42 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.then
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -51,6 +73,9 @@ import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 private val ChatFieldMinHeight = 40.dp
 private val ChatFieldVerticalPadding = 8.dp
 
+// Between the history button and the text: half of Material's 16 dp start padding, which the empty slot makes up.
+private val ChatFieldHistoryGap = 8.dp
+
 /** What lies over the message field and takes its taps instead of the keyboard. */
 internal enum class ChatFieldCover { None, LogIn, Rules }
 
@@ -61,11 +86,12 @@ internal fun chatFieldCover(canSend: Boolean, focused: Boolean, rulesNeedConfirm
     else -> ChatFieldCover.None
 }
 
-/** How the bar draws the field: its colors, the emotes it marks, and whether the composer is open. */
+/** How the bar draws the field: its colors, the emotes it marks, whether the composer is open and shows history. */
 internal class ChatFieldLook(
     val colors: TextFieldColors,
     val emotes: ChatDraftEmotes,
     val composerOpen: Boolean,
+    val historyButton: Boolean,
 )
 
 /** The field's colors; its ground lets the video show through while the closed bar does. */
@@ -117,17 +143,29 @@ private fun ChatTextField(
     val canSend = input.user.canSend
     val covered = chatFieldCover(canSend, field.focused, input.rulesNeedConfirmation) != ChatFieldCover.None
     val materialDecorator = chatFieldDecorator(input, composer, field, actions, look)
+    val draft = input.compose.draft
+    val output = look.emotes.output
+    val textStyle = LocalTextStyle.current.merge(TextStyle(color = TwitchText))
+    val emotePictures = rememberChatDraftEmotePictures(draft, output, textStyle)
+    val emoteMarks = Modifier.chatDraftEmoteMarks(
+        output = output,
+        draft = { draft.text },
+        textLayout = { field.textLayout?.invoke() },
+        pictures = emotePictures,
+        scrollState = field.scroll,
+    )
+    val inputTransformation = remember(output, field.limit) { ChatDraftEmoteBackspace(output).then(field.limit) }
     CompositionLocalProvider(LocalTextSelectionColors provides look.colors.textSelectionColors) {
         BasicTextField(
-            state = input.compose.draft,
+            state = draft,
             enabled = canSend,
-            inputTransformation = field.limit,
-            outputTransformation = look.emotes.gaps,
+            inputTransformation = inputTransformation,
+            outputTransformation = output,
             lineLimits = TextFieldLineLimits.SingleLine,
             interactionSource = field.presses,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             onKeyboardAction = { actions.submit() },
-            textStyle = LocalTextStyle.current.merge(TextStyle(color = TwitchText)),
+            textStyle = textStyle,
             cursorBrush = SolidColor(TwitchPurple),
             onTextLayout = { getResult -> field.textLayout = getResult },
             scrollState = field.scroll,
@@ -137,6 +175,7 @@ private fun ChatTextField(
                     minWidth = TextFieldDefaults.MinWidth,
                     minHeight = ChatFieldMinHeight,
                 )
+                .onPreviewKeyEvent { recallHistoryOnKey(it, actions) }
                 .then(
                     if (covered) {
                         Modifier.clearAndSetSemantics {}
@@ -148,13 +187,7 @@ private fun ChatTextField(
                 ),
             decorator = TextFieldDecorator { innerTextField ->
                 materialDecorator.Decoration {
-                    Box(
-                        modifier = Modifier.chatDraftEmotePlaques(
-                            isEmoteCode = look.emotes.isEmoteCode,
-                            textLayout = { field.textLayout?.invoke() },
-                            scrollState = field.scroll,
-                        ),
-                    ) {
+                    Box(modifier = emoteMarks) {
                         innerTextField()
                     }
                 }
@@ -163,7 +196,17 @@ private fun ChatTextField(
     }
 }
 
-/** The Material field around the text: its ground, the hint, and the emote picker button. */
+/** Up and Down on a hardware keyboard, without a modifier key, bring back the user's own messages, as on a computer. */
+private fun recallHistoryOnKey(event: KeyEvent, actions: ChatInputActions): Boolean {
+    val modified = event.isShiftPressed || event.isAltPressed || event.isCtrlPressed || event.isMetaPressed
+    return event.type == KeyEventType.KeyDown && !modified && when (event.key) {
+        Key.DirectionUp -> actions.history.recall(older = true)
+        Key.DirectionDown -> actions.history.recall(older = false)
+        else -> false
+    }
+}
+
+/** The Material field around the text: its ground, the hint, the history button, and the emote picker button. */
 @Composable
 private fun chatFieldDecorator(
     input: ChatInput,
@@ -173,11 +216,12 @@ private fun chatFieldDecorator(
     look: ChatFieldLook,
 ): TextFieldDecorator {
     val canSend = input.user.canSend
+    val historySlot = canSend && input.compose.historyEnabled
     return TextFieldDefaults.decorator(
         state = input.compose.draft,
         enabled = canSend,
         lineLimits = TextFieldLineLimits.SingleLine,
-        outputTransformation = look.emotes.gaps,
+        outputTransformation = look.emotes.output,
         interactionSource = field.presses,
         placeholder = {
             Text(
@@ -185,16 +229,31 @@ private fun chatFieldDecorator(
                 color = TwitchHint,
             )
         },
+        // Kept while history is on, so the text keeps its place while the button grows in and out of it.
+        leadingIcon = if (historySlot) {
+            { ChatHistoryButton(look.historyButton, composer.historyOpen, onClick = actions.history::toggle) }
+        } else {
+            null
+        },
         trailingIcon = if (canSend) {
             { EmotePickerButton(composer.pickerOpen, field, onClick = actions::togglePicker) }
         } else {
             null
         },
         colors = look.colors,
-        contentPadding = TextFieldDefaults.contentPaddingWithoutLabel(
-            top = ChatFieldVerticalPadding,
-            bottom = ChatFieldVerticalPadding,
-        ),
+        // The history slot makes up the rest of the start padding while its button is away.
+        contentPadding = if (historySlot) {
+            TextFieldDefaults.contentPaddingWithoutLabel(
+                start = ChatFieldHistoryGap,
+                top = ChatFieldVerticalPadding,
+                bottom = ChatFieldVerticalPadding,
+            )
+        } else {
+            TextFieldDefaults.contentPaddingWithoutLabel(
+                top = ChatFieldVerticalPadding,
+                bottom = ChatFieldVerticalPadding,
+            )
+        },
         container = {
             TextFieldDefaults.Container(
                 enabled = canSend,
@@ -218,6 +277,37 @@ private fun EmotePickerButton(pickerOpen: Boolean, field: ChatFieldState, onClic
             contentDescription = stringResource(R.string.emote_picker_open),
             tint = if (pickerOpen) TwitchPurple else TwitchTextSecondary,
         )
+    }
+}
+
+/**
+ * The button that opens the plaque of the user's own messages. It grows in from the field's start while the keyboard
+ * or the picker is up and takes no focus, so the keyboard stays.
+ */
+@Composable
+private fun ChatHistoryButton(visible: Boolean, open: Boolean, onClick: () -> Unit) {
+    // Without the button the slot keeps the gap, so the text stays where a field without history has it.
+    Box(Modifier.widthIn(min = ChatFieldHistoryGap)) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = expandHorizontally(expandFrom = Alignment.Start) + fadeIn(),
+            exit = shrinkHorizontally(shrinkTowards = Alignment.Start) + fadeOut(),
+        ) {
+            IconToggleButton(
+                checked = open,
+                onCheckedChange = { onClick() },
+                modifier = Modifier.focusProperties { canFocus = false },
+                colors = IconButtonDefaults.iconToggleButtonColors(
+                    contentColor = TwitchTextSecondary,
+                    checkedContentColor = TwitchPurple,
+                ),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_chat_history),
+                    contentDescription = stringResource(R.string.chat_history),
+                )
+            }
+        }
     }
 }
 

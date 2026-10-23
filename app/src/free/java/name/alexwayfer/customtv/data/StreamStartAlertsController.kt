@@ -10,10 +10,8 @@ internal object StreamStartAlertsController {
         WorkManager.getInstance(application).cancelUniqueWork(STREAM_START_WORK_NAME)
     }
 
-    @Suppress("unused")
     fun onSignedIn(signedIn: Boolean) = Unit
 
-    @Suppress("unused")
     fun onFollowedLive(channels: List<FollowedChannel>, accessToken: String) = Unit
 
     @Suppress("unused")

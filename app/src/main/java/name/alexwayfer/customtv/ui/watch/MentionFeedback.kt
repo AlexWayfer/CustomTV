@@ -18,8 +18,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 import name.alexwayfer.customtv.chat.ChatMessage
+import name.alexwayfer.customtv.chat.channelHiddenPhrases
 import name.alexwayfer.customtv.chat.mentionBaselineResets
 import name.alexwayfer.customtv.chat.newMentionArrived
+import name.alexwayfer.customtv.chat.withoutHiddenMessages
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.ui.settings.mentionSoundStillPlaying
 import name.alexwayfer.customtv.ui.settings.mentionSoundUri
@@ -37,14 +39,16 @@ internal fun MentionFeedback(
     selfLogin: String?,
     selfDisplayName: String?,
     settings: AppSettings,
+    moderates: Boolean,
 ) {
     val timeline = remember(messages) { messages.map { it to 0 } }
-    MentionAlerts(timeline, channel, selfLogin, selfDisplayName, settings)
+    MentionAlerts(timeline, channel, selfLogin, selfDisplayName, settings, moderates)
 }
 
 /**
  * The alerts behind both the live chat and a replay: [timeline] carries the chat and its jump generation, and
- * [settings] the mention vibration, sound, and keyword phrases.
+ * [settings] the mention vibration, sound, and keyword phrases. A message the chat hides does not alert; [moderates]
+ * tells whether the user moderates the channel, where the hidden phrases may not apply.
  */
 @Composable
 internal fun MentionAlerts(
@@ -53,12 +57,14 @@ internal fun MentionAlerts(
     selfLogin: String?,
     selfDisplayName: String?,
     settings: AppSettings,
+    moderates: Boolean = false,
 ) {
     val context = LocalContext.current
     val alertAudible = rememberMentionAlertAudible()
     val settingsState = rememberUpdatedState(settings)
     val loginState = rememberUpdatedState(selfLogin.orEmpty())
     val nameState = rememberUpdatedState(selfDisplayName.orEmpty())
+    val moderatesState = rememberUpdatedState(moderates)
     LaunchedEffect(channel, timeline) {
         var baselineGeneration: Int? = null
         var seen = emptySet<String>()
@@ -72,7 +78,13 @@ internal fun MentionAlerts(
             val login = loginState.value
             val name = nameState.value
             val alerts = settingsState.value
-            val mentioned = newMentionArrived(seen, current, login, name, alerts.keywordPhrases)
+            val hidden = channelHiddenPhrases(
+                alerts.hiddenPhrases,
+                alerts.hidePhrasesWhenModerator,
+                moderatesState.value,
+            )
+            val shown = withoutHiddenMessages(current, hidden, login)
+            val mentioned = newMentionArrived(seen, shown, login, name, alerts.keywordPhrases)
             seen = current.map { it.id }.toSet()
             if (!mentioned) return@collect
             if (!alertAudible()) return@collect

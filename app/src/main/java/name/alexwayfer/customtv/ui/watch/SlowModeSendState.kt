@@ -28,9 +28,9 @@ internal class SlowModeSendState {
     var awaitingOwnEchoUntilMillis by mutableStateOf<Long?>(null)
         internal set
 
-    fun onSent(slowSeconds: Int?, viewerIsBroadcaster: Boolean) {
+    fun onSent(slowSeconds: Int?, viewerExempt: Boolean) {
         val seconds = slowSeconds?.takeIf { it > 0 } ?: return
-        if (viewerIsBroadcaster) return
+        if (viewerExempt) return
         awaitingOwnEchoUntilMillis = slowModeDeadline(System.currentTimeMillis(), seconds)
     }
 }
@@ -41,18 +41,18 @@ internal fun rememberSlowModeSend(
     ownUserId: String?,
     liveMessages: Flow<ChatMessage>,
     slowSeconds: Int?,
-    viewerIsBroadcaster: Boolean,
+    viewerExempt: Boolean,
 ): SlowModeSendState {
     val state = remember(channel) { SlowModeSendState() }
     val readSlowSeconds = rememberUpdatedState(slowSeconds)
-    val readViewerIsBroadcaster = rememberUpdatedState(viewerIsBroadcaster)
+    val readViewerExempt = rememberUpdatedState(viewerExempt)
     LaunchedEffect(state, ownUserId, liveMessages) {
         liveMessages.collect { message ->
             if (!isOwnLiveChatLine(message, ownUserId)) return@collect
             state.deadlineMillis = slowModeDeadlineAfterOwnMessage(
                 message = message,
                 slowSeconds = readSlowSeconds.value,
-                viewerIsBroadcaster = readViewerIsBroadcaster.value,
+                viewerExempt = readViewerExempt.value,
                 receivedAtMillis = System.currentTimeMillis(),
             )
             state.awaitingOwnEchoUntilMillis = null

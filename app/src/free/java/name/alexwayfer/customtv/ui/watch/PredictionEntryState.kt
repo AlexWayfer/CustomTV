@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import name.alexwayfer.customtv.chat.ChannelPrediction
 
 /** Predicting needs the experimental login, a Premium feature: the free prediction card offers the browser. */
-@Suppress("unused", "FunctionOnlyReturningConstant")
+@Suppress("FunctionOnlyReturningConstant")
 @Composable
 internal fun rememberPredictionEntry(
     prediction: ChannelPrediction,

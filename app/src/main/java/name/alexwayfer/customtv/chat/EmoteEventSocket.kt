@@ -20,6 +20,7 @@ internal class EmoteEventSocket(
 ) {
     private var webSocket: WebSocket? = null
     private var target: String? = null
+    private var reopen: (() -> Unit)? = null
 
     @Volatile
     private var closedByUser = false
@@ -58,6 +59,9 @@ internal class EmoteEventSocket(
     private fun disconnectSocket() {
         val current = webSocket
         webSocket = null
+        // A reopen planned for the socket before stays away from the next one.
+        reopen?.invoke()
+        reopen = null
         current?.cancel()
     }
 
@@ -65,7 +69,7 @@ internal class EmoteEventSocket(
         if (closedByUser) return
         val id = target ?: return
         webSocket = null
-        schedule(EMOTE_EVENTS_RECONNECT_DELAY_SECONDS) {
+        reopen = schedule(EMOTE_EVENTS_RECONNECT_DELAY_SECONDS) {
             if (!closedByUser && target == id && webSocket == null) {
                 openSocket()
             }

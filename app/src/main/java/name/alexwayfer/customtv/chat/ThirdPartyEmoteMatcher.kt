@@ -9,147 +9,164 @@ object ThirdPartyEmoteMatcher {
     ): List<ChatPart> {
         if (parts.isEmpty()) return parts
         val bttvModifiers = EmotePlatform.Bttv in modifierPlatforms
-        val out = ArrayList<ChatPart>(parts.size)
-        var prefixEffects: EmoteEffects? = null
-        var prefixModifiers: List<EmoteModifier> = emptyList()
-        parts.forEachIndexed { index, part ->
-            when (part) {
-                is ChatPart.Emote -> {
-                    out += prefixEffects?.let {
-                        part.copy(
-                            effects = part.effects.combine(it),
-                            modifiers = part.modifiers + prefixModifiers,
-                        )
-                    } ?: part
-                    prefixEffects = null
-                    prefixModifiers = emptyList()
-                }
-                is ChatPart.Gif -> {
-                    out += part
-                    prefixEffects = null
-                    prefixModifiers = emptyList()
-                }
-                is ChatPart.Text -> {
-                    val next = parts.getOrNull(index + 1)
-                    val effects = if (bttvModifiers) EmoteEffects.bttvPrefix(part.text) else null
-                    if (effects != null && next is ChatPart.Emote) {
-                        prefixEffects = effects
-                        prefixModifiers = part.text.trim().split(Regex("\\s+"))
-                            .mapNotNull { token ->
-                                // bttvPrefix above has already read every token as an effect.
-                                EmoteEffects.bttv(token)?.let { EmoteModifier(token, EmotePlatform.Bttv, it) }
-                            }
-                    } else {
-                        overlayText(part.text, emotes, modifierPlatforms, out)
-                    }
-                }
-            }
-        }
-        return out.ifEmpty { parts }
+        val ffzModifiers = EmotePlatform.Ffz in modifierPlatforms
+        val items = chatItems(parts)
+        val words = items.filter { it.isWord }
+        val kinds = words.map { it.kind(emotes, bttvModifiers, ffzModifiers) }
+        val targets = emoteWordTargets(kinds)
+        val wordIndexes = HashMap<ChatItem, Int>(words.size)
+        words.forEachIndexed { index, item -> wordIndexes[item] = index }
+        return ChatItemBuilder(words, kinds, targets, emotes).build(items, wordIndexes).ifEmpty { parts }
     }
 
-    private fun overlayText(
-        text: String,
-        emotes: Map<String, SevenTvEmote>,
-        modifierPlatforms: Set<EmotePlatform>,
-        out: MutableList<ChatPart>,
-    ) {
-        val bttvModifiers = EmotePlatform.Bttv in modifierPlatforms
-        val ffzModifiers = EmotePlatform.Ffz in modifierPlatforms
-        if (text.isEmpty()) {
-            out += ChatPart.Text(text)
-            return
+    /**
+     * The parts' words and whitespace in order: text split into tokens, other parts whole, so a
+     * BTTV modifier reaches a Twitch emote in the next part as it reaches one in its own text.
+     */
+    private fun chatItems(parts: List<ChatPart>): List<ChatItem> {
+        val items = ArrayList<ChatItem>()
+        for (part in parts) {
+            if (part !is ChatPart.Text || part.text.isEmpty()) {
+                items += ChatItem(part = part)
+                continue
+            }
+            for (token in part.text.split(TOKEN_SPLIT)) {
+                if (token.isNotEmpty()) items += ChatItem(token = token)
+            }
         }
-        val overlay = TextOverlay(emotes, bttvModifiers, ffzModifiers, out)
-        text.split(TOKEN_SPLIT).forEach(overlay::add)
+        return items
     }
 
     private val TOKEN_SPLIT = Regex("(?<=\\s)|(?=\\s)")
 }
 
+/** One word, whitespace, or whole part of a message being matched; compared by identity. */
+private class ChatItem(val token: String? = null, val part: ChatPart? = null) {
+    /** Whitespace and empty text are not words: they neither apply to emotes nor end a run of them. */
+    val isWord: Boolean
+        get() = when {
+            token != null -> token.isNotBlank()
+            part is ChatPart.Text -> false
+            else -> true
+        }
+
+    fun kind(emotes: Map<String, SevenTvEmote>, bttvModifiers: Boolean, ffzModifiers: Boolean): EmoteWordKind {
+        if (part != null) return if (part is ChatPart.Emote) EmoteWordKind.Emote else EmoteWordKind.Other
+        val word = token.orEmpty()
+        if (bttvModifiers && EmoteEffects.bttv(word) != null) return EmoteWordKind.BttvModifier
+        val emote = emotes[word]
+        return when {
+            emote?.effects != null -> EmoteWordKind.FfzModifierEmote
+            emote?.overlay == true -> EmoteWordKind.Overlay
+            emote != null -> EmoteWordKind.Emote
+            ffzModifiers && EmoteEffects.knownFfz(word) != null -> EmoteWordKind.FfzModifier
+            else -> EmoteWordKind.Other
+        }
+    }
+}
+
 /**
- * Adds the words of one text part to [out]: emotes as emotes, the rest as text. BTTV modifier words wait for the next
- * emote; FFZ modifier words change the emote before them.
+ * Builds the matched parts from the words' targets: an emote takes the BTTV modifiers that wait
+ * for it, and an FFZ modifier or an overlay changes the emote it applies to. Modifier words leave
+ * no text: a BTTV one takes the whitespace after it, an FFZ one the whitespace before it.
  */
-private class TextOverlay(
+private class ChatItemBuilder(
+    private val words: List<ChatItem>,
+    private val kinds: List<EmoteWordKind>,
+    private val targets: IntArray,
     private val emotes: Map<String, SevenTvEmote>,
-    private val bttvModifiers: Boolean,
-    private val ffzModifiers: Boolean,
-    private val out: MutableList<ChatPart>,
 ) {
-    private var pendingEffects = EmoteEffects()
-    private val pendingModifiers = mutableListOf<EmoteModifier>()
+    private val out = ArrayList<ChatPart>()
+
+    /** Where each emote word went in [out], by word index. */
+    private val placed = HashMap<Int, Int>()
     private var consumeFollowingWhitespace = false
 
-    fun add(token: String) {
-        if (token.isEmpty()) return
-        if (consumeFollowingWhitespace && token.isBlank()) {
+    fun build(items: List<ChatItem>, wordIndexes: Map<ChatItem, Int>): List<ChatPart> {
+        for (item in items) {
+            val index = wordIndexes[item]
+            if (index == null) {
+                addWhitespace(item)
+            } else {
+                addWord(item, index)
+            }
+        }
+        return out
+    }
+
+    private fun addWhitespace(item: ChatItem) {
+        val token = item.token
+        if (token == null) {
+            out += item.part ?: return
+            return
+        }
+        if (consumeFollowingWhitespace) {
             consumeFollowingWhitespace = false
             return
         }
-        if (holdBttvModifier(token)) return
-        val emote = emotes[token]
+        addText(token)
+    }
+
+    private fun addWord(item: ChatItem, index: Int) {
+        consumeFollowingWhitespace = false
+        val kind = kinds[index]
+        val target = targets[index]
         when {
-            emote == null && ffzModifiers && modifyPreviousEmote(token) -> Unit
-            emote != null -> addEmote(token, emote)
-            else -> addText(token)
+            kind == EmoteWordKind.BttvModifier -> consumeFollowingWhitespace = true
+            target != NO_TARGET -> applyToEmote(item, index, kind, placed.getValue(target))
+            item.part is ChatPart.Emote -> place(index, withPrefix(item.part, index))
+            kind == EmoteWordKind.Other || kind == EmoteWordKind.FfzModifier -> addOther(item)
+            else -> place(index, withPrefix(emotePart(item.token.orEmpty()), index))
         }
     }
 
-    /** A BTTV modifier word waits for the next emote; true when [token] is one. */
-    private fun holdBttvModifier(token: String): Boolean {
-        val effects = (if (bttvModifiers) EmoteEffects.bttv(token) else null) ?: return false
-        pendingEffects = pendingEffects.combine(effects)
-        pendingModifiers += EmoteModifier(token, EmotePlatform.Bttv, effects)
-        consumeFollowingWhitespace = true
-        return true
+    private fun addOther(item: ChatItem) {
+        val token = item.token
+        if (token != null) addText(token) else out += item.part ?: return
     }
 
-    /** A known FFZ modifier word changes the emote before it; true when [token] did. */
-    private fun modifyPreviousEmote(token: String): Boolean {
-        val fallback = EmoteEffects.knownFfz(token) ?: return false
-        val baseIndex = previousEmoteIndex(out) ?: return false
+    private fun place(index: Int, part: ChatPart.Emote) {
+        placed[index] = out.size
+        out += part
+    }
+
+    /** An FFZ modifier or an overlay word [index] changes the emote placed at [baseIndex]. */
+    private fun applyToEmote(item: ChatItem, index: Int, kind: EmoteWordKind, baseIndex: Int) {
         val base = out[baseIndex] as ChatPart.Emote
+        val token = item.token.orEmpty()
+        if (kind == EmoteWordKind.Overlay) {
+            out[baseIndex] = base.copy(overlays = base.overlays + withPrefix(emotePart(token), index))
+            return
+        }
+        val effects = emotes[token]?.effects ?: EmoteEffects.knownFfz(token) ?: return
         out[baseIndex] = base.copy(
-            effects = base.effects.combine(fallback),
-            modifiers = base.modifiers + EmoteModifier(token, EmotePlatform.Ffz, fallback),
+            effects = base.effects.combine(effects),
+            modifiers = base.modifiers + EmoteModifier(token, EmotePlatform.Ffz, effects),
         )
         out.subList(baseIndex + 1, out.size).clear()
-        clearPending()
-        return true
     }
 
-    private fun addEmote(token: String, emote: SevenTvEmote) {
-        val part = ChatPart.Emote(
-            name = token,
-            url = emote.url,
-            aspectRatio = emote.aspectRatio,
-            effects = pendingEffects,
-            modifiers = pendingModifiers.toList(),
+    private fun emotePart(token: String): ChatPart.Emote {
+        val emote = emotes.getValue(token)
+        return ChatPart.Emote(name = token, url = emote.url, aspectRatio = emote.aspectRatio)
+    }
+
+    /** [part] with the BTTV modifiers that wait for word [index]. */
+    private fun withPrefix(part: ChatPart.Emote, index: Int): ChatPart.Emote {
+        val prefix = words.indices
+            .filter { targets[it] == index && kinds[it] == EmoteWordKind.BttvModifier }
+            .mapNotNull { modifier ->
+                val token = words[modifier].token.orEmpty()
+                EmoteEffects.bttv(token)?.let { EmoteModifier(token, EmotePlatform.Bttv, it) }
+            }
+        if (prefix.isEmpty()) return part
+        return part.copy(
+            effects = prefix.fold(part.effects) { effects, modifier -> effects.combine(modifier.effects) },
+            modifiers = part.modifiers + prefix,
         )
-        clearPending()
-        val effects = emote.effects
-        val baseIndex = previousEmoteIndex(out)
-        when {
-            // An FFZ modifier emote changes the emote before it instead of showing itself.
-            effects != null && baseIndex != null -> {
-                val base = out[baseIndex] as ChatPart.Emote
-                out[baseIndex] = base.copy(
-                    effects = base.effects.combine(effects),
-                    modifiers = base.modifiers + EmoteModifier(token, EmotePlatform.Ffz, effects),
-                )
-                out.subList(baseIndex + 1, out.size).clear()
-            }
-            emote.overlay && baseIndex != null -> {
-                val base = out[baseIndex] as ChatPart.Emote
-                out[baseIndex] = base.copy(overlays = base.overlays + part)
-            }
-            else -> out += part
-        }
     }
 
     private fun addText(token: String) {
-        clearPending()
         val last = out.lastOrNull()
         if (last is ChatPart.Text) {
             out[out.lastIndex] = ChatPart.Text(last.text + token)
@@ -157,15 +174,4 @@ private class TextOverlay(
             out += ChatPart.Text(token)
         }
     }
-
-    private fun clearPending() {
-        pendingEffects = EmoteEffects()
-        pendingModifiers.clear()
-    }
-}
-
-/** The emote right before the end of [parts], with only blank text after it. */
-private fun previousEmoteIndex(parts: List<ChatPart>): Int? {
-    val last = parts.indexOfLast { it !is ChatPart.Text || it.text.isNotBlank() }
-    return last.takeIf { it >= 0 && parts[it] is ChatPart.Emote }
 }

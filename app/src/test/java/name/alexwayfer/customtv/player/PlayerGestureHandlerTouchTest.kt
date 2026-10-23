@@ -21,6 +21,7 @@ private const val TOUCH_SLOP = 10
 private const val STATUS_BAR_PX = 50
 private const val DOWN_X = 100f
 private const val DOWN_Y = 200f
+private const val SWIPE_DOWN_PX = 60f
 private const val FRAME_MILLIS = 16L
 private const val PLAYER_WIDTH = 1600
 private const val PLAYER_HEIGHT = 900
@@ -66,7 +67,6 @@ class PlayerGestureHandlerTouchTest {
 
     private var appTap = false
     private var canMinimize = true
-    private var canExpand = true
     private var canDismissHorizontally = false
     private var controlsVisible = false
     private var touchOnControls = false
@@ -100,7 +100,7 @@ class PlayerGestureHandlerTouchTest {
                 isReleased = { false },
                 isAppTap = { appTap },
                 canMinimize = { canMinimize },
-                canExpand = { canExpand },
+                canExpand = { true },
                 canDismissHorizontally = { canDismissHorizontally },
                 canZoom = { canZoom },
                 controlsVisible = { controlsVisible },
@@ -169,12 +169,12 @@ class PlayerGestureHandlerTouchTest {
         up(DOWN_X, DOWN_Y)
     }
 
-    /** A finger put down, moved [dy] down in two steps, and lifted. */
-    private fun swipeDown(dy: Float, downY: Float = DOWN_Y) {
+    /** A finger put down, moved [SWIPE_DOWN_PX] down in two steps, and lifted. */
+    private fun swipeDown(downY: Float = DOWN_Y) {
         down(y = downY)
-        move(DOWN_X, downY + dy / 2)
-        move(DOWN_X, downY + dy)
-        up(DOWN_X, downY + dy)
+        move(DOWN_X, downY + SWIPE_DOWN_PX / 2)
+        move(DOWN_X, downY + SWIPE_DOWN_PX)
+        up(DOWN_X, downY + SWIPE_DOWN_PX)
     }
 
     @Test
@@ -221,7 +221,7 @@ class PlayerGestureHandlerTouchTest {
 
     @Test
     fun `a drag down takes the touch from the page and minimizes`() {
-        swipeDown(60f)
+        swipeDown()
 
         assertEquals(listOf("ACTION_DOWN", "ACTION_CANCEL"), page.actions)
         assertEquals(listOf("vertical 30.0", "vertical 60.0", "vertical end 60.0"), calls)
@@ -234,7 +234,7 @@ class PlayerGestureHandlerTouchTest {
     fun `a drag down where the player cannot minimize stays the page's touch`() {
         canMinimize = false
 
-        swipeDown(60f)
+        swipeDown()
 
         assertEquals(listOf("ACTION_DOWN", "ACTION_MOVE", "ACTION_MOVE", "ACTION_UP"), page.actions)
         assertEquals(emptyList<String>(), calls)
@@ -246,7 +246,7 @@ class PlayerGestureHandlerTouchTest {
         canMinimize = false
         tapStaysOffPage = true
 
-        swipeDown(60f)
+        swipeDown()
 
         assertEquals(listOf("ACTION_DOWN", "ACTION_MOVE", "ACTION_MOVE", "ACTION_CANCEL"), page.actions)
         assertEquals(emptyList<String>(), calls)
@@ -255,7 +255,7 @@ class PlayerGestureHandlerTouchTest {
 
     @Test
     fun `a swipe down from the status bar band is left to the system`() {
-        swipeDown(60f, downY = STATUS_BAR_PX - 20f)
+        swipeDown(downY =STATUS_BAR_PX - 20f)
 
         assertEquals(emptyList<String>(), calls)
     }
@@ -265,7 +265,7 @@ class PlayerGestureHandlerTouchTest {
         controlsVisible = true
         touchOnControls = true
 
-        swipeDown(60f)
+        swipeDown()
 
         assertEquals(listOf("ACTION_DOWN", "ACTION_MOVE", "ACTION_MOVE", "ACTION_UP"), page.actions)
         assertEquals(emptyList<String>(), calls)
@@ -275,7 +275,7 @@ class PlayerGestureHandlerTouchTest {
     fun `a drag down on hidden controls still minimizes`() {
         touchOnControls = true
 
-        swipeDown(60f)
+        swipeDown()
 
         assertEquals(listOf("vertical 30.0", "vertical 60.0", "vertical end 60.0"), calls)
     }
@@ -381,7 +381,7 @@ class PlayerGestureHandlerTouchTest {
         assertEquals(listOf(true, false), zoomedChanges)
         assertEquals(listOf(true, false), settled)
 
-        swipeDown(60f)
+        swipeDown()
 
         assertEquals(listOf("vertical 30.0", "vertical 60.0", "vertical end 60.0"), calls)
     }

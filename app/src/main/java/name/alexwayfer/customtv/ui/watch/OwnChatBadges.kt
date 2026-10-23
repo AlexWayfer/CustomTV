@@ -53,6 +53,12 @@ internal fun rememberOwnChatBadges(
     }
 }
 
+private val MODERATOR_BADGES = setOf("broadcaster", "lead_moderator", "moderator")
+
+/** Whether the user's own badges in this channel make them its streamer or one of its moderators. */
+internal fun ownBadgesModerate(ownBadges: List<ChatBadge>?): Boolean =
+    ownBadges.orEmpty().any { it.setId in MODERATOR_BADGES }
+
 /** The signed-in user's own chatter card, with their badges in this channel once they are known. */
 internal fun ownChatterCardRequest(
     badges: OwnChatBadges?,

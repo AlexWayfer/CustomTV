@@ -9,7 +9,6 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.ChatMessage
 
-@Suppress("unused")
 @Composable
 internal fun rememberChatterModTools(userId: String?, login: String?, badges: List<ChatBadge>?): ChatterModTools {
     val locked = chatterCardModerationLocked(
@@ -21,7 +20,6 @@ internal fun rememberChatterModTools(userId: String?, login: String?, badges: Li
 }
 
 /** The free chatter card shows Moderation locked to the channel's moderators; a tap shows the Premium banner. */
-@Suppress("unused")
 @Composable
 internal fun ChatterCardModeration(
     tools: ChatterModTools,
@@ -41,7 +39,6 @@ internal fun ChatterCardModeration(
 }
 
 /** The free chatter card never opens the moderation logs. */
-@Suppress("unused")
 @Composable
 internal fun ChatterCardModLogsPage(
     tools: ChatterModTools,

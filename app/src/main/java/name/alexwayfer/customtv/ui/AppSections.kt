@@ -137,7 +137,6 @@ private fun AppScene.openExploreCategory(category: TwitchCategory) {
     shell.exploreOpenCategory = OneShotRequest(ExploreCategoryOpen(category))
     shell.section = AppSection.Explore
 }
-
 /**
  * The sections over Home: the whispers, the account, a channel's profile, and the settings. A [hidden] section stays
  * composed past the right edge, under picture-in-picture.
@@ -218,6 +217,7 @@ private fun AppSectionPage(scene: AppScene, page: AppSection) {
     if (page == AppSection.Settings) {
         SettingsScreen(
             onClose = { shell.section = AppSection.Home },
+            onOpenCategory = scene::openExploreCategoryFromSettings,
             signedIn = scene.account != null,
             accountName = scene.account?.displayName,
             reselected = shell.settingsReselected,
@@ -240,6 +240,7 @@ private fun ExploreSectionPage(scene: AppScene) {
         openCategory = shell.exploreOpenCategory,
         closeCategory = shell.exploreCloseCategory,
         onBackToPlayer = if (scene.playerMinimized) scene::expandPlayerOverExploreCategory else null,
+        onBackToSettings = scene::showHiddenCategories,
         onBack = { shell.section = AppSection.Home },
         onOpen = { channel, live ->
             when (homeChannelTarget(live)) {

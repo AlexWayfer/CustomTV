@@ -51,6 +51,22 @@
     <string name="chat_command_user_argument">[имя пользователя]</string>
     <string name="chat_command_user_description">Показать профиль пользователя на этом канале</string>
     <string name="chat_command_prediction_description">Показать или начать прогноз</string>
+    <string name="chat_command_slow_argument">[секунды]</string>
+    <string name="chat_command_slow_description">Ограничить, как часто можно писать</string>
+    <string name="chat_command_slow_off_description">Выключить медленный режим</string>
+    <string name="chat_command_followers_argument">[длительность]</string>
+    <string name="chat_command_followers_description">Чат только для фолловеров, можно с минимальным сроком отслеживания</string>
+    <string name="chat_command_followers_off_description">Выключить чат только для фолловеров</string>
+    <string name="chat_command_subscribers_description">Чат только для подписчиков</string>
+    <string name="chat_command_subscribers_off_description">Выключить чат только для подписчиков</string>
+    <string name="chat_command_emote_only_description">Разрешить только сообщения из эмоутов</string>
+    <string name="chat_command_emote_only_off_description">Выключить режим «Только эмоуты»</string>
+    <string name="chat_command_unique_chat_description">Не пропускать повторы недавних сообщений</string>
+    <string name="chat_command_unique_chat_off_description">Выключить уникальный чат</string>
+    <string name="chat_mode_slow_usage">Укажите секунды числом, например /slow 30</string>
+    <string name="chat_mode_followers_usage">Укажите время, например 30m, 2h, 1d, 1w или 3mo</string>
+    <string name="chat_mode_change_failed">Не удалось изменить режим чата</string>
+    <string name="chat_modes_premium_hint">Менять режимы чата можно в Premium</string>
     <string name="chat_send_failed">Не удалось отправить сообщение</string>
     <string name="chat_send_log_in">Войдите снова, чтобы писать в чат</string>
     <string name="chat_send_not_allowed">Вы не можете писать в чат этого канала</string>
@@ -63,6 +79,7 @@
     <string name="chat_mode_subscribe">Подписаться</string>
     <string name="chat_modes_title">Режимы чата</string>
     <string name="chat_modes_details">Подробнее</string>
+    <string name="chat_modes_edit">Изменить режимы чата</string>
     <string name="chat_mode_subscribers">Чат только для подписчиков</string>
     <string name="chat_mode_subscribers_body">Писать могут только подписчики.</string>
     <string name="chat_mode_emotes">Только эмоуты</string>
@@ -416,6 +433,8 @@
     <string name="keep_keyboard_after_send_hint">Иначе она прячется, как только нажмёте «Отправить»</string>
     <string name="scroll_to_latest_after_send">Прокручивать чат вниз после отправки</string>
     <string name="scroll_to_latest_after_send_hint">Иначе чат остаётся там, где вы его остановили</string>
+    <string name="sent_message_history">История сообщений</string>
+    <string name="sent_message_history_hint">Кнопка в поле ввода возвращает то, что вы писали в этот чат, как и стрелки вверх и вниз на клавиатуре</string>
     <string name="settings_section_updates">Обновления</string>
     <string name="app_update_open_group">Открыть группу</string>
     <string name="settings_section_premium">Premium</string>
@@ -443,6 +462,7 @@
     <string name="app_update_play_protect_install">Установить</string>
     <string name="settings_section_emotes">Эмоуты</string>
     <string name="settings_section_messages">Сообщения</string>
+    <string name="settings_section_sending">Отправка</string>
     <string name="settings_section_playback">Воспроизведение</string>
     <string name="background_sound_only">Только звук в фоне</string>
     <string name="background_sound_only_hint">Экономит батарею и трафик. Воспроизведение замирает на секунду, когда вы блокируете экран или возвращаетесь.</string>
@@ -471,6 +491,10 @@
     <string name="open_chat_in_browser">Открыть чат в браузере</string>
     <string name="open_chat_in_browser_hint">Из-за ограничений Twitch баллы канала, опросы и прогнозы доступны только на сайте.</string>
     <string name="emote_picker_open">Эмоуты</string>
+    <string name="chat_history">История сообщений</string>
+    <string name="chat_history_older">Предыдущее сообщение</string>
+    <string name="chat_history_newer">Следующее сообщение</string>
+    <string name="chat_history_use">Вставить в поле</string>
     <string name="emote_picker_search">Найти эмоут</string>
     <string name="emote_picker_frequent">Часто используемые</string>
     <string name="emote_picker_channel_follow">%1$s · Фолловерам</string>
@@ -500,12 +524,14 @@
     <string name="chat_text_size">Размер текста</string>
     <string name="refresh_emotes_and_labels">Обновить эмоуты и метки</string>
     <string name="chat_copy">Копировать</string>
+    <string name="copied">Скопировано</string>
     <string name="chat_reply">Ответить</string>
     <string name="chat_mention">Упомянуть</string>
     <string name="chat_own_profile">Ваш профиль</string>
     <string name="chat_message_actions">Ответить или скопировать</string>
     <string name="chat_thread_with">Ветка с @%1$s</string>
     <string name="chat_replying_to">Ответ @%1$s</string>
+    <string name="chat_reply_parent_hidden">сообщение скрыто</string>
     <string name="chat_close_thread">Закрыть ветку</string>
     <string name="chat_pinned">Закреплённое сообщение</string>
     <string name="chat_pinned_by">Закрепил(а)</string>
@@ -521,6 +547,8 @@
     <string name="chat_automod_removed">Модераторы удалили ваше сообщение.</string>
     <string name="chat_timed_out">(тайм-аут на %1$s)</string>
     <string name="chat_banned">(бан)</string>
+    <string name="chat_shared_source">Из чата %1$s</string>
+    <string name="chat_shared_source_unknown">Из чата другого канала</string>
     <string name="chat_user_timed_out">%1$s получает тайм-аут на %2$s</string>
     <string name="chat_user_banned">%1$s получает бан</string>
     <string name="chat_moderator_timed_out">%1$s даёт тайм-аут %2$s на %3$s</string>
@@ -654,6 +682,8 @@
     <string name="gesture_recent_swipe_result">Показывает кнопку, которая убирает его. То же есть в меню по удержанию.</string>
     <string name="gesture_message_swipe">Свайп сообщения влево</string>
     <string name="gesture_message_swipe_result">Ответ на него</string>
+    <string name="gesture_message_swipe_right">Свайп сообщения вправо</string>
+    <string name="gesture_message_swipe_right_result">Копирует его текст</string>
     <string name="gesture_message_hold">Удержание на сообщении, нике или эмоуте</string>
     <string name="gesture_message_hold_result">Меню: ответить или скопировать</string>
     <string name="gesture_thread_swipe">Свайп треда ответов вниз</string>
@@ -700,4 +730,11 @@
     <string name="notification_prompt_enable">Включить</string>
     <string name="notification_prompt_dismiss">Не сейчас</string>
     <string name="send_donation">Отправить донат</string>
+    <string name="settings_hidden_categories">Скрытые категории</string>
+    <plurals name="followed_hidden_streams">
+        <item quantity="one">%d стрим скрыт по вашим настройкам</item>
+        <item quantity="few">%d стрима скрыты по вашим настройкам</item>
+        <item quantity="many">%d стримов скрыты по вашим настройкам</item>
+        <item quantity="other">%d стрима скрыты по вашим настройкам</item>
+    </plurals>
 </resources>

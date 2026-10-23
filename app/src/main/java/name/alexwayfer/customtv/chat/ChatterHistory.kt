@@ -121,21 +121,22 @@ private fun withMentions(
     self: ChatMentionSelf,
     transform: (ChatMessage) -> ChatMessage = { it },
 ): Map<String, List<ChatMessage>> {
-    var result: MutableMap<String, List<ChatMessage>>? = null
-    messages.forEach { message ->
-        val logins = mentionedLogins(message, knownLogins, self)
-        if (logins.isEmpty()) return@forEach
+    val mentioning = messages.mapNotNull { message ->
+        mentionedLogins(message, knownLogins, self).takeIf { it.isNotEmpty() }?.let { logins -> message to logins }
+    }
+    if (mentioning.isEmpty()) return mentions
+    val result = mentions.toMutableMap()
+    mentioning.forEach { (message, logins) ->
         val shown = transform(message)
-        val next = result ?: mentions.toMutableMap().also { result = it }
         logins.forEach { login ->
-            val current = next[login].orEmpty()
+            val current = result[login].orEmpty()
             val index = current.indexOfFirst { it.id == shown.id }
-            next[login] = if (index >= 0) {
+            result[login] = if (index >= 0) {
                 current.toMutableList().apply { this[index] = shown }
             } else {
                 (current + shown).takeLast(MAX_RECENT_MENTIONS)
             }
         }
     }
-    return result ?: mentions
+    return result
 }

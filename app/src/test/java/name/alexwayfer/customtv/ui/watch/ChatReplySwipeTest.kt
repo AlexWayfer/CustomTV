@@ -55,32 +55,61 @@ class ChatReplySwipeTest {
     }
 
     @Test
-    fun `drag toward the end stays at rest without a dismiss action`() {
-        assertEquals(0f, chatSwipeDrag(0f, -40f, canReply = true, canDismiss = false), 0.0001f)
+    fun `drag toward the end stays at rest without an action there`() {
+        assertEquals(0f, chatSwipeDrag(0f, -40f, canReply = true, towardEnd = ChatSwipeTowardEnd.None), 0.0001f)
     }
 
     @Test
     fun `drag toward the start stays at rest without a reply action`() {
-        assertEquals(0f, chatSwipeDrag(0f, 40f, canReply = false, canDismiss = true), 0.0001f)
+        assertEquals(0f, chatSwipeDrag(0f, 40f, canReply = false, towardEnd = ChatSwipeTowardEnd.Dismiss), 0.0001f)
+        assertEquals(0f, chatSwipeDrag(0f, 40f, canReply = false, towardEnd = ChatSwipeTowardEnd.Copy), 0.0001f)
     }
 
     @Test
     fun `drag toward the end with a dismiss action follows the finger`() {
-        assertEquals(-40f, chatSwipeDrag(0f, -40f, canReply = true, canDismiss = true), 0.0001f)
-        assertEquals(-40f, chatSwipeOffset(-40f, 100f), 0.0001f)
-        assertEquals(-250f, chatSwipeOffset(-250f, 100f), 0.0001f)
+        assertEquals(-40f, chatSwipeDrag(0f, -40f, canReply = true, towardEnd = ChatSwipeTowardEnd.Dismiss), 0.0001f)
+        assertEquals(-40f, chatSwipeOffset(-40f, 100f, ChatSwipeTowardEnd.Dismiss), 0.0001f)
+        assertEquals(-250f, chatSwipeOffset(-250f, 100f, ChatSwipeTowardEnd.Dismiss), 0.0001f)
+    }
+
+    @Test
+    fun `drag toward the end with a copy action moves the row as a reply swipe does`() {
+        assertEquals(-40f, chatSwipeDrag(0f, -40f, canReply = true, towardEnd = ChatSwipeTowardEnd.Copy), 0.0001f)
+        assertEquals(-40f, chatSwipeOffset(-40f, 100f, ChatSwipeTowardEnd.Copy), 0.0001f)
+        assertEquals(-chatReplySwipeOffset(250f, 100f), chatSwipeOffset(-250f, 100f, ChatSwipeTowardEnd.Copy), 0.0001f)
     }
 
     @Test
     fun `release past the threshold toward the end dismisses`() {
-        assertEquals(ChatSwipeRelease.Dismiss, chatSwipeRelease(-100f, 100f))
-        assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(-99f, 100f))
+        assertEquals(ChatSwipeRelease.Dismiss, chatSwipeRelease(-100f, 100f, ChatSwipeTowardEnd.Dismiss))
+        assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(-99f, 100f, ChatSwipeTowardEnd.Dismiss))
+    }
+
+    @Test
+    fun `release past the threshold toward the end copies`() {
+        assertEquals(ChatSwipeRelease.Copy, chatSwipeRelease(-100f, 100f, ChatSwipeTowardEnd.Copy))
+        assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(-99f, 100f, ChatSwipeTowardEnd.Copy))
+    }
+
+    @Test
+    fun `a message with text swipes to copy outside full screen`() {
+        assertTrue(chatSwipeCopies(copyText = "hello", fullscreen = false))
+    }
+
+    @Test
+    fun `full screen leaves the sideways swipe to the chat`() {
+        assertFalse(chatSwipeCopies(copyText = "hello", fullscreen = true))
+    }
+
+    @Test
+    fun `a message without text does not swipe to copy`() {
+        assertFalse(chatSwipeCopies(copyText = null, fullscreen = false))
     }
 
     @Test
     fun `release past the threshold toward the start replies`() {
-        assertEquals(ChatSwipeRelease.Reply, chatSwipeRelease(100f, 100f))
-        assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(0f, 100f))
+        assertEquals(ChatSwipeRelease.Reply, chatSwipeRelease(100f, 100f, ChatSwipeTowardEnd.Copy))
+        assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(0f, 100f, ChatSwipeTowardEnd.Copy))
     }
 
     @Test

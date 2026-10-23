@@ -12,6 +12,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -30,43 +34,39 @@ import kotlin.math.roundToInt
 
 @Composable
 internal fun EditionSettings() {
-    PremiumFeatureList()
+    val openUpgrade = premiumUpgradeOpener()
+    PremiumFeatureList(onUpgrade = openUpgrade)
     PremiumButton(
         text = stringResource(R.string.premium_upgrade),
-        onClick = premiumUpgradeOpener(),
-        modifier = Modifier.padding(start = 16.dp, top = 8.dp),
+        onClick = openUpgrade,
+        modifier = Modifier
+            .padding(start = 16.dp, top = 8.dp)
+            .goldButtonFill(),
         colors = goldButtonColors(),
     )
 }
 
 /**
- * What Premium adds, as the settings and the Premium banner list it.
- * Add one bullet here when a feature moves into Premium or is added only there.
+ * What Premium adds, as the settings and the Premium banner list it, and a link to the full list, which offers
+ * [onUpgrade] under it. Add a feature to the full list in `PremiumAllFeatures.kt`; this short one only samples it.
  */
 @Composable
 internal fun PremiumFeatureList(
+    onUpgrade: () -> Unit,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyLarge,
     lineSpacing: Dp = 4.dp,
-    /** How much further in than the heading and the closing line the features sit. */
+    /** How much further in than the heading and the closing link the features sit. */
     featureIndent: Dp = 8.dp,
 ) {
+    var allShown by rememberSaveable { mutableStateOf(false) }
     Column(modifier) {
-        PremiumFeatureLines(style, lineSpacing, featureIndent)
+        PremiumMainFeatures(style, lineSpacing, featureIndent)
+        ExperimentalHeading(style, lineSpacing)
+        PremiumExperimentalFeatures(style, lineSpacing, featureIndent)
+        PremiumAllFeaturesLink(onClick = { allShown = true }, style = style)
     }
-}
-
-@Composable
-private fun PremiumFeatureLines(style: TextStyle, lineSpacing: Dp, featureIndent: Dp) {
-    PremiumMainFeatures(style, lineSpacing, featureIndent)
-    ExperimentalHeading(style, lineSpacing)
-    PremiumExperimentalFeatures(style, lineSpacing, featureIndent)
-    PremiumLine(
-        text = stringResource(R.string.premium_and_more),
-        style = style,
-        lineSpacing = lineSpacing,
-        modifier = Modifier.padding(top = 8.dp),
-    )
+    if (allShown) PremiumAllFeaturesSheet(onUpgrade = onUpgrade, onDismiss = { allShown = false })
 }
 
 @Composable
@@ -186,13 +186,4 @@ private fun PremiumBullet(icon: Painter, text: String, style: TextStyle, lineSpa
         )
         Text(text = text, modifier = Modifier.alignByBaseline(), style = style)
     }
-}
-
-@Composable
-private fun PremiumLine(text: String, style: TextStyle, lineSpacing: Dp, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = lineSpacing),
-        style = style,
-    )
 }

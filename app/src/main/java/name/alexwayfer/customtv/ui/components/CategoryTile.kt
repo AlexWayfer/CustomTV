@@ -1,7 +1,7 @@
 package name.alexwayfer.customtv.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,7 +56,8 @@ internal fun categoryGridColumns(width: Dp): Int =
 
 /**
  * A category's box art with its name under it, its live viewers and its tags when they are known; [onClick] opens
- * it, and [tagPill] draws each tag, a plain pill unless the tags do something on a tap.
+ * it, and [tagPill] draws each tag, a plain pill unless the tags do something on a tap. A long press goes to
+ * [onLongClick], which [onLongClickLabel] names for TalkBack, when there is one.
  */
 @Composable
 internal fun CategoryTile(
@@ -64,12 +65,20 @@ internal fun CategoryTile(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     tagPill: @Composable (CategoryTag) -> Unit = { StreamTagPill(it.name) },
+    onLongClick: (() -> Unit)? = null,
+    onLongClickLabel: String? = null,
 ) {
     Column(
         if (onClick == null) {
             modifier.semantics(mergeDescendants = true) {}
         } else {
-            modifier.clickable(role = Role.Button, onClick = onClick)
+            modifier.combinedClickable(
+                role = Role.Button,
+                onLongClickLabel = onLongClickLabel,
+                // The long press vibrates by itself.
+                onLongClick = onLongClick,
+                onClick = onClick,
+            )
         },
     ) {
         CategoryBoxArt(category.boxArtUrl, RoundedCornerShape(8.dp), Modifier.fillMaxWidth())

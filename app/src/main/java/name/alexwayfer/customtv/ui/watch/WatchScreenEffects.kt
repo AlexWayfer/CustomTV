@@ -12,6 +12,7 @@ import name.alexwayfer.customtv.chat.ChatMentionSelf
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.chat.OutgoingRaid
+import name.alexwayfer.customtv.chat.channelHiddenPhrases
 import name.alexwayfer.customtv.chat.mergeThreadEntries
 import name.alexwayfer.customtv.chat.threadEntriesFromKnown
 import name.alexwayfer.customtv.data.AppSettings
@@ -25,6 +26,7 @@ internal fun LiveMentionFeedback(
     channel: String,
     account: WatchAccount,
     settings: AppSettings,
+    moderates: Boolean,
 ) {
     val self = ChatMentionSelf(account.login.orEmpty(), account.displayName.orEmpty(), settings.keywordPhrases)
     LaunchedEffect(chatViewModel, self) { chatViewModel.setMentionSelf(self) }
@@ -34,7 +36,21 @@ internal fun LiveMentionFeedback(
         selfLogin = account.login,
         selfDisplayName = account.displayName,
         settings = settings,
+        moderates = moderates,
     )
+}
+
+/** The live chat keeps the messages the hidden phrases leave out beside the shown ones, by the phrases in force now. */
+@Composable
+internal fun LiveChatHiding(
+    chatViewModel: ChatViewModel,
+    account: WatchAccount,
+    settings: AppSettings,
+    moderates: Boolean,
+) {
+    val phrases = channelHiddenPhrases(settings.hiddenPhrases, settings.hidePhrasesWhenModerator, moderates)
+    val login = account.login.orEmpty()
+    LaunchedEffect(chatViewModel, phrases, login) { chatViewModel.trim.setHidden(phrases, login) }
 }
 
 /** The raid the user started counts down and opens its target; the raid commands use the user's token. */

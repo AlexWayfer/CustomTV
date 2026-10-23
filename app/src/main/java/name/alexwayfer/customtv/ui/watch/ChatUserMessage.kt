@@ -24,9 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -66,6 +65,8 @@ internal fun ChatUserMessage(
     meMessageItalic: Boolean,
     modifier: Modifier = Modifier,
     includeAuthor: Boolean = true,
+    /** False where the row's event line already shows the channel a shared message came from. */
+    showSharedChatSource: Boolean = true,
     maxLines: Int = Int.MAX_VALUE,
     overflow: TextOverflow = TextOverflow.Clip,
     showGifs: Boolean = true,
@@ -100,6 +101,7 @@ internal fun ChatUserMessage(
         includeAuthor = includeAuthor,
         timestampText = timestampText,
         topChatter = topChatterBadge(message.userLogin),
+        sharedChatSource = sharedChatSourceLook(message.sourceRoomId.takeIf { showSharedChatSource }),
     )
     val inlineContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
     val annotated = remember(message, look, deletedNote, emoteAspects) {
@@ -108,6 +110,7 @@ internal fun ChatUserMessage(
     Column(modifier.fillMaxWidth()) {
         ChatMessageTextWithLinks(
             text = annotated,
+            color = look.bodyColor,
             inlineContent = inlineContent,
             lines = ChatTextLines(lineHeight, maxLines, overflow, foldProgress),
             onSelectMessage = onEmoteLongClick,
@@ -180,6 +183,8 @@ private data class ChatTextLines(
 @Composable
 private fun ChatMessageTextWithLinks(
     text: AnnotatedString,
+    /** The color of what has no span of its own: an ellipsis that takes an emote's place in cut-off lines. */
+    color: Color,
     inlineContent: Map<String, InlineTextContent>,
     lines: ChatTextLines,
     onSelectMessage: (() -> Unit)?,
@@ -191,6 +196,7 @@ private fun ChatMessageTextWithLinks(
     Box {
         Text(
             text = text,
+            color = color,
             inlineContent = inlineContent,
             lineHeight = lines.lineHeight,
             maxLines = lines.maxLines,
@@ -239,7 +245,6 @@ private fun ChatLinkTouchTargets(
     onSelectMessage: (() -> Unit)?,
     onLinkMenu: (ChatLinkMenuTarget) -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
     text.getLinkAnnotations(0, text.length).forEach { range ->
         val link = range.item
         val longPress = chatLinkLongPress(link) ?: return@forEach
@@ -251,10 +256,7 @@ private fun ChatLinkTouchTargets(
             onLongClick = when (longPress) {
                 ChatLinkLongPress.SelectMessage -> onSelectMessage
                 is ChatLinkLongPress.LinkMenu -> {
-                    {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onLinkMenu(ChatLinkMenuTarget(longPress.url, range.start, range.end))
-                    }
+                    { onLinkMenu(ChatLinkMenuTarget(longPress.url, range.start, range.end)) }
                 }
             },
         )
@@ -284,7 +286,6 @@ private fun ColumnScope.ChatMessageGifs(
                     modifier = Modifier
                         .padding(start = 8.dp, top = 4.dp)
                         .combinedClickable(
-                            hapticFeedbackEnabled = false,
                             onLongClick = actions.longClick,
                             onClick = { actions.openGif(gif) },
                         ),

@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.chat.ChatPart
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 
@@ -45,6 +46,7 @@ internal fun ChatGifPreview(gif: ChatPart.Gif, onDismiss: () -> Unit) {
         },
         sheetState = sheetState,
     ) {
+        NoSheetWindowDim()
         Column(
             modifier = Modifier
                 .fillMaxWidth()

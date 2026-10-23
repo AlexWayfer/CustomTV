@@ -55,6 +55,18 @@ class ChatRowHoldTest {
     }
 
     @Test
+    fun `a swipe ends the hold as the menu action it matches`() {
+        assertEquals(ChatRowHoldEnd.Reply, chatRowHoldEndOfSwipe(ChatSwipeRelease.Reply))
+        assertEquals(ChatRowHoldEnd.Copy, chatRowHoldEndOfSwipe(ChatSwipeRelease.Copy))
+    }
+
+    @Test
+    fun `a swipe that springs back or dismisses ends the hold as a dismissal`() {
+        assertEquals(ChatRowHoldEnd.Dismiss, chatRowHoldEndOfSwipe(ChatSwipeRelease.Back))
+        assertEquals(ChatRowHoldEnd.Dismiss, chatRowHoldEndOfSwipe(ChatSwipeRelease.Dismiss))
+    }
+
+    @Test
     fun `the hold ends once no swipe or menu holds a row`() {
         assertTrue(chatRowHoldEnds(swiping = false, selectedMessageId = null))
     }

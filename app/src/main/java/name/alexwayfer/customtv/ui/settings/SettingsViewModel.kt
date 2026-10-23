@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.data.ChatPageSettingsStore
+import name.alexwayfer.customtv.data.HiddenMessageSettingsStore
 import name.alexwayfer.customtv.data.MentionPageSettingsStore
 import name.alexwayfer.customtv.data.PortraitLanguage
 import name.alexwayfer.customtv.data.PortraitModelKind
@@ -18,6 +19,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val settings: StateFlow<AppSettings?> = AppSettingsStore.restored
     val chat = ChatPageSettingsActions(viewModelScope, ChatPageSettingsStore(application))
     val mentions = MentionPageSettingsActions(viewModelScope, MentionPageSettingsStore(application))
+    val hiddenMessages = HiddenMessageSettingsActions(viewModelScope, HiddenMessageSettingsStore(application))
 
     fun setBackgroundSoundOnly(enabled: Boolean) {
         viewModelScope.launch { store.setBackgroundSoundOnly(enabled) }

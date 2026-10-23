@@ -46,6 +46,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.GestureHint
+import name.alexwayfer.customtv.ui.CopiedNotices
 import name.alexwayfer.customtv.ui.LocalGestureHints
 import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
@@ -257,6 +258,7 @@ internal fun linkLastLineStart(linkStart: Int, lastLineStart: Int): Int = maxOf(
 internal fun Context.copyChatText(text: String) {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("chat", text))
+    CopiedNotices.copied()
 }
 
 private class ChatCopyPopupPositionProvider : PopupPositionProvider {

@@ -8,11 +8,35 @@ internal enum class ChatCommand(val word: String) {
 
     /** Opens the prediction in the channel points sheet, for the streamer and the channel's moderators. */
     Prediction("/prediction"),
+
+    // The chat modes, for the streamer and the channel's moderators.
+    Slow("/slow"),
+    SlowOff("/slowoff"),
+    Followers("/followers"),
+    FollowersOff("/followersoff"),
+    Subscribers("/subscribers"),
+    SubscribersOff("/subscribersoff"),
+    EmoteOnly("/emoteonly"),
+    EmoteOnlyOff("/emoteonlyoff"),
+    UniqueChat("/uniquechat"),
+    UniqueChatOff("/uniquechatoff"),
 }
 
-/** The commands this user has: `/prediction` only for the streamer and the channel's moderators. */
-internal fun availableChatCommands(predictionOpenable: Boolean): List<ChatCommand> =
-    ChatCommand.entries.filter { it != ChatCommand.Prediction || predictionOpenable }
+/** The commands that change the chat's modes. */
+internal val CHAT_MODE_COMMANDS = ChatCommand.entries.filter { it != ChatCommand.User && it != ChatCommand.Prediction }
+
+/**
+ * The commands this user has: `/prediction` only for the streamer and the channel's moderators, and the chat mode
+ * commands only for the streamer and the moderators ([chatModes]).
+ */
+internal fun availableChatCommands(predictionOpenable: Boolean, chatModes: Boolean): List<ChatCommand> =
+    ChatCommand.entries.filter {
+        when (it) {
+            ChatCommand.User -> true
+            ChatCommand.Prediction -> predictionOpenable
+            else -> chatModes
+        }
+    }
 
 /** `/prediction` alone in [text], in any case and with any spaces around it. */
 internal fun isPredictionCommand(text: String): Boolean =

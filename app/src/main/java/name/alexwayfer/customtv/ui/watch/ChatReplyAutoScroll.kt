@@ -31,7 +31,7 @@ internal fun KeepSelectedMessageVisible(
         while (true) {
             withFrameNanos {
                 val layout = listState.layoutInfo
-                val item = layout.visibleItemsInfo.find { it.key == messageId }
+                val item = layout.visibleItemsInfo.find { info -> info.key == messageId }
                 if (item == null) {
                     previousSize = -1
                     return@withFrameNanos
@@ -47,13 +47,13 @@ internal fun KeepSelectedMessageVisible(
                     )
                     if (showsEnd && last.key != messageId) endRowKey = last.key
                 }
-                val endRow = endRowKey?.let { key -> layout.visibleItemsInfo.find { it.key == key } }
+                val endRow = endRowKey?.let { key -> layout.visibleItemsInfo.find { info -> info.key == key } }
                 val pin = chatSelectionPin(
                     SelectionFrame(
                         selected = ChatRowBox(item.index, item.offset, item.size),
                         selectedGrows = chatSelectedRowChanging(item.size, previousSize, replyFolding()),
                         anchorsEnd = endRowKey != null,
-                        endRow = endRow?.let { ChatRowBox(it.index, it.offset, it.size) },
+                        endRow = endRow?.let { row -> ChatRowBox(row.index, row.offset, row.size) },
                         totalItems = layout.totalItemsCount,
                         viewportEnd = layout.viewportEndOffset,
                         bottomOverlayPx = bottomOverlayPx,

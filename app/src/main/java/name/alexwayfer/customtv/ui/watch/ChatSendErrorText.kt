@@ -13,4 +13,8 @@ internal fun chatSendErrorText(error: ChatSendError): String = when (error) {
     ChatSendError.TooFast -> stringResource(R.string.chat_send_too_fast)
     is ChatSendError.Twitch -> error.message
     ChatSendError.Failed -> stringResource(R.string.chat_send_failed)
+    ChatSendError.SlowUsage -> stringResource(R.string.chat_mode_slow_usage)
+    ChatSendError.FollowersUsage -> stringResource(R.string.chat_mode_followers_usage)
+    ChatSendError.ChatModeFailed -> stringResource(R.string.chat_mode_change_failed)
+    ChatSendError.ChatModesPremium -> stringResource(R.string.chat_modes_premium_hint)
 }

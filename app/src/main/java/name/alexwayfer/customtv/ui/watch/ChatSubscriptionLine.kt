@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
@@ -32,6 +33,7 @@ internal fun ChatSubscriptionLine(
     timestampText: String?,
     nickColor: Color,
     chatTextSize: Int,
+    badgeSize: Dp,
     textSize: TextUnit,
     timestampSize: TextUnit,
     lineHeight: TextUnit,
@@ -40,6 +42,9 @@ internal fun ChatSubscriptionLine(
     val density = LocalDensity.current
     val iconWidth = with(density) { (iconSize + 5.dp).toSp() }
     val iconHeight = with(density) { iconSize.toSp() }
+    val source = sharedChatSourceLook(message.sourceRoomId)
+    val sourceSizes = chatTextSizes(textSize, timestampSize, emoteSize = iconSize, badgeSize = badgeSize)
+    val sourceContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
     val annotated = remember(
         message.displayName,
         text,
@@ -47,17 +52,22 @@ internal fun ChatSubscriptionLine(
         nickColor,
         textSize,
         timestampSize,
+        source,
+        sourceSizes,
+        sourceContent,
     ) {
+        sourceContent.clear()
         buildAnnotatedString {
             appendInlineContent("subscription", "sub")
             appendChatTimestamp(timestampText, timestampSize)
+            appendSharedChatSource(source, sourceSizes, sourceContent)
             appendWithChatterName(text, message.displayName, nickColor, textSize)
         }
     }
     Text(
         text = annotated,
         lineHeight = lineHeight,
-        inlineContent = mapOf(
+        inlineContent = sourceContent + mapOf(
             "subscription" to InlineTextContent(
                 Placeholder(iconWidth, iconHeight, PlaceholderVerticalAlign.TextCenter),
             ) {

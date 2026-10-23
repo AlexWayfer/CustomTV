@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.ChatNick
+import name.alexwayfer.customtv.chat.ChatRoomModes
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.data.ChatSettings
 
@@ -19,6 +20,9 @@ internal data class ChatInputChannel(
     val liveMessages: Flow<ChatMessage>,
     /** How tall a page opened in the browser from the chat is, so its sheet stops at the player. */
     val browserSheetHeightPx: () -> Int,
+    val roomModes: ChatRoomModes,
+    /** The chat modes the user can change, as the streamer or a moderator; null for a viewer. */
+    val modeControl: ChatModeControl?,
 )
 
 /** Who writes: the signed-in user; without one, [canSend] is false and the field offers Log in. */
@@ -57,6 +61,12 @@ internal data class ChatCompose(
     /** What Send posts instead of a plain message, such as a watch streak; null for plain chat. */
     val shareOffer: ChatShareOffer?,
     val keepKeyboardAfterSend: Boolean,
+    /** The history button and the Up and Down keys bring back [sentHistory]. */
+    val historyEnabled: Boolean,
+    /** The user's own messages in this chat, oldest first. */
+    val sentHistory: List<ChatSentMessage>,
+    /** A `/me` message in italics, or in the author's color, in the history plaque as in the chat. */
+    val meMessageItalic: Boolean,
     val slowSendBlocked: Boolean,
     val onSent: () -> Unit,
     /** Opens the chatter card of a login typed after `/user`. */

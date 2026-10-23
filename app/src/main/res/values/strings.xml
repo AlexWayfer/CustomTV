@@ -47,6 +47,22 @@
     <string name="chat_command_user_argument">[username]</string>
     <string name="chat_command_user_description">Display profile information about a user on this channel</string>
     <string name="chat_command_prediction_description">Show or start a prediction</string>
+    <string name="chat_command_slow_argument">[seconds]</string>
+    <string name="chat_command_slow_description">Limit how often users may send messages</string>
+    <string name="chat_command_slow_off_description">Turn off slow mode</string>
+    <string name="chat_command_followers_argument">[duration]</string>
+    <string name="chat_command_followers_description">Restrict chat to followers, optionally by how long they\'ve followed</string>
+    <string name="chat_command_followers_off_description">Turn off followers-only chat</string>
+    <string name="chat_command_subscribers_description">Restrict chat to subscribers</string>
+    <string name="chat_command_subscribers_off_description">Turn off subscribers-only chat</string>
+    <string name="chat_command_emote_only_description">Allow only messages made of emotes</string>
+    <string name="chat_command_emote_only_off_description">Turn off emote-only chat</string>
+    <string name="chat_command_unique_chat_description">Drop messages that repeat recent ones</string>
+    <string name="chat_command_unique_chat_off_description">Turn off unique chat</string>
+    <string name="chat_mode_slow_usage">Write the seconds as a number, such as /slow 30</string>
+    <string name="chat_mode_followers_usage">Write the time like 30m, 2h, 1d, 1w, or 3mo</string>
+    <string name="chat_mode_change_failed">Couldn\'t change the chat mode</string>
+    <string name="chat_modes_premium_hint">Changing chat modes is available in Premium</string>
     <string name="chat_send_failed">Couldn’t send that message</string>
     <string name="chat_send_log_in">Log in again to chat</string>
     <string name="chat_send_not_allowed">You can’t chat in this channel</string>
@@ -59,6 +75,7 @@
     <string name="chat_mode_subscribe">Subscribe</string>
     <string name="chat_modes_title">Chat modes</string>
     <string name="chat_modes_details">Show details</string>
+    <string name="chat_modes_edit">Change chat modes</string>
     <string name="chat_mode_subscribers">Subscribers-only chat</string>
     <string name="chat_mode_subscribers_body">Only subscribers can chat.</string>
     <string name="chat_mode_emotes">Emote-only chat</string>
@@ -366,6 +383,8 @@
     <string name="keep_keyboard_after_send_hint">Otherwise it hides as soon as you tap Send</string>
     <string name="scroll_to_latest_after_send">Scroll to latest after sending a message</string>
     <string name="scroll_to_latest_after_send_hint">Otherwise the chat stays where you stopped it</string>
+    <string name="sent_message_history">Message history</string>
+    <string name="sent_message_history_hint">A button in the message field brings back what you wrote in this chat, as do the Up and Down keys of a keyboard</string>
     <string name="settings_section_updates">Updates</string>
     <string name="app_update_open_group">Open group</string>
     <string name="settings_section_premium">Premium</string>
@@ -393,6 +412,7 @@
     <string name="app_update_play_protect_install">Install</string>
     <string name="settings_section_emotes">Emotes</string>
     <string name="settings_section_messages">Messages</string>
+    <string name="settings_section_sending">Sending</string>
     <string name="settings_section_playback">Playback</string>
     <string name="background_sound_only">Sound only in the background</string>
     <string name="background_sound_only_hint">Saves battery and data. Playback pauses for a second when you lock the screen or come back.</string>
@@ -422,6 +442,10 @@
     <string name="open_chat_in_browser">Open chat in browser</string>
     <string name="open_chat_in_browser_hint">You can use Channel Points and participate in polls and predictions only on the site due to Twitch\'s restrictions.</string>
     <string name="emote_picker_open">Emotes</string>
+    <string name="chat_history">Message history</string>
+    <string name="chat_history_older">Older message</string>
+    <string name="chat_history_newer">Newer message</string>
+    <string name="chat_history_use">Put in the field</string>
     <string name="emote_picker_emote" translatable="false">%1$s</string>
     <string name="emote_picker_search">Search emotes</string>
     <string name="emote_picker_frequent">Frequently used</string>
@@ -455,12 +479,14 @@
     <string name="chat_text_size">Text size</string>
     <string name="refresh_emotes_and_labels">Refresh emotes and labels</string>
     <string name="chat_copy">Copy</string>
+    <string name="copied">Copied</string>
     <string name="chat_reply">Reply</string>
     <string name="chat_mention">Mention</string>
     <string name="chat_own_profile">Your profile</string>
     <string name="chat_message_actions">Reply or copy</string>
     <string name="chat_thread_with">Thread with @%1$s</string>
     <string name="chat_replying_to">Replying to @%1$s</string>
+    <string name="chat_reply_parent_hidden">hidden message</string>
     <string name="chat_close_thread">Close thread</string>
     <string name="chat_pinned">Pinned message</string>
     <string name="chat_pinned_by">Pinned by</string>
@@ -476,6 +502,8 @@
     <string name="chat_automod_removed">Mods have removed your message.</string>
     <string name="chat_timed_out">(timed out for %1$s)</string>
     <string name="chat_banned">(banned)</string>
+    <string name="chat_shared_source">From %1$s chat</string>
+    <string name="chat_shared_source_unknown">From another channel\'s chat</string>
     <string name="chat_user_timed_out">%1$s was timed out for %2$s</string>
     <string name="chat_user_banned">%1$s was banned</string>
     <string name="chat_moderator_timed_out">%1$s timed out %2$s for %3$s</string>
@@ -603,6 +631,8 @@
     <string name="gesture_recent_swipe_result">Shows the button that removes it. A long press offers the same.</string>
     <string name="gesture_message_swipe">Swipe a message left</string>
     <string name="gesture_message_swipe_result">Replies to it</string>
+    <string name="gesture_message_swipe_right">Swipe a message right</string>
+    <string name="gesture_message_swipe_right_result">Copies its text</string>
     <string name="gesture_message_hold">Long press a message, a name, or an emote</string>
     <string name="gesture_message_hold_result">Opens the menu to reply or copy</string>
     <string name="gesture_thread_swipe">Swipe a reply thread down</string>
@@ -645,4 +675,9 @@
     <string name="notification_prompt_enable">Enable</string>
     <string name="notification_prompt_dismiss">Not now</string>
     <string name="send_donation">Send a donation</string>
+    <string name="settings_hidden_categories">Hidden categories</string>
+    <plurals name="followed_hidden_streams">
+        <item quantity="one">%d stream hidden by your settings</item>
+        <item quantity="other">%d streams hidden by your settings</item>
+    </plurals>
 </resources>

@@ -52,11 +52,20 @@ internal fun WatchScreen(
     val storedChatSettings by chatSettingsViewModel.settings.collectAsStateWithLifecycle()
     val appSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val settings = appSettings.beforeRestore()
-    LiveMentionFeedback(chatViewModel, channel, account, settings)
     val data = collectWatchChatData(chatViewModel)
     WatchRaidEffects(channel, chatViewModel, data.outgoingRaid.value, account, navigation.onOpenChannel)
     val profile = rememberChannelProfile(channel, pollEvery = 30.seconds, forceRefresh = true)
-    val mode = rememberWatchChatMode(channel, profile, chatViewModel, account)
+    val ownBadges = rememberOwnChatBadges(
+        account.userId,
+        profile.id,
+        account.login,
+        { data.messages.value },
+        data.badgeUrls.value,
+    )
+    val moderates = ownBadgesModerate(ownBadges?.badges)
+    LiveMentionFeedback(chatViewModel, channel, account, settings, moderates)
+    LiveChatHiding(chatViewModel, account, settings, moderates)
+    val mode =rememberWatchChatMode(channel, profile, chatViewModel, account, ownBadges?.badges)
     val chat = remember(channel) { WatchChatState() }
     val scene = WatchScene(
         channel = channel,
@@ -75,13 +84,7 @@ internal fun WatchScreen(
         playerState = rememberMinimizablePlayerState(placement.minimized),
         highlightPins = rememberTemporaryHighlightPins(channel),
         ownFollow = rememberOwnChannelFollow(account),
-        ownBadges = rememberOwnChatBadges(
-            account.userId,
-            profile.id,
-            account.login,
-            { data.messages.value },
-            data.badgeUrls.value,
-        ),
+        ownBadges = ownBadges,
         collaboration = rememberCollaboration(profile.id.takeIf { profile.sharedViewerCount != null }, channel),
         sheetKeyboard = rememberSheetKeyboard(),
         chatSettingsViewModel = chatSettingsViewModel,

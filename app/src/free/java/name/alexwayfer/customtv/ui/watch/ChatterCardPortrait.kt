@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 /** AI chatter portraits are a Premium feature: the free chatter card has no item for them. */
-@Suppress("unused")
 @Composable
 internal fun ChatterCardPortraitItem(
     channelId: String?,
@@ -13,7 +12,6 @@ internal fun ChatterCardPortraitItem(
     modifier: Modifier = Modifier,
 ) = Unit
 
-@Suppress("unused")
 @Composable
 internal fun ChatterCardPortraitPage(
     subject: ChatterPortraitSubject,

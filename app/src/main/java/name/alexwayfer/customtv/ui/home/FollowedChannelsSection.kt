@@ -30,7 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import name.alexwayfer.customtv.data.FollowedChannel
+import name.alexwayfer.customtv.data.HiddenCategoriesStore
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import kotlinx.coroutines.flow.first
@@ -38,6 +40,7 @@ import kotlinx.coroutines.flow.first
 private const val LIVE_HEADER_KEY = "live-header"
 private const val OFFLINE_HEADER_KEY = "offline-header"
 private const val OFFLINE_GAP_KEY = "offline-gap"
+private const val HIDDEN_LINE_KEY = "hidden-line"
 
 // With the list's 4dp spacing on both sides, the offline title stays as far from the last live row as before.
 private val OFFLINE_GAP = 12.dp
@@ -116,34 +119,64 @@ private fun FollowedChannelList(
             }
         }
     }
+    val hiddenCategoryIds by HiddenCategoriesStore.ids.collectAsStateWithLifecycle()
+    var hiddenShown by rememberSaveable { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        followedChannelRows(followedSections(channels), onOpen, onHeaderHeight)
+        followedChannelRows(
+            sections = followedSections(channels, hiddenCategoryIds),
+            hiddenShown = hiddenShown,
+            onHiddenToggle = { hiddenShown = !hiddenShown },
+            onOpen = onOpen,
+            onHeaderHeight = onHeaderHeight,
+        )
     }
 }
 
 private fun LazyListScope.followedChannelRows(
     sections: FollowedSections,
+    hiddenShown: Boolean,
+    onHiddenToggle: () -> Unit,
     onOpen: (login: String, live: Boolean) -> Unit,
     onHeaderHeight: (Int) -> Unit,
 ) {
-    if (sections.live.isNotEmpty()) {
+    val anyLive = sections.live.isNotEmpty() || sections.hidden.isNotEmpty()
+    if (anyLive) {
         sectionStickyHeader(key = LIVE_HEADER_KEY, text = R.string.following_live_now, onHeight = onHeaderHeight)
         items(sections.live, key = { it.id }) { channel ->
-            FollowedLiveChannelRow(
+            FollowedLiveItem(
                 channel = channel,
                 modifier = Modifier.animateItem(),
                 onWatch = { onOpen(channel.login, true) },
             )
         }
     }
+    if (sections.hidden.isNotEmpty()) {
+        item(key = HIDDEN_LINE_KEY) {
+            FollowedHiddenLine(
+                count = sections.hidden.size,
+                expanded = hiddenShown,
+                onToggle = onHiddenToggle,
+                modifier = Modifier.animateItem(),
+            )
+        }
+        if (hiddenShown) {
+            items(sections.hidden, key = { it.id }) { channel ->
+                FollowedLiveItem(
+                    channel = channel,
+                    modifier = Modifier.animateItem(),
+                    onWatch = { onOpen(channel.login, true) },
+                )
+            }
+        }
+    }
     if (sections.offline.isNotEmpty()) {
         // The gap between the sections is its own item, so the stuck header has no empty band above.
-        if (sections.live.isNotEmpty()) {
+        if (anyLive) {
             item(key = OFFLINE_GAP_KEY) {
                 Spacer(Modifier.animateItem().height(OFFLINE_GAP))
             }

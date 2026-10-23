@@ -3,6 +3,7 @@ package name.alexwayfer.customtv.ui.home
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -78,20 +79,28 @@ internal fun LazyListScope.sectionStickyHeader(key: Any, @StringRes text: Int, o
     }
 }
 
-/** A live channel with its stream preview, the viewers over the preview, and the title and category beside it. */
+/**
+ * A live channel with its stream preview, the viewers over the preview, and the title and category beside it. A long
+ * press goes to [onLongClick], which [onLongClickLabel] names for TalkBack, when there is one.
+ */
 @Composable
 internal fun FollowedLiveChannelRow(
     channel: FollowedChannel,
     onWatch: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    onLongClickLabel: String?,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .clickable(
+            .combinedClickable(
                 interactionSource = null,
                 indication = ripple(color = Color.White),
+                onLongClickLabel = onLongClickLabel,
+                // The long press vibrates by itself.
+                onLongClick = onLongClick,
                 onClick = onWatch,
             )
             .padding(8.dp),

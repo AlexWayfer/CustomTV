@@ -34,6 +34,7 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChatRulesStore
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 
 /**
  * The channel's rules come before the user's first message: only when the user can send, the
@@ -113,6 +114,7 @@ internal fun ChatRulesSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
+        NoSheetWindowDim()
         ChatRulesHeader(channelLogin, channelName)
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),

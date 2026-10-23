@@ -26,7 +26,7 @@ object ChatRaiders {
     }
 }
 
-/** Adds a mark and keeps the newest [MAX_CHAT_MESSAGES]: a chat shows no more rows than that. */
+/** Adds a mark and keeps the newest [MAX_KEPT_CHAT_MESSAGES]: a chat keeps no more rows than that. */
 internal fun chatRaidersAfter(
     current: Map<String, ChatRaider>,
     messageId: String,
@@ -34,6 +34,6 @@ internal fun chatRaidersAfter(
 ): Map<String, ChatRaider> {
     if (messageId.isBlank()) return current
     val next = current - messageId + (messageId to raider)
-    if (next.size <= MAX_CHAT_MESSAGES) return next
-    return next.entries.drop(next.size - MAX_CHAT_MESSAGES).associate { it.key to it.value }
+    if (next.size <= MAX_KEPT_CHAT_MESSAGES) return next
+    return next.entries.drop(next.size - MAX_KEPT_CHAT_MESSAGES).associate { it.key to it.value }
 }

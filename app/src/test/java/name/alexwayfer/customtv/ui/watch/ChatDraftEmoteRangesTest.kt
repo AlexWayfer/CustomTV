@@ -8,34 +8,23 @@ import org.junit.Test
 
 class ChatDraftEmoteRangesTest {
     private val emotes = setOf("KEKW", "Kappa")
-    private val isEmote: (String) -> Boolean = { it in emotes }
 
     @Test
-    fun anEmoteBetweenWordsIsHighlighted() {
-        assertEquals(listOf(TextRange(3, 7)), chatDraftEmoteRanges("so KEKW ok", isEmote))
-    }
-
-    @Test
-    fun emotesAtTheStartAndEndOfTheDraftAreHighlighted() {
+    fun theDraftSplitsIntoWordsOnWhitespace() {
         assertEquals(
-            listOf(TextRange(0, 4), TextRange(8, 13)),
-            chatDraftEmoteRanges("KEKW hi Kappa", isEmote),
+            listOf(TextRange(0, 4), TextRange(5, 7), TextRange(8, 13)),
+            chatDraftWords("KEKW hi Kappa"),
         )
     }
 
     @Test
-    fun aCodeInsideALongerWordStaysText() {
-        assertEquals(emptyList<TextRange>(), chatDraftEmoteRanges("KEKWait", isEmote))
+    fun repeatedSpacesDoNotShiftTheWords() {
+        assertEquals(listOf(TextRange(0, 1), TextRange(3, 7)), chatDraftWords("a  KEKW  "))
     }
 
     @Test
-    fun repeatedSpacesDoNotShiftTheRanges() {
-        assertEquals(listOf(TextRange(3, 7)), chatDraftEmoteRanges("a  KEKW  ", isEmote))
-    }
-
-    @Test
-    fun anEmptyDraftHasNoRanges() {
-        assertEquals(emptyList<TextRange>(), chatDraftEmoteRanges("", isEmote))
+    fun anEmptyDraftHasNoWords() {
+        assertEquals(emptyList<TextRange>(), chatDraftWords(""))
     }
 
     @Test

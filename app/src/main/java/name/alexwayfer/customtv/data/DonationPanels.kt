@@ -34,8 +34,7 @@ internal fun linksToDonation(text: String): Boolean =
 
 private fun isDonationPage(host: String, path: String): Boolean {
     val segments = path.split('/').filter { it.isNotEmpty() }
-    if (segments.isEmpty()) return false
-    return when {
+    return segments.isNotEmpty() && when {
         DONATION_HOSTS.any(host::isSite) -> true
         host == "twitch.streamlabs.com" -> true
         TIP_PAGE_HOSTS.any(host::isSite) -> "tip" in segments

@@ -46,24 +46,31 @@ import name.alexwayfer.customtv.chat.ChatModeButton
 import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.chatModeButton
 import name.alexwayfer.customtv.chat.chatModeCountdown
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
-/** One line of active chat modes on the input's own background; a tap opens their details in a sheet. */
+/**
+ * One line of active chat modes on the input's own background; a tap opens their details in a sheet, or the chat
+ * modes page for the streamer and moderators who can change them ([onOpenModes]).
+ */
 @Composable
 internal fun ChatModePlaqueList(
     plaques: List<ChatModePlaque>,
     signedIn: Boolean,
     onFollow: () -> Unit,
     onSubscribe: () -> Unit,
+    onOpenModes: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     if (plaques.isEmpty()) return
     val sheetKeyboard = LocalSheetKeyboard.current
     var detailsOpen by remember { mutableStateOf(false) }
     val titles = plaques.map { stringResource(it.titleRes()) }
-    val detailsLabel = stringResource(R.string.chat_modes_details)
-    val openDetails = { sheetKeyboard.open { detailsOpen = true } }
+    val detailsLabel = stringResource(
+        if (onOpenModes == null) R.string.chat_modes_details else R.string.chat_modes_edit,
+    )
+    val openDetails = onOpenModes ?: { sheetKeyboard.open { detailsOpen = true } }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -121,6 +128,7 @@ private fun ChatModeDetailsSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
     ) {
+        NoSheetWindowDim()
         Column(
             modifier = Modifier
                 .verticalScroll(rememberScrollState())

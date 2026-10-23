@@ -17,11 +17,11 @@ class ChatRaidersTest {
     }
 
     @Test
-    fun onlyTheNewestMarksOfOneChatScreenAreKept() {
+    fun onlyTheNewestMarksOfTheKeptChatAreKept() {
         var marks = emptyMap<String, ChatRaider>()
-        for (index in 0..MAX_CHAT_MESSAGES) marks = chatRaidersAfter(marks, "m$index", raider)
-        assertEquals(MAX_CHAT_MESSAGES, marks.size)
+        for (index in 0..MAX_KEPT_CHAT_MESSAGES) marks = chatRaidersAfter(marks, "m$index", raider)
+        assertEquals(MAX_KEPT_CHAT_MESSAGES, marks.size)
         assertEquals("m1", marks.keys.first())
-        assertEquals("m$MAX_CHAT_MESSAGES", marks.keys.last())
+        assertEquals("m$MAX_KEPT_CHAT_MESSAGES", marks.keys.last())
     }
 }

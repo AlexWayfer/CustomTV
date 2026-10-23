@@ -29,7 +29,7 @@ internal fun ChannelProfileTabs(
     firstTabRequest: Int,
     minHeight: Dp,
     tabRowPin: () -> Int,
-    @Suppress("UNUSED_PARAMETER") onOpenCategory: (TwitchCategory) -> Unit,
+    @Suppress("unused") onOpenCategory: (TwitchCategory) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by rememberSaveable(channelLogin) { mutableIntStateOf(PROFILE_TAB_FIRST) }

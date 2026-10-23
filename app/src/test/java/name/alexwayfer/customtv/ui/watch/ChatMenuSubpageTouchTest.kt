@@ -12,7 +12,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.ComposeHost
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,15 +30,14 @@ class ChatMenuSubpageTouchTest {
 
     private val app = RuntimeEnvironment.getApplication()
 
-    @Before
-    fun showMenu() {
+    private val page = ChatMenuSubpage(R.string.timestamps) { Text("Panel") }
+
+    private fun showMenu(initialSubpage: ChatMenuSubpage?) {
         compose.setContent {
-            ChatMenuPages(maxHeight = 400.dp) { openSubpage ->
+            ChatMenuPages(maxHeight = 400.dp, initialSubpage = initialSubpage) { openSubpage ->
                 Text(
                     text = "Row",
-                    modifier = Modifier.clickable {
-                        openSubpage(ChatMenuSubpage(R.string.timestamps) { Text("Panel") })
-                    },
+                    modifier = Modifier.clickable { openSubpage(page) },
                 )
             }
         }
@@ -47,6 +45,7 @@ class ChatMenuSubpageTouchTest {
 
     @Test
     fun rowOpensItsPageInPlaceOfTheRows() {
+        showMenu(initialSubpage = null)
         compose.onNodeWithText("Row").performClick()
 
         compose.onNodeWithText(app.getString(R.string.timestamps)).assertIsDisplayed()
@@ -56,10 +55,22 @@ class ChatMenuSubpageTouchTest {
 
     @Test
     fun arrowGoesBackToTheRows() {
+        showMenu(initialSubpage = null)
         compose.onNodeWithText("Row").performClick()
         compose.onNodeWithContentDescription(app.getString(R.string.navigate_back)).performClick()
 
         compose.onNodeWithText("Row").assertIsDisplayed()
         compose.onNodeWithText("Panel").assertDoesNotExist()
+    }
+
+    @Test
+    fun aMenuOpenedAtAPageShowsItAndItsArrowLeadsToTheRows() {
+        showMenu(initialSubpage = page)
+
+        compose.onNodeWithText("Panel").assertIsDisplayed()
+        compose.onNodeWithText("Row").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription(app.getString(R.string.navigate_back)).performClick()
+        compose.onNodeWithText("Row").assertIsDisplayed()
     }
 }

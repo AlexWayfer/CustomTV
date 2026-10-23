@@ -45,13 +45,19 @@ class ChatReplySwipeTouchTest {
     /** Writes down what a swipe of the row reported, in order. */
     private val events = mutableListOf<String>()
 
-    private fun showRow(enabled: Boolean = true, canReply: Boolean = true, canDismiss: Boolean = false) {
+    private fun showRow(
+        enabled: Boolean = true,
+        canReply: Boolean = true,
+        canDismiss: Boolean = false,
+        canCopy: Boolean = false,
+    ) {
         compose.setContent {
             ChatReplySwipe(
                 enabled = enabled,
                 onReply = if (canReply) ({ events += "reply" }) else null,
                 onSwipingChange = { events += if (it) "swiping" else "still" },
                 onDismiss = if (canDismiss) ({ events += "dismiss" }) else null,
+                onCopy = if (canCopy) ({ events += "copy" }) else null,
                 onSwipeEnd = { events += "end $it" },
             ) {
                 Box(Modifier.width(320.dp).height(40.dp).testTag(ROW))
@@ -112,7 +118,63 @@ class ChatReplySwipeTouchTest {
     }
 
     @Test
-    fun `a swipe toward the end without a dismissal stays at rest`() {
+    fun `a swipe toward the end past the threshold copies`() {
+        showRow(canCopy = true)
+
+        touch {
+            down(center)
+            moveLeft(-SWIPE_START)
+            moveLeft(-PAST_THRESHOLD)
+            up()
+        }
+
+        assertEquals(listOf("swiping", "still", "end Copy", "copy"), events)
+    }
+
+    @Test
+    fun `a copy swipe short of the threshold springs back without a copy`() {
+        showRow(canCopy = true)
+
+        touch {
+            down(center)
+            moveLeft(-SWIPE_START)
+            moveLeft(-SHORT_OF_THRESHOLD)
+            up()
+        }
+
+        assertEquals(listOf("swiping", "still", "end Back"), events)
+    }
+
+    @Test
+    fun `a cancelled copy swipe does not copy`() {
+        showRow(canCopy = true)
+
+        touch {
+            down(center)
+            moveLeft(-SWIPE_START)
+            moveLeft(-PAST_THRESHOLD)
+            cancel()
+        }
+
+        assertEquals(listOf("swiping", "still", "end Back"), events)
+    }
+
+    @Test
+    fun `a row that only copies still swipes toward the end`() {
+        showRow(canReply = false, canCopy = true)
+
+        touch {
+            down(center)
+            moveLeft(-SWIPE_START)
+            moveLeft(-PAST_THRESHOLD)
+            up()
+        }
+
+        assertEquals(listOf("swiping", "still", "end Copy", "copy"), events)
+    }
+
+    @Test
+    fun `a swipe toward the end without an action there stays at rest`() {
         showRow()
 
         touch {

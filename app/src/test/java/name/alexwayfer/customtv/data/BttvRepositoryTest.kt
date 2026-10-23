@@ -56,6 +56,35 @@ class BttvRepositoryTest {
     }
 
     @Test
+    fun parseGlobalModifiersKeepsOnlyModifiersWithTheirPictures() {
+        val modifiers = BttvRepository.parseGlobalModifiers(
+            """
+            [
+              {
+                "id": "54fa8f1401e468494b85b537",
+                "code": ":tf:",
+                "imageType": "png",
+                "animated": false,
+                "modifier": false
+              },
+              {
+                "id": "64e3b31920cb0d25d950a9f9",
+                "code": "w!",
+                "imageType": "png",
+                "animated": false,
+                "modifier": true
+              }
+            ]
+            """.trimIndent(),
+        )
+        assertEquals(setOf("w!"), modifiers.keys)
+        assertEquals(
+            "https://cdn.betterttv.net/emote/64e3b31920cb0d25d950a9f9/2x.webp",
+            modifiers.getValue("w!").url,
+        )
+    }
+
+    @Test
     fun parseChannelLetsChannelEmotesOverrideShared() {
         val emotes = BttvRepository.parseChannel(
             """

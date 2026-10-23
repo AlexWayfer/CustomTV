@@ -42,7 +42,8 @@ private val GITHUB_ROUTINE_CODES = setOf(HTTP_FORBIDDEN)
 
 /**
  * The free build's updates come from its public GitHub releases: no account is needed. A check runs at start,
- * from the Check updates button, and for the daily worker; the APK downloads into the cache and installs from there.
+ * from the Check updates button, for the daily worker, and after a problem notice; the APK downloads into the cache
+ * and installs from there.
  */
 internal object AppUpdates {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -88,6 +89,20 @@ internal object AppUpdates {
     suspend fun checkInBackground() {
         if (!appRecheckDue(sinceRead())) return
         launchCheck(notify = true).join()
+    }
+
+    /**
+     * A problem notice: the update a recent check found posts its notification again, or an older check is
+     * repeated with the notification. Before [start] nothing runs: its own check posts it.
+     */
+    fun afterProblem() {
+        val context = appContext ?: return
+        val known = (status.value as? AppUpdateStatus.Read)?.update?.version
+        when (val step = appUpdateAfterProblem(sinceRead(), known)) {
+            AppUpdateAfterProblem.Check -> launchCheck(notify = true)
+            is AppUpdateAfterProblem.Show -> showAppUpdateNotification(context, step.version.toString())
+            AppUpdateAfterProblem.None -> Unit
+        }
     }
 
     fun download(release: AppRelease) {
@@ -184,7 +199,10 @@ internal object AppUpdates {
                     val message = UiText.Resource(R.string.github_error, listOf(response.code))
                     return AppUpdateDownload.Failed(apk.id, message)
                 }
-                val sha256 = copyWithProgress(response.body, part, apk)
+                val total = apk.size.takeIf { it > 0 } ?: response.body.contentLength()
+                val sha256 = copyWithProgress(response.body, part, total) { fraction ->
+                    _download.value = AppUpdateDownload.Running(apk.id, fraction)
+                }
                 val target = File(dir, githubApkFileName(apk))
                 if (githubDownloadIntact(apk, part.length(), sha256) && part.renameTo(target)) {
                     AppLog.i(GITHUB_TAG, "download finished")
@@ -201,32 +219,34 @@ internal object AppUpdates {
             AppUpdateDownload.Failed(apk.id, UiText.Resource(R.string.app_update_download_stopped))
         }
     }
+}
 
-    /** Writes [body] to [file] with its progress in [download], and returns the file's SHA-256 in lowercase hex. */
-    private fun copyWithProgress(body: ResponseBody, file: File, apk: GitHubApk): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val total = apk.size.takeIf { it > 0 } ?: body.contentLength()
-        var copied = 0L
-        var shownPercent = 0
-        body.byteStream().use { input ->
-            file.outputStream().use { output ->
-                val buffer = ByteArray(BUFFER_BYTES)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    output.write(buffer, 0, read)
-                    digest.update(buffer, 0, read)
-                    copied += read
-                    val fraction = downloadFraction(copied, total)
-                    // One update per percent: the progress bar shows no finer step.
-                    val percent = (fraction * 100).toInt()
-                    if (percent != shownPercent) {
-                        shownPercent = percent
-                        _download.value = AppUpdateDownload.Running(apk.id, fraction)
-                    }
+/**
+ * Writes [body] to [file], passing its progress of [total] bytes to [onProgress], and returns the file's SHA-256 in
+ * lowercase hex.
+ */
+private fun copyWithProgress(body: ResponseBody, file: File, total: Long, onProgress: (Float) -> Unit): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    var copied = 0L
+    var shownPercent = 0
+    body.byteStream().use { input ->
+        file.outputStream().use { output ->
+            val buffer = ByteArray(BUFFER_BYTES)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                output.write(buffer, 0, read)
+                digest.update(buffer, 0, read)
+                copied += read
+                val fraction = downloadFraction(copied, total)
+                // One update per percent: the progress bar shows no finer step.
+                val percent = (fraction * 100).toInt()
+                if (percent != shownPercent) {
+                    shownPercent = percent
+                    onProgress(fraction)
                 }
             }
         }
-        return digest.digest().toLowerHex()
     }
+    return digest.digest().toLowerHex()
 }

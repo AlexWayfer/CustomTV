@@ -48,6 +48,7 @@ internal enum class SettingsPage {
     ChatterPortraits,
     ChatterLabels,
     Experimental,
+    HiddenCategories,
     Gestures,
     Licenses,
 }
@@ -58,6 +59,7 @@ internal fun settingsPageFor(target: SettingsScrollTarget): SettingsPage = when 
     SettingsScrollTarget.Notifications -> SettingsPage.Notifications
     SettingsScrollTarget.ChatterPortraits -> SettingsPage.ChatterPortraits
     SettingsScrollTarget.Whispers -> SettingsPage.Notifications
+    SettingsScrollTarget.HiddenCategories -> SettingsPage.HiddenCategories
 }
 
 /**
@@ -66,7 +68,9 @@ internal fun settingsPageFor(target: SettingsScrollTarget): SettingsPage = when 
  */
 internal fun settingsScrollsToBlock(target: SettingsScrollTarget): Boolean = when (target) {
     SettingsScrollTarget.Updates, SettingsScrollTarget.Whispers -> true
-    SettingsScrollTarget.Notifications, SettingsScrollTarget.ChatterPortraits -> false
+    SettingsScrollTarget.Notifications, SettingsScrollTarget.ChatterPortraits,
+    SettingsScrollTarget.HiddenCategories,
+    -> false
 }
 
 /** What a tap on Settings in the navigation does while Settings is already open. */
@@ -89,6 +93,7 @@ internal fun SettingsPage.titleRes(): Int = when (this) {
     SettingsPage.ChatterPortraits -> ChatterPortraitSettingsTitle
     SettingsPage.ChatterLabels -> ChatterLabelsSettingsTitle
     SettingsPage.Experimental -> ExperimentalSettingsTitle
+    SettingsPage.HiddenCategories -> HiddenCategoriesSettingsTitle
     SettingsPage.Gestures -> R.string.gestures
     SettingsPage.Licenses -> R.string.settings_licenses
 }

@@ -47,6 +47,7 @@ import name.alexwayfer.customtv.data.FfzRepository
 import name.alexwayfer.customtv.data.SevenTvRepository
 import name.alexwayfer.customtv.data.TwitchEmoteDetails
 import name.alexwayfer.customtv.data.TwitchEmoteDetailsRepository
+import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 
 internal val LocalEmotePreviewChannel = compositionLocalOf { EmotePreviewChannel(null, "") }
@@ -77,6 +78,7 @@ internal fun ChatEmotePreview(
         },
         sheetState = sheetState,
     ) {
+        NoSheetWindowDim()
         Column(
             modifier = Modifier
                 .fillMaxWidth()

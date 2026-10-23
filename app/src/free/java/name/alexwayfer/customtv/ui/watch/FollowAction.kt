@@ -23,7 +23,6 @@ internal class FollowAction(private val open: () -> Unit) {
     fun tap() = open()
 }
 
-@Suppress("unused")
 @Composable
 internal fun rememberChannelFollowAction(
     channel: String,
@@ -48,6 +47,5 @@ internal fun rememberChannelFollowAction(
 }
 
 /** The free build follows on Twitch, so it has no dialogs of its own. */
-@Suppress("unused")
 @Composable
 internal fun FollowDialogs(action: FollowAction, hidden: Boolean) = Unit

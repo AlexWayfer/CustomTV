@@ -5,6 +5,8 @@ internal data class ChatRoomModes(
     val subscribersOnly: Boolean = false,
     val emoteOnly: Boolean = false,
     val slowSeconds: Int? = null,
+    /** Twitch's Unique Chat, `r9k` in IRC: a message that repeats a recent one is dropped. */
+    val uniqueChat: Boolean = false,
 )
 
 sealed interface FollowForChatMode {
@@ -45,15 +47,35 @@ internal fun chatRoomModesAfter(current: ChatRoomModes, tags: Map<String, String
     if ("slow" in tags) {
         next = next.copy(slowSeconds = slowSeconds(tags["slow"]))
     }
+    if ("r9k" in tags) {
+        next = next.copy(uniqueChat = tags["r9k"] == "1")
+    }
     return next
 }
 
-/** Who reads the chat: the broadcaster, or a viewer who may follow or subscribe to the channel. */
+/**
+ * Who reads the chat: someone the modes do not hold ([chatModesExempt]), or a viewer who may follow or
+ * subscribe to the channel. Its owner always counts as following and subscribed, whatever [follow] and
+ * [subscription] say.
+ */
 internal data class ChatModeViewer(
-    val isBroadcaster: Boolean,
+    val exemptFromModes: Boolean,
     val follow: FollowForChatMode,
     val subscription: SubForChatMode,
+    val ownsChannel: Boolean,
 )
+
+/**
+ * Whether the chat modes leave the user alone in this channel: its broadcaster, moderators, and VIPs chat past
+ * followers-only, subscribers-only, emote-only, and slow mode. [ownBadges] are the user's own in this channel.
+ */
+internal fun chatModesExempt(isBroadcaster: Boolean, ownBadges: List<ChatBadge>?): Boolean =
+    isBroadcaster || badgesExemptFromChatModes(ownBadges)
+
+internal fun badgesExemptFromChatModes(badges: List<ChatBadge>?): Boolean =
+    badges.orEmpty().any { it.setId in CHAT_MODE_EXEMPT_BADGES }
+
+private val CHAT_MODE_EXEMPT_BADGES = setOf("broadcaster", "lead_moderator", "moderator", "vip")
 
 internal fun chatModePlaques(
     modes: ChatRoomModes,
@@ -63,18 +85,19 @@ internal fun chatModePlaques(
     channelName: String,
 ): List<ChatModePlaque> {
     return buildList {
-        if (viewer.isBroadcaster) {
-            if (modes.followersOnlyMinutes != null) add(ChatModePlaque.FollowersRoom)
-        } else {
-            followersPlaque(modes.followersOnlyMinutes, viewer.follow, nowMillis, channelName)?.let(::add)
+        // Shown when a viewer would see it, without the countdown or the offer to those the modes do not hold.
+        if (!viewer.ownsChannel) {
+            followersPlaque(modes.followersOnlyMinutes, viewer.follow, nowMillis, channelName)
+                ?.let { if (viewer.exemptFromModes) ChatModePlaque.FollowersRoom else it }
+                ?.let(::add)
         }
-        if (modes.subscribersOnly && (viewer.isBroadcaster || viewer.subscription == SubForChatMode.NotSubscribed)) {
-            add(ChatModePlaque.Subscribers(offerSubscribe = !viewer.isBroadcaster))
+        if (modes.subscribersOnly && !viewer.ownsChannel && viewer.subscription == SubForChatMode.NotSubscribed) {
+            add(ChatModePlaque.Subscribers(offerSubscribe = !viewer.exemptFromModes))
         }
         if (modes.emoteOnly) add(ChatModePlaque.Emotes)
         slowPlaque(
             modes.slowSeconds,
-            if (viewer.isBroadcaster) null else slowDeadlineMillis,
+            if (viewer.exemptFromModes) null else slowDeadlineMillis,
             nowMillis,
         )?.let(::add)
     }

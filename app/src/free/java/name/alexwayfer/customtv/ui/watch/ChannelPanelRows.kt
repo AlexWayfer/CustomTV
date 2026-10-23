@@ -25,7 +25,6 @@ import name.alexwayfer.customtv.ui.PremiumLockIcon
  * Send a donation as Premium shows it, with a lock, once one of the channel's About panels links to a donation page:
  * a tap shows the Premium banner. The panels come from the same cache as the About tab, filled when the stream opens.
  */
-@Suppress("unused")
 @Composable
 internal fun ChannelPanelRows(
     channelId: String?,

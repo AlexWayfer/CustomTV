@@ -136,7 +136,11 @@ private fun ChatComposerEffects(
     val canSend = input.user.canSend
     LaunchedEffect(canSend) { if (!canSend) composer.pickerOpen = false }
     val onComposerOpenChange = rememberUpdatedState(input.bar.onComposerOpenChange)
-    LaunchedEffect(panel.composerOpen) { onComposerOpenChange.value(panel.composerOpen) }
+    LaunchedEffect(panel.composerOpen) {
+        onComposerOpenChange.value(panel.composerOpen)
+        // The history plaque goes with the keyboard and the picker.
+        if (!panel.composerOpen) composer.historyOpen = false
+    }
     val warned = input.warned
     // The plaque takes the field's place, so the keyboard and the picker go with the field.
     LaunchedEffect(warned) {
@@ -199,16 +203,14 @@ private fun ChatInputBarBody(
     val catalog = rememberChatPickerCatalog(input)
     val draftEmotes = rememberDraftEmotes(input, catalog.sections)
     val completion = rememberChatCompletion(input, composer.pickerOpen, draftEmotes)
-    val editor = actions.editor
+    val historyButton = chatHistoryButtonShown(
+        enabled = input.compose.historyEnabled,
+        canSend = input.user.canSend,
+        composerOpen = panel.composerOpen,
+        hasHistory = input.compose.sentHistory.isNotEmpty(),
+    )
     BarWithOverlayAbove(
-        overlay = {
-            ChatCompletionPanel(
-                completion = completion,
-                onPickCommand = editor::pickCommand,
-                onPickNick = editor::pickNick,
-                onPickEmote = editor::pickEmote,
-            )
-        },
+        overlay = { ChatInputOverlay(input, composer, completion, historyButton, actions) },
         modifier = Modifier.fillMaxWidth(),
     ) {
         val barAlpha by animateFloatAsState(
@@ -229,8 +231,10 @@ private fun ChatInputBarBody(
                     bottom = 8.dp,
                 ),
             ) {
-                ChatFieldNotesArea(input, composer.sendError)
-                val look = ChatFieldLook(chatFieldColors(barAlpha), draftEmotes, panel.composerOpen)
+                ChatFieldNotesArea(input, composer.sendError) {
+                    openChatMenu(composer, field, input.sheetKeyboard, atModes = true)
+                }
+                val look = ChatFieldLook(chatFieldColors(barAlpha), draftEmotes, panel.composerOpen, historyButton)
                 ChatFieldRow(input, composer, field, actions, look)
             }
             if (panel.panelPx > 0) ChatEmotePanel(panel, composer.pickerOpen, catalog, draftEmotes.usage, actions)
@@ -240,7 +244,7 @@ private fun ChatInputBarBody(
 
 /** Above the field: what Send shares, the chat's modes and send errors, and a warning to acknowledge. */
 @Composable
-private fun ColumnScope.ChatFieldNotesArea(input: ChatInput, sendError: ChatSendError?) {
+private fun ColumnScope.ChatFieldNotesArea(input: ChatInput, sendError: ChatSendError?, openModes: () -> Unit) {
     val shareOffer = input.compose.shareOffer
     val shownOffer = rememberLastNonNull(shareOffer)
     AnimatedVisibility(
@@ -250,12 +254,15 @@ private fun ColumnScope.ChatFieldNotesArea(input: ChatInput, sendError: ChatSend
     ) {
         shownOffer?.note?.invoke()
     }
+    val modeControl = input.channel.modeControl
     ChatFieldNotes(
         plaques = input.bar.plaques,
         signedIn = input.user.canSend,
         sendError = sendError,
         onFollow = input.bar.onFollow,
         onSubscribe = input.bar.onSubscribe,
+        onOpenModes = openModes.takeIf { modeControl is ChatModeControl.Available },
+        onSendErrorTap = sendErrorTap(sendError, modeControl),
     )
     val context = LocalContext.current
     val shownWarning = rememberLastNonNull(input.warningGate.warning)
@@ -385,6 +392,8 @@ private fun ChatInputRulesSheet(input: ChatInput, actions: ChatInputActions, onD
 private fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, field: ChatFieldState) {
     val menu = input.menu
     val sheetSettings = animatedControlValue(menu.settings)
+    val channel = input.channel
+    val modesPage = rememberChatModesSubpage(channel.roomModes, channel.modeControl)
     if (!field.menuOpen || sheetSettings == null) return
     ChatSettingsSheet(
         channelLogin = input.channel.login,
@@ -418,8 +427,12 @@ private fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, fi
             field.menuOpen = false
             input.sheetKeyboard.onDismiss()
         },
+        initialSubpage = modesPage?.takeIf { field.menuAtModes },
         firstRow = { openSubpage ->
-            ChannelPanelRows(input.channel.broadcasterId, input.channel.browserSheetHeightPx, openSubpage)
+            ChannelPanelRows(channel.broadcasterId, channel.browserSheetHeightPx, openSubpage)
+        },
+        modesRow = { openSubpage ->
+            ChatModesRow(channel.roomModes, channel.modeControl, modesPage, openSubpage)
         },
         recapRow = { hideThen ->
             menu.recap?.let { source ->

@@ -5,7 +5,6 @@ import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.data.ChannelEventSubClient
 
 /** Moderator tools are Premium; the free build subscribes to nothing moderators see. */
-@Suppress("unused")
 @Composable
 internal fun ChannelModerationUpdates(
     client: ChannelEventSubClient,

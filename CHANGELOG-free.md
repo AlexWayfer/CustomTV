@@ -1,5 +1,21 @@
 # CustomTV (free version)
 
+## v1.12.0 (2026-10-23)
+
+*   Show finished emotes in the chat field as pictures, with their modifiers
+*   Copy a chat message with a swipe right
+*   Bring back your sent messages from a history button in the chat field
+*   Show which channel a shared chat message comes from
+*   Show subscriptions and announcements from other channels in a shared chat
+*   Stop applying chat mode limits to moderators and VIPs
+*   Show the full list of Premium features
+*   Offer an available update along with a problem notice
+*   Show a notice after copying on Android 12L and older
+*   Vibrate once on a long press instead of twice
+*   Close the whole stream after a raid, not only the raided channel
+*   Stop the screen staying dark after a sheet closes
+*   Fix the black ellipsis in cut-off chat messages
+
 ## v1.11.1 (2026-10-21)
 
 *   Show chatter labels on the channel profile and edit them there

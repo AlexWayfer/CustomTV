@@ -21,9 +21,11 @@ import name.alexwayfer.customtv.data.StreamStartRequest
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.account.AccountNotice
 import name.alexwayfer.customtv.ui.account.playerExpandsAfterLoginCancelled
+import name.alexwayfer.customtv.ui.components.HiddenCategoryUndoSnackbar
 import name.alexwayfer.customtv.ui.home.FollowedLoadFailedSnackbar
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.watch.SleepTimerEffect
+import name.alexwayfer.customtv.ui.watch.closeWatchedChannels
 import name.alexwayfer.customtv.ui.whispers.WhispersBackground
 import name.alexwayfer.customtv.update.AppUpdateOpenRequest
 
@@ -75,6 +77,7 @@ internal fun AppRequestEffects(scene: AppScene) {
     FollowedLoadFailedSnackbar(followsLoadFailed, scene.snackbarHostState) {
         scene.homeViewModel.follows.reload(scene.accountViewModel.session::userAccess)
     }
+    HiddenCategoryUndoSnackbar(scene.snackbarHostState)
 }
 
 /** The stream screen opening and closing: the channel left in picture-in-picture, the sleep timer, and focus. */
@@ -86,7 +89,7 @@ internal fun AppPlayerEffects(scene: AppScene) {
         AppLog.i(PLAYER_NAV_LOG_TAG, "close the players by the sleep timer, in picture-in-picture: $inPip")
         shell.profileClosesUnderPlayer = false
         shell.player = shell.player.sleepTimerFired()
-        scene.navController.popBackStack("home", inclusive = false)
+        scene.navController.closeWatchedChannels()
         // Picture-in-picture would stay open on the home screen; it leaves with the task instead.
         if (inPip) scene.activity.moveTaskToBack(true)
     }

@@ -20,7 +20,6 @@ import name.alexwayfer.customtv.R
  * page in a Custom Tab with the browser's own Twitch session. Unlike the other chat pages it opens full screen: in a
  * shorter sheet, the mobile site's own bottom bar covers the form's Next button and the page does not scroll it free.
  */
-@Suppress("unused")
 @Composable
 internal fun ChatterCardReportItem(
     login: String,

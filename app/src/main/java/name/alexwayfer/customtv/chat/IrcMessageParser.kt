@@ -57,6 +57,7 @@ object IrcMessageParser {
             isAction = stripped.isAction,
             firstInChannel = parsed.tags["first-msg"] == "1",
             cheerBits = parsed.tags["bits"]?.toIntOrNull()?.takeIf { it > 0 },
+            sourceRoomId = parsed.foreignSourceRoomId(),
         )
     }
 
@@ -70,7 +71,12 @@ object IrcMessageParser {
         val watchStreak = IrcUserNotice.watchStreak(parsed.tags)
         val systemText = userNoticeSystemText(parsed, displayName, watchStreak)
         if (systemText == null && text == null) return null
-        val eventKind = if (watchStreak != null) ChatEventKind.WatchStreak else IrcUserNotice.eventKind(msgId)
+        val sharedMsgId = sharedNoticeSourceMsgId(msgId, parsed.tags)
+        val eventKind = when {
+            watchStreak != null -> ChatEventKind.WatchStreak
+            sharedMsgId != null -> IrcUserNotice.sharedEventKind(sharedMsgId)
+            else -> IrcUserNotice.eventKind(msgId)
+        }
         return ChatMessage(
             id = parsed.tag("id") ?: "usernotice-$msgId-${System.nanoTime()}",
             userId = parsed.tag("user-id"),
@@ -89,7 +95,8 @@ object IrcMessageParser {
             watchStreak = watchStreak,
             raid = IrcUserNotice.raid(parsed.tags),
             communityGift = IrcUserNotice.communityGift(parsed.tags),
-            primeSubscription = isPrimeSubscription(parsed, eventKind, msgId),
+            primeSubscription = isPrimeSubscription(parsed, eventKind, sharedMsgId ?: msgId),
+            sourceRoomId = parsed.foreignSourceRoomId(),
         )
     }
 
@@ -208,6 +215,13 @@ object IrcMessageParser {
 
 /** A tag's value, or null when it is missing or blank. */
 private fun IrcLine.tag(name: String): String? = tags[name]?.takeIf { it.isNotBlank() }
+
+/** The `msg-id` a notice shared from another channel had there; null for this channel's own notice. */
+private fun sharedNoticeSourceMsgId(msgId: String, tags: Map<String, String>): String? =
+    if (msgId == "sharedchatnotice") tags["source-msg-id"].orEmpty() else null
+
+/** The room a shared chat line was sent in, when it is another channel's. */
+private fun IrcLine.foreignSourceRoomId(): String? = tag("source-room-id")?.takeIf { it != tags["room-id"] }
 
 /** When the server sent the line, or now for a line without the time. */
 private fun IrcLine.sentAtMillis(): Long = tags["tmi-sent-ts"]?.toLongOrNull() ?: System.currentTimeMillis()

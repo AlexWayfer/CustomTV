@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.State
 import androidx.compose.ui.text.TextRange
@@ -103,6 +104,8 @@ internal class ChatInputActions(
     private val scope: CoroutineScope,
     private val input: State<ChatInput>,
 ) {
+    val history = ChatHistoryActions(composer, editor, input)
+
     fun focusField() {
         field.focus.requestFocus()
         input.value.keyboard?.show()
@@ -175,16 +178,12 @@ internal class ChatInputActions(
             }
             ChatFieldEndTap.Nothing -> Unit
             ChatFieldEndTap.Send -> submit()
-            ChatFieldEndTap.Menu -> {
-                if (field.menuOpen) return
-                composer.pickerOpen = false
-                input.value.sheetKeyboard.open { field.menuOpen = true }
-            }
+            ChatFieldEndTap.Menu -> openChatMenu(composer, field, input.value.sheetKeyboard, atModes = false)
         }
     }
 
     fun submit() {
-        // `/user` and `/prediction` post nothing, so neither the rules nor slow mode hold them.
+        // The commands post nothing, so neither the rules nor slow mode hold them.
         if (runFieldCommand()) return
         val now = input.value
         val sharing = now.compose.shareOffer?.takeIf { it.composing }
@@ -208,13 +207,20 @@ internal class ChatInputActions(
     }
 
     /**
-     * Opens the card `/user` names, or the prediction for `/prediction` with the keyboard going down first; true when
-     * the text was one of them, valid or not. A user without `/prediction` sends it to chat as typed.
+     * Opens the card `/user` names, or the prediction for `/prediction` with the keyboard going down first, or changes
+     * a chat mode; true when the text was one of them, valid or not. A user without `/prediction` or the chat mode
+     * commands sends them to chat as typed.
      */
     private fun runFieldCommand(): Boolean {
         val now = input.value
         val compose = now.compose
         val text = compose.draft.text.toString()
+        val modeControl = now.channel.modeControl
+        val modeCommand = modeControl?.let { chatModeCommand(text) }
+        if (modeControl != null && modeCommand != null) {
+            composer.runChatModeCommand(modeCommand, modeControl, text, compose.draft, scope)
+            return true
+        }
         val openPrediction = compose.onOpenPrediction
         if (openPrediction != null && isPredictionCommand(text)) {
             compose.draft.clearText()
@@ -266,6 +272,51 @@ internal class ChatInputActions(
             sent.warningGate.sendRefused()
         } else {
             composer.sendError = chatSendError(result)
+        }
+    }
+}
+
+/**
+ * Opens the chat menu behind the field's end button, or at the chat modes page ([atModes]) when the streamer or a
+ * moderator taps the chat mode plaques.
+ */
+internal fun openChatMenu(
+    composer: ChatComposerState,
+    field: ChatFieldState,
+    sheetKeyboard: SheetKeyboard,
+    atModes: Boolean,
+) {
+    if (field.menuOpen) return
+    composer.pickerOpen = false
+    field.menuAtModes = atModes
+    sheetKeyboard.open { field.menuOpen = true }
+}
+
+/**
+ * A chat mode command: the free build points to Premium, and Premium sends the change as the send under way. The
+ * draft goes once Twitch makes the change; a refusal stays over the field with the draft, to fix it.
+ */
+private fun ChatComposerState.runChatModeCommand(
+    command: ChatModeCommandInput,
+    control: ChatModeControl,
+    text: String,
+    draft: TextFieldState,
+    scope: CoroutineScope,
+) {
+    if (sending) return
+    when (val run = chatModeCommandRun(command, locked = control is ChatModeControl.Locked)) {
+        is ChatModeCommandRun.Show -> sendError = run.error
+        is ChatModeCommandRun.Send -> {
+            val change = (control as? ChatModeControl.Available)?.change ?: return
+            sendError = null
+            startSend(scope) {
+                val error = change(run.change)
+                if (error != null) {
+                    sendError = error
+                } else if (draft.text.toString() == text) {
+                    draft.clearText()
+                }
+            }
         }
     }
 }

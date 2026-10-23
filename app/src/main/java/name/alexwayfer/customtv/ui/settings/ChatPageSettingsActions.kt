@@ -3,6 +3,7 @@ package name.alexwayfer.customtv.ui.settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.ChatPageSettingsStore
+import name.alexwayfer.customtv.data.ChatSendOption
 import name.alexwayfer.customtv.data.LinkPreviewMode
 
 /** Saves what the user changes on the Chat page of the settings. */
@@ -43,12 +44,8 @@ class ChatPageSettingsActions(private val scope: CoroutineScope, private val sto
         }
     }
 
-    fun setKeepKeyboardAfterSend(enabled: Boolean) {
-        scope.launch { store.setKeepKeyboardAfterSend(enabled) }
-    }
-
-    fun setScrollToLatestAfterSend(enabled: Boolean) {
-        scope.launch { store.setScrollToLatestAfterSend(enabled) }
+    fun setSendOption(option: ChatSendOption, enabled: Boolean) {
+        scope.launch { store.setSendOption(option, enabled) }
     }
 
     fun setMarkRaiders(enabled: Boolean) {

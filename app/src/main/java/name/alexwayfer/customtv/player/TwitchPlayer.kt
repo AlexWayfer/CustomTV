@@ -411,22 +411,24 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         webView.addJavascriptInterface(
             PlayerControlsBridge(
                 handler = mainHandler,
-                onControlsVisible = controls::setVisible,
-                onPageTouch = { scrollable, onControls, onVideo, onDisclosure ->
-                    touchOnScrollableContent = scrollable
-                    touchOnControls = onControls
-                    touchOnVideo = onVideo
-                    touchOnDisclosure = onDisclosure
-                },
-                onControlBarFraction = { fraction ->
-                    controlBarPx = controlBarHeightPx(fraction, webView.height)
-                    onControlBarHeightPx?.invoke(controlBarPx)
-                },
-                onSeekbar = { seekbar -> onSeekbar?.invoke(seekbar) },
-                onSettingsMenu = { open -> onSettingsMenuOpen?.invoke(open) },
-                onHoverAreaMissing = {
-                    AppLog.w(PLAYER_LOG_TAG, "Recording controls cannot hide: the player's hover area is missing")
-                },
+                events = PlayerControlsEvents(
+                    onControlsVisible = controls::setVisible,
+                    onPageTouch = { scrollable, onControls, onVideo, onDisclosure ->
+                        touchOnScrollableContent = scrollable
+                        touchOnControls = onControls
+                        touchOnVideo = onVideo
+                        touchOnDisclosure = onDisclosure
+                    },
+                    onControlBarFraction = { fraction ->
+                        controlBarPx = controlBarHeightPx(fraction, webView.height)
+                        onControlBarHeightPx?.invoke(controlBarPx)
+                    },
+                    onSeekbar = { seekbar -> onSeekbar?.invoke(seekbar) },
+                    onSettingsMenu = { open -> onSettingsMenuOpen?.invoke(open) },
+                    onHoverAreaMissing = {
+                        AppLog.w(PLAYER_LOG_TAG, "Recording controls cannot hide: the player's hover area is missing")
+                    },
+                ),
             ),
             "CustomTvControls",
         )

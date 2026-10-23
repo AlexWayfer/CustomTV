@@ -22,6 +22,12 @@ data class AppSettings(
     val emoteCompletionWithoutColon: Boolean = false,
     val keepKeyboardAfterSend: Boolean = false,
     val scrollToLatestAfterSend: Boolean = true,
+    /** A button in the message field that brings back the user's own messages in the chat, and Up and Down keys. */
+    val sentMessageHistory: Boolean = true,
+    /** Premium: chatters' messages with one of these phrases do not show in chat. */
+    val hiddenPhrases: List<KeywordPhrase> = emptyList(),
+    /** Whether [hiddenPhrases] also hide messages in the channels the user moderates. */
+    val hidePhrasesWhenModerator: Boolean = false,
     val backgroundSoundOnly: Boolean = true,
     val streamStartNotifications: Boolean = true,
     val streamChangeNotifications: Boolean = false,
@@ -34,4 +40,7 @@ data class AppSettings(
     val portraitModel: PortraitModelKind = PortraitModelKind.GroqQwen,
     /** The sleep timer's time set last, in minutes, which its picker opens on; zero before the first one. */
     val sleepTimerMinutes: Int = 0,
-)
+) {
+    /** Title and category alerts go with the go-live ones: with those off, the saved switch waits and sends nothing. */
+    val streamChangesActive: Boolean get() = streamStartNotifications && streamChangeNotifications
+}

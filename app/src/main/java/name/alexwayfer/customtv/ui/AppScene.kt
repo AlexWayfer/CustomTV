@@ -33,6 +33,7 @@ import name.alexwayfer.customtv.ui.account.DeviceLoginPrompt
 import name.alexwayfer.customtv.ui.account.ProfileVideoPlayback
 import name.alexwayfer.customtv.ui.home.HomeViewModel
 import name.alexwayfer.customtv.ui.home.followedChannelIds
+import name.alexwayfer.customtv.ui.watch.closeWatchedChannels
 
 /** The signed-in account and the login under way, as the account view model streams them. */
 internal data class AppAccount(
@@ -157,7 +158,7 @@ internal data class AppScene(
         val decision = profileVideoOpenDecision(shell.section, shell.player.liveMinimized, watching)
         shell.player = shell.player.videoOpened(video, liveMinimized = decision.minimized, returnChannel)
         shell.section = decision.section
-        if (decision.closeLivePlayer) navController.popBackStack("home", inclusive = false)
+        if (decision.closeLivePlayer) navController.closeWatchedChannels()
     }
 
     /** A recording or a clip from a link closes the stream like any recording; Back on it opens that stream again. */

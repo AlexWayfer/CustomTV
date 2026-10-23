@@ -78,6 +78,8 @@ internal data class ChatMessageLook(
     val includeAuthor: Boolean,
     val timestampText: String?,
     val topChatter: TopChatterBadge? = null,
+    /** The channel a shared chat message was sent from; null for this channel's own. */
+    val sharedChatSource: SharedChatSourceLook? = null,
 ) {
     val bodyColor: Color get() = if (actionColor) nickColor else TwitchText
     val bodyFontStyle: FontStyle get() = if (actionItalic) FontStyle.Italic else FontStyle.Normal
@@ -122,7 +124,7 @@ internal fun chatMessageText(
     }
 }
 
-/** The timestamp, the badges, and the author's name, which opens their card. */
+/** The timestamp, a shared message's source channel, the badges, and the author's name, which opens their card. */
 private fun AnnotatedString.Builder.appendChatAuthor(
     message: ChatMessage,
     look: ChatMessageLook,
@@ -131,6 +133,13 @@ private fun AnnotatedString.Builder.appendChatAuthor(
 ) {
     val sizes = look.sizes
     appendChatTimestamp(look.timestampText, sizes.timestamp)
+    appendSharedChatSource(
+        look.sharedChatSource,
+        sizes,
+        inlineContent,
+        onClick = actions.openAuthor,
+        onLongClick = actions.longClick,
+    )
     appendTopChatterBadge(
         look.topChatter,
         sizes,
@@ -275,7 +284,6 @@ private fun AnnotatedString.Builder.appendChatEmote(
             Modifier
                 .fillMaxSize()
                 .combinedClickable(
-                    hapticFeedbackEnabled = false,
                     onLongClick = actions.longClick,
                     onClick = { actions.openEmote(part) },
                 ),

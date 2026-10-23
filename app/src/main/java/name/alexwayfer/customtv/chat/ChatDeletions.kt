@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.update
 internal class ChatDeletions(
     private val messages: MutableStateFlow<List<ChatMessage>>,
     private val chatterHistory: MutableStateFlow<ChatterHistory>,
+    private val trim: ChatTrim,
 ) {
     fun markMessageDeleted(event: ChatMessage) {
         messages.update { current ->
@@ -26,7 +27,7 @@ internal class ChatDeletions(
                 event.timeoutSeconds,
                 event.banned,
             )
-            withModerationNotice(marked, clearChatNoticeRow(event)).takeLast(MAX_CHAT_MESSAGES)
+            trim.keep(withModerationNotice(marked, clearChatNoticeRow(event)))
         }
         chatterHistory.update { history ->
             markChatterMessagesDeleted(

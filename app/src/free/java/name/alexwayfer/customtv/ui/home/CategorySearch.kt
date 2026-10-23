@@ -17,7 +17,6 @@ internal fun categorySearchOffered(): Boolean = false
 @StringRes
 internal fun categorySearchHint(): Int = R.string.channel_hint
 
-@Suppress("unused")
 @Composable
 internal fun ColumnScope.SearchModePager(
     mode: SearchMode,
@@ -26,11 +25,9 @@ internal fun ColumnScope.SearchModePager(
     categories: @Composable () -> Unit,
 ) = Unit
 
-@Suppress("unused")
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun openPickedCategory(state: SearchBarState, showsUnderSearch: Boolean, open: () -> Unit) = Unit
 
-@Suppress("unused")
 @Composable
 internal fun CategorySearchSuggestions(
     query: String,

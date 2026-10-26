@@ -165,8 +165,10 @@ internal fun ColumnScope.ChatPane(
     ) {
         ProvideChatRowLocals(channel, channelProfile, nickColors, settings.topChatterBadges) {
             ProvideChatCosmetics(appSettings, sevenTvCosmetics) {
-                ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
-                belowList(appearance)
+                ProvideMessageMenuModeration(enabled = settings.messageMenuModeration) {
+                    ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
+                    belowList(appearance)
+                }
             }
         }
     }

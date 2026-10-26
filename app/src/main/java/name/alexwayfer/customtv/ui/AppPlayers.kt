@@ -158,10 +158,8 @@ private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
         shell.profileOpenedFrom = null
         shell.section = AppSection.ChannelProfile
     },
-    onOpenSettings = { target ->
-        shell.settingsScrollTarget = target
-        shell.section = AppSection.Settings
-    },
+    onOpenSettings = this::openSettingsFromPlayer,
+    sheetReopen = shell.playerSheetReopen,
     onOpenCategory = if (exploreNavEnabled()) this::openCategoryFromPlayer else null,
     onMinimizeOverSection = { shell.player = shell.player.withLiveMinimized(true) },
     returnsToPreviousChannel = watchBackReturnsToPreviousChannel(

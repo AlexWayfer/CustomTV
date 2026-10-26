@@ -26,6 +26,7 @@ import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.watch.ClearFocusWhenImeDismissed
 import name.alexwayfer.customtv.ui.watch.ImeDismissFocus
 import name.alexwayfer.customtv.ui.watch.LocalImeDismissFocus
+import name.alexwayfer.customtv.ui.watch.ModerationFailureSnackbar
 import name.alexwayfer.customtv.ui.watch.WATCH_CHANNEL_ROUTE
 
 @Composable
@@ -64,6 +65,7 @@ fun CustomTvApp() {
     val gestureHints = rememberGestureHintReporter()
     gestureHints.Snackbars(scene.snackbarHostState)
     CopiedSnackbar(scene.snackbarHostState)
+    ModerationFailureSnackbar(scene.snackbarHostState)
     CompositionLocalProvider(
         LocalImeDismissFocus provides imeDismissFocus,
         LocalUserAccess provides accountViewModel.session::userAccess,

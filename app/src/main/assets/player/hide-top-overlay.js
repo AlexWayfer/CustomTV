@@ -501,13 +501,15 @@
         var t = ((nodes[i].getAttribute('aria-label') || '') + ' ' + (nodes[i].textContent || ''))
           .toLowerCase().replace(/\s+/g, ' ').trim();
         if (!t || t.length > 64) continue;
-        if (t === 'offline' || t.indexOf('is offline') !== -1 || t.indexOf('channel is offline') !== -1
-          || t.indexOf('не в сети') !== -1) {
-          return true;
-        }
+        if (isOfflineLabel(t)) return true;
       }
     }
     return false;
+  }
+  // Twitch says «не в сети» both of a channel and, as «Кажется, вы не в сети», of the viewer's lost connection.
+  function isOfflineLabel(t) {
+    if (/(^|[\s,.!])вы не в сети/.test(t)) return false;
+    return t === 'offline' || t.indexOf('is offline') !== -1 || t.indexOf('не в сети') !== -1;
   }
   function notifyOffline() {
     if (offlineCheckDone || !isOffline()) return;

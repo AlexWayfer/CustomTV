@@ -14,17 +14,6 @@ internal fun chatTailVelocity(previous: Float, remaining: Float, elapsedMillis: 
     return previous + (target - previous) * blend
 }
 
-/**
- * Whether the reveal moves the list on this frame: at most 60 steps a second, which halves the scroll and layout work
- * on a 120 Hz display. The display still runs at 120 Hz on Android 15 and later: Compose asks for the high frame rate
- * whenever a node moves, and `Modifier.preferredFrameRate(60f)` on the list did not outvote it. The step length follows
- * the elapsed time, so the speed stays the same.
- */
-internal fun chatTailStepDue(sinceLastStepNanos: Long): Boolean = sinceLastStepNanos >= CHAT_TAIL_MIN_STEP_NANOS
-
-// Between a 120 Hz frame (8.3 ms) and a 60 Hz one (16.7 ms), so vsync jitter does not drop a 60 Hz step.
-private const val CHAT_TAIL_MIN_STEP_NANOS = 12_500_000L
-
 /** Less than this is left to the newest row, so a gliding burst takes the rest at once. */
 private const val CHAT_TAIL_SNAP_PX = 0.5f
 
@@ -45,12 +34,10 @@ internal suspend fun revealChatTail(
     var revealed = false
     while (!revealed && shouldContinue()) {
         val frame = withFrameNanos { it }
-        // A frame without a scroll step moves nothing, so the list is laid out at most 60 times a second.
-        if (chatTailStepDue(frame - previousFrame)) {
-            val deltaMillis = ((frame - previousFrame) / 1_000_000f).coerceIn(0.1f, 32f)
-            previousFrame = frame
-            listState.scroll { revealed = steps.scrollStep(this, deltaMillis) }
-        }
+        // A step on every display frame; its length follows the elapsed time, so the speed is the same at any rate.
+        val deltaMillis = ((frame - previousFrame) / 1_000_000f).coerceIn(0.1f, 32f)
+        previousFrame = frame
+        listState.scroll { revealed = steps.scrollStep(this, deltaMillis) }
     }
     return steps.revealedTail
 }

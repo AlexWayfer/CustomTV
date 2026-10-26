@@ -49,6 +49,7 @@ class ChatterLabelShownInChatTouchTest {
                     searching = searching,
                     enabled = true,
                     onChatterTap = { tapped += it.userId },
+                    onChatterDelete = {},
                 )
             }
         }

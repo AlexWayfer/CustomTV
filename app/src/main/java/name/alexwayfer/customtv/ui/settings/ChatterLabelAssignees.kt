@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -31,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,7 +49,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -75,8 +85,9 @@ internal fun ChatterLabelShownInChat(shown: Boolean, enabled: Boolean, onShownCh
 
 /**
  * How many chatters have the label, in a row a tap on which lists them under it, in a list of limited height that
- * scrolls; a tap on a chatter goes to [onChatterTap]. While [searching], [assignees] are the chatters that match, and
- * they are listed at once. A label without chatters shows nothing.
+ * scrolls; a tap on a chatter goes to [onChatterTap], and Delete in the menu a long press opens to [onChatterDelete].
+ * While [searching], [assignees] are the chatters that match, and they are listed at once. A label without chatters
+ * shows nothing.
  */
 @Composable
 internal fun ChatterLabelAssignees(
@@ -84,6 +95,7 @@ internal fun ChatterLabelAssignees(
     searching: Boolean,
     enabled: Boolean,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
+    onChatterDelete: (ChatterLabelAssignee) -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     AnimatedVisibility(
@@ -103,7 +115,7 @@ internal fun ChatterLabelAssignees(
                 exit = shrinkVertically() + fadeOut(),
             ) {
                 // A save under way would stop as the page leaves for the profile.
-                AssigneeList(assignees, onChatterTap = onChatterTap.takeIf { enabled })
+                AssigneeList(assignees, enabled, onChatterTap, onChatterDelete)
             }
         }
     }
@@ -149,7 +161,12 @@ private fun AssigneesCount(count: Int, expanded: Boolean, onToggle: (() -> Unit)
  * scrolls. A fling stops at the list's end instead of scrolling the page on.
  */
 @Composable
-private fun AssigneeList(assignees: List<ChatterLabelAssignee>, onChatterTap: ((ChatterLabelAssignee) -> Unit)?) {
+private fun AssigneeList(
+    assignees: List<ChatterLabelAssignee>,
+    enabled: Boolean,
+    onChatterTap: (ChatterLabelAssignee) -> Unit,
+    onChatterDelete: (ChatterLabelAssignee) -> Unit,
+) {
     val textStyle = MaterialTheme.typography.bodyMedium
     val maxHeight = with(LocalDensity.current) { (textStyle.fontSize * ASSIGNEES_MAX_HEIGHT_EM).toDp() }
     val listState = rememberLazyListState()
@@ -173,34 +190,75 @@ private fun AssigneeList(assignees: List<ChatterLabelAssignee>, onChatterTap: ((
         flingBehavior = flingStop.flingBehavior,
     ) {
         items(assignees, key = { it.userId }) { assignee ->
-            AssigneeRow(assignee, textStyle, onChatterTap)
+            AssigneeRow(
+                assignee = assignee,
+                textStyle = textStyle,
+                enabled = enabled,
+                onTap = { onChatterTap(assignee) },
+                onDelete = { onChatterDelete(assignee) },
+                modifier = Modifier.animateItem(),
+            )
         }
     }
 }
 
-/** A chatter in the list; a tap opens their profile, or tells why it cannot. */
+/**
+ * A chatter in the list; a tap opens their profile, or tells why it cannot, and a long press opens a menu with Delete,
+ * which TalkBack offers as an action.
+ */
 @Composable
 private fun AssigneeRow(
     assignee: ChatterLabelAssignee,
     textStyle: TextStyle,
-    onChatterTap: ((ChatterLabelAssignee) -> Unit)?,
+    enabled: Boolean,
+    onTap: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val openLabel = stringResource(R.string.chatter_card_open_profile)
+    val deleteLabel = stringResource(R.string.chatter_labels_delete)
+    Box(modifier = modifier) {
+        AssigneeRowContent(
+            assignee = assignee,
+            textStyle = textStyle,
+            modifier = Modifier
+                .clip(MaterialTheme.shapes.small)
+                .combinedClickable(
+                    enabled = enabled,
+                    onClickLabel = openLabel,
+                    role = Role.Button,
+                    // The long press vibrates by itself.
+                    onLongClick = { menuOpen = true },
+                    onClick = onTap,
+                )
+                .semantics {
+                    if (enabled) customActions = listOf(CustomAccessibilityAction(deleteLabel) { onDelete(); true })
+                },
+        )
+        DropdownMenu(expanded = menuOpen && enabled, onDismissRequest = { menuOpen = false }) {
+            DropdownMenuItem(
+                text = { Text(deleteLabel) },
+                leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    onDelete()
+                },
+            )
+        }
+    }
+}
+
+/** The chatter's name after a bullet, and the date the label was assigned when the Gist has it. */
+@Composable
+private fun AssigneeRowContent(assignee: ChatterLabelAssignee, textStyle: TextStyle, modifier: Modifier = Modifier) {
     val locale = LocalConfiguration.current.locales[0]
     val dateColor = MaterialTheme.colorScheme.onSurfaceVariant
     val dateSize = MaterialTheme.typography.bodySmall.fontSize
     val lineHeight = with(LocalDensity.current) { textStyle.lineHeight.toDp() }
-    val openLabel = stringResource(R.string.chatter_card_open_profile)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
-            .then(
-                if (onChatterTap != null) {
-                    Modifier.clickable(onClickLabel = openLabel, role = Role.Button) { onChatterTap(assignee) }
-                } else {
-                    Modifier
-                },
-            )
             .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {

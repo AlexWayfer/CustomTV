@@ -15,13 +15,13 @@ class LiveStallWatchdogTest {
         seconds: Int,
         step: Double = 1.0,
         latency: Double = 3.0,
-        watching: Boolean = true,
+        watch: LiveStallWatch = LiveStallWatch.Playing,
     ): List<Pair<Long, LiveStallAction>> {
         val actions = mutableListOf<Pair<Long, LiveStallAction>>()
         repeat(seconds) {
             nowMs += 1_000
             position += step
-            val action = watchdog.tick(nowMs, watching, position, latency)
+            val action = watchdog.tick(nowMs, watch, position, latency)
             if (action != LiveStallAction.None) actions += nowMs to action
         }
         return actions
@@ -51,7 +51,7 @@ class LiveStallWatchdogTest {
         repeat(10) { second ->
             nowMs += 1_000
             if (second % 6 == 5) position += 0.1
-            actions += watchdog.tick(nowMs, true, position, 3.0)
+            actions += watchdog.tick(nowMs, LiveStallWatch.Playing, position, 3.0)
         }
         assertEquals(LiveStallAction.RestartPlayer, actions.last())
     }
@@ -122,20 +122,75 @@ class LiveStallWatchdogTest {
     @Test
     fun aPauseOfTheViewerIsNoStall() {
         play(5)
-        play(60, step = 0.0, watching = false)
+        play(60, step = 0.0, watch = LiveStallWatch.Off)
         assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0))
     }
 
     @Test
     fun aPauseOfTheViewerIsNotBehind() {
-        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(60, latency = 60.0, watching = false))
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(60, latency = 60.0, watch = LiveStallWatch.Off))
+    }
+
+    @Test
+    fun aStateTwitchStoppedInWithoutAStepIsLeftAlone() {
+        play(5)
+        assertEquals(
+            emptyList<Pair<Long, LiveStallAction>>(),
+            play(60, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+    }
+
+    @Test
+    fun aStateTwitchStoppedInAfterARestartStillCountsAsStuck() {
+        play(5)
+        play(10, step = 0.0)
+        assertTrue(watchdog.recovering)
+        assertEquals(
+            listOf(25_000L to LiveStallAction.ReloadPage),
+            play(10, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+    }
+
+    @Test
+    fun aVideoThatMovesOnAfterARestartEndsTheRecovery() {
+        play(5)
+        play(10, step = 0.0)
+        play(2)
+        assertFalse(watchdog.recovering)
+        assertEquals(
+            emptyList<Pair<Long, LiveStallAction>>(),
+            play(30, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+    }
+
+    @Test
+    fun aPauseOfTheViewerEndsTheRecovery() {
+        play(5)
+        play(10, step = 0.0)
+        play(1, step = 0.0, watch = LiveStallWatch.Off)
+        assertFalse(watchdog.recovering)
+        assertEquals(
+            emptyList<Pair<Long, LiveStallAction>>(),
+            play(30, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+    }
+
+    @Test
+    fun aNewTimelineAfterARestartKeepsTheRecovery() {
+        play(5)
+        play(10, step = 0.0)
+        position = 0.0
+        assertEquals(
+            listOf(26_000L to LiveStallAction.ReloadPage),
+            play(11, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
     }
 
     @Test
     fun aGapBetweenReportsSaysNothingAboutTheVideo() {
         play(5)
         nowMs += 60_000
-        assertEquals(LiveStallAction.None, watchdog.tick(nowMs, true, position, 3.0))
+        assertEquals(LiveStallAction.None, watchdog.tick(nowMs, LiveStallWatch.Playing, position, 3.0))
         assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0))
     }
 
@@ -157,45 +212,44 @@ class LiveStallWatchdogTest {
     }
 
     @Test
-    fun aConfirmedLiveStreamThatTwitchMeansToPlayIsWatched() {
-        assertTrue(LiveStallWatchdog.watches(live = true, playbackConfirmed = true, userPaused = false, tick()))
-        assertTrue(
-            LiveStallWatchdog.watches(live = true, playbackConfirmed = true, userPaused = false, tick("Buffering")),
-        )
+    fun aConfirmedLiveStreamThatTwitchMeansToPlayIsPlaying() {
+        assertEquals(LiveStallWatch.Playing, watch(tick()))
+        assertEquals(LiveStallWatch.Playing, watch(tick("Buffering")))
     }
 
     @Test
-    fun aRecordingIsNotWatched() {
-        assertFalse(LiveStallWatchdog.watches(live = false, playbackConfirmed = true, userPaused = false, tick()))
+    fun aRecordingIsOff() {
+        assertEquals(LiveStallWatch.Off, watch(tick(), live = false))
     }
 
     @Test
-    fun aStreamThatHasNotPlayedYetIsNotWatched() {
-        assertFalse(LiveStallWatchdog.watches(live = true, playbackConfirmed = false, userPaused = false, tick()))
+    fun aStreamThatHasNotPlayedYetIsOff() {
+        assertEquals(LiveStallWatch.Off, watch(tick(), playbackConfirmed = false))
     }
 
     @Test
-    fun aStreamTheViewerPausedIsNotWatched() {
-        assertFalse(LiveStallWatchdog.watches(live = true, playbackConfirmed = true, userPaused = true, tick()))
+    fun aStreamTheViewerPausedIsOff() {
+        assertEquals(LiveStallWatch.Off, watch(tick("Idle"), userPaused = true))
     }
 
     @Test
-    fun anAdBreakIsNotWatched() {
-        assertFalse(
-            LiveStallWatchdog.watches(
-                live = true,
-                playbackConfirmed = true,
-                userPaused = false,
-                tick(adBreak = true),
-            ),
-        )
+    fun anAdBreakIsOff() {
+        assertEquals(LiveStallWatch.Off, watch(tick(adBreak = true)))
     }
 
     @Test
-    fun aStreamTwitchStoppedIsNotWatched() {
-        assertFalse(LiveStallWatchdog.watches(live = true, playbackConfirmed = true, userPaused = false, tick("Ended")))
-        assertFalse(LiveStallWatchdog.watches(live = true, playbackConfirmed = true, userPaused = false, tick("Idle")))
+    fun aStreamTwitchStoppedIsStopped() {
+        assertEquals(LiveStallWatch.Stopped, watch(tick("Ended")))
+        assertEquals(LiveStallWatch.Stopped, watch(tick("Idle")))
+        assertEquals(LiveStallWatch.Stopped, watch(tick("Ready")))
     }
+
+    private fun watch(
+        tick: LiveTick,
+        live: Boolean = true,
+        playbackConfirmed: Boolean = true,
+        userPaused: Boolean = false,
+    ) = LiveStallWatchdog.watch(live, playbackConfirmed, userPaused, tick)
 
     private fun tick(state: String = "Playing", adBreak: Boolean = false) = LiveTick(
         positionSeconds = 100.0,

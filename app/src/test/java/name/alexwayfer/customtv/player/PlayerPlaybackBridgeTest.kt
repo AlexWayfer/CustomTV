@@ -14,6 +14,7 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class)
 class PlayerPlaybackBridgeTest {
     private var released = false
+    private var currentPage = true
     private val states = mutableListOf<Boolean>()
     private val positions = mutableListOf<Double>()
     private val bridge = PlayerPlaybackBridge(
@@ -31,6 +32,7 @@ class PlayerPlaybackBridgeTest {
             onLiveTick = {},
         ),
         isReleased = { released },
+        isCurrentPage = { currentPage },
     )
 
     @Test
@@ -47,6 +49,17 @@ class PlayerPlaybackBridgeTest {
     fun reportsOfAReleasedPlayerFadingOutAreDropped() {
         released = true
         bridge.onState(false)
+        bridge.onPosition(12.0)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(emptyList<Boolean>(), states)
+        assertEquals(emptyList<Double>(), positions)
+    }
+
+    @Test
+    fun reportsOfThePageANewLoadReplacesAreDropped() {
+        currentPage = false
+        bridge.onState(true)
         bridge.onPosition(12.0)
         shadowOf(Looper.getMainLooper()).idle()
 

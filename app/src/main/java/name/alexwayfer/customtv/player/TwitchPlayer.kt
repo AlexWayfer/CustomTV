@@ -354,6 +354,12 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         restartPlayer = { webView.evaluateJavascript(scripts.restartLive, null) },
         reloadPage = { restorePlayer(resetStartupReloads = false) },
     )
+    private val networkWatch = PlayerNetworkWatch(
+        appContext = appContext,
+        handler = mainHandler,
+        isLive = { loadedTarget is TwitchPlaybackTarget.Channel },
+        reloadPage = { restorePlayer() },
+    )
     val keepAlive = PlayerKeepAlive(appContext, mainHandler, webView, scripts, isReleased = { released })
     private var soundOnly = false
     val smoothSound = PlayerSmoothSound(webView, scripts, isReleased = { released })
@@ -419,6 +425,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     // Twitch's audience gate waits for a tap, and the video may not start under it: the page shows.
                     onAudienceGate = {
                         if (!surfaceRevealed) AppLog.i(PLAYER_LOG_TAG, "Audience gate after ${recovery.sinceLoadMs} ms")
+                        recovery.videoWithheld()
                         revealSurface()
                     },
                     onPlayerError = recovery::playerError,
@@ -426,6 +433,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     onLiveTick = liveStall::tick,
                 ),
                 isReleased = { released },
+                isCurrentPage = { recovery.pageLoad.current },
             ),
             "CustomTvPlayback",
         )
@@ -509,6 +517,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
             cacheMode = WebSettings.LOAD_DEFAULT
         }
         keepAlive.register()
+        networkWatch.register()
         webView.webViewClient = PlayerNavigationClient(
             handler = mainHandler,
             isReleased = { released },
@@ -585,6 +594,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         onVideoHidden = null
         gestureHandler.release()
         keepAlive.release()
+        networkWatch.release()
         mainHandler.removeCallbacksAndMessages(null)
         val destroyPage = Runnable {
             webView.stopLoading()
@@ -690,6 +700,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     private fun handleOffline() {
         if (recovery.playbackConfirmed) return
         AppLog.i(PLAYER_LOG_TAG, "Offline after ${recovery.sinceLoadMs} ms")
+        recovery.videoWithheld()
         revealSurface()
         onOffline?.invoke()
     }

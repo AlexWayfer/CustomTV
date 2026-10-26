@@ -54,6 +54,13 @@ internal class ChatterLabelsEditorState {
     var saving by mutableStateOf(false)
         private set
 
+    /** While a chatter's label is being deleted in the Gist. */
+    var unassigning by mutableStateOf(false)
+        private set
+
+    /** While the page writes to the Gist, so the labels and their chatters wait. */
+    val busy: Boolean get() = saving || unassigning
+
     /** A failed save or image read, shown above Save until the next edit. */
     var error by mutableStateOf<UiText?>(null)
 
@@ -107,6 +114,32 @@ internal class ChatterLabelsEditorState {
             error = failure.chatterLabelsErrorText(UiText.Resource(R.string.chatter_labels_error_save_failed))
         } finally {
             saving = false
+        }
+    }
+
+    /**
+     * Takes the label [labelId] from [assignee] in the Gist at once, as the extension deletes an assignment; the labels
+     * being edited stay as they are, and a failure shows as [error].
+     */
+    suspend fun unassign(assignee: ChatterLabelAssignee, labelId: String) {
+        unassigning = true
+        error = null
+        try {
+            showAssignments(
+                ChatterLabelsRepository.saveAssignments(
+                    userId = assignee.userId,
+                    login = assignee.login,
+                    displayName = assignee.displayName,
+                    shownLabelIds = setOf(labelId),
+                    checkedLabelIds = emptySet(),
+                ),
+            )
+        } catch (failure: IOException) {
+            error = failure.chatterLabelsErrorText(UiText.Resource(R.string.chatter_labels_error_save_failed))
+        } catch (failure: JSONException) {
+            error = failure.chatterLabelsErrorText(UiText.Resource(R.string.chatter_labels_error_save_failed))
+        } finally {
+            unassigning = false
         }
     }
 

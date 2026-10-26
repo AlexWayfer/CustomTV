@@ -74,6 +74,14 @@ internal fun chatterCardOffersWhisper(
     selfLogin: String,
 ): Boolean = selfLogin.isNotBlank() && !chatterCardShowsOwnFollow(cardUserId, cardLogin, selfUserId, selfLogin)
 
+/** Anyone can report another chatter from the card, logged in or not; the report asks to log in itself. */
+internal fun chatterCardOffersReport(
+    cardUserId: String?,
+    cardLogin: String,
+    selfUserId: String?,
+    selfLogin: String,
+): Boolean = !chatterCardShowsOwnFollow(cardUserId, cardLogin, selfUserId, selfLogin)
+
 internal fun chatterSubscription(badges: List<ChatBadge>): ChatterSubscription? {
     val founder = badges.any { it.setId.equals("founder", ignoreCase = true) }
     val subscriber = badges.firstOrNull { it.setId.equals("subscriber", ignoreCase = true) }

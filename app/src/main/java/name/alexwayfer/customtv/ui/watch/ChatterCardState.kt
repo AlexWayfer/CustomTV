@@ -30,8 +30,8 @@ import name.alexwayfer.customtv.data.ProfileDetailsRepository
 import name.alexwayfer.customtv.data.toChatterProfile
 
 /** Which page of the chatter card shows, and the tab the moderation logs open on. */
-internal class ChatterCardNavigation {
-    var page by mutableStateOf(ChatterCardPage.Profile)
+internal class ChatterCardNavigation(startPage: ChatterCardPage) {
+    var page by mutableStateOf(startPage)
         private set
     var modLogsTab by mutableIntStateOf(0)
         private set
@@ -112,8 +112,10 @@ internal data class ChatterCardChatter(
     val mentions: List<ChatMessage>,
     /** The message the card was opened from, as the chat shows it now. */
     val sourceMessage: ChatMessage?,
-    /** Someone else's card, which offers whispers and, with an ID, moderation and reports. */
-    val othersCard: Boolean,
+    /** Someone else's card while the user is logged in, which offers a whisper. */
+    val whisper: Boolean,
+    /** Someone else's card, which offers a report with an ID, logged in or not. */
+    val report: Boolean,
     val modTools: ChatterModTools,
 )
 

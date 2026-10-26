@@ -81,7 +81,7 @@ object ChatterLabelsRepository {
 
     /**
      * Gives the chatter exactly [checkedLabelIds] of the [shownLabelIds] in the Gist. It reads the Gist again first,
-     * so an assignment the extension made in the meantime stays.
+     * so an assignment the extension made in the meantime stays. Returns the assignments as they are now.
      */
     internal suspend fun saveAssignments(
         userId: String,
@@ -89,9 +89,9 @@ object ChatterLabelsRepository {
         displayName: String,
         shownLabelIds: Set<String>,
         checkedLabelIds: Set<String>,
-    ) = mutex.withLock {
+    ): JSONArray = mutex.withLock {
         val saved = _credentials.value ?: throw ChatterLabelsException(R.string.chatter_labels_error_not_connected)
-        val data = withContext(Dispatchers.IO) {
+        val written = withContext(Dispatchers.IO) {
             val files = ChatterLabelsGistClient.fetchFiles(saved)
             val labels = JSONArray(ChatterLabelsGistClient.readFile(files, LABELS_FILE) ?: "[]")
             val assignments = updateChatterAssignments(
@@ -102,9 +102,10 @@ object ChatterLabelsRepository {
                 now = Instant.now(),
             )
             ChatterLabelsGistClient.writeFiles(saved, mapOf(ASSIGNMENTS_FILE to formatChatterLabelsJson(assignments)))
-            parseChatterLabels(labels, assignments)
+            labels to assignments
         }
-        show(data)
+        show(parseChatterLabels(written.first, written.second))
+        written.second
     }
 
     /**

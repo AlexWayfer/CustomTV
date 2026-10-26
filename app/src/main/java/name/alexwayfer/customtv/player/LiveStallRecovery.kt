@@ -11,15 +11,18 @@ internal class LiveStallRecovery(
     private val reloadPage: () -> Unit,
 ) {
     private val watchdog = LiveStallWatchdog()
+    // The state of Twitch's player last logged during a recovery, so each change shows once.
+    private var recoveryState: String? = null
 
     fun tick(tick: LiveTick) {
-        val watching = LiveStallWatchdog.watches(
+        val watch = LiveStallWatchdog.watch(
             live = isLive(),
             playbackConfirmed = isPlaybackConfirmed(),
             userPaused = StreamPlayback.userPaused,
             tick = tick,
         )
-        val action = watchdog.tick(SystemClock.elapsedRealtime(), watching, tick.positionSeconds, tick.latencySeconds)
+        val action = watchdog.tick(SystemClock.elapsedRealtime(), watch, tick.positionSeconds, tick.latencySeconds)
+        logRecoveryState(tick)
         if (action == LiveStallAction.None) return
         val step = when (action) {
             LiveStallAction.RestartPlayer -> "restarting the player"
@@ -38,5 +41,24 @@ internal class LiveStallRecovery(
         }
     }
 
-    fun reset() = watchdog.reset()
+    fun reset() {
+        watchdog.reset()
+        recoveryState = null
+    }
+
+    private fun logRecoveryState(tick: LiveTick) {
+        if (!watchdog.recovering) {
+            if (recoveryState != null) {
+                AppLog.i(PLAYER_LOG_TAG, "Live recovery over at ${tick.positionSeconds} s, ${tick.state}")
+            }
+            recoveryState = null
+            return
+        }
+        if (tick.state == recoveryState) return
+        recoveryState = tick.state
+        AppLog.i(
+            PLAYER_LOG_TAG,
+            "Live recovering at ${tick.positionSeconds} s, ${tick.state}, buffered ${tick.buffered}",
+        )
+    }
 }

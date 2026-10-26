@@ -83,6 +83,24 @@ internal enum class SettingsReselect {
 internal fun settingsReselect(page: SettingsPage): SettingsReselect =
     if (page == SettingsPage.Main) SettingsReselect.ScrollToTop else SettingsReselect.BackToMain
 
+/** Where Back from the settings goes. */
+internal enum class SettingsBack {
+    /** To the stream, which reopens the sheet that opened the settings. */
+    Player,
+    Main,
+    Close,
+}
+
+/**
+ * A subpage a stream's sheet opened returns to that stream, as if the settings were part of the sheet; any other
+ * subpage goes back to the main list, and the main list closes the settings.
+ */
+internal fun settingsBack(page: SettingsPage, returnsToPlayer: Boolean): SettingsBack = when {
+    page == SettingsPage.Main -> SettingsBack.Close
+    returnsToPlayer -> SettingsBack.Player
+    else -> SettingsBack.Main
+}
+
 @StringRes
 internal fun SettingsPage.titleRes(): Int = when (this) {
     SettingsPage.Main -> R.string.settings

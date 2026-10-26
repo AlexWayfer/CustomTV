@@ -19,7 +19,10 @@ internal data class WatchNavigation(
     val onLiveStatus: (Boolean) -> Unit = {},
     val onOpenChannel: (ChannelPreview) -> Unit = {},
     val onOpenChannelProfile: (ChannelPreview) -> Unit = {},
-    val onOpenSettings: (SettingsScrollTarget) -> Unit = {},
+    /** Opens the settings at the target; a sheet that opened them is reopened by Back from them. */
+    val onOpenSettings: (SettingsScrollTarget, PlayerSheetReturn?) -> Unit = { _, _ -> },
+    /** The sheet to reopen as the stream expands from the settings it opened. */
+    val sheetReopen: OneShotRequest<PlayerSheetReturn>? = null,
     /** Opens the stream's category in Explore; null in an edition without Explore. */
     val onOpenCategory: ((TwitchCategory) -> Unit)? = null,
     /** The player minimized over a section that opened from it, such as a channel profile or the settings. */

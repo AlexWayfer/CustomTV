@@ -260,6 +260,7 @@
     </plurals>
     <string name="chatter_labels_delete_keep_hint">Чтобы она осталась у чаттеров, лучше выключите «Показывать в чате».</string>
     <string name="chatter_labels_delete">Удалить</string>
+    <string name="chatter_labels_unassign_title">Удалить %1$s из «%2$s»?</string>
     <string name="chatter_labels_discard_title">Отменить изменения?</string>
     <string name="chatter_labels_discard_body">Изменения меток не сохранены в Gist.</string>
     <string name="chatter_labels_discard">Отменить</string>
@@ -731,6 +732,7 @@
     <string name="gestures_section_chat">Чат</string>
     <string name="gestures_section_player">Плеер</string>
     <string name="gestures_section_fullscreen">Полный экран</string>
+    <string name="gestures_section_settings">Настройки</string>
     <string name="gesture_recent_swipe">Свайп недавнего канала влево</string>
     <string name="gesture_recent_swipe_result">Показывает кнопку, которая убирает его. То же есть в меню по удержанию.</string>
     <string name="gesture_message_swipe">Свайп сообщения влево</string>
@@ -743,6 +745,8 @@
     <string name="gesture_thread_swipe_result">Закрывает его</string>
     <string name="gesture_chatter_card_hold">Удержание на строке в карточке чаттера</string>
     <string name="gesture_chatter_card_hold_result">Копирует её</string>
+    <string name="gesture_chatter_label_hold">Удержание на чаттере в списке метки</string>
+    <string name="gesture_chatter_label_hold_result">Меню: удалить из метки</string>
     <string name="gesture_player_down">Свайп плеера вниз</string>
     <string name="gesture_player_down_result">Сворачивает его</string>
     <string name="gesture_player_up">Свайп плеера вверх</string>

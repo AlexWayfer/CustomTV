@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
+import name.alexwayfer.customtv.ui.watch.PlayerSheetReturn
 
 @Composable
 internal fun rememberAppShellState(): AppShellState {
@@ -63,6 +64,12 @@ internal class AppShellState(
     /** Until the start decides whether it reopens the channel left in picture-in-picture. */
     var startChannelPending by mutableStateOf(true)
     var settingsScrollTarget by mutableStateOf<SettingsScrollTarget?>(null)
+
+    /** The stream's sheet that opened the settings; Back from their subpage expands the stream and reopens it. */
+    var settingsPlayerReturn by mutableStateOf<PlayerSheetReturn?>(null)
+
+    /** The sheet the stream is to reopen, once it shows its content again. */
+    var playerSheetReopen by mutableStateOf<OneShotRequest<PlayerSheetReturn>?>(null)
     var profileFirstTabRequest by mutableIntStateOf(0)
     var homeListToTop by mutableStateOf<OneShotRequest<Unit>?>(null)
     var exploreReselected by mutableStateOf<OneShotRequest<Unit>?>(null)

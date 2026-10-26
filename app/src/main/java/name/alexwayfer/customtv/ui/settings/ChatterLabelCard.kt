@@ -51,7 +51,7 @@ import sh.calvin.reorderable.ReorderableListItemScope
 /**
  * One label in the settings: its icon, name, and whether chat shows it, with a handle to hold and drag it while
  * [reorderable], and a way to delete it. [assignees] are the chatters who have it in the Gist, or the ones that match
- * while [searching]; a tap on one goes to [onChatterTap].
+ * while [searching]; a tap on one goes to [onChatterTap], and Delete in the menu of a long press to [onChatterDelete].
  */
 @Composable
 internal fun ReorderableListItemScope.ChatterLabelCard(
@@ -69,6 +69,7 @@ internal fun ReorderableListItemScope.ChatterLabelCard(
     onEnabledChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
+    onChatterDelete: (ChatterLabelAssignee) -> Unit,
 ) {
     val elevation by animateDpAsState(if (dragging) 6.dp else 0.dp, label = "labelElevation")
     val moveUp = stringResource(R.string.chatter_labels_move_up)
@@ -106,7 +107,7 @@ internal fun ReorderableListItemScope.ChatterLabelCard(
                 }
             }
             ChatterLabelShownInChat(label.enabled, enabled, onEnabledChange)
-            ChatterLabelAssignees(assignees, searching, enabled, onChatterTap)
+            ChatterLabelAssignees(assignees, searching, enabled, onChatterTap, onChatterDelete)
         }
     }
 }

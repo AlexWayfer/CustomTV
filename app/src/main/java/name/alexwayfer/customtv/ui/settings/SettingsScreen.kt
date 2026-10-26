@@ -64,6 +64,10 @@ internal fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(),
     scrollTo: SettingsScrollTarget? = null,
     onScrolled: () -> Unit = {},
+    /** Back from the subpage a stream's sheet opened; null when the settings were opened any other way. */
+    onBackToPlayer: (() -> Unit)? = null,
+    /** The main list showed, so Back no longer leads to the stream. */
+    onPlayerReturnDropped: () -> Unit = {},
 ) {
     // The main list keeps its place while a subpage is open; a subpage opens at its top.
     val mainScroll = rememberScrollState()
@@ -77,6 +81,7 @@ internal fun SettingsScreen(
     val body = storedSettingsBody(viewModel)
     val leaveGuard = remember { SettingsLeaveGuard() }
     val backToMain = { leaveGuard.leave { page = SettingsPage.Main } }
+    val back = settingsBackAction(page, leaveGuard, backToMain, onClose, onBackToPlayer, onPlayerReturnDropped)
     LaunchedEffect(reselected) {
         if (reselected?.take() == null) return@LaunchedEffect
         when (settingsReselect(page)) {
@@ -85,10 +90,10 @@ internal fun SettingsScreen(
         }
     }
     BackHandler(onBack = onClose)
-    BackHandler(enabled = page != SettingsPage.Main, onBack = backToMain)
+    BackHandler(enabled = page != SettingsPage.Main, onBack = back)
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { SettingsTopBar(page, onBack = backToMain) },
+        topBar = { SettingsTopBar(page, onBack = back) },
     ) { padding ->
         AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
             // The keyboard's inset already holds the navigation bar the Scaffold padded for; without consuming it
@@ -121,6 +126,28 @@ internal fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** What Back does on [page]; once the main list shows, Back no longer leads to the stream. */
+@Composable
+private fun settingsBackAction(
+    page: SettingsPage,
+    leaveGuard: SettingsLeaveGuard,
+    backToMain: () -> Unit,
+    onClose: () -> Unit,
+    onBackToPlayer: (() -> Unit)?,
+    onPlayerReturnDropped: () -> Unit,
+): () -> Unit {
+    LaunchedEffect(page) {
+        if (page == SettingsPage.Main) onPlayerReturnDropped()
+    }
+    return {
+        when (settingsBack(page, returnsToPlayer = onBackToPlayer != null)) {
+            SettingsBack.Player -> leaveGuard.leave { onBackToPlayer?.invoke() }
+            SettingsBack.Main -> backToMain()
+            SettingsBack.Close -> onClose()
         }
     }
 }

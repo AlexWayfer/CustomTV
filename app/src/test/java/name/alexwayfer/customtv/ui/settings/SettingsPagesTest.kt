@@ -54,4 +54,21 @@ class SettingsPagesTest {
     fun settingsTappedAgainOnTheMainListScrollsItToTheTop() {
         assertEquals(SettingsReselect.ScrollToTop, settingsReselect(SettingsPage.Main))
     }
+
+    @Test
+    fun backFromASubpageOpenedFromAPlayerSheetReturnsToThePlayer() {
+        assertEquals(SettingsBack.Player, settingsBack(SettingsPage.ChatterPortraits, returnsToPlayer = true))
+    }
+
+    @Test
+    fun backFromASubpageOpenedAnyOtherWayGoesToTheMainList() {
+        assertEquals(SettingsBack.Main, settingsBack(SettingsPage.ChatterPortraits, returnsToPlayer = false))
+        assertEquals(SettingsBack.Main, settingsBack(SettingsPage.Chat, returnsToPlayer = false))
+    }
+
+    @Test
+    fun backFromTheMainListClosesTheSettings() {
+        assertEquals(SettingsBack.Close, settingsBack(SettingsPage.Main, returnsToPlayer = false))
+        assertEquals(SettingsBack.Close, settingsBack(SettingsPage.Main, returnsToPlayer = true))
+    }
 }

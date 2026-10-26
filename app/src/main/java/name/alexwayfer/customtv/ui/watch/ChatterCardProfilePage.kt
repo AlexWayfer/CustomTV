@@ -118,6 +118,7 @@ internal fun ColumnScope.ChatterMessagesPage(
 /** The portrait page, for a chatter with an ID in a channel the app knows. */
 @Composable
 internal fun ChatterPortraitPageFor(
+    card: ChatterCardRequest,
     chatter: ChatterCardChatter,
     load: ChatterCardLoad,
     onDismiss: () -> Unit,
@@ -144,7 +145,7 @@ internal fun ChatterPortraitPageFor(
         onOpenSettings = openSettings?.let { open ->
             {
                 onDismiss()
-                open(SettingsScrollTarget.ChatterPortraits)
+                open(SettingsScrollTarget.ChatterPortraits, PlayerSheetReturn.ChatterPortrait(card))
             }
         },
         onBack = onBack,
@@ -261,7 +262,10 @@ private fun ChatterCardCountItem(title: String, @DrawableRes icon: Int, enabled:
     )
 }
 
-/** On someone else's card: moderation with an ID, a whisper, and a report with an ID. */
+/**
+ * Moderation with an ID, which on the user's own card holds only their logs and the delete; on someone else's card
+ * also a whisper while logged in, and a report with an ID.
+ */
 @Composable
 private fun ChatterCardActions(
     chatter: ChatterCardChatter,
@@ -269,7 +273,6 @@ private fun ChatterCardActions(
     renderMessage: @Composable (ChatMessage) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (!chatter.othersCard) return
     val userId = chatter.userId
     if (userId != null) {
         ChatterCardModeration(
@@ -281,13 +284,15 @@ private fun ChatterCardActions(
             onShoutoutGiven = onDismiss,
         )
     }
-    ChatterCardWhisperItem(
-        login = chatter.login,
-        displayName = chatter.name,
-        userId = userId,
-        onOpened = onDismiss,
-    )
-    if (userId != null) {
+    if (chatter.whisper) {
+        ChatterCardWhisperItem(
+            login = chatter.login,
+            displayName = chatter.name,
+            userId = userId,
+            onOpened = onDismiss,
+        )
+    }
+    if (chatter.report && userId != null) {
         ChatterCardReportItem(login = chatter.login, displayName = chatter.name, userId = userId)
     }
 }

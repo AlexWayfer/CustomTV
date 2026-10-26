@@ -444,6 +444,7 @@ private fun BoxMessage(
         if (selected) {
             val onMention = LocalOnChatMention.current?.takeIf { chatMessageCanBeMentioned(message) }
             ChatMessageCopyPopup(
+                message = message,
                 onReply = onReply,
                 onMention = onMention?.let { mention ->
                     {

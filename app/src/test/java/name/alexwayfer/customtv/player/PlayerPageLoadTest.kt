@@ -137,4 +137,43 @@ class PlayerPageLoadTest {
     fun nothingAwaitsTheResponseBeforeALoadStarts() {
         assertFalse(load.awaitingResponse)
     }
+
+    @Test
+    fun aLoadIsCurrentOnceItsPageStarts() {
+        load.start()
+        assertFalse(load.current)
+        load.respond()
+        assertTrue(load.current)
+    }
+
+    @Test
+    fun aRestartIsNotCurrentUntilItsOwnPageStarts() {
+        load.start()
+        load.respond()
+        load.start()
+        assertFalse(load.current)
+    }
+
+    @Test
+    fun aPageThatLoadedWithoutAReportedStartIsCurrent() {
+        load.start()
+        load.finish()
+        assertTrue(load.current)
+    }
+
+    @Test
+    fun theAbortedLoadsFinishDoesNotMakeTheNewLoadCurrent() {
+        load.start()
+        load.respond()
+        load.start()
+        load.finish()
+        assertFalse(load.current)
+    }
+
+    @Test
+    fun aFailedLoadIsNotCurrent() {
+        load.start()
+        load.fail()
+        assertFalse(load.current)
+    }
 }

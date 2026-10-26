@@ -22,15 +22,17 @@ internal data class PlayerPlaybackEvents(
 
 /**
  * Hands [PlayerPlaybackEvents] to the page as `CustomTvPlayback`. A released player's page still runs while its sound
- * fades out, and its reports would land on the playback of the player that took over, so they are dropped.
+ * fades out, and its reports would land on the playback of the player that took over, so they are dropped. So are
+ * the reports of a page that a new load replaces, until the new page starts.
  */
 internal class PlayerPlaybackBridge(
     private val handler: Handler,
     private val events: PlayerPlaybackEvents,
     private val isReleased: () -> Boolean,
+    private val isCurrentPage: () -> Boolean,
 ) {
     private fun post(event: () -> Unit) {
-        handler.post { if (!isReleased()) event() }
+        handler.post { if (!isReleased() && isCurrentPage()) event() }
     }
 
     @JavascriptInterface

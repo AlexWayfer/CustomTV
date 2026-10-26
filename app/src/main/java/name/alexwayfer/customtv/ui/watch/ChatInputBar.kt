@@ -102,6 +102,7 @@ internal fun ChatInputBar(
     ChatInputBarBody(input, composer, field, panel, actions)
     if (composer.rulesOpen) ChatInputRulesSheet(input, actions, onDismiss = { composer.rulesOpen = false })
     ChatInputMenuSheet(input, composer, field)
+    OpenWhenPlayerContentShown(menu.recap?.reopen) { composer.recapOpen = true }
     if (composer.recapOpen) ChatInputRecapSheet(input, composer)
 }
 

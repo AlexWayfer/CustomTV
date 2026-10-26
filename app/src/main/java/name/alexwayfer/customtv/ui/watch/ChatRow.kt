@@ -270,7 +270,7 @@ private fun ChatRowUserMessage(
 
 /**
  * Reply, Mention, and Copy over a selected row, when the message can be replied to, has a chatter to mention, or has
- * text to copy.
+ * text to copy, and a moderator's actions under them.
  */
 @Composable
 private fun ChatRowMenu(
@@ -283,6 +283,7 @@ private fun ChatRowMenu(
     val context = LocalContext.current
     if (copyText == null && onReply == null && onMention == null) return
     ChatMessageCopyPopup(
+        message = message,
         onReply = onReply?.let { reply ->
             {
                 reply(message)

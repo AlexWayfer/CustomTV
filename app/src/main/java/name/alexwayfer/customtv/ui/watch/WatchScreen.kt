@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -100,12 +99,10 @@ internal fun WatchScreen(
     )
     WatchChannelEffects(scene)
     ReplySessionEffects(chat, data.messages)
-    // One lambda for the screen's life, so the static local never redraws the stream screen.
-    val dismissToSettingsLatest by rememberUpdatedState<(SettingsScrollTarget) -> Unit>(scene::dismissToSettings)
-    val openSettings = remember { { target: SettingsScrollTarget -> dismissToSettingsLatest(target) } }
+    PlayerSheetReopenEffect(navigation.sheetReopen, chat)
     CompositionLocalProvider(
         LocalSheetKeyboard provides scene.sheetKeyboard,
-        LocalOpenSettings provides openSettings,
+        LocalOpenSettings provides rememberOpenSettings(scene),
     ) {
         WatchPlayer(scene)
     }
@@ -149,8 +146,11 @@ internal data class WatchScene(
         playerState.minimize(before = { open(category) }, after = navigation.onMinimizeOverSection)
     }
 
-    fun dismissToSettings(target: SettingsScrollTarget) {
-        playerState.minimize(before = { navigation.onOpenSettings(target) }, after = navigation.onMinimizeOverSection)
+    fun dismissToSettings(target: SettingsScrollTarget, sheetReturn: PlayerSheetReturn? = null) {
+        playerState.minimize(
+            before = { navigation.onOpenSettings(target, sheetReturn) },
+            after = navigation.onMinimizeOverSection,
+        )
     }
 
     /** Straight to the field, as [mention] goes: a keyboard already up stays up. */

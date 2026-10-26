@@ -90,6 +90,7 @@ internal fun ChatterLabelsEditor(
         onDispose { leaveGuard.onLeave = null }
     }
     var deletingId by remember { mutableStateOf<String?>(null) }
+    var deletingAssignment by remember { mutableStateOf<AssignmentDeletion?>(null) }
     val chooseIcon = rememberLabelIconPicker(state)
 
     SettingsSection(stringResource(R.string.chatter_labels_section))
@@ -117,20 +118,14 @@ internal fun ChatterLabelsEditor(
                 onChooseIcon = chooseIcon,
                 onDelete = { id -> if (state.isSaved(id)) deletingId = id else state.delete(id) },
                 onChatterTap = rememberChatterTap(state, onOpenProfile, onNotice),
+                onChatterDelete = { labelId, assignee -> deletingAssignment = AssignmentDeletion(labelId, assignee) },
             )
         }
     }
 
-    deletingId?.let { id -> state.labels.find { it.id == id } }?.let { label ->
-        ChatterLabelDeleteDialog(
-            name = label.name,
-            chatters = state.assignees[label.id]?.size ?: 0,
-            onConfirm = {
-                deletingId = null
-                state.delete(label.id)
-            },
-            onDismiss = { deletingId = null },
-        )
+    DeleteConfirmations(state, deletingId, deletingAssignment) {
+        deletingId = null
+        deletingAssignment = null
     }
     pendingLeave?.let { leave ->
         ChatterLabelsDiscardDialog(
@@ -139,6 +134,46 @@ internal fun ChatterLabelsEditor(
                 leave()
             },
             onStay = { pendingLeave = null },
+        )
+    }
+}
+
+/** The chatter to take the label with [labelId] from, once the dialog confirms it. */
+private class AssignmentDeletion(val labelId: String, val assignee: ChatterLabelAssignee)
+
+/**
+ * Asks before the saved label [deletingId] goes, which the page then drops until Save, or before a chatter loses a
+ * label, which goes from the Gist at once; [onClose] follows either answer.
+ */
+@Composable
+private fun DeleteConfirmations(
+    state: ChatterLabelsEditorState,
+    deletingId: String?,
+    deletingAssignment: AssignmentDeletion?,
+    onClose: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    deletingId?.let { id -> state.labels.find { it.id == id } }?.let { label ->
+        ChatterLabelDeleteDialog(
+            name = label.name,
+            chatters = state.assignees[label.id]?.size ?: 0,
+            onConfirm = {
+                onClose()
+                state.delete(label.id)
+            },
+            onDismiss = onClose,
+        )
+    }
+    deletingAssignment?.let { deletion ->
+        val label = state.labels.find { it.id == deletion.labelId } ?: return@let
+        ChatterAssignmentDeleteDialog(
+            chatter = deletion.assignee.shownName,
+            label = label.name,
+            onConfirm = {
+                onClose()
+                scope.launch { state.unassign(deletion.assignee, deletion.labelId) }
+            },
+            onDismiss = onClose,
         )
     }
 }
@@ -192,6 +227,7 @@ private fun ChatterLabelsList(
     onChooseIcon: (String) -> Unit,
     onDelete: (String) -> Unit,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
+    onChatterDelete: (labelId: String, ChatterLabelAssignee) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
     var query by rememberSaveable { mutableStateOf("") }
@@ -242,13 +278,14 @@ private fun ChatterLabelsList(
                     onChooseIcon = onChooseIcon,
                     onDelete = onDelete,
                     onChatterTap = onChatterTap,
+                    onChatterDelete = onChatterDelete,
                 )
             }
         }
         LabelsListFooter(
             searching = searching,
             nothingFound = searching && labels.none { shownAssignees[it.id].orEmpty().isNotEmpty() },
-            saving = state.saving,
+            saving = state.busy,
             onAdd = state::add,
         )
     }
@@ -278,6 +315,7 @@ private fun ReorderableColumnScope.LabelListItem(
     onChooseIcon: (String) -> Unit,
     onDelete: (String) -> Unit,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
+    onChatterDelete: (labelId: String, ChatterLabelAssignee) -> Unit,
 ) {
     val id = label.id
     // Outside the hiding, as the item takes its place from its own position in the list.
@@ -293,7 +331,7 @@ private fun ReorderableColumnScope.LabelListItem(
                     assignees = assignees,
                     problems = problems,
                     dragging = dragging,
-                    enabled = !state.saving,
+                    enabled = !state.busy,
                     reorderable = !searching,
                     searching = searching,
                     onMoveUp = if (index > 0 && !searching) ({ state.move(index, index - 1) }) else null,
@@ -303,6 +341,7 @@ private fun ReorderableColumnScope.LabelListItem(
                     onEnabledChange = { enabled -> state.update(id) { it.copy(enabled = enabled) } },
                     onDelete = { onDelete(id) },
                     onChatterTap = onChatterTap,
+                    onChatterDelete = { assignee -> onChatterDelete(id, assignee) },
                 )
             }
         }
@@ -365,7 +404,7 @@ internal fun ChatterLabelsSaveButton(state: ChatterLabelsEditorState, visible: B
         }
         AnimatedVisibility(visible = visible, enter = scaleIn() + fadeIn(), exit = scaleOut() + fadeOut()) {
             ExtendedFloatingActionButton(
-                onClick = { if (!state.saving) scope.launch { state.save() } },
+                onClick = { if (!state.busy) scope.launch { state.save() } },
                 icon = {
                     if (state.saving) {
                         CircularProgressIndicator(

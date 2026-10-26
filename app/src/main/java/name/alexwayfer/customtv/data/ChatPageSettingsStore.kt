@@ -48,6 +48,10 @@ class ChatPageSettingsStore(context: Context) {
         }
     }
 
+    suspend fun setMessageMenuModeration(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[MESSAGE_MENU_MODERATION] = enabled }
+    }
+
     suspend fun setTopChatterBadges(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[TOP_CHATTER_BADGES] = enabled }
     }

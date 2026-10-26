@@ -18,6 +18,13 @@ internal class PlayerPageLoad {
     val awaitingResponse: Boolean
         get() = inFlight && !responded && !loaded && !failed
 
+    /**
+     * The current load's page has started, so what a page reports comes from it. Until then the page this load
+     * replaces still runs and reports, such as a stream that played before a reload.
+     */
+    val current: Boolean
+        get() = responded || loaded
+
     fun start() {
         if (inFlight) staleFinishes += 1
         inFlight = true

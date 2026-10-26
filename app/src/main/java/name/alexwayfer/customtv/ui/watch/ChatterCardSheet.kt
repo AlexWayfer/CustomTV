@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -59,6 +58,7 @@ import name.alexwayfer.customtv.chat.ChatterFollow
 import name.alexwayfer.customtv.chat.ChatterHistory
 import name.alexwayfer.customtv.chat.ChatterProfile
 import name.alexwayfer.customtv.chat.ChatterSubscription
+import name.alexwayfer.customtv.chat.chatterCardOffersReport
 import name.alexwayfer.customtv.chat.chatterCardOffersWhisper
 import name.alexwayfer.customtv.chat.chatterFactCopyText
 import name.alexwayfer.customtv.chat.chatterSubscription
@@ -83,6 +83,8 @@ internal data class ChatterCardRequest(
     val message: ChatMessage? = null,
     /** False for a chatter with no message to take [badges] from: the card loads them. */
     val badgesKnown: Boolean = true,
+    /** The page the card opens at, such as the portrait that Back from the AI settings returns to. */
+    val page: ChatterCardPage = ChatterCardPage.Profile,
 )
 
 internal class OwnChannelFollow(
@@ -118,10 +120,7 @@ internal fun ChatterCardHost(
     var request by remember { mutableStateOf<ChatterCardRequest?>(null) }
     val sheetKeyboard = LocalSheetKeyboard.current
     val mention = LocalOnChatMention.current
-    LaunchedEffect(fieldCardOpen) {
-        val open = fieldCardOpen?.take() ?: return@LaunchedEffect
-        sheetKeyboard.open { request = open }
-    }
+    OpenWhenPlayerContentShown(fieldCardOpen) { open -> sheetKeyboard.open { request = open } }
     CompositionLocalProvider(LocalOpenChatterCard provides { card ->
         sheetKeyboard.open { request = card }
     }) {
@@ -166,7 +165,7 @@ internal fun ChatterCardSheet(
     val key = card.login.lowercase()
     val userMessages = history.messages[key].orEmpty()
     val userMentions = history.mentions[key].orEmpty()
-    val nav = remember(card.login) { ChatterCardNavigation() }
+    val nav = remember(card.login) { ChatterCardNavigation(card.page) }
     val load = rememberChatterCardLoad(card.login, card.userId)
     val chatter = chatterCardChatter(card, selfLogin, load.profile, userMessages, userMentions)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -210,6 +209,7 @@ internal fun ChatterCardSheet(
             ) { shownPage ->
                 ChatterCardPageContent(
                     page = shownPage,
+                    card = card,
                     chatter = chatter,
                     load = load,
                     scroll = scroll,
@@ -249,6 +249,7 @@ private fun chatterCardChatter(
     val knownUserId = card.userId ?: profile?.userId
     val badges = rememberChatterCardBadges(card, knownUserId)
     val shownBadges = badges.badges.orEmpty()
+    val selfUserId = LocalOwnChannelFollow.current?.userId
     return ChatterCardChatter(
         login = shownLogin,
         name = profile?.displayName?.takeIf { it.isNotBlank() } ?: card.displayName,
@@ -261,12 +262,8 @@ private fun chatterCardChatter(
         mentions = mentions,
         // The row in the chat follows a deletion, so the card shows that copy of the message.
         sourceMessage = card.message?.let { source -> messages.find { it.id == source.id } ?: source },
-        othersCard = chatterCardOffersWhisper(
-            knownUserId,
-            card.login,
-            LocalOwnChannelFollow.current?.userId,
-            selfLogin,
-        ),
+        whisper = chatterCardOffersWhisper(knownUserId, card.login, selfUserId, selfLogin),
+        report = chatterCardOffersReport(knownUserId, card.login, selfUserId, selfLogin),
         modTools = rememberChatterModTools(knownUserId, shownLogin, badges.badges),
     )
 }
@@ -275,6 +272,7 @@ private fun chatterCardChatter(
 @Composable
 private fun ChatterCardPageContent(
     page: ChatterCardPage,
+    card: ChatterCardRequest,
     chatter: ChatterCardChatter,
     load: ChatterCardLoad,
     scroll: ChatterCardScroll,
@@ -303,7 +301,7 @@ private fun ChatterCardPageContent(
                     onBack = nav::back,
                 )
             }
-            ChatterCardPage.Portrait -> ChatterPortraitPageFor(chatter, load, onDismiss, onBack = nav::back)
+            ChatterCardPage.Portrait -> ChatterPortraitPageFor(card, chatter, load, onDismiss, onBack = nav::back)
             // Each page's header stays in place while the rest scrolls under it.
             ChatterCardPage.Messages -> ChatterMessagesPage(
                 title = stringResource(R.string.chatter_card_last_messages_count, chatter.messages.size),

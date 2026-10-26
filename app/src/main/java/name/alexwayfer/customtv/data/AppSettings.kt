@@ -13,6 +13,8 @@ data class AppSettings(
     val meMessageItalic: Boolean = true,
     val highlightFirstMessages: Boolean = false,
     val markRaiders: Boolean = true,
+    /** Premium: Delete, Warn, Timeout, and Ban at the end of a message's long-press menu, for a moderator. */
+    val messageMenuModeration: Boolean = true,
     /** Premium: a badge with the place of each of the channel's top chatters, as StreamElements counts them. */
     val topChatterBadges: Boolean = true,
     val highlightMentions: Boolean = true,

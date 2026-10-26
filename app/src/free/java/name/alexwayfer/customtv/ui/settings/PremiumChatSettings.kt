@@ -15,6 +15,9 @@ internal fun LinkPreviewSettings(settings: AppSettings, viewModel: SettingsViewM
 internal fun RaiderMarkSettings(settings: AppSettings, viewModel: SettingsViewModel) = Unit
 
 @Composable
+internal fun MessageMenuModerationSettings(settings: AppSettings, viewModel: SettingsViewModel) = Unit
+
+@Composable
 internal fun TopChatterBadgeSettings(settings: AppSettings, viewModel: SettingsViewModel) = Unit
 
 @Composable

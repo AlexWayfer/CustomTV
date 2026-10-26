@@ -27,17 +27,17 @@ class ListPullToRefreshBoxTest {
     }
 
     @Test
-    fun barUnderATitleCentersInTheBandAlongItsBottom() {
-        assertEquals(54, listLoadingBarTop(headerHeightPx = 60, bandPx = 8, barPx = 4))
+    fun barUnderATitleRunsTheGapBelowTheTextInTheBand() {
+        assertEquals(55, listLoadingBarTop(headerHeightPx = 60, bandPx = 10, gapAbovePx = 5))
     }
 
     @Test
     fun barWithoutATitleRunsAlongTheTopEdge() {
-        assertEquals(0, listLoadingBarTop(headerHeightPx = 0, bandPx = 8, barPx = 4))
+        assertEquals(0, listLoadingBarTop(headerHeightPx = 0, bandPx = 10, gapAbovePx = 5))
     }
 
     @Test
     fun barNeverGoesAboveTheTopOfATitleShorterThanTheBand() {
-        assertEquals(0, listLoadingBarTop(headerHeightPx = 3, bandPx = 8, barPx = 4))
+        assertEquals(0, listLoadingBarTop(headerHeightPx = 3, bandPx = 10, gapAbovePx = 5))
     }
 }

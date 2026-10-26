@@ -69,6 +69,10 @@ private val GestureGroups = listOf(
             Gesture(R.string.gesture_overlay_chat_tap, R.string.gesture_overlay_chat_tap_result),
         ),
     ),
+    GestureGroup(
+        R.string.gestures_section_settings,
+        listOf(Gesture(R.string.gesture_chatter_label_hold, R.string.gesture_chatter_label_hold_result)),
+    ),
 )
 
 /** What each gesture in the app does, by the place it works in. */

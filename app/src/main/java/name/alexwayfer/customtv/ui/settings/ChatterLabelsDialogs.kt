@@ -57,6 +57,30 @@ internal fun ChatterLabelDeleteDialog(
     )
 }
 
+/** Asks before the [chatter] loses the label [label], as the extension asks before it deletes an assignment. */
+@Composable
+internal fun ChatterAssignmentDeleteDialog(
+    chatter: String,
+    label: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.chatter_labels_unassign_title, chatter, label.trim())) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.chatter_labels_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
 /** Asks before leaving the page with label changes that are not saved. */
 @Composable
 internal fun ChatterLabelsDiscardDialog(onDiscard: () -> Unit, onStay: () -> Unit) {

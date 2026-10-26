@@ -28,6 +28,18 @@ internal data class LiveTick(
 
 internal enum class LiveStallAction { None, RestartPlayer, ReloadPage, GiveUp }
 
+/** How a report bears on a stall. */
+internal enum class LiveStallWatch {
+    /** Not a live stream that has played, paused by the viewer, or an ad break: never a stall. */
+    Off,
+
+    /** Twitch's player means to play the video. */
+    Playing,
+
+    /** Twitch's player says it has stopped, as it may after a restart while its requests hang: a stall only then. */
+    Stopped,
+}
+
 /**
  * Brings back a live stream that Twitch's player keeps reporting as playing while its video stands still or falls
  * far behind the broadcast: it stalls on a gap in its buffer and never reports an error. The first step restarts
@@ -40,7 +52,13 @@ internal class LiveStallWatchdog {
     private var stepsTaken = 0
     private var lastStepAtMs: Long? = null
 
-    fun tick(nowMs: Long, watching: Boolean, positionSeconds: Double, latencySeconds: Double): LiveStallAction {
+    /** A step was taken and the video has not moved on since, whatever state Twitch's player reports. */
+    var recovering = false
+        private set
+
+    fun tick(nowMs: Long, watch: LiveStallWatch, positionSeconds: Double, latencySeconds: Double): LiveStallAction {
+        if (watch == LiveStallWatch.Off) recovering = false
+        val watching = watch == LiveStallWatch.Playing || watch == LiveStallWatch.Stopped && recovering
         follow(nowMs, watching, positionSeconds)
         if (!watching) return LiveStallAction.None
         val stalled = nowMs - anchorAtMs >= STALL_MS
@@ -60,6 +78,7 @@ internal class LiveStallWatchdog {
         lastTickAtMs = null
         stepsTaken = 0
         lastStepAtMs = null
+        recovering = false
     }
 
     private fun step(nowMs: Long, positionSeconds: Double): LiveStallAction {
@@ -71,17 +90,23 @@ internal class LiveStallWatchdog {
         }
         stepsTaken += 1
         lastStepAtMs = nowMs
+        recovering = action != LiveStallAction.GiveUp
         anchor(nowMs, positionSeconds)
         return action
     }
 
-    /** Moves the anchor along with a video that plays, and to where the video is when nothing is known about it. */
+    /**
+     * Moves the anchor along with a video that plays, and to where the video is when nothing is known about it. A new
+     * timeline, which starts lower, moves the anchor too, but only a video that moves on ends a recovery.
+     */
     private fun follow(nowMs: Long, watching: Boolean, positionSeconds: Double) {
         val previousTickAtMs = lastTickAtMs
         lastTickAtMs = nowMs
         val reportGap = previousTickAtMs == null || nowMs - previousTickAtMs > REPORT_GAP_MS
-        val progressed = positionSeconds < anchorSeconds || positionSeconds - anchorSeconds >= PROGRESS_SECONDS
-        if (!watching || reportGap || progressed) anchor(nowMs, positionSeconds)
+        val movedOn = positionSeconds - anchorSeconds >= PROGRESS_SECONDS
+        if (movedOn) recovering = false
+        val elsewhere = movedOn || positionSeconds < anchorSeconds
+        if (!watching || reportGap || elsewhere) anchor(nowMs, positionSeconds)
     }
 
     /** No step yet, or the last one is long enough ago to count as done. */
@@ -94,10 +119,15 @@ internal class LiveStallWatchdog {
 
     companion object {
         /**
-         * Whether a stall of this report counts: a live stream that has played, that the viewer has not paused,
-         * outside an ad break, while Twitch's player means to play it.
+         * How a stall of this report counts: a live stream that has played, that the viewer has not paused, outside an
+         * ad break, is watched while Twitch's player means to play it, and after a step whatever state it reports.
          */
-        fun watches(live: Boolean, playbackConfirmed: Boolean, userPaused: Boolean, tick: LiveTick): Boolean =
-            live && playbackConfirmed && !userPaused && !tick.adBreak && tick.state in WATCHED_STATES
+        fun watch(live: Boolean, playbackConfirmed: Boolean, userPaused: Boolean, tick: LiveTick): LiveStallWatch =
+            when {
+                !live || !playbackConfirmed -> LiveStallWatch.Off
+                userPaused || tick.adBreak -> LiveStallWatch.Off
+                tick.state in WATCHED_STATES -> LiveStallWatch.Playing
+                else -> LiveStallWatch.Stopped
+            }
     }
 }

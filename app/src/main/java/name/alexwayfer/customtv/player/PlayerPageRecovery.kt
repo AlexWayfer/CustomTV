@@ -16,7 +16,7 @@ internal class PlayerPageRecovery(
     private val isReleased: () -> Boolean,
     isSurfaceRevealed: () -> Boolean,
     reloadPlayer: () -> Unit,
-    private val reloadPage: () -> Unit,
+    reloadPage: () -> Unit,
     private val concealSurface: () -> Unit,
 ) {
     val pageLoad = PlayerPageLoad()
@@ -24,6 +24,7 @@ internal class PlayerPageRecovery(
     var playbackConfirmed = false
         private set
     private var ready = false
+    private var withheld = false
     private var loadStartedAt = 0L
     private var automaticReloadAttempts = 0
     private var playerReloadPending = false
@@ -36,13 +37,20 @@ internal class PlayerPageRecovery(
     private val pageResponseWatchdog = Runnable {
         if (pageLoad.awaitingResponse) pageFailed("no response")
     }
+    private val failedReload = Runnable {
+        if (isReleased() || StreamPlayback.userPaused) return@Runnable
+        reloadPage()
+    }
     private val startupWatchdog = Runnable {
-        val started = playbackConfirmed || ready
-        if (isReleased() || StreamPlayback.userPaused || started) return@Runnable
+        if (isReleased()) return@Runnable
+        if (!PlayerPageReloads.reloadsWithoutPlayback(playbackConfirmed, withheld, StreamPlayback.userPaused)) {
+            return@Runnable
+        }
         startupReloadAttempts += 1
+        val state = if (ready) "Ready" else "Not ready"
         AppLog.w(
             PLAYER_LOG_TAG,
-            "Not ready after $sinceLoadMs ms, reloading the page (attempt $startupReloadAttempts)",
+            "$state, no playback after $sinceLoadMs ms, reloading the page (attempt $startupReloadAttempts)",
         )
         reloadPage()
     }
@@ -63,11 +71,13 @@ internal class PlayerPageRecovery(
     fun start(resetStartupReloads: Boolean) {
         playbackConfirmed = false
         ready = false
+        withheld = false
         if (resetStartupReloads) startupReloadAttempts = 0
         loadStartedAt = SystemClock.elapsedRealtime()
         resetAutomaticReloads()
         handler.removeCallbacks(startupWatchdog)
         handler.removeCallbacks(errorReloadWatchdog)
+        handler.removeCallbacks(failedReload)
         pageLoad.start()
         handler.removeCallbacks(pageResponseWatchdog)
         handler.postDelayed(pageResponseWatchdog, PAGE_RESPONSE_TIMEOUT_MS)
@@ -91,38 +101,46 @@ internal class PlayerPageRecovery(
     fun confirmPlayback(): Boolean {
         if (playbackConfirmed) return false
         playbackConfirmed = true
+        handler.removeCallbacks(startupWatchdog)
         AppLog.i(PLAYER_LOG_TAG, "Playing after $sinceLoadMs ms")
         return true
     }
 
     /** The server answered the page; a resource that hangs from here on must not keep the player from starting. */
     fun pageResponded() {
-        if (pageLoad.respond() && !ready && !playbackConfirmed) scheduleStartupWatchdog()
+        if (pageLoad.respond()) pageLoaded(finished = false)
     }
 
-    fun pageLoaded() {
-        if (!pageLoad.finish()) return
-        AppLog.i(PLAYER_LOG_TAG, "Page loaded after $sinceLoadMs ms")
-        if (!ready && !playbackConfirmed) scheduleStartupWatchdog()
+    /** The page loaded, or with [finished] false only answered: the wait for the first playback starts again. */
+    fun pageLoaded(finished: Boolean = true) {
+        if (finished) {
+            if (!pageLoad.finish()) return
+            AppLog.i(PLAYER_LOG_TAG, "Page loaded after $sinceLoadMs ms")
+        }
+        if (playbackConfirmed) return
+        handler.removeCallbacks(startupWatchdog)
+        handler.postDelayed(startupWatchdog, PlayerPageReloads.delayMs(startupReloadAttempts))
+    }
+
+    /** The page explains the missing video: the channel is offline, or Twitch's audience gate waits for a tap. */
+    fun videoWithheld() {
+        withheld = true
+        handler.removeCallbacks(startupWatchdog)
     }
 
     fun pageFailed(reason: String) {
         if (isReleased() || !pageLoad.fail()) return
         AppLog.w(PLAYER_LOG_TAG, "Page failed after $sinceLoadMs ms: $reason")
         if (StreamPlayback.userPaused) return
-        if (startupReloadAttempts >= PlayerPageReloads.limit) {
-            AppLog.w(PLAYER_LOG_TAG, "No page reloads left")
-            return
-        }
         startupReloadAttempts += 1
-        AppLog.i(PLAYER_LOG_TAG, "Reloading the page (attempt $startupReloadAttempts)")
-        reloadPage()
+        val delay = PlayerPageReloads.failedReloadDelayMs(sinceLoadMs)
+        AppLog.i(PLAYER_LOG_TAG, "Reloading the page in $delay ms (attempt $startupReloadAttempts)")
+        handler.postDelayed(failedReload, delay)
     }
 
     fun playerReady() {
         if (!ready) AppLog.i(PLAYER_LOG_TAG, "Ready after $sinceLoadMs ms")
         ready = true
-        handler.removeCallbacks(startupWatchdog)
     }
 
     fun playerError() {
@@ -145,13 +163,9 @@ internal class PlayerPageRecovery(
         concealSurface()
         // A player that keeps loading without a network shows no error again: reload the page as at start.
         startupReloadAttempts = 0
-        handler.removeCallbacks(errorReloadWatchdog)
-        PlayerPageReloads.delayMs(startupReloadAttempts)?.let { handler.postDelayed(errorReloadWatchdog, it) }
-    }
-
-    private fun scheduleStartupWatchdog() {
+        // The wait after this reload takes over from the wait for the first playback.
         handler.removeCallbacks(startupWatchdog)
-        val delay = PlayerPageReloads.delayMs(startupReloadAttempts) ?: return
-        handler.postDelayed(startupWatchdog, delay)
+        handler.removeCallbacks(errorReloadWatchdog)
+        handler.postDelayed(errorReloadWatchdog, PlayerPageReloads.delayMs(startupReloadAttempts))
     }
 }

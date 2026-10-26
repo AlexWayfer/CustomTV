@@ -34,6 +34,9 @@ internal class WatchChatState {
     var replyFocusRequest by mutableStateOf<OneShotRequest<Unit>?>(null)
     var mentionRequest by mutableStateOf<OneShotRequest<String>?>(null)
     var fieldCardOpen by mutableStateOf<OneShotRequest<ChatterCardRequest>?>(null)
+
+    /** The chat recap's sheet is to open again, as Back from the settings it opened returns to the stream. */
+    var recapOpen by mutableStateOf<OneShotRequest<Unit>?>(null)
     var composerOpen by mutableStateOf(false)
 }
 

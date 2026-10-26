@@ -1,5 +1,15 @@
 # CustomTV (free version)
 
+## v1.13.1 (2026-10-26)
+
+*   Make the chat scroll smoother
+*   Delete a chatter from a label with a long press
+*   Show the profile menu without a login and on your own profile
+*   Offer Report on a chatter card without a login
+*   Restart the stream after a network switch
+*   Keep retrying a stream that fails to load
+*   Fix the stream stopping when the connection drops
+
 ## v1.13.0 (2026-10-26)
 
 *   Show channel shoutouts in the chat

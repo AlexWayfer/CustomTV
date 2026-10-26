@@ -12,26 +12,30 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.watch.openTwitchReportInBrowser
 
 /**
- * Another channel's actions. The free build has no report sheet of its own, so Report opens Twitch's report page
- * in a Custom Tab with the browser's own Twitch session, full screen like the chatter card's Report.
+ * A channel's actions. The free build has no report sheet of its own, so Report opens Twitch's report page
+ * in a Custom Tab with the browser's own Twitch session, full screen like the chatter card's Report. The free build
+ * has no whisper, so only [items]' report counts.
  */
 @Composable
 internal fun ChannelProfileMenu(
     login: String,
     displayName: String,
     userId: String?,
+    items: ChannelProfileMenuItems,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     ProfileMenu(description = stringResource(R.string.profile_menu), modifier = modifier) { close ->
         MessageLogsMenuItem(login, close)
-        DropdownMenuItem(
-            text = { Text(stringResource(R.string.report_user)) },
-            leadingIcon = { Icon(painterResource(R.drawable.ic_report_flag), contentDescription = null) },
-            onClick = {
-                close()
-                openTwitchReportInBrowser(context, login)
-            },
-        )
+        if (items.report) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.report_user)) },
+                leadingIcon = { Icon(painterResource(R.drawable.ic_report_flag), contentDescription = null) },
+                onClick = {
+                    close()
+                    openTwitchReportInBrowser(context, login)
+                },
+            )
+        }
     }
 }

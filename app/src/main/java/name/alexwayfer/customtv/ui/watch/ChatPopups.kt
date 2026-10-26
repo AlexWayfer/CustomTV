@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -45,6 +46,7 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.data.GestureHint
 import name.alexwayfer.customtv.ui.CopiedNotices
 import name.alexwayfer.customtv.ui.LocalGestureHints
@@ -61,8 +63,10 @@ import kotlin.math.roundToInt
 /** Puts a mention of a chatter into the chat's draft; null where the chat has no field to write in. */
 internal val LocalOnChatMention = compositionLocalOf<((login: String, displayName: String) -> Unit)?> { null }
 
+/** The long-press menu of [message]: Reply, Mention, and Copy, and in Premium a moderator's actions at its end. */
 @Composable
 internal fun ChatMessageCopyPopup(
+    message: ChatMessage,
     onReply: (() -> Unit)?,
     onMention: (() -> Unit)?,
     onCopy: (() -> Unit)?,
@@ -72,7 +76,7 @@ internal fun ChatMessageCopyPopup(
     ChatActionPopup(onDismiss) {
         if (onReply != null) {
             ChatMessageActionRow(
-                icon = R.drawable.ic_reply_arrow,
+                icon = painterResource(R.drawable.ic_reply_arrow),
                 label = stringResource(R.string.chat_reply),
                 onClick = {
                     gestureHints?.slowPathUsed(GestureHint.Reply)
@@ -82,18 +86,19 @@ internal fun ChatMessageCopyPopup(
         }
         if (onMention != null) {
             ChatMessageActionRow(
-                icon = R.drawable.ic_chat_mention,
+                icon = painterResource(R.drawable.ic_chat_mention),
                 label = stringResource(R.string.chat_mention),
                 onClick = onMention,
             )
         }
         if (onCopy != null) {
             ChatMessageActionRow(
-                icon = R.drawable.ic_chat_copy,
+                icon = painterResource(R.drawable.ic_chat_copy),
                 label = stringResource(R.string.chat_copy),
                 onClick = onCopy,
             )
         }
+        ChatMessageModerationRows(message, onChosen = onDismiss)
     }
 }
 
@@ -123,12 +128,12 @@ internal fun ChatLinkMenuPopup(
     ) {
         ChatActionPopup(onDismiss) {
             ChatMessageActionRow(
-                icon = R.drawable.ic_open_in_new,
+                icon = painterResource(R.drawable.ic_open_in_new),
                 label = stringResource(R.string.chat_open_link),
                 onClick = onOpen,
             )
             ChatMessageActionRow(
-                icon = R.drawable.ic_chat_copy,
+                icon = painterResource(R.drawable.ic_chat_copy),
                 label = stringResource(R.string.chat_copy),
                 onClick = onCopy,
             )
@@ -162,9 +167,10 @@ private fun ChatActionPopup(
     }
 }
 
+/** A row of a message's or a link's menu. */
 @Composable
-private fun ChatMessageActionRow(
-    icon: Int,
+internal fun ChatMessageActionRow(
+    icon: Painter,
     label: String,
     onClick: () -> Unit,
 ) {
@@ -176,7 +182,7 @@ private fun ChatMessageActionRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(
-            painter = painterResource(icon),
+            painter = icon,
             contentDescription = null,
             tint = TwitchText,
             modifier = Modifier.size(18.dp),

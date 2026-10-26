@@ -31,6 +31,7 @@ import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.account.AccountLoginScreen
 import name.alexwayfer.customtv.ui.account.AccountScreen
 import name.alexwayfer.customtv.ui.account.ChannelAboutScreen
+import name.alexwayfer.customtv.ui.account.channelProfileMenuItems
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.explore.ExploreSection
 import name.alexwayfer.customtv.ui.home.HomeChannelTarget
@@ -278,8 +279,7 @@ private fun ProfileSectionPage(scene: AppScene, channel: ChannelPreview) {
     val account = scene.account
     ChannelAboutScreen(
         channel = channel,
-        // Whispers go to another person's channel, from a logged-in account.
-        canWhisper = account != null && !channel.login.equals(account.login, ignoreCase = true),
+        menu = channelProfileMenuItems(account?.login, channel.login),
         backEnabled = profileHandlesBack(scene.watching, shell.player.liveMinimized),
         onLeave = {
             when (val back = profileBack(shell.profileOpenedFrom, scene.watching, shell.player.liveMinimized)) {

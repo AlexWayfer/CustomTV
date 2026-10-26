@@ -102,6 +102,18 @@ class ChatterCardTest {
     }
 
     @Test
+    fun anyoneCanReportAnotherChatterLoggedInOrNot() {
+        assertTrue(chatterCardOffersReport("2", "bob", selfUserId = "1", selfLogin = "alice"))
+        assertTrue(chatterCardOffersReport("2", "bob", selfUserId = null, selfLogin = ""))
+    }
+
+    @Test
+    fun ownCardHasNoReport() {
+        assertFalse(chatterCardOffersReport("1", "alice", selfUserId = "1", selfLogin = "alice"))
+        assertFalse(chatterCardOffersReport(null, "Alice", selfUserId = "1", selfLogin = "alice"))
+    }
+
+    @Test
     fun recordingChatWithoutOwnUserIdStillOffersWhisper() {
         assertTrue(chatterCardOffersWhisper("2", "bob", selfUserId = null, selfLogin = "alice"))
     }

@@ -103,8 +103,10 @@ internal class ChatRecapSource(
     val channelName: String,
     /** Oldest first, read when the menu opens. */
     val messageTimes: () -> List<Long>,
-    /** Opens Settings at the AI model and its API key. */
+    /** Opens Settings at the AI model and its API key; Back from them reopens the recap. */
     val onOpenSettings: () -> Unit,
+    /** The recap's sheet is to open again, once the stream shows its content. */
+    val reopen: OneShotRequest<Unit>? = null,
 )
 
 /** Where the bar sits, what it shows around the field, and what it tells the screen. */

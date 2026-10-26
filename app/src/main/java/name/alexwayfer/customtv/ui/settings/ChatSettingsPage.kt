@@ -31,6 +31,7 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         onCheckedChange = viewModel.chat::setHighlightFirstMessages,
     )
     RaiderMarkSettings(settings, viewModel)
+    MessageMenuModerationSettings(settings, viewModel)
     TopChatterBadgeSettings(settings, viewModel)
     LinkPreviewSettings(settings, viewModel)
     SettingsSection(stringResource(R.string.settings_section_sending))

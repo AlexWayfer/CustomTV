@@ -66,7 +66,7 @@ internal fun ChannelAboutScreen(
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onShowCategories: () -> Unit,
     firstTabRequest: Int,
-    canWhisper: Boolean,
+    menu: ChannelProfileMenuItems,
 ) {
     val profile = rememberChannelProfile(channel.login, preview = channel)
     val details by produceState(initialValue = ProfileDetailsRepository.cached(channel.login), channel.login) {
@@ -91,7 +91,7 @@ internal fun ChannelAboutScreen(
         onOpenVideo = onOpenVideo,
         onShowCategories = onShowCategories,
         firstTabRequest = firstTabRequest,
-        canWhisper = canWhisper,
+        menu = menu,
     )
 }
 
@@ -141,7 +141,7 @@ private fun ChannelAboutContent(
     backEnabled: Boolean = true,
     onLogOut: (() -> Unit)? = null,
     firstTabRequest: Int = 0,
-    canWhisper: Boolean = false,
+    menu: ChannelProfileMenuItems? = null,
 ) {
     var openCategory by remember { mutableStateOf<TwitchCategory?>(null) }
     Box(Modifier.fillMaxSize()) {
@@ -154,7 +154,7 @@ private fun ChannelAboutContent(
             backEnabled = backEnabled,
             onLogOut = onLogOut,
             firstTabRequest = firstTabRequest,
-            canWhisper = canWhisper,
+            menu = menu,
         )
         ProfileCategoryOverlay(
             category = openCategory,
@@ -176,7 +176,7 @@ private fun ChannelAboutPage(
     backEnabled: Boolean,
     onLogOut: (() -> Unit)?,
     firstTabRequest: Int,
-    canWhisper: Boolean,
+    menu: ChannelProfileMenuItems?,
 ) {
     BackHandler(enabled = backEnabled, onBack = onLeave)
     var viewportPx by remember { mutableIntStateOf(0) }
@@ -231,8 +231,8 @@ private fun ChannelAboutPage(
         ProfileOverlay(
             about = about,
             onLogOut = onLogOut,
-            canWhisper = canWhisper,
-            scroll = { scrollState.value },
+            menu = menu,
+            scroll ={ scrollState.value },
             onStickyHeaderHeight = { stickyHeaderPx = it },
         )
     }
@@ -288,7 +288,7 @@ private fun ProfileDescription(description: String?, links: List<TwitchProfileLi
 private fun BoxScope.ProfileOverlay(
     about: ChannelAbout,
     onLogOut: (() -> Unit)?,
-    canWhisper: Boolean,
+    menu: ChannelProfileMenuItems?,
     scroll: () -> Int,
     onStickyHeaderHeight: (Int) -> Unit,
 ) {
@@ -296,7 +296,7 @@ private fun BoxScope.ProfileOverlay(
     ProfileStickyHeader(
         headerTop = BannerHeight - AvatarOverlap,
         barNameScale = typography.titleLarge.fontSize.value / typography.headlineSmall.fontSize.value,
-        roomForMenu = onLogOut != null || canWhisper,
+        roomForMenu = onLogOut != null || menu != null,
         scroll = scroll,
         avatar = { ProfileHeaderAvatar(about.login, about.displayName, about.avatarUrl) },
         name = { ProfileHeaderName(about.displayName) },
@@ -312,11 +312,12 @@ private fun BoxScope.ProfileOverlay(
             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
         )
     }
-    if (canWhisper) {
+    menu?.let { items ->
         ChannelProfileMenu(
             login = about.login,
             displayName = about.displayName,
             userId = about.userId,
+            items = items,
             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
         )
     }

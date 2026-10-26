@@ -230,6 +230,7 @@
     </plurals>
     <string name="chatter_labels_delete_keep_hint">To keep it on chatters, turn off “Show in chat” instead.</string>
     <string name="chatter_labels_delete">Delete</string>
+    <string name="chatter_labels_unassign_title">Delete %1$s from “%2$s”?</string>
     <string name="chatter_labels_discard_title">Discard changes?</string>
     <string name="chatter_labels_discard_body">The label changes are not saved to the Gist.</string>
     <string name="chatter_labels_discard">Discard</string>
@@ -674,6 +675,7 @@
     <string name="gestures_section_chat">Chat</string>
     <string name="gestures_section_player">Player</string>
     <string name="gestures_section_fullscreen">Full screen</string>
+    <string name="gestures_section_settings">Settings</string>
     <string name="gesture_recent_swipe">Swipe a recent channel left</string>
     <string name="gesture_recent_swipe_result">Shows the button that removes it. A long press offers the same.</string>
     <string name="gesture_message_swipe">Swipe a message left</string>
@@ -686,6 +688,8 @@
     <string name="gesture_thread_swipe_result">Closes it</string>
     <string name="gesture_chatter_card_hold">Long press a line in a chatter card</string>
     <string name="gesture_chatter_card_hold_result">Copies it</string>
+    <string name="gesture_chatter_label_hold">Long press a chatter in a label’s list</string>
+    <string name="gesture_chatter_label_hold_result">Opens the menu to delete them from the label</string>
     <string name="gesture_player_down">Swipe the player down</string>
     <string name="gesture_player_down_result">Minimizes it</string>
     <string name="gesture_player_up">Swipe the player up</string>

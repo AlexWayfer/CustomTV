@@ -261,7 +261,10 @@ private fun WatchScene.chatMenu(gestureHints: GestureHintReporter?) = ChatMenu(
             channelId = channelId,
             channelName = profile.displayName.ifBlank { channel },
             messageTimes = { data.messages.value.map { it.timestampMillis } },
-            onOpenSettings = { dismissToSettings(SettingsScrollTarget.ChatterPortraits) },
+            onOpenSettings = {
+                dismissToSettings(SettingsScrollTarget.ChatterPortraits, PlayerSheetReturn.ChatRecap)
+            },
+            reopen = chat.recapOpen,
         )
     },
     streamHide = StreamHideToggle(streamHiding.hidden) { hide ->

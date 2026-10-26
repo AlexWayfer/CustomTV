@@ -36,6 +36,12 @@ import name.alexwayfer.customtv.ui.rememberLoadingBarState
 private val REFRESH_INDICATOR_DISTANCE = 48.dp
 
 /**
+ * The gap between a title's text and the loading bar in the band under it. The bar sits low in the band, so a letter
+ * that hangs below the line does not touch it.
+ */
+private val LOADING_BAR_GAP_ABOVE = 5.dp
+
+/**
  * Pull to refresh over a list that never moves. The pulled indicator comes down over the list, and on release
  * it flows into a thin bar, in the band under the title on top of the list when it has one ([headerHeightPx]
  * tall), or along the top edge otherwise. The bar lies over the list, so nothing moves when it shows. It also
@@ -51,7 +57,7 @@ internal fun ListPullToRefreshBox(
 ) {
     val density = LocalDensity.current
     val barTopPx = with(density) {
-        listLoadingBarTop(headerHeightPx, SECTION_HEADER_BAND.roundToPx(), LOADING_BAR_HEIGHT.roundToPx())
+        listLoadingBarTop(headerHeightPx, SECTION_HEADER_BAND.roundToPx(), LOADING_BAR_GAP_ABOVE.roundToPx())
     }
     val pullState = rememberPullToRefreshState()
     val scope = rememberCoroutineScope()
@@ -154,11 +160,11 @@ internal fun pullIndicatorFlowAlpha(progress: Float): Float =
     ((1f - progress) / (1f - PULL_INDICATOR_OPAQUE_PART)).coerceIn(0f, 1f)
 
 /**
- * Where the loading bar's top goes: centered in the [bandPx] band along the bottom of a title [headerHeightPx]
- * tall, or at the top edge when the list has no title on top.
+ * Where the loading bar's top goes: [gapAbovePx] below the text, in the [bandPx] band along the bottom of a title
+ * [headerHeightPx] tall, or at the top edge when the list has no title on top.
  */
-internal fun listLoadingBarTop(headerHeightPx: Int, bandPx: Int, barPx: Int): Int =
-    if (headerHeightPx <= 0) 0 else (headerHeightPx - (bandPx + barPx) / 2).coerceAtLeast(0)
+internal fun listLoadingBarTop(headerHeightPx: Int, bandPx: Int, gapAbovePx: Int): Int =
+    if (headerHeightPx <= 0) 0 else (headerHeightPx - bandPx + gapAbovePx).coerceAtLeast(0)
 
 /** The pulled indicator held still where it was released, while it flows into the bar. */
 private class HeldPullToRefreshState(override val distanceFraction: Float) : PullToRefreshState {

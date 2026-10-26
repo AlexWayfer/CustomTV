@@ -21,11 +21,14 @@ import name.alexwayfer.customtv.data.StreamStartRequest
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.account.AccountNotice
 import name.alexwayfer.customtv.ui.account.playerExpandsAfterLoginCancelled
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.HiddenCategoryUndoSnackbar
+import name.alexwayfer.customtv.ui.components.preview
 import name.alexwayfer.customtv.ui.home.FollowedLoadFailedSnackbar
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.watch.SleepTimerEffect
 import name.alexwayfer.customtv.ui.watch.closeWatchedChannels
+import name.alexwayfer.customtv.ui.watch.watchRoute
 import name.alexwayfer.customtv.ui.whispers.WhispersBackground
 import name.alexwayfer.customtv.update.AppUpdateOpenRequest
 
@@ -50,7 +53,7 @@ internal fun AppRequestEffects(scene: AppScene) {
         StreamStartRequest.login.collect { login ->
             val channel = login ?: return@collect
             StreamStartRequest.clear()
-            scene.openChannel(channel, shell.section == AppSection.Home)
+            scene.openChannel(ChannelPreview(channel), shell.section == AppSection.Home)
         }
     }
     AppTwitchLinkEffect(scene)
@@ -135,14 +138,14 @@ private fun ResumeChannelLeftInPip(scene: AppScene) {
         val channelId = preferences.getString(PIP_RESUME_CHANNEL_ID, null)
         preferences.edit { remove(PIP_RESUME_CHANNEL_ID) }
         if (resumeSavedChannel(channelId, entry.destination.route == "home", relogin)) {
-            val channel = channelId?.let { id -> ChannelAvatarRepository.refreshByIds(listOf(id)).firstOrNull()?.login }
+            val channel = channelId?.let { id -> ChannelAvatarRepository.refreshByIds(listOf(id)).firstOrNull() }
             if (channel == null) {
                 shell.startChannelPending = false
                 return@LaunchedEffect
             }
-            AppLog.i(PLAYER_NAV_LOG_TAG, "reopen $channel left in picture-in-picture")
+            AppLog.i(PLAYER_NAV_LOG_TAG, "reopen ${channel.login} left in picture-in-picture")
             shell.player = shell.player.liveOpened()
-            scene.navController.navigate("watch/$channel") {
+            scene.navController.navigate(watchRoute(channel.preview())) {
                 launchSingleTop = true
                 popUpTo("home")
             }

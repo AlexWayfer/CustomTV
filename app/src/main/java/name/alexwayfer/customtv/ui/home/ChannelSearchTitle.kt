@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 
 /**
  * Home's title row with its search button, for another section at the top of the app: the same search with the
@@ -20,7 +21,7 @@ internal fun ChannelSearchTitle(
     viewModel: HomeViewModel,
     signedIn: Boolean,
     opensIn: SearchMode,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,
     onSearchOpenChange: (Boolean) -> Unit,
 ) {

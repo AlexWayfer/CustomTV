@@ -145,6 +145,7 @@ private fun ChatNoticeDot(page: ChatNoticePage, selected: Boolean, onClick: () -
             ChatNoticePage.HypeTrain -> R.string.chat_notice_show_hype_train
             ChatNoticePage.Poll -> R.string.chat_notice_show_poll
             ChatNoticePage.Prediction -> R.string.chat_notice_show_prediction
+            ChatNoticePage.Shoutout -> R.string.chat_notice_show_shoutout
             ChatNoticePage.CommunityGift -> R.string.chat_notice_show_community_gift
             ChatNoticePage.Pinned -> R.string.chat_notice_show_pinned
         },

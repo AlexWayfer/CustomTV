@@ -30,7 +30,7 @@ class PremiumAllFeaturesTouchTest {
         var opened = 0
         compose.setContent { PremiumAllFeaturesLink(onClick = { opened++ }) }
 
-        compose.onNodeWithText("See all 33 features").performClick()
+        compose.onNodeWithText("See all 35 features").performClick()
 
         assertEquals(1, opened)
     }

@@ -71,7 +71,10 @@ internal fun parseLastBroadcasts(body: String): Map<String, Long>? {
     return users.objects().mapNotNull(::parseLastBroadcast).toMap()
 }
 
-/** When a channel's last broadcast started, by its lowercase login. */
+/**
+ * When a channel's last broadcast ended, by its lowercase login. Twitch names the field `lastBroadcast.startedAt`, yet
+ * it holds the end of the broadcast.
+ */
 private fun parseLastBroadcast(user: JSONObject): Pair<String, Long>? {
     val login = user.text("login") ?: return null
     val startedAt = user.optJSONObject("lastBroadcast")?.optString("startedAt") ?: return null

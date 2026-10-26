@@ -32,8 +32,9 @@ internal const val ACCEPT_LANGUAGE = "Accept-Language"
 /** Twitch GQL answers HTTP 400 to a query with more root field aliases than this. */
 private const val GQL_ROOT_ALIAS_LIMIT = 15
 
-/** Splits items asked with one alias each into batches that one query can hold, in order. */
-internal fun <T> gqlAliasBatches(items: List<T>): List<List<T>> = items.chunked(GQL_ROOT_ALIAS_LIMIT)
+/** Splits items asked with [aliasesEach] aliases each into batches that one query can hold, in order. */
+internal fun <T> gqlAliasBatches(items: List<T>, aliasesEach: Int = 1): List<List<T>> =
+    items.chunked(GQL_ROOT_ALIAS_LIMIT / aliasesEach)
 
 /** Twitch's own server failing, like an HTTP 5xx: the next request may succeed. */
 private val transientGqlErrors = listOf("service timeout", "service error", "service unavailable")

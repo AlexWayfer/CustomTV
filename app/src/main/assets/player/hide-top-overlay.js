@@ -392,13 +392,35 @@
     if (!v || !isFinite(v.currentTime) || v.currentTime < 0) return;
     try { CustomTvPlayback.onSeek(v.currentTime); } catch (e) {}
   }
+  // A live stream can stall on a gap in its buffer while Twitch's player still reports it as playing, with no error:
+  // the app watches the position and the latency every tick.
+  function notifyLiveTick(doc, v, adBreak) {
+    if (recordingPage || !doc || !v || !isFinite(v.currentTime) || v.currentTime < 0) return;
+    // The search walks the page's React tree, so the player found stays on its video.
+    var p = v.__customTvPlayer || (v.__customTvPlayer = customTvPlayer(doc));
+    var latency = -1;
+    var state = '';
+    try {
+      if (p && p.getLiveLatency) latency = p.getLiveLatency();
+      if (p && p.getState) state = String(p.getState());
+    } catch (e) {}
+    if (typeof latency !== 'number' || !isFinite(latency)) latency = -1;
+    var ranges = [];
+    try {
+      for (var i = 0; i < v.buffered.length; i++) {
+        ranges.push('[' + v.buffered.start(i).toFixed(1) + ', ' + v.buffered.end(i).toFixed(1) + ']');
+      }
+    } catch (e) {}
+    try { CustomTvPlayback.onLiveTick(v.currentTime, latency, state, !!adBreak, ranges.join(' ')); } catch (e) {}
+  }
   function notifyPlayerReady() {
     try { CustomTvPlayback.onPlayerReady(); } catch (e) {}
   }
   function hasRenderedFrame(v) {
     // Sound only has no frames at all; playing sound counts then.
     var picture = (v && v.videoWidth > 0 && v.videoHeight > 0) || !!window.__customTvVideoQuality;
-    return v && !v.paused && v.readyState >= 3 && picture && v.currentTime > 0;
+    // A video that fades out to the app's pause still plays, but the app already counts it as paused.
+    return v && !v.paused && !customTvFadingOut(v) && v.readyState >= 3 && picture && v.currentTime > 0;
   }
   // A video that buffers is paused too, while Twitch's player still means to play it; only its own pause counts.
   // Without the player at hand, a paused video counts as before.
@@ -734,6 +756,8 @@
       if (v.__customTvBound) return;
       v.__customTvBound = true;
       notifyPlayerReady();
+      // A video that has not started yet fades its sound in as it starts, as after the app's pause.
+      if (v.paused) customTvFade(v, 1, function() { customTvFullVolume(targetDoc); });
       v.addEventListener('playing', function() {
         setUpClip(targetDoc, v);
         notifyPlaybackIfRendered(v);
@@ -796,11 +820,13 @@
     notifyPlayerError();
     notifyAudienceGate();
     var d = playerDoc();
-    if (isAdBreak(d)) {
-      notifyPlaybackIfRendered(d && d.querySelector('video'));
+    var v = d && d.querySelector('video');
+    var adBreak = isAdBreak(d);
+    notifyLiveTick(d, v, adBreak);
+    if (adBreak) {
+      notifyPlaybackIfRendered(v);
       return;
     }
-    var v = d && d.querySelector('video');
     if (v) {
       if (hasRenderedFrame(v)) notifyPlayback(true);
       else if (v.paused && pausedByViewer(d)) notifyPlayback(false);

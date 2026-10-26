@@ -18,13 +18,16 @@ import androidx.compose.ui.unit.Dp
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
 import name.alexwayfer.customtv.chat.ChannelEvents
+import name.alexwayfer.customtv.chat.ChannelShoutout
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.OutgoingRaid
 import name.alexwayfer.customtv.chat.PinnedChat
 import name.alexwayfer.customtv.chat.chatCardEvents
 import name.alexwayfer.customtv.chat.communityGiftPlaqueRemainingMillis
 import name.alexwayfer.customtv.chat.latestCommunityGiftMessage
+import name.alexwayfer.customtv.chat.shoutoutPlaqueRemainingMillis
 import name.alexwayfer.customtv.chat.visibleCommunityGiftMessage
+import name.alexwayfer.customtv.chat.visibleShoutout
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 
 @Composable
@@ -33,6 +36,9 @@ internal fun ChatNotices(
     messages: () -> List<ChatMessage>,
     pin: PinnedChat?,
     raid: OutgoingRaid?,
+    shoutout: ChannelShoutout?,
+    shoutoutSourceName: String?,
+    shoutoutFollow: ShoutoutFollow,
     events: ChannelEvents,
     pointsIconUrl: String?,
     channelId: String?,
@@ -42,17 +48,21 @@ internal fun ChatNotices(
     onHidePin: () -> Unit,
     onOpenTwitchChat: () -> Unit,
     onHideEvent: (String) -> Unit,
+    onOpenChatterCard: (login: String) -> Unit,
 ) {
     var hiddenCommunityGiftId by remember { mutableStateOf<String?>(null) }
     val communityGiftMessage = rememberVisibleCommunityGift(messages, hiddenCommunityGiftId)
+    var hiddenShoutoutId by remember { mutableStateOf<String?>(null) }
+    val visibleShoutout = rememberVisibleShoutout(shoutout, hiddenShoutoutId)
     val cardEvents = chatCardEvents(events)
-    val items = chatNoticeItems(raid, cardEvents, communityGiftMessage, pin)
+    val items = chatNoticeItems(raid, cardEvents, visibleShoutout, communityGiftMessage, pin)
     val expandKeys = chatNoticeExpandKeys(cardEvents, pin)
     var expandedKey by remember { mutableStateOf<String?>(null) }
     val anyExpanded = expandedKey != null && expandedKey in expandKeys.values
     val committed = remember { CommittedNoticeOrder() }
     val arrivals = nextChatNoticeArrivals(committed.arrivals, items)
-    val ordered = orderedChatNoticePages(chatNoticePagesOf(pin, raid, communityGiftMessage, cardEvents), arrivals)
+    val present = chatNoticePagesOf(pin, raid, visibleShoutout, communityGiftMessage, cardEvents)
+    val ordered = orderedChatNoticePages(present, arrivals)
     // An expanded notice stays where it is: pages move and switch only while every notice is collapsed.
     val pages = if (anyExpanded) frozenChatNoticePages(committed.pages, ordered) else ordered
     SideEffect {
@@ -62,7 +72,9 @@ internal fun ChatNotices(
     // The block slides down from the top as its first notice arrives and back up after its last one
     // leaves, still showing that last notice on the way out.
     val snapshot = rememberLastNonNull(
-        pages.takeIf { it.isNotEmpty() }?.let { ChatNoticeSnapshot(it, pin, raid, cardEvents, communityGiftMessage) },
+        pages.takeIf { it.isNotEmpty() }?.let {
+            ChatNoticeSnapshot(it, pin, raid, visibleShoutout, cardEvents, communityGiftMessage)
+        },
     )
     AnimatedVisibility(
         visible = pages.isNotEmpty(),
@@ -79,6 +91,7 @@ internal fun ChatNotices(
                 page = page,
                 pin = shown.pin,
                 raid = shown.raid,
+                shoutout = shown.shoutout?.let { ShownShoutout(it, shoutoutSourceName, shoutoutFollow) },
                 events = shown.events,
                 pointsIconUrl = pointsIconUrl,
                 communityGiftMessage = shown.communityGiftMessage,
@@ -92,6 +105,8 @@ internal fun ChatNotices(
                 onOpenTwitchChat = onOpenTwitchChat,
                 onHideEvent = onHideEvent,
                 onHideCommunityGift = { hiddenCommunityGiftId = communityGiftMessage?.id },
+                onHideShoutout = { hiddenShoutoutId = visibleShoutout?.id },
+                onOpenChatterCard = onOpenChatterCard,
                 dotInset = dotInset,
             )
         }
@@ -121,16 +136,32 @@ private fun rememberVisibleCommunityGift(messages: () -> List<ChatMessage>, hidd
     )
 }
 
+/** The [latest] shoutout while its plaque lasts, unless the viewer hid it. */
+@Composable
+private fun rememberVisibleShoutout(latest: ChannelShoutout?, hiddenId: String?): ChannelShoutout? {
+    var clockMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(latest?.id) {
+        val shoutout = latest ?: return@LaunchedEffect
+        clockMillis = System.currentTimeMillis()
+        val remaining = shoutoutPlaqueRemainingMillis(shoutout, clockMillis)
+        if (remaining > 0L) delay(remaining.milliseconds)
+        clockMillis = System.currentTimeMillis()
+    }
+    return visibleShoutout(latest, hiddenId, clockMillis)
+}
+
 /** The pages there is something for, before they are put in order. */
 private fun chatNoticePagesOf(
     pin: PinnedChat?,
     raid: OutgoingRaid?,
+    shoutout: ChannelShoutout?,
     communityGiftMessage: ChatMessage?,
     events: ChannelEvents,
 ): List<ChatNoticePage> = chatNoticePages(
     buildSet {
         if (pin != null) add(ChatNoticePage.Pinned)
         if (raid != null) add(ChatNoticePage.Raid)
+        if (shoutout != null) add(ChatNoticePage.Shoutout)
         if (communityGiftMessage != null) add(ChatNoticePage.CommunityGift)
         if (events.poll != null) add(ChatNoticePage.Poll)
         if (events.prediction != null) add(ChatNoticePage.Prediction)
@@ -142,10 +173,12 @@ private fun chatNoticePagesOf(
 private fun chatNoticeItems(
     raid: OutgoingRaid?,
     events: ChannelEvents,
+    shoutout: ChannelShoutout?,
     communityGiftMessage: ChatMessage?,
     pin: PinnedChat?,
 ): Map<ChatNoticePage, ChatNoticeItem> = buildMap {
     raid?.let { put(ChatNoticePage.Raid, ChatNoticeItem(it.id, live = true)) }
+    shoutout?.let { put(ChatNoticePage.Shoutout, ChatNoticeItem(it.id, live = true)) }
     events.hypeTrain?.let {
         put(ChatNoticePage.HypeTrain, ChatNoticeItem("${it.id}:${it.level}", it.id in events.liveIds))
     }
@@ -168,9 +201,33 @@ private data class ChatNoticeSnapshot(
     val pages: List<ChatNoticePage>,
     val pin: PinnedChat?,
     val raid: OutgoingRaid?,
+    val shoutout: ChannelShoutout?,
     val events: ChannelEvents,
     val communityGiftMessage: ChatMessage?,
 )
+
+/** A shoutout page's plaque with who gave it and the heart of its channel. */
+private class ShownShoutout(val shoutout: ChannelShoutout, val sourceName: String?, val follow: ShoutoutFollow)
+
+/** The shoutout's plaque, whose tap opens the card of the channel it names. */
+@Composable
+private fun ShoutoutPage(
+    shown: ShownShoutout,
+    appearance: ChatAppearance,
+    onOpenChatterCard: (login: String) -> Unit,
+    onHide: () -> Unit,
+    dotInset: Dp,
+) {
+    ChatShoutoutBanner(
+        shoutout = shown.shoutout,
+        sourceName = shown.sourceName,
+        follow = shown.follow,
+        chatTextSize = appearance.textSize,
+        onOpenCard = { onOpenChatterCard(shown.shoutout.targetLogin) },
+        onHide = onHide,
+        bottomInset = dotInset,
+    )
+}
 
 /** The arrivals and page order of the last committed frame, which the next frame builds on. */
 private class CommittedNoticeOrder {
@@ -183,6 +240,7 @@ private fun ChatNoticePageContent(
     page: ChatNoticePage,
     pin: PinnedChat?,
     raid: OutgoingRaid?,
+    shoutout: ShownShoutout?,
     events: ChannelEvents,
     pointsIconUrl: String?,
     communityGiftMessage: ChatMessage?,
@@ -196,6 +254,8 @@ private fun ChatNoticePageContent(
     onOpenTwitchChat: () -> Unit,
     onHideEvent: (String) -> Unit,
     onHideCommunityGift: () -> Unit,
+    onHideShoutout: () -> Unit,
+    onOpenChatterCard: (login: String) -> Unit,
     dotInset: Dp,
 ) {
     when (page) {
@@ -248,6 +308,9 @@ private fun ChatNoticePageContent(
             )
         }
         ChatNoticePage.Raid -> raid?.let { ChatRaidNotice(it, chatTextSize = appearance.textSize, dotInset = dotInset) }
+        ChatNoticePage.Shoutout -> shoutout?.let {
+            ShoutoutPage(it, appearance, onOpenChatterCard, onHideShoutout, dotInset)
+        }
         ChatNoticePage.CommunityGift -> communityGiftMessage?.let {
             ChatCommunityGiftBanner(it, appearance.textSize, onHide = onHideCommunityGift, bottomInset = dotInset)
         }

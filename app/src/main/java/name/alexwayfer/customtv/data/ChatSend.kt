@@ -55,6 +55,27 @@ internal sealed interface ChatSendError {
 
     /** The free build: a chat mode command waits for Premium; a tap on the line shows the Premium banner. */
     data object ChatModesPremium : ChatSendError
+
+    /** `/shoutout` without a nick that can be a channel. */
+    data object ShoutoutUsage : ChatSendError
+
+    /** A shoutout needs the channel giving it to be live. */
+    data object ShoutoutOffline : ChatSendError
+
+    /** Twitch allows a shoutout every 2 minutes, and one to the same channel every hour. */
+    data object ShoutoutTooOften : ChatSendError
+
+    /** No channel goes by the nick of a `/shoutout`. */
+    data object ShoutoutNoChannel : ChatSendError
+
+    /** A channel cannot give a shoutout to itself. */
+    data object ShoutoutOwnChannel : ChatSendError
+
+    /** Twitch could not be reached to give a shoutout. */
+    data object ShoutoutFailed : ChatSendError
+
+    /** The free build: `/shoutout` waits for Premium; a tap on the line shows the Premium banner. */
+    data object ShoutoutPremium : ChatSendError
 }
 
 /**

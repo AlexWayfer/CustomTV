@@ -9,14 +9,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
 @Composable
 internal fun rememberAppShellState(): AppShellState {
     val player = rememberSaveable(stateSaver = PlayerSession.Saver) { mutableStateOf(PlayerSession()) }
-    val section = rememberSaveable { mutableStateOf(AppSection.Home) }
-    val profileChannel = rememberSaveable { mutableStateOf<String?>(null) }
+    val section = rememberSaveable(stateSaver = SectionVisit.Saver) { mutableStateOf(SectionVisit(AppSection.Home)) }
+    val profileChannel = rememberSaveable(stateSaver = ChannelPreview.Saver) { mutableStateOf(null) }
     val profileOpenedFrom = rememberSaveable { mutableStateOf<AppSection?>(null) }
     val awaitingLogin = rememberSaveable { mutableStateOf(false) }
     val returnToStreamAfterLogin = rememberSaveable { mutableStateOf(false) }
@@ -32,14 +33,23 @@ internal fun rememberAppShellState(): AppShellState {
 @Stable
 internal class AppShellState(
     savedPlayer: MutableState<PlayerSession>,
-    savedSection: MutableState<AppSection>,
-    savedProfileChannel: MutableState<String?>,
+    private val savedSection: MutableState<SectionVisit>,
+    savedProfileChannel: MutableState<ChannelPreview?>,
     savedProfileOpenedFrom: MutableState<AppSection?>,
     savedAwaitingLogin: MutableState<Boolean>,
     savedReturnToStreamAfterLogin: MutableState<Boolean>,
 ) {
     var player by savedPlayer
-    var section by savedSection
+
+    /** The open section; a way into the settings other than Back from their profile starts a new [settingsVisit]. */
+    var section: AppSection
+        get() = savedSection.value.section
+        set(value) {
+            savedSection.value = savedSection.value.moveTo(value, profileOpenedFrom)
+        }
+
+    /** Counts the times the settings opened afresh; their state is kept under [settingsStateKey] of it. */
+    val settingsVisit: Int get() = savedSection.value.settingsVisit
     var profileChannel by savedProfileChannel
     var profileOpenedFrom by savedProfileOpenedFrom
     var awaitingLogin by savedAwaitingLogin

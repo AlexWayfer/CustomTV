@@ -43,6 +43,7 @@ import name.alexwayfer.customtv.chat.EmotePickerPlace
 import name.alexwayfer.customtv.chat.EmotePickerSection
 import name.alexwayfer.customtv.chat.EmoteSources
 import name.alexwayfer.customtv.chat.GlobalEmoteSource
+import name.alexwayfer.customtv.chat.OwnEmotes
 import name.alexwayfer.customtv.chat.PickerEmote
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.chat.TwitchCatalogEmote
@@ -72,6 +73,7 @@ internal fun rememberEmotePickerSections(
     bttvEmotes: Map<String, SevenTvEmote>,
     ffzEmotes: Map<String, SevenTvEmote>,
     accessToken: suspend () -> String?,
+    ownPersonal: OwnEmotes = OwnEmotes(),
 ): EmotePickerCatalog {
     var sections by remember(channelId, ownUserId) { mutableStateOf<List<EmotePickerSection>>(emptyList()) }
     var ready by remember(channelId, ownUserId) { mutableStateOf(false) }
@@ -87,6 +89,7 @@ internal fun rememberEmotePickerSections(
         sevenTvEmotes,
         bttvEmotes,
         ffzEmotes,
+        ownPersonal,
     ) {
         if (!enabled) {
             sections = emptyList()
@@ -116,7 +119,7 @@ internal fun rememberEmotePickerSections(
                 ffz = FfzRepository.emotes.cachedGlobal(),
             ),
             sources = EmoteSources(sevenTv = sevenTvEnabled, ffz = ffzEnabled, bttv = bttvEnabled),
-            personal = twitch.personal,
+            ownEmotes = ownPersonal.copy(twitch = twitch.personal),
         )
         ready = true
     }
@@ -260,6 +263,7 @@ private fun emotePickerTitle(section: EmotePickerSection): String {
     }
     return when (section.place) {
         EmotePickerPlace.Frequent -> stringResource(R.string.emote_picker_frequent)
+        EmotePickerPlace.Personal -> stringResource(R.string.emote_picker_personal, platform)
         EmotePickerPlace.Unlocked -> section.label
         EmotePickerPlace.Global -> when (section.kind) {
             EmotePickerKind.Twitch -> stringResource(R.string.emote_picker_twitch)

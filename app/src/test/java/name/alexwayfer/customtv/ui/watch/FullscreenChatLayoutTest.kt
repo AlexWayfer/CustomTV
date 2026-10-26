@@ -3,7 +3,9 @@ package name.alexwayfer.customtv.ui.watch
 import name.alexwayfer.customtv.data.FullscreenChatMode
 import name.alexwayfer.customtv.data.FullscreenChatSide
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FullscreenChatLayoutTest {
@@ -276,6 +278,114 @@ class FullscreenChatLayoutTest {
         assertEquals(0, fullscreenPlayerButtonsEndPx(overlayLeft, placement(overlayLeft, 0, 0f, 0)))
         assertEquals(0, fullscreenPlayerButtonsEndPx(columnRight, placement(columnRight, 0, 0f, 0)))
         assertEquals(0, fullscreenPlayerButtonsEndPx(null, placement(null, 0, 0f, 0)))
+    }
+
+    @Test
+    fun theStreamInfoBelowShrinksTheVideoToTheRoomAboveIt() {
+        val placement = atRest(null, FullscreenChatInsets(controlBarPx = 0, infoBarPx = 180))
+        assertEquals(1600, placement.videoWidth)
+        assertEquals(900, placement.videoHeight)
+        assertEquals(0.8f, placement.videoScale, 0.0001f)
+        assertEquals(360, placement.videoX)
+        assertEquals(0, placement.videoY)
+    }
+
+    @Test
+    fun aVideoNarrowerThanTheRoomAboveTheInfoKeepsItsSizeAndCentersInTheRoom() {
+        val placement = atRest(columnRight, FullscreenChatInsets(controlBarPx = 0, infoBarPx = 100))
+        assertEquals(1f, placement.videoScale, 0.0001f)
+        assertEquals(0, placement.videoX)
+        // 731 px of video centered in the 800 px above the stream info.
+        assertEquals(34, placement.videoY)
+    }
+
+    @Test
+    fun anOverlaidChatRisesAboveTheStreamInfoAndTheControlBar() {
+        val placement = atRest(overlayRight, FullscreenChatInsets(controlBarPx = 115, infoBarPx = 180))
+        assertEquals(295, placement.chatBottomInset)
+    }
+
+    @Test
+    fun aColumnChatTakesTheFullHeightBesideTheStreamInfo() {
+        val placement = atRest(columnRight, FullscreenChatInsets(controlBarPx = 115, infoBarPx = 180))
+        assertEquals(0, placement.chatBottomInset)
+    }
+
+    @Test
+    fun theKeyboardShrinksTheVideoOnFromWhereTheStreamInfoLeftIt() {
+        val placement = fullscreenPlacement(
+            overlayRight,
+            2000,
+            900,
+            FullscreenKeyboard(heightPx = 450, progress = 0.5f),
+            FullscreenChatInsets(controlBarPx = 0, infoBarPx = 180),
+        )
+        assertEquals(0.65f, placement.videoScale, 0.0001f)
+    }
+
+    @Test
+    fun theStreamInfoRunsUnderTheVideoColumnBesideAColumnChat() {
+        assertEquals(FullscreenInfoBarSpan(x = 0, width = 1300), fullscreenInfoBarSpan(columnRight, 2000))
+    }
+
+    @Test
+    fun theStreamInfoRunsTheWholeWidthUnderAnOverlaidChat() {
+        assertEquals(FullscreenInfoBarSpan(x = 0, width = 2000), fullscreenInfoBarSpan(overlayLeft, 2000))
+    }
+
+    @Test
+    fun theStreamInfoRunsTheWholeWidthWithTheChatOff() {
+        assertEquals(FullscreenInfoBarSpan(x = 0, width = 2000), fullscreenInfoBarSpan(null, 2000))
+    }
+
+    @Test
+    fun theStreamInfoRestsOnTheBottomWhileShown() {
+        assertEquals(720, fullscreenInfoBarTopPx(areaHeightPx = 900, barHeightPx = 180, shown = 1f, hidden = 0f))
+    }
+
+    @Test
+    fun theHiddenStreamInfoWaitsUnderTheBottomEdge() {
+        assertEquals(900, fullscreenInfoBarTopPx(areaHeightPx = 900, barHeightPx = 180, shown = 0f, hidden = 0f))
+    }
+
+    @Test
+    fun theStreamInfoRisesWithTheStreamAsItHides() {
+        assertEquals(360, fullscreenInfoBarTopPx(areaHeightPx = 900, barHeightPx = 180, shown = 1f, hidden = 0.5f))
+    }
+
+    @Test
+    fun theStreamInfoReachesTheTopWithTheStreamAllHidden() {
+        assertEquals(0, fullscreenInfoBarTopPx(areaHeightPx = 900, barHeightPx = 180, shown = 1f, hidden = 1f))
+    }
+
+    @Test
+    fun aStreamInfoTallerThanTheAreaStaysAtTheTop() {
+        assertEquals(0, fullscreenInfoBarTopPx(areaHeightPx = 100, barHeightPx = 180, shown = 1f, hidden = 0f))
+    }
+
+    @Test
+    fun theStreamInfoShowsWithTheControlsInFullScreen() {
+        assertTrue(fullscreenInfoBarShown(controls = true, composerOpen = false, fullscreen = true, covers = false))
+    }
+
+    @Test
+    fun theStreamInfoHidesWithTheControls() {
+        assertFalse(fullscreenInfoBarShown(controls = false, composerOpen = false, fullscreen = true, covers = false))
+    }
+
+    @Test
+    fun theStreamInfoMakesWayForTheKeyboard() {
+        assertFalse(fullscreenInfoBarShown(controls = true, composerOpen = true, fullscreen = true, covers = false))
+    }
+
+    @Test
+    fun theStreamInfoKeepsItsRoomWhileTheStreamSlidesOutOfFullScreen() {
+        assertTrue(fullscreenInfoBarShown(controls = true, composerOpen = false, fullscreen = false, covers = true))
+    }
+
+    @Test
+    fun outOfFullScreenThePlayerHasNoStreamInfoBelowIt() {
+        assertFalse(fullscreenInfoBarShown(controls = true, composerOpen = false, fullscreen = false, covers = false))
     }
 
     /** [fullscreenPlacement] in a 2000 × 900 area. */

@@ -21,8 +21,24 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val mentions = MentionPageSettingsActions(viewModelScope, MentionPageSettingsStore(application))
     val hiddenMessages = HiddenMessageSettingsActions(viewModelScope, HiddenMessageSettingsStore(application))
 
+    private var labelsEditor: Pair<String, ChatterLabelsEditorState>? = null
+
+    /**
+     * The labels page's editor for one [opening] of the page. It stays the same while the page's saved state lives
+     * on, as over a profile opened from it, so the edits and the Gist the page read stay too; it holds images too
+     * large for saved state. A new opening gets a new editor, which reads the Gist again.
+     */
+    internal fun chatterLabelsEditor(opening: String): ChatterLabelsEditorState {
+        labelsEditor?.let { (key, editor) -> if (key == opening) return editor }
+        return ChatterLabelsEditorState().also { labelsEditor = opening to it }
+    }
+
     fun setBackgroundSoundOnly(enabled: Boolean) {
         viewModelScope.launch { store.setBackgroundSoundOnly(enabled) }
+    }
+
+    fun setSmoothSound(enabled: Boolean) {
+        viewModelScope.launch { store.setSmoothSound(enabled) }
     }
 
     fun setAutoClaimBonus(enabled: Boolean) {
@@ -51,6 +67,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun setWhisperUnreadGlow(enabled: Boolean) {
         viewModelScope.launch { store.setWhisperUnreadGlow(enabled) }
+    }
+
+    fun setLiveWidgetEnded(enabled: Boolean) {
+        viewModelScope.launch { store.setLiveWidgetEnded(enabled) }
     }
 
     fun setPortraitLanguage(language: PortraitLanguage) {

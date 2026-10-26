@@ -25,6 +25,7 @@ object StreamPlayback {
     private var playRequestedAt = 0L
     private val position = ReportedPosition()
     private val inferredPause = InferredPause(Handler(Looper.getMainLooper()))
+    private val pauseConfirmation = PauseConfirmation()
 
     private var commands: Commands? = null
 
@@ -35,7 +36,8 @@ object StreamPlayback {
 
     class Commands(
         val play: () -> Unit,
-        val pause: () -> Unit,
+        /** Pauses the page and calls back once the page has run the pause. */
+        val pause: (onRun: () -> Unit) -> Unit,
         val seek: (seconds: Double) -> Unit,
         val close: () -> Unit,
     )
@@ -60,6 +62,7 @@ object StreamPlayback {
 
     fun bind(commands: Commands) {
         this.commands = commands
+        pauseConfirmation.clear()
         StreamInterruption.clear()
         userPaused = false
         isExplicitlyPaused = false
@@ -73,6 +76,7 @@ object StreamPlayback {
 
     fun prepareForChannel() {
         inferredPause.cancel()
+        pauseConfirmation.clear()
         StreamInterruption.clear()
         userPaused = false
         isExplicitlyPaused = false
@@ -110,6 +114,7 @@ object StreamPlayback {
 
     fun play() {
         inferredPause.cancel()
+        pauseConfirmation.clear()
         StreamInterruption.clear()
         userPaused = false
         isExplicitlyPaused = false
@@ -121,11 +126,12 @@ object StreamPlayback {
 
     fun pause() {
         inferredPause.cancel()
+        pauseConfirmation.sent(loading = !isPlaybackConfirmed)
         StreamInterruption.clear()
         userPaused = true
         isExplicitlyPaused = true
         awaitingPlayback = false
-        commands?.pause?.invoke()
+        commands?.pause?.invoke(pauseConfirmation::ran)
         syncState()
     }
 
@@ -136,14 +142,22 @@ object StreamPlayback {
         userPaused = true
         isExplicitlyPaused = true
         awaitingPlayback = false
-        commands?.pause?.invoke()
+        commands?.pause?.invoke {}
         commands?.close?.invoke()
         syncState()
     }
 
     fun reportActualState(playing: Boolean) {
         if (playbackDisabled) {
-            if (playing) commands?.pause?.invoke()
+            if (playing) commands?.pause?.invoke {}
+            return
+        }
+        // A frame the page reported before it ran the app's pause does not undo the pause.
+        if (pauseConfirmation.stale(playing)) return
+        // Twitch started the stream the viewer paused while it loaded: it stays paused.
+        if (pauseConfirmation.startedOnItsOwn(playing)) {
+            pauseConfirmation.sent(loading = false)
+            commands?.pause?.invoke(pauseConfirmation::ran)
             return
         }
         if (playing) {

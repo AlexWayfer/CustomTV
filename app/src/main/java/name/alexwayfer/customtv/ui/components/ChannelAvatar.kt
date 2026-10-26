@@ -34,19 +34,15 @@ import java.io.IOException
 import kotlin.time.Duration
 import kotlin.time.TimeSource
 
+/** The channel's profile, cached or loading; until it loads, the page shows what [preview] knows of the channel. */
 @Composable
-fun rememberChannelProfile(
+internal fun rememberChannelProfile(
     login: String,
     pollEvery: Duration? = null,
     forceRefresh: Boolean = false,
+    preview: ChannelPreview? = null,
 ): ChannelProfile {
-    val fallback = remember(login) {
-        ChannelProfile(
-            login = login.lowercase(),
-            displayName = login,
-            avatarUrl = null,
-        )
-    }
+    val fallback = remember(login, preview) { (preview ?: ChannelPreview(login)).fallbackProfile() }
     val profile by produceState(
         initialValue = ChannelAvatarRepository.cached(login) ?: fallback,
         login,
@@ -97,6 +93,7 @@ fun ChannelAvatar(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     grayscale: Boolean = false,
+    fadeInMillis: Int = 0,
 ) {
     val displayName = profile?.displayName ?: channel
     val avatarDescription = stringResource(R.string.channel_avatar, displayName)
@@ -119,7 +116,8 @@ fun ChannelAvatar(
                     .data(url)
                     .memoryCachePolicy(CachePolicy.ENABLED)
                     .diskCachePolicy(CachePolicy.ENABLED)
-                    .crossfade(false)
+                    // Coil skips the fade for an image already in memory, so a known avatar shows at once.
+                    .crossfade(fadeInMillis)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier

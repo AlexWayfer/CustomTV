@@ -49,6 +49,12 @@ class TwitchPubSubClient(
     )
     internal val opened: SharedFlow<String> = _opened
 
+    private val _shoutouts = MutableSharedFlow<ChannelShoutout>(
+        extraBufferCapacity = 4,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    internal val shoutouts: SharedFlow<ChannelShoutout> = _shoutouts
+
     private val _polls = MutableSharedFlow<ChannelPoll>(
         extraBufferCapacity = 8,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -139,6 +145,7 @@ class TwitchPubSubClient(
             .put("polls.$channelId")
             .put("predictions-channel-v1.$channelId")
             .put("hype-train-events-v2.$channelId")
+            .put("shoutout.$channelId")
         val data = JSONObject().put("topics", topics)
         if (!authToken.isNullOrBlank()) {
             topics.put("raid.$channelId")
@@ -229,6 +236,8 @@ class TwitchPubSubClient(
             topic.startsWith("hype-train-events-v2.") ->
                 HypeTrainParser.parseFrame(text, System.currentTimeMillis())
                     ?.let { _hypeTrains.tryEmit(it) }
+            topic.startsWith("shoutout.") ->
+                parseShoutoutPubSubFrame(text, System.currentTimeMillis())?.let { _shoutouts.tryEmit(it) }
             else ->
                 ChannelPointsPubSubParser.parseFrame(text)?.let { _messages.tryEmit(it) }
         }

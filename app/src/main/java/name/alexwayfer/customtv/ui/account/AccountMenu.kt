@@ -23,10 +23,12 @@ import name.alexwayfer.customtv.R
 /** The signed-in account's own actions, in a menu in the profile's top corner. */
 @Composable
 internal fun AccountMenu(
+    login: String,
     onLogOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ProfileMenu(description = stringResource(R.string.account_menu), modifier = modifier) { close ->
+        MessageLogsMenuItem(login, close)
         ExperimentalLoginMenuItem(onClick = close)
         DropdownMenuItem(
             text = { Text(stringResource(R.string.log_out)) },

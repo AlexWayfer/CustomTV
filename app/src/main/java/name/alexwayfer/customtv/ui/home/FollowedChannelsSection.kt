@@ -33,6 +33,7 @@ import name.alexwayfer.customtv.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import name.alexwayfer.customtv.data.FollowedChannel
 import name.alexwayfer.customtv.data.HiddenCategoriesStore
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 import kotlinx.coroutines.flow.first
@@ -52,7 +53,7 @@ internal fun FollowedChannelsSection(
     status: FollowedChannelsStatus,
     refreshing: Boolean,
     onRefresh: () -> Unit,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     scrollToTop: OneShotRequest<Unit>?,
     modifier: Modifier = Modifier,
 ) {
@@ -91,7 +92,7 @@ internal fun FollowedChannelsSection(
 private fun FollowedChannelList(
     channels: List<FollowedChannel>,
     scrollToTop: OneShotRequest<Unit>?,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     onHeaderHeight: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
@@ -141,7 +142,7 @@ private fun LazyListScope.followedChannelRows(
     sections: FollowedSections,
     hiddenShown: Boolean,
     onHiddenToggle: () -> Unit,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     onHeaderHeight: (Int) -> Unit,
 ) {
     val anyLive = sections.live.isNotEmpty() || sections.hidden.isNotEmpty()
@@ -151,7 +152,7 @@ private fun LazyListScope.followedChannelRows(
             FollowedLiveItem(
                 channel = channel,
                 modifier = Modifier.animateItem(),
-                onWatch = { onOpen(channel.login, true) },
+                onWatch = { onOpen(ChannelPreview(channel.login, channel.displayName, channel.avatarUrl), true) },
             )
         }
     }
@@ -169,7 +170,7 @@ private fun LazyListScope.followedChannelRows(
                 FollowedLiveItem(
                     channel = channel,
                     modifier = Modifier.animateItem(),
-                    onWatch = { onOpen(channel.login, true) },
+                    onWatch = { onOpen(ChannelPreview(channel.login, channel.displayName, channel.avatarUrl), true) },
                 )
             }
         }
@@ -186,7 +187,7 @@ private fun LazyListScope.followedChannelRows(
             FollowedOfflineChannelRow(
                 channel = channel,
                 modifier = Modifier.animateItem(),
-                onWatch = { onOpen(channel.login, false) },
+                onWatch = { onOpen(ChannelPreview(channel.login, channel.displayName, channel.avatarUrl), false) },
             )
         }
     }

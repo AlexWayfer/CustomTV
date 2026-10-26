@@ -140,4 +140,36 @@ class PlayerFullscreenRulesTest {
         assertNull(deviceTurn(45))
         assertNull(deviceTurn(315))
     }
+
+    @Test
+    fun `full screen hides the system bars`() {
+        assertEquals(
+            PlayerSystemBars.Hidden,
+            playerSystemBars(fullscreen = true, displayLandscape = true, chatOnly = false),
+        )
+    }
+
+    @Test
+    fun `the landscape chat of a hidden stream hides only the status bar`() {
+        assertEquals(
+            PlayerSystemBars.StatusHidden,
+            playerSystemBars(fullscreen = false, displayLandscape = true, chatOnly = true),
+        )
+    }
+
+    @Test
+    fun `the portrait chat of a hidden stream keeps the system bars`() {
+        assertEquals(
+            PlayerSystemBars.Shown,
+            playerSystemBars(fullscreen = false, displayLandscape = false, chatOnly = true),
+        )
+    }
+
+    @Test
+    fun `a landscape player out of full screen with the stream in sight keeps the system bars`() {
+        assertEquals(
+            PlayerSystemBars.Shown,
+            playerSystemBars(fullscreen = false, displayLandscape = true, chatOnly = false),
+        )
+    }
 }

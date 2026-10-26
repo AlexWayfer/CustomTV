@@ -6,10 +6,13 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.AppSettingsStore
@@ -47,6 +50,14 @@ class ChatViewModel(
     val sevenTvEmotes: StateFlow<Map<String, SevenTvEmote>> = emotes.sevenTv
     val ffzEmotes: StateFlow<Map<String, SevenTvEmote>> = emotes.ffz
     val bttvEmotes: StateFlow<Map<String, SevenTvEmote>> = emotes.bttv
+    internal val personalEmotes: StateFlow<PersonalEmotes> =
+        combine(sevenTvEvents.personal, bttvEvents.personal) { sevenTv, bttv -> sevenTv.copy(bttv = bttv.bttv) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, PersonalEmotes())
+    internal val sevenTvCosmetics: StateFlow<SevenTvCosmetics> = sevenTvEvents.cosmetics
+    private val ownPresence = OwnEmotePresence(viewModelScope, bttvEvents)
+
+    /** Takes the signed-in user's Twitch ID, whose personal emotes 7TV and BTTV show; null when logged out. */
+    internal val setSignedInUser: (String?) -> Unit = ownPresence::setUser
 
     private val cheermotes = ChannelCheermotes(viewModelScope)
 
@@ -59,6 +70,9 @@ class ChatViewModel(
     internal val trim = ChatTrim()
     internal val raid = OutgoingRaidTracker(viewModelScope, pubSub, { currentChannelId }, _messages, trim)
     internal val outgoingRaid: StateFlow<OutgoingRaid?> = raid.raid
+    private val shoutouts =
+        ChannelShoutouts(viewModelScope, pubSub, { currentChannelId }, _messages, trim) { _sessionChatters.value }
+    internal val shoutout: StateFlow<ChannelShoutout?> = shoutouts.latest
     private val liveEvents = ChannelEventsController(viewModelScope)
     internal val channelEvents: StateFlow<ChannelEvents> = liveEvents.events
 
@@ -153,6 +167,8 @@ class ChatViewModel(
         viewModelScope.launch {
             pubSub.pins.collect { pins.onUpdate(it) }
         }
+        viewModelScope.launch { sevenTvEvents.subscribed.collect(ownPresence::onSubscribed) }
+        viewModelScope.launch { client.messages.collect { ownPresence.onChatMessage(it, currentChannelId) } }
         viewModelScope.launch { pubSub.polls.collect(liveEvents::onPoll) }
         viewModelScope.launch { pubSub.predictions.collect(liveEvents::onPrediction) }
         viewModelScope.launch { pubSub.hypeTrains.collect(liveEvents::onHypeTrain) }
@@ -199,6 +215,7 @@ class ChatViewModel(
             pubSub.disconnect()
             currentChannelId = null
             raid.dismiss()
+            shoutouts.clear()
             liveEvents.clear()
         }
         pins.reopen(sameChannel)
@@ -269,7 +286,7 @@ class ChatViewModel(
     private fun listenEmoteEvents(channelId: String?) {
         if (channelId.isNullOrBlank() || !inForeground) return
         currentChannelId = channelId
-        SevenTvRepository.channelEmoteSetId(channelId)?.let { sevenTvEvents.listen(it) }
+        sevenTvEvents.listen(channelId, SevenTvRepository.channelEmoteSetId(channelId))
         bttvEvents.listen(channelId)
     }
 

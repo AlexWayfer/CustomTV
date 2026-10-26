@@ -84,20 +84,22 @@ internal data class FullscreenKeyboard(val heightPx: Int = 0, val progress: Floa
 
 /**
  * What an overlaid chat keeps clear of: the player's control bar, [controlBarShown] from 0 to 1, and [chatEdgePx]
- * from the area's top and bottom.
+ * from the area's top and bottom. [infoBarPx]: how much of the stream info under the video is in sight.
  */
 internal data class FullscreenChatInsets(
     val controlBarPx: Int,
     val controlBarShown: Float = 1f,
     val chatEdgePx: Int = 0,
+    val infoBarPx: Int = 0,
 )
 
 /**
- * At rest the video is centered in the player's part of the area, and an overlaid chat takes the full height but
- * its edge gap above and below, rising above the control bar as it shows. With the [keyboard] up the video shrinks
- * into the top corner away from the chat, to the room above the keyboard and no wider than leaves the chat its usual
- * width; the chat takes the rest of the width. Between the two, the keyboard's progress moves everything along with
- * it.
+ * At rest the video is centered in the player's part of the area above the stream info, shrunk to the room it
+ * leaves, and an overlaid chat takes the full height but its edge gap above and below, rising above the stream info
+ * and the control bar as they show. The page keeps the size of the video at full height, so the stream info only
+ * scales its picture. With the [keyboard] up the video shrinks into the top corner away from the chat, to the room
+ * above the keyboard and no wider than leaves the chat its usual width; the chat takes the rest of the width. Between
+ * the two, the keyboard's progress moves everything along with it.
  */
 internal fun fullscreenPlacement(
     bounds: FullscreenChatBounds?,
@@ -108,49 +110,66 @@ internal fun fullscreenPlacement(
 ): FullscreenPlacement {
     val area = areaWidthPx.coerceAtLeast(0)
     val height = areaHeightPx.coerceAtLeast(0)
-    val playerX = bounds?.playerX ?: 0
-    val playerWidth = (bounds?.playerWidth ?: area).coerceAtLeast(0)
-    val videoWidth = minOf(playerWidth, (height * 16f / 9f).roundToInt())
-    val videoHeight = (videoWidth * 9f / 16f).roundToInt()
-    val restX = playerX + (playerWidth - videoWidth) / 2
-    val restY = (height - videoHeight) / 2
-    val rest = FullscreenPlacement(
-        videoX = restX,
-        videoY = restY,
-        videoWidth = videoWidth,
-        videoHeight = videoHeight,
-        videoScale = 1f,
-        chatX = bounds?.chatX ?: 0,
-        chatWidth = bounds?.chatWidth ?: 0,
-        chatBottomInset = if (bounds?.overPlayer == true) {
-            val shown = insets.controlBarShown.coerceIn(0f, 1f)
-            val edge = insets.chatEdgePx.coerceAtLeast(0)
-            (edge + (insets.controlBarPx.coerceAtLeast(0) - edge) * shown).roundToInt()
-        } else {
-            0
-        },
-        chatTopInset = if (bounds?.overPlayer == true) insets.chatEdgePx.coerceAtLeast(0) else 0,
-    )
+    val rest = fullscreenRestPlacement(bounds, area, height, insets)
+    val videoWidth = rest.videoWidth
+    val videoHeight = rest.videoHeight
     val progress = keyboard.progress.coerceIn(0f, 1f)
     val noVideo = videoWidth == 0 || videoHeight == 0
     if (bounds == null || progress == 0f || noVideo) return rest
-    val room = (height - keyboard.heightPx).coerceAtLeast(0)
+    val keyboardRoom = (height - keyboard.heightPx).coerceAtLeast(0)
     val widthForVideo = (area - bounds.chatWidth).coerceAtLeast(0)
-    val keyboardScale = minOf(1f, room.toFloat() / videoHeight, widthForVideo.toFloat() / videoWidth)
+    val keyboardScale = minOf(1f, keyboardRoom.toFloat() / videoHeight, widthForVideo.toFloat() / videoWidth)
     val shownWidth = (videoWidth * keyboardScale).roundToInt()
     fun lerp(from: Int, to: Int): Int = (from + (to - from) * progress).roundToInt()
     return FullscreenPlacement(
-        videoX = lerp(restX, if (bounds.chatOnLeft) area - shownWidth else 0),
-        videoY = lerp(restY, 0),
+        videoX = lerp(rest.videoX, if (bounds.chatOnLeft) area - shownWidth else 0),
+        videoY = lerp(rest.videoY, 0),
         videoWidth = videoWidth,
         videoHeight = videoHeight,
-        videoScale = 1f + (keyboardScale - 1f) * progress,
+        videoScale = rest.videoScale + (keyboardScale - rest.videoScale) * progress,
         chatX = lerp(bounds.chatX, if (bounds.chatOnLeft) 0 else shownWidth),
         chatWidth = lerp(bounds.chatWidth, area - shownWidth),
         chatBottomInset = lerp(rest.chatBottomInset, 0),
         chatTopInset = lerp(rest.chatTopInset, 0),
     )
 }
+
+/** [fullscreenPlacement] without the keyboard, in an area [area] by [height] px. */
+private fun fullscreenRestPlacement(
+    bounds: FullscreenChatBounds?,
+    area: Int,
+    height: Int,
+    insets: FullscreenChatInsets,
+): FullscreenPlacement {
+    val playerX = bounds?.playerX ?: 0
+    val playerWidth = (bounds?.playerWidth ?: area).coerceAtLeast(0)
+    val videoWidth = minOf(playerWidth, (height * 16f / 9f).roundToInt())
+    val videoHeight = (videoWidth * 9f / 16f).roundToInt()
+    val infoBar = insets.infoBarPx.coerceIn(0, height)
+    val room = height - infoBar
+    val scale = if (videoHeight == 0) 1f else minOf(1f, room.toFloat() / videoHeight)
+    return FullscreenPlacement(
+        videoX = playerX + (playerWidth - (videoWidth * scale).roundToInt()) / 2,
+        videoY = (room - (videoHeight * scale).roundToInt()) / 2,
+        videoWidth = videoWidth,
+        videoHeight = videoHeight,
+        videoScale = scale,
+        chatX = bounds?.chatX ?: 0,
+        chatWidth = bounds?.chatWidth ?: 0,
+        chatBottomInset = if (bounds?.overPlayer == true) overlaidChatBottomInsetPx(insets, infoBar) else 0,
+        chatTopInset = if (bounds?.overPlayer == true) insets.chatEdgePx.coerceAtLeast(0) else 0,
+    )
+}
+
+/** Room under a chat laid over the video: the stream info in sight, and the control bar as it shows, or the gap. */
+private fun overlaidChatBottomInsetPx(insets: FullscreenChatInsets, infoBarPx: Int): Int {
+    val shown = insets.controlBarShown.coerceIn(0f, 1f)
+    val edge = insets.chatEdgePx.coerceAtLeast(0)
+    return infoBarPx + (edge + (insets.controlBarPx.coerceAtLeast(0) - edge) * shown).roundToInt()
+}
+
+/** Where the stream info under a full screen video runs across the area, in pixels from its left edge. */
+internal data class FullscreenInfoBarSpan(val x: Int, val width: Int)
 
 /**
  * How far the player's own buttons keep from the video's right edge: clear of a chat laid over the right side of

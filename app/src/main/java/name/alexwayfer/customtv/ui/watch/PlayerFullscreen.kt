@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
+import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.provider.Settings
@@ -179,10 +180,16 @@ internal class PlayerFullscreen(
 }
 
 @Composable
-internal fun rememberPlayerFullscreen(minimized: Boolean, inPictureInPicture: Boolean): PlayerFullscreen {
+internal fun rememberPlayerFullscreen(
+    minimized: Boolean,
+    inPictureInPicture: Boolean,
+    streamOutOfSight: Boolean,
+): PlayerFullscreen {
     val activity = checkNotNull(LocalActivity.current)
     val scope = rememberCoroutineScope()
-    val expanded = rememberUpdatedState(!minimized && !inPictureInPicture)
+    // With some of the stream hidden, landscape shows the chat with the stream info over it, and the video sliding
+    // over them, instead of the full screen player; full screen comes back once the video is all in sight.
+    val expanded = rememberUpdatedState(!minimized && !inPictureInPicture && !streamOutOfSight)
     // The configuration, not the window size: on some devices the size Compose reads at a rotation is the old one
     // and stays until the next rotation, which left full screen on in portrait.
     val displayLandscape = rememberUpdatedState(
@@ -224,14 +231,15 @@ internal fun rememberPlayerFullscreen(minimized: Boolean, inPictureInPicture: Bo
     LaunchedEffect(active) {
         fullscreen.releaseDrag()
         if (!active) fullscreen.overlayChatExpanded = false
-        val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-        if (active) {
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-        } else {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-        }
     }
+    SystemBarsEffect(
+        activity,
+        playerSystemBars(
+            fullscreen = active,
+            displayLandscape = displayLandscape.value,
+            chatOnly = !minimized && !inPictureInPicture && streamOutOfSight,
+        ),
+    )
     DisposableEffect(activity) {
         onDispose {
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -240,6 +248,23 @@ internal fun rememberPlayerFullscreen(minimized: Boolean, inPictureInPicture: Bo
         }
     }
     return fullscreen
+}
+
+/** Shows and hides the system bars as [bars] says; a swipe from the edge brings a hidden bar back for a moment. */
+@Composable
+private fun SystemBarsEffect(activity: Activity, bars: PlayerSystemBars) {
+    LaunchedEffect(bars) {
+        val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        when (bars) {
+            PlayerSystemBars.Hidden -> controller.hide(WindowInsetsCompat.Type.systemBars())
+            PlayerSystemBars.StatusHidden -> {
+                controller.show(WindowInsetsCompat.Type.navigationBars())
+                controller.hide(WindowInsetsCompat.Type.statusBars())
+            }
+            PlayerSystemBars.Shown -> controller.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 }
 
 /**

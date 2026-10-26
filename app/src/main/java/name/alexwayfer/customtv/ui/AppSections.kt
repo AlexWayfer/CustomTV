@@ -31,11 +31,11 @@ import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.account.AccountLoginScreen
 import name.alexwayfer.customtv.ui.account.AccountScreen
 import name.alexwayfer.customtv.ui.account.ChannelAboutScreen
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.explore.ExploreSection
 import name.alexwayfer.customtv.ui.home.HomeChannelTarget
 import name.alexwayfer.customtv.ui.home.HomeScreen
 import name.alexwayfer.customtv.ui.home.homeChannelTarget
-import name.alexwayfer.customtv.ui.settings.SettingsScreen
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
@@ -119,8 +119,8 @@ private fun AppHome(scene: AppScene) {
 }
 
 /** Opens [channel]'s profile from a section at the top of the app, which Back from the profile returns to. */
-private fun AppScene.openProfileFrom(section: AppSection, channel: String) {
-    homeViewModel.addRecent(channel)
+private fun AppScene.openProfileFrom(section: AppSection, channel: ChannelPreview) {
+    homeViewModel.addRecent(channel.login)
     shell.profileChannel = channel
     shell.profileOpenedFrom = section
     shell.section = AppSection.ChannelProfile
@@ -214,17 +214,7 @@ private fun AppSectionPage(scene: AppScene, page: AppSection) {
     if (page == AppSection.ChannelProfile) {
         shell.profileChannel?.let { channel -> ProfileSectionPage(scene, channel) }
     }
-    if (page == AppSection.Settings) {
-        SettingsScreen(
-            onClose = { shell.section = AppSection.Home },
-            onOpenCategory = scene::openExploreCategoryFromSettings,
-            signedIn = scene.account != null,
-            accountName = scene.account?.displayName,
-            reselected = shell.settingsReselected,
-            scrollTo = shell.settingsScrollTarget,
-            onScrolled = { shell.settingsScrollTarget = null },
-        )
-    }
+    if (page == AppSection.Settings) SettingsSectionPage(scene)
 }
 
 @Composable
@@ -283,13 +273,13 @@ private fun AccountSectionPage(scene: AppScene) {
 }
 
 @Composable
-private fun ProfileSectionPage(scene: AppScene, channel: String) {
+private fun ProfileSectionPage(scene: AppScene, channel: ChannelPreview) {
     val shell = scene.shell
     val account = scene.account
     ChannelAboutScreen(
         channel = channel,
         // Whispers go to another person's channel, from a logged-in account.
-        canWhisper = account != null && !channel.equals(account.login, ignoreCase = true),
+        canWhisper = account != null && !channel.login.equals(account.login, ignoreCase = true),
         backEnabled = profileHandlesBack(scene.watching, shell.player.liveMinimized),
         onLeave = {
             when (val back = profileBack(shell.profileOpenedFrom, scene.watching, shell.player.liveMinimized)) {

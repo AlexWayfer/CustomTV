@@ -23,6 +23,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.components.ChannelPreview
+import name.alexwayfer.customtv.ui.components.preview
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
 private const val RECENTS_HEADER_KEY = "recents-header"
@@ -37,7 +39,7 @@ internal fun ColumnScope.HomeRecentChannels(
     viewModel: HomeViewModel,
     logInPrompt: HomeLogInPromptState,
     scrollToTop: OneShotRequest<Unit>?,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     onLogIn: () -> Unit,
 ) {
     val recents by viewModel.recents.collectAsStateWithLifecycle()
@@ -91,7 +93,8 @@ internal fun ColumnScope.HomeRecentChannels(
                     refreshedProfile = recentProfiles[channel.login],
                     onWatch = { live ->
                         focusManager.clearFocus()
-                        onOpen(channel.login, live)
+                        // Without a refreshed profile the row shows the cached one, which the profile finds too.
+                        onOpen(recentProfiles[channel.login]?.preview() ?: ChannelPreview(channel.login), live)
                     },
                     onRemove = { viewModel.removeRecent(channel) },
                     modifier = Modifier.animateItem(),

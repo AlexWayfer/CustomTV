@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
@@ -69,8 +69,9 @@ internal fun StreamInfoPanel(
     meta: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     trailingAction: @Composable () -> Unit = {},
-    containerColor: Color = TwitchSurface,
     subtitle: String? = null,
+    /** Room the content keeps beyond its own padding, such as from the screen's rounded corners. */
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     val displayName = profile.displayName
     val transition = updateTransition(expanded, label = "channelHeader")
@@ -84,11 +85,12 @@ internal fun StreamInfoPanel(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(containerColor)
+            .background(TwitchSurface)
             // What slides up out of the panel goes under its top edge, not under its padding.
             .clipToBounds()
             .clickable(onClick = onToggle)
-            .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 12.dp),
+            .padding(contentPadding)
+            .padding(start = 12.dp, end = 12.dp, top = StreamInfoTopPadding, bottom = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
         if (showExpandedContent) {
@@ -258,10 +260,13 @@ internal fun ChannelHeader(
     followAction: FollowAction,
     onOpenSettings: () -> Unit,
     onHeldChange: (Boolean) -> Unit,
-    containerColor: Color = TwitchSurface,
+    modifier: Modifier = Modifier,
     showTags: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     StreamInfoPanel(
+        modifier = modifier,
+        contentPadding = contentPadding,
         channel = channel,
         profile = profile,
         title = profile.streamTitle,
@@ -312,7 +317,6 @@ internal fun ChannelHeader(
                 }
             }
         },
-        containerColor = containerColor,
     )
 }
 
@@ -351,6 +355,8 @@ private fun Modifier.headerRevealUp(progress: () -> Float): Modifier =
     }
     .graphicsLayer { alpha = progress() }
 
+/** How far the stream info's content sits below the panel's top. */
+internal val StreamInfoTopPadding = 10.dp
 private val HeaderAvatarSize = 40.dp
 private val HeaderAvatarEndPadding = 10.dp
 private val HeaderAvatarSlotWidth = HeaderAvatarSize + HeaderAvatarEndPadding

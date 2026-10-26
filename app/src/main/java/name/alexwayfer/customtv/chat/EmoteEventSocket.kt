@@ -36,6 +36,11 @@ internal class EmoteEventSocket(
         openSocket()
     }
 
+    /** Sends [text] on the socket in use; nothing when there is none. */
+    fun send(text: String) {
+        webSocket?.send(text)
+    }
+
     /** Closes the socket for good, until the next [listen]. */
     fun disconnect() {
         closedByUser = true

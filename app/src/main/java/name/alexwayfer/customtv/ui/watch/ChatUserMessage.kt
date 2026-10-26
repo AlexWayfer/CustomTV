@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -88,6 +89,10 @@ internal fun ChatUserMessage(
     val deletedNote = chatDeletedNote(message)
     val preview = remember { ChatPartPreview() }
     val actions = chatMessageTextActions(message, badgeUrls, onEmoteLongClick, preview)
+    val cosmetics = rememberChatterCosmetics(message.userId)
+    // Where the laid out name lies, which a paint covers; its first frame keeps the name's color.
+    var nameBox by remember(message) { mutableStateOf<Rect?>(null) }
+    val namePaint = rememberNamePaintSpan(cosmetics.paint?.takeIf { includeAuthor }, nickColor, nameBox)
     val look = ChatMessageLook(
         nickColor = nickColor,
         actionItalic = message.isAction && meMessageItalic,
@@ -102,11 +107,14 @@ internal fun ChatUserMessage(
         timestampText = timestampText,
         topChatter = topChatterBadge(message.userLogin),
         sharedChatSource = sharedChatSourceLook(message.sourceRoomId.takeIf { showSharedChatSource }),
+        extraBadges = cosmetics.badges,
+        namePaint = namePaint,
     )
     val inlineContent = remember(message) { linkedMapOf<String, InlineTextContent>() }
     val annotated = remember(message, look, deletedNote, emoteAspects) {
         chatMessageText(message, look, deletedNote, inlineContent, actions)
     }
+    val painted = includeAuthor && cosmetics.paint != null
     Column(modifier.fillMaxWidth()) {
         ChatMessageTextWithLinks(
             text = annotated,
@@ -115,6 +123,7 @@ internal fun ChatUserMessage(
             lines = ChatTextLines(lineHeight, maxLines, overflow, foldProgress),
             onSelectMessage = onEmoteLongClick,
             onOpenLink = actions.openLink,
+            onLayout = { layout -> if (painted) chatAuthorNameBox(annotated, layout)?.let { nameBox = it } },
         )
         val gifs = message.parts.filterIsInstance<ChatPart.Gif>()
         ChatMessageGifs(gifs, visible = showGifs && gifs.isNotEmpty(), gifSize, actions)
@@ -189,6 +198,7 @@ private fun ChatMessageTextWithLinks(
     lines: ChatTextLines,
     onSelectMessage: (() -> Unit)?,
     onOpenLink: (String) -> Unit,
+    onLayout: (TextLayoutResult) -> Unit,
 ) {
     var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     var menuLink by remember { mutableStateOf<ChatLinkMenuTarget?>(null) }
@@ -201,7 +211,10 @@ private fun ChatMessageTextWithLinks(
             lineHeight = lines.lineHeight,
             maxLines = lines.maxLines,
             overflow = lines.overflow,
-            onTextLayout = { textLayout = it },
+            onTextLayout = {
+                textLayout = it
+                onLayout(it)
+            },
             // A folding card lays every line out and cuts them off from the bottom as it closes.
             modifier = lines.foldProgress?.let { progress ->
                 Modifier.revealLines({ textLayout?.getLineBottom(0)?.roundToInt() ?: 0 }, progress)

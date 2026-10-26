@@ -14,11 +14,20 @@
     <string name="following_unavailable">Couldn’t load the channels you follow</string>
     <string name="channels_load_failed">Couldn’t load channels</string>
     <string name="following_last_live">Last live %1$s</string>
-    <string name="following_last_live_today">Today</string>
-    <string name="following_last_live_yesterday">Yesterday</string>
+    <string name="following_last_live_just_now">Just now</string>
+    <string name="following_last_live_today_at">Today at %1$s</string>
+    <string name="following_last_live_yesterday_at">Yesterday at %1$s</string>
     <plurals name="whispers_unread">
         <item quantity="one">%d unread whisper</item>
         <item quantity="other">%d unread whispers</item>
+    </plurals>
+    <plurals name="last_live_minutes_ago">
+        <item quantity="one">%d minute ago</item>
+        <item quantity="other">%d minutes ago</item>
+    </plurals>
+    <plurals name="last_live_hours_ago">
+        <item quantity="one">%d hour ago</item>
+        <item quantity="other">%d hours ago</item>
     </plurals>
     <plurals name="following_last_live_days">
         <item quantity="one">%d day ago</item>
@@ -63,6 +72,15 @@
     <string name="chat_mode_followers_usage">Write the time like 30m, 2h, 1d, 1w, or 3mo</string>
     <string name="chat_mode_change_failed">Couldn\'t change the chat mode</string>
     <string name="chat_modes_premium_hint">Changing chat modes is available in Premium</string>
+    <string name="chat_command_shoutout_argument">[channel]</string>
+    <string name="chat_command_shoutout_description">Give a shoutout to a channel</string>
+    <string name="chat_shoutout_usage">Write the channel after the command, such as /shoutout name</string>
+    <string name="chat_shoutout_offline">Shoutouts can only be given during the stream</string>
+    <string name="chat_shoutout_too_often">A shoutout can be given every 2 minutes, and to the same channel once an hour</string>
+    <string name="chat_shoutout_no_channel">There is no such channel</string>
+    <string name="chat_shoutout_own_channel">A channel can\'t give a shoutout to itself</string>
+    <string name="chat_shoutout_failed">Couldn\'t give the shoutout</string>
+    <string name="chat_shoutout_premium_hint">Shoutouts are available in Premium</string>
     <string name="chat_send_failed">Couldn’t send that message</string>
     <string name="chat_send_log_in">Log in again to chat</string>
     <string name="chat_send_not_allowed">You can’t chat in this channel</string>
@@ -185,6 +203,18 @@
         <item quantity="one">Assigned to %d chatter</item>
         <item quantity="other">Assigned to %d chatters</item>
     </plurals>
+    <plurals name="chatter_labels_chatters_found">
+        <item quantity="one">%d matching chatter</item>
+        <item quantity="other">%d matching chatters</item>
+    </plurals>
+    <string name="chatter_labels_search">Search by nick</string>
+    <string name="chatter_labels_search_empty">No labels have such chatters.</string>
+    <string name="chatter_labels_chatters_show">Show chatters</string>
+    <string name="chatter_labels_chatters_hide">Hide chatters</string>
+    <string name="chatter_labels_chatter_banned">This account is banned on Twitch.</string>
+    <string name="chatter_labels_chatter_not_found">Twitch can’t find this account: it may have been deleted.</string>
+    <string name="chatter_labels_chatter_loading">The chatter’s login is still loading. Try again in a moment.</string>
+    <string name="chatter_labels_chatter_load_failed">Unable to load the chatter’s login.</string>
     <string name="chatter_labels_add">Add label</string>
     <string name="chatter_labels_save">Save</string>
     <string name="chatter_labels_error_save_failed">Unable to save the labels.</string>
@@ -267,6 +297,12 @@
         <item quantity="other">%1$d subscriptions gifted in this channel</item>
     </plurals>
     <string name="chat_community_gift_hide">Hide community gift</string>
+    <string name="chat_shoutout">Shoutout</string>
+    <string name="chat_shoutout_by">%1$s gives a shoutout to</string>
+    <string name="chat_shoutout_description">%1$s gives a shoutout to %2$s</string>
+    <string name="chat_shoutout_description_anonymous">Shoutout to %1$s</string>
+    <string name="chat_shoutout_hide">Hide shoutout</string>
+    <string name="chat_notice_show_shoutout">Show shoutout</string>
     <string name="raid_outgoing_lead">Raiding</string>
     <string name="raid_outgoing_with">with</string>
     <plurals name="chat_hype_train_events_to_start">
@@ -327,6 +363,7 @@
     <string name="profile_videos">Videos</string>
     <string name="profile_clips">Clips</string>
     <string name="chatter_card_whisper">Whisper</string>
+    <string name="profile_message_logs">Open message logs</string>
     <string name="moderation_section">Moderation</string>
     <string name="settings_section_notifications">Notifications</string>
     <string name="settings_section_chatter_portraits">AI portraits and recaps</string>
@@ -346,13 +383,15 @@
     <string name="profile_about_extensions">Some panels are extensions that only Twitch shows.</string>
     <string name="profile_panel_link">Open panel link</string>
     <string name="retry">Retry</string>
+    <string name="search_clear">Clear</string>
     <plurals name="profile_followers">
         <item quantity="one">%1$s follower</item>
         <item quantity="other">%1$s followers</item>
     </plurals>
     <string name="profile_last_live">Last live %1$s</string>
-    <string name="profile_last_live_today">today</string>
-    <string name="profile_last_live_yesterday">yesterday</string>
+    <string name="profile_last_live_just_now">just now</string>
+    <string name="profile_last_live_today_at">today at %1$s</string>
+    <string name="profile_last_live_yesterday_at">yesterday at %1$s</string>
     <plurals name="profile_last_live_days_ago">
         <item quantity="one">%1$d day ago</item>
         <item quantity="other">%1$d days ago</item>
@@ -371,12 +410,16 @@
     <string name="twitch_links_still">Twitch still opens these links</string>
     <string name="twitch_device_waiting">Waiting for Twitch…</string>
     <string name="twitch_login_reopen">Open login page</string>
-    <string name="seven_tv_emotes">7TV emotes</string>
+    <string name="third_party_emotes">Emotes</string>
+    <string name="third_party_badges">Badges</string>
     <string name="seven_tv_emotes_hint">7TV emotes in chat</string>
-    <string name="ffz_emotes">FFZ emotes</string>
+    <string name="seven_tv_badges_hint">Badges from 7TV, such as for a 7TV subscription</string>
+    <string name="seven_tv_paints">Name paints</string>
+    <string name="seven_tv_paints_hint">Gradients and pictures 7TV puts over names</string>
     <string name="ffz_emotes_hint">FrankerFaceZ emotes in chat</string>
-    <string name="bttv_emotes">BTTV emotes</string>
+    <string name="ffz_badges_hint">FrankerFaceZ badges, and the channel\'s own moderator and VIP badges</string>
     <string name="bttv_emotes_hint">BetterTTV emotes in chat</string>
+    <string name="bttv_badges_hint">BetterTTV badges of its developers and helpers</string>
     <string name="emote_completion_without_colon">Complete emotes without a colon</string>
     <string name="emote_completion_without_colon_hint">Suggest Kappa while you type Ka</string>
     <string name="keep_keyboard_after_send">Keep keyboard after sending a message</string>
@@ -410,12 +453,13 @@
     <string name="app_update_play_protect_title">Play Protect may block the update</string>
     <string name="app_update_play_protect_text">CustomTV isn\'t installed from Google Play, so Play Protect may say \"App blocked to protect your device\". Tap \"More details\", then \"Install anyway\".</string>
     <string name="app_update_play_protect_install">Install</string>
-    <string name="settings_section_emotes">Emotes</string>
     <string name="settings_section_messages">Messages</string>
     <string name="settings_section_sending">Sending</string>
     <string name="settings_section_playback">Playback</string>
     <string name="background_sound_only">Sound only in the background</string>
     <string name="background_sound_only_hint">Saves battery and data. Playback pauses for a second when you lock the screen or come back.</string>
+    <string name="smooth_sound">Smooth sound</string>
+    <string name="smooth_sound_hint">Fades the sound in and out on start, pause, and close.</string>
     <string name="me_messages">/me messages</string>
     <string name="me_messages_name_color">Name color</string>
     <string name="me_messages_italic">Italic</string>
@@ -453,6 +497,7 @@
     <string name="emote_picker_channel_follow">%1$s · Follow</string>
     <string name="emote_picker_channel_subscriptions">%1$s · Subscriptions</string>
     <string name="emote_picker_channel_platform" translatable="false">%1$s · %2$s</string>
+    <string name="emote_picker_personal">Personal · %1$s</string>
     <string name="close">Close</string>
     <string name="cancel">Cancel</string>
     <string name="chat_open_link_title">Open this link?</string>
@@ -476,6 +521,7 @@
     <string name="sleep_timer_warning">The player closes soon</string>
     <string name="readable_colors">Readable colors</string>
     <string name="timestamps">Timestamps</string>
+    <string name="hide_stream">Hide stream</string>
     <string name="chat_text_size">Text size</string>
     <string name="refresh_emotes_and_labels">Refresh emotes and labels</string>
     <string name="chat_copy">Copy</string>
@@ -559,6 +605,7 @@
     <string name="emote_preview_library_global">%1$s global emote</string>
     <string name="emote_preview_library_channel">%1$s emote on %2$s</string>
     <string name="emote_preview_library">%1$s emote</string>
+    <string name="emote_preview_library_personal">%1$s personal emote</string>
     <string name="diagnostics_channel">Problem reports</string>
     <string name="diagnostics_text">Send a report to the developer so it can be fixed.</string>
     <string name="diagnostics_send">Send report</string>
@@ -584,7 +631,7 @@
     <string name="premium_feature_channel_points">Channel points</string>
     <string name="premium_feature_poll_voting">Voting in polls and predictions</string>
     <string name="smooth_new_messages">Smooth new messages</string>
-    <string name="smooth_new_messages_hint">Smooth scrolling that speeds up when messages arrive quickly</string>
+    <string name="smooth_new_messages_hint">Smooth scrolling that speeds up when messages arrive quickly. Uses a bit more battery</string>
     <string name="player_fullscreen">Full screen</string>
     <string name="player_fullscreen_exit">Exit full screen</string>
     <string name="fullscreen_chat_settings">Full screen chat</string>
@@ -608,7 +655,7 @@
     <string name="settings_page_chat_hint">Emotes and messages</string>
     <string name="settings_page_mentions">Mentions</string>
     <string name="settings_page_mentions_hint">Highlight, sound, and vibration</string>
-    <string name="settings_page_playback_hint">Sound in the background</string>
+    <string name="settings_page_playback_hint">Background sound and smooth sound</string>
     <string name="gestures">Gestures</string>
     <string name="gestures_hint">What swipes and long presses do</string>
     <string name="settings_licenses">Licenses</string>
@@ -643,6 +690,10 @@
     <string name="gesture_player_down_result">Minimizes it</string>
     <string name="gesture_player_up">Swipe the player up</string>
     <string name="gesture_player_up_result">Opens full screen</string>
+    <string name="gesture_stream_info_up">Swipe the stream info up</string>
+    <string name="gesture_stream_info_up_result">Hides the stream and pauses it, leaving the chat</string>
+    <string name="gesture_stream_info_down">Swipe the stream info down while the stream is hidden</string>
+    <string name="gesture_stream_info_down_result">Brings the stream back live</string>
     <string name="gesture_mini_player_up">Swipe the mini player up</string>
     <string name="gesture_mini_player_up_result">Expands it</string>
     <string name="gesture_mini_player_sideways">Swipe the mini player sideways</string>
@@ -664,6 +715,7 @@
     <string name="gesture_hint_exit_fullscreen">Tip: swipe the video down to leave full screen</string>
     <string name="gesture_hint_fullscreen_chat_side">Tip: swipe the chat across the screen to move it</string>
     <string name="gesture_hint_fullscreen_chat_hide">Tip: swipe the chat toward its edge to hide it, and swipe the video to bring it back</string>
+    <string name="gesture_hint_hide_stream">Tip: swipe the stream info up to hide the stream, and down to bring it back</string>
     <plurals name="tap_seek_forward">
         <item quantity="one">+%1$d s</item>
         <item quantity="other">+%1$d s</item>

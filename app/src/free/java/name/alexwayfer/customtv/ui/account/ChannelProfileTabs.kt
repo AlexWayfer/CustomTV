@@ -13,6 +13,8 @@ import androidx.compose.ui.unit.Dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.PremiumBannerRequest
+import name.alexwayfer.customtv.ui.components.ChannelPreview
+import name.alexwayfer.customtv.ui.components.preview
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 
 /**
@@ -23,7 +25,7 @@ import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 internal fun ChannelProfileTabs(
     channelLogin: String,
     backEnabled: Boolean,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     aboutContent: @Composable ColumnScope.() -> Unit,
     firstTabRequest: Int,
@@ -44,7 +46,7 @@ internal fun ChannelProfileTabs(
         tabTitles = listOf(R.string.profile_home, R.string.profile_about),
         selectedTab = selectedTab,
         onSelectTab = { selectedTab = it },
-        onOpenChat = { onOpenChannel(channelLogin) },
+        onOpenChat = { onOpenChannel(profile.preview()) },
         minHeight = minHeight,
         tabRowPin = tabRowPin,
         modifier = modifier,

@@ -64,6 +64,7 @@ import name.alexwayfer.customtv.chat.chatterFactCopyText
 import name.alexwayfer.customtv.chat.chatterSubscription
 import name.alexwayfer.customtv.chat.shownUnits
 import name.alexwayfer.customtv.data.ChatterCardCache
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.components.lateralTransform
 import java.time.Instant
@@ -100,7 +101,7 @@ internal val LocalOwnChatBadges = compositionLocalOf<List<ChatBadge>?> { null }
 internal val LocalOpenChatterCard = compositionLocalOf<(ChatterCardRequest) -> Unit> { {} }
 
 /** Opens a chatter's full channel profile; without one, the card's header is not a button. */
-internal val LocalOpenChatterProfile = compositionLocalOf<((login: String) -> Unit)?> { null }
+internal val LocalOpenChatterProfile = compositionLocalOf<((ChannelPreview) -> Unit)?> { null }
 
 /** What the open chat's cards already loaded; without one, each card starts empty. */
 internal val LocalChatterCardCache = staticCompositionLocalOf<ChatterCardCache?> { null }

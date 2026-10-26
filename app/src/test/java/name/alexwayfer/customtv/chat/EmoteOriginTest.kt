@@ -91,4 +91,12 @@ class EmoteOriginTest {
             libraryEmoteOrigin(EmoteLibrary.Ffz, onThisChannel = false, "", global = false),
         )
     }
+
+    @Test
+    fun aPersonalEmoteIsPersonalEvenWhereTheChannelHasOneOfTheSameName() {
+        assertEquals(
+            EmoteOrigin.LibraryPersonal(EmoteLibrary.SevenTv),
+            libraryEmoteOrigin(EmoteLibrary.SevenTv, onThisChannel = true, "xQc", global = true, personal = true),
+        )
+    }
 }

@@ -10,6 +10,7 @@ import name.alexwayfer.customtv.links.TwitchLinkTarget
 import name.alexwayfer.customtv.links.loadLinkedClip
 import name.alexwayfer.customtv.links.openInBrowser
 import name.alexwayfer.customtv.links.twitchLinkTarget
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 
 /**
  * Opens the twitch.tv links that Android or a tapped link hands to the app: a channel as a stream-start notification
@@ -25,7 +26,7 @@ internal fun AppTwitchLinkEffect(scene: AppScene) {
             TwitchLinkRequest.clear()
             when (val target = twitchLinkTarget(url)) {
                 is TwitchLinkTarget.Channel ->
-                    sceneLatest.openChannel(target.login, sceneLatest.shell.section == AppSection.Home)
+                    sceneLatest.openChannel(ChannelPreview(target.login), sceneLatest.shell.section == AppSection.Home)
                 is TwitchLinkTarget.Video -> {
                     val video = LinkedVideos.load(target.id)
                     if (video != null) sceneLatest.openLinkedVideo(video) else openInBrowser(sceneLatest.activity, url)

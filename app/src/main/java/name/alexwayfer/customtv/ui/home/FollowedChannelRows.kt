@@ -43,6 +43,8 @@ import name.alexwayfer.customtv.ui.components.VIDEO_ASPECT_RATIO
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
+import name.alexwayfer.customtv.ui.recentLastLiveText
+import name.alexwayfer.customtv.ui.rememberMinuteClock
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
 private val PREVIEW_WIDTH = 128.dp
@@ -216,7 +218,7 @@ internal fun FollowedOfflineChannelRow(
             FollowedWatchStreakLine(channelId = channel.id, isLive = false)
             val lastBroadcastAt = followedLastBroadcastMillis(channel)
             if (lastBroadcastAt != null) {
-                val label = followedLastBroadcastLabel(lastBroadcastAt, System.currentTimeMillis())
+                val label = followedLastBroadcastLabel(lastBroadcastAt, rememberMinuteClock())
                 val description = stringResource(R.string.following_last_live, label)
                 Text(
                     text = label,
@@ -244,8 +246,13 @@ private fun followedChannelProfile(channel: FollowedChannel) = ChannelProfile(
 @Composable
 private fun followedLastBroadcastLabel(lastBroadcastAtMillis: Long, nowMillis: Long): String {
     return when (val age = followedLastBroadcastAge(lastBroadcastAtMillis, nowMillis)) {
-        FollowedLastBroadcastAge.Today -> stringResource(R.string.following_last_live_today)
-        FollowedLastBroadcastAge.Yesterday -> stringResource(R.string.following_last_live_yesterday)
+        is FollowedLastBroadcastAge.Recent -> recentLastLiveText(
+            age.age,
+            lastBroadcastAtMillis,
+            justNow = R.string.following_last_live_just_now,
+            todayAt = R.string.following_last_live_today_at,
+            yesterdayAt = R.string.following_last_live_yesterday_at,
+        )
         is FollowedLastBroadcastAge.DaysAgo ->
             pluralStringResource(R.plurals.following_last_live_days, age.days, age.days)
         is FollowedLastBroadcastAge.MonthsAgo ->

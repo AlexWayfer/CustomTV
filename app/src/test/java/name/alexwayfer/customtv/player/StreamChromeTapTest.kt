@@ -6,48 +6,68 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StreamChromeTapTest {
+    /** [chromeChangeSyncsControls] on a player in sight unless [playerOutOfSight]. */
+    private fun syncs(
+        headerExpanded: Boolean,
+        minimizeControl: Boolean,
+        visible: Boolean,
+        playerOutOfSight: Boolean = false,
+    ) = chromeChangeSyncsControls(headerExpanded, minimizeControl, visible, playerOutOfSight)
+
     @Test
     fun openingTheCollapsedPlaqueSyncsControls() {
-        assertTrue(chromeChangeSyncsControls(headerExpanded = false, minimizeControl = false, visible = true))
+        assertTrue(syncs(headerExpanded = false, minimizeControl = false, visible = true))
     }
 
     @Test
     fun closingTheExpandedPlaqueSyncsControls() {
-        assertTrue(chromeChangeSyncsControls(headerExpanded = true, minimizeControl = true, visible = false))
+        assertTrue(syncs(headerExpanded = true, minimizeControl = true, visible = false))
     }
 
     @Test
     fun expandingFromTheMiniPlayerWithTheHeaderOpenSyncsControls() {
-        assertTrue(chromeChangeSyncsControls(headerExpanded = true, minimizeControl = false, visible = true))
+        assertTrue(syncs(headerExpanded = true, minimizeControl = false, visible = true))
     }
 
     @Test
     fun aRepeatedShowWithTheSameStateDoesNotSyncAgain() {
-        assertFalse(chromeChangeSyncsControls(headerExpanded = true, minimizeControl = true, visible = true))
-        assertFalse(chromeChangeSyncsControls(headerExpanded = false, minimizeControl = false, visible = false))
+        assertFalse(syncs(headerExpanded = true, minimizeControl = true, visible = true))
+        assertFalse(syncs(headerExpanded = false, minimizeControl = false, visible = false))
     }
 
     @Test
+    fun theStreamInfoOverAHiddenStreamOpensWithoutTappingThePlayer() {
+        assertFalse(syncs(headerExpanded = false, minimizeControl = false, visible = true, playerOutOfSight = true))
+    }
+
+    @Test
+    fun theStreamInfoOverAHiddenStreamClosesWithoutTappingThePlayer() {
+        assertFalse(syncs(headerExpanded = true, minimizeControl = true, visible = false, playerOutOfSight = true))
+    }
+
+    /** [playerControlsSync] on a playing stream unless [recording] or [paused]. */
+    private fun controlsSync(
+        wanted: Boolean,
+        controlsVisible: Boolean,
+        recording: Boolean = false,
+        paused: Boolean = false,
+    ) = playerControlsSync(recording, paused, wanted, controlsVisible)
+
+    @Test
     fun hiddenStreamControlsAreTappedToShow() {
-        assertEquals(
-            PlayerControlsSync.Tap,
-            playerControlsSync(recording = false, wanted = true, controlsVisible = false),
-        )
+        assertEquals(PlayerControlsSync.Tap, controlsSync(wanted = true, controlsVisible = false))
     }
 
     @Test
     fun visibleStreamControlsAreTappedToHide() {
-        assertEquals(
-            PlayerControlsSync.Tap,
-            playerControlsSync(recording = false, wanted = false, controlsVisible = true),
-        )
+        assertEquals(PlayerControlsSync.Tap, controlsSync(wanted = false, controlsVisible = true))
     }
 
     @Test
     fun hiddenRecordingControlsShowWithoutATapThatWouldPause() {
         assertEquals(
             PlayerControlsSync.ShowWithoutTap,
-            playerControlsSync(recording = true, wanted = true, controlsVisible = false),
+            controlsSync(wanted = true, controlsVisible = false, recording = true),
         )
     }
 
@@ -55,19 +75,32 @@ class StreamChromeTapTest {
     fun visibleRecordingControlsHideWithoutATapThatWouldPause() {
         assertEquals(
             PlayerControlsSync.HideWithoutTap,
-            playerControlsSync(recording = true, wanted = false, controlsVisible = true),
+            controlsSync(wanted = false, controlsVisible = true, recording = true),
+        )
+    }
+
+    @Test
+    fun aPausedStreamsControlsHideWithoutATapThatWouldPlayIt() {
+        assertEquals(
+            PlayerControlsSync.HideWithoutTap,
+            controlsSync(wanted = false, controlsVisible = true, paused = true),
+        )
+    }
+
+    @Test
+    fun aPausedStreamsControlsShowWithoutATapThatWouldPlayIt() {
+        assertEquals(
+            PlayerControlsSync.ShowWithoutTap,
+            controlsSync(wanted = true, controlsVisible = false, paused = true),
         )
     }
 
     @Test
     fun controlsAlreadyInTheWantedStateAreLeftAlone() {
+        assertEquals(PlayerControlsSync.None, controlsSync(wanted = true, controlsVisible = true))
         assertEquals(
             PlayerControlsSync.None,
-            playerControlsSync(recording = false, wanted = true, controlsVisible = true),
-        )
-        assertEquals(
-            PlayerControlsSync.None,
-            playerControlsSync(recording = true, wanted = false, controlsVisible = false),
+            controlsSync(wanted = false, controlsVisible = false, recording = true),
         )
     }
 
@@ -139,40 +172,44 @@ class StreamChromeTapTest {
         assertEquals(PlayerTouchEnd.AppTap, playerTouchEnd(withinTapSlop = true, offPage = true, onDisclosure = true))
     }
 
+    /** [headerCollapseTimerRuns] for an expanded header over a player in sight that has started. */
+    private fun timerRuns(
+        headerExpanded: Boolean = true,
+        minimizeControl: Boolean = true,
+        held: Boolean = false,
+        videoLoading: Boolean = false,
+        playerOutOfSight: Boolean = false,
+    ) = headerCollapseTimerRuns(headerExpanded, minimizeControl, held, videoLoading, playerOutOfSight)
+
     @Test
     fun anExpandedHeaderCollapsesOnTheTimer() {
-        assertTrue(
-            headerCollapseTimerRuns(headerExpanded = true, minimizeControl = true, held = false, videoLoading = false),
-        )
-        assertTrue(
-            headerCollapseTimerRuns(headerExpanded = true, minimizeControl = false, held = false, videoLoading = false),
-        )
+        assertTrue(timerRuns())
+        assertTrue(timerRuns(minimizeControl = false))
     }
 
     @Test
     fun anOpenMenuKeepsTheHeaderExpanded() {
-        assertFalse(
-            headerCollapseTimerRuns(headerExpanded = true, minimizeControl = true, held = true, videoLoading = false),
-        )
+        assertFalse(timerRuns(held = true))
     }
 
     @Test
     fun aLoadingVideoKeepsTheHeaderExpanded() {
-        assertFalse(
-            headerCollapseTimerRuns(headerExpanded = true, minimizeControl = true, held = false, videoLoading = true),
-        )
+        assertFalse(timerRuns(videoLoading = true))
+    }
+
+    @Test
+    fun aLoadingVideoOutOfSightLetsTheHeaderCollapse() {
+        assertTrue(timerRuns(videoLoading = true, playerOutOfSight = true))
+    }
+
+    @Test
+    fun anOpenMenuKeepsTheHeaderOverAHiddenStreamExpanded() {
+        assertFalse(timerRuns(held = true, playerOutOfSight = true))
     }
 
     @Test
     fun aCollapsedHeaderHasNoTimer() {
-        assertFalse(
-            headerCollapseTimerRuns(
-                headerExpanded = false,
-                minimizeControl = false,
-                held = false,
-                videoLoading = false,
-            ),
-        )
+        assertFalse(timerRuns(headerExpanded = false, minimizeControl = false))
     }
 
     @Test
@@ -220,27 +257,39 @@ class StreamChromeTapTest {
         assertFalse(showsChrome(controlsVisible = false))
     }
 
+    @Test
+    fun controlsOfAPausedPlayerOutOfSightDoNotExpandTheHeader() {
+        assertFalse(showsChrome(playerOutOfSight = true))
+    }
+
     /** [controlsShowChrome] for controls that appear over a collapsed header in the full player. */
     private fun showsChrome(
         controlsVisible: Boolean = true,
         headerExpanded: Boolean = false,
         minimizeControl: Boolean = false,
         minimized: Boolean = false,
+        playerOutOfSight: Boolean = false,
     ) = controlsShowChrome(
         controlsVisible = controlsVisible,
         headerExpanded = headerExpanded,
         minimizeControl = minimizeControl,
         minimized = minimized,
+        playerOutOfSight = playerOutOfSight,
     )
 
     @Test
     fun visiblePlayerControlsKeepTheHeaderExpandedAfterTheTimer() {
-        assertFalse(headerCollapsesAfterTimer(playerControlsVisible = true))
+        assertFalse(headerCollapsesAfterTimer(playerControlsVisible = true, playerOutOfSight = false))
     }
 
     @Test
     fun theHeaderCollapsesAfterTheTimerOnceControlsAreHidden() {
-        assertTrue(headerCollapsesAfterTimer(playerControlsVisible = false))
+        assertTrue(headerCollapsesAfterTimer(playerControlsVisible = false, playerOutOfSight = false))
+    }
+
+    @Test
+    fun theControlsOfAPausedPlayerOutOfSightDoNotHoldTheHeader() {
+        assertTrue(headerCollapsesAfterTimer(playerControlsVisible = true, playerOutOfSight = true))
     }
 
     @Test

@@ -125,7 +125,8 @@ class ChatModeCommandTest {
         assertNull(sendErrorTap(ChatSendError.Failed, locked))
         assertNull(sendErrorTap(null, locked))
         assertNull(sendErrorTap(ChatSendError.ChatModesPremium, null))
-        assertNull(sendErrorTap(ChatSendError.ChatModesPremium, ChatModeControl.Available { null }))
+        val available = ChatModeControl.Available(change = { null }, shoutout = { null })
+        assertNull(sendErrorTap(ChatSendError.ChatModesPremium, available))
     }
 
     @Test

@@ -2,8 +2,8 @@ package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.BlendMode
@@ -35,15 +35,20 @@ internal fun ChatEmoteEffectImage(
         return
     }
     val animated = !LocalPlayerContentHidden.current && emoteEffectsMove(effects)
-    val frameTimeNanos by rememberEmoteEffectTime(animated)
+    // Read only while drawing and in the layer, so a tick redraws the emote without recomposing its row.
+    val frameTime = rememberEmoteEffectTime(animated)
+    val stillColorFilter = remember(effects) { emoteEffectColorFilter(effects, 0L) }
     SharedEmoteImage(
         url = url,
         contentDescription = contentDescription,
         size = size,
         aspectRatio = aspectRatio,
-        // Only the color effects read the clock during composition; motion reads it in the layer below.
-        colorFilter = emoteEffectColorFilter(effects, frameTimeNanos),
-        modifier = Modifier.graphicsLayer { applyEmoteMotion(effects, frameTimeNanos) },
+        colorFilter = if (emoteEffectColorMoves(effects)) {
+            { emoteEffectColorFilter(effects, frameTime.value) }
+        } else {
+            { stillColorFilter }
+        },
+        modifier = Modifier.graphicsLayer { applyEmoteMotion(effects, frameTime.value) },
     )
 }
 

@@ -43,6 +43,36 @@ internal fun updateChatterAssignments(
     return result
 }
 
+/** Every chatter the assignments name, by user ID, each once. */
+internal fun chatterAssignmentUserIds(assignments: JSONArray): List<String> =
+    assignments.objects().map { it.optString("userId") }.filter { it.isNotBlank() }.distinct()
+
+/**
+ * The extension's `assignments.json` with every entry of a chatter in [users] given the name and login the chatter
+ * has now, as the extension brings a chatter's entries up to date when their card opens. Every other field and entry
+ * stays as it was. Null when no entry needed a change, so nothing is written.
+ */
+internal fun syncChatterAssignmentUsers(assignments: JSONArray, users: Map<String, LabeledChatter>): JSONArray? {
+    var changed = false
+    val result = JSONArray()
+    for (index in 0 until assignments.length()) {
+        val entry = assignments.opt(index)
+        val assignment = entry as? JSONObject
+        val user = assignment?.let { users[it.optString("userId")] }
+        if (assignment != null && user != null && !assignment.names(user)) {
+            result.put(JSONObject(assignment.toString()).put("username", user.displayName).put("login", user.login))
+            changed = true
+        } else {
+            result.put(entry)
+        }
+    }
+    return result.takeIf { changed }
+}
+
+/** Whether the entry already has the [user]'s name and login. */
+private fun JSONObject.names(user: LabeledChatter): Boolean =
+    optString("username") == user.displayName && optString("login") == user.login
+
 /** Indents the JSON with tabs, as the extension writes its Gist files. */
 internal fun formatChatterLabelsJson(array: JSONArray): String =
     array.toString(1).replace(LEADING_SPACES) { "\t".repeat(it.value.length) }

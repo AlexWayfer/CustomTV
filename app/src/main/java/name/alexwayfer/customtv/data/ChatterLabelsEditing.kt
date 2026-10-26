@@ -1,5 +1,7 @@
 package name.alexwayfer.customtv.data
 
+import java.time.Instant
+import java.time.format.DateTimeParseException
 import java.util.Base64
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -45,16 +47,51 @@ internal fun editableChatterLabels(labels: JSONArray): List<EditableChatterLabel
         )
     }
 
-/** How many chatters have each label, by label ID. A chatter listed twice for one label counts once. */
-internal fun chatterLabelChatterCounts(assignments: JSONArray): Map<String, Int> {
-    val users = mutableMapOf<String, MutableSet<String>>()
-    for (index in 0 until assignments.length()) {
-        val assignment = assignments.optJSONObject(index) ?: continue
+/** A chatter who has a label in the Gist, with when it was assigned when the entry has a valid time. */
+internal data class ChatterLabelAssignee(
+    val userId: String,
+    val login: String,
+    val displayName: String,
+    val assignedAtMillis: Long?,
+) {
+    /** The name with the login after it when the two differ, as the extension lists its assignments. */
+    val shownName: String
+        get() = when {
+            displayName.isBlank() -> login.ifBlank { userId }
+            login.isBlank() || login.equals(displayName, ignoreCase = true) -> displayName
+            else -> "$displayName ($login)"
+        }
+}
+
+/**
+ * The chatters who have each label, by label ID, sorted by login (or name, without one) as the extension sorts them
+ * by default. A chatter listed twice for one label is listed once, with the first entry's time.
+ */
+internal fun chatterLabelAssignees(assignments: JSONArray): Map<String, List<ChatterLabelAssignee>> {
+    val users = mutableMapOf<String, MutableMap<String, ChatterLabelAssignee>>()
+    for (assignment in assignments.objects()) {
         val labelId = assignment.optString("labelId")
         val userId = assignment.optString("userId")
-        if (labelId.isNotBlank() && userId.isNotBlank()) users.getOrPut(labelId) { mutableSetOf() }.add(userId)
+        if (labelId.isBlank() || userId.isBlank()) continue
+        users.getOrPut(labelId) { mutableMapOf() }.getOrPut(userId) {
+            ChatterLabelAssignee(
+                userId = userId,
+                // A null the extension wrote would read as the word.
+                login = assignment.text("login").orEmpty(),
+                displayName = assignment.text("username").orEmpty(),
+                assignedAtMillis = parseAssignedAt(assignment.optString("assignedAt")),
+            )
+        }
     }
-    return users.mapValues { (_, ids) -> ids.size }
+    return users.mapValues { (_, byUser) ->
+        byUser.values.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.login.ifBlank { it.displayName } })
+    }
+}
+
+private fun parseAssignedAt(value: String): Long? = try {
+    Instant.parse(value).toEpochMilli()
+} catch (_: DateTimeParseException) {
+    null
 }
 
 /**

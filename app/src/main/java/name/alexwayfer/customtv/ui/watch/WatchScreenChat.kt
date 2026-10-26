@@ -5,9 +5,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import name.alexwayfer.customtv.chat.ChatNick
+import name.alexwayfer.customtv.chat.shoutoutSourceName
 import name.alexwayfer.customtv.chat.TwitchPlaqueAction
 import name.alexwayfer.customtv.chat.replyParentMessageId
 import name.alexwayfer.customtv.chat.replySessionCancelsToStarter
@@ -15,8 +20,11 @@ import name.alexwayfer.customtv.chat.replySessionChooses
 import name.alexwayfer.customtv.chat.subscribersPlaqueAction
 import name.alexwayfer.customtv.chat.threadReplyHidesChrome
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
+import name.alexwayfer.customtv.data.GestureHint
 import name.alexwayfer.customtv.data.sharedChatCollaborationLoading
 import name.alexwayfer.customtv.links.openOutsideApp
+import name.alexwayfer.customtv.ui.GestureHintReporter
+import name.alexwayfer.customtv.ui.LocalGestureHints
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 
 /** The live chat with its notices over it and the reply thread under it. */
@@ -55,6 +63,8 @@ private fun ColumnScope.WatchChatPaneContent(scene: WatchScene, layout: Minimiza
         sevenTvEmotes = data.sevenTvEmotes.value,
         ffzEmotes = data.ffzEmotes.value,
         bttvEmotes = data.bttvEmotes.value,
+        personalEmotes = { data.personalEmotes.value },
+        sevenTvCosmetics = { data.sevenTvCosmetics.value },
         nickColors = { data.nickColors.value },
         listState = chat.listState,
         highlightPins = scene.highlightPins,
@@ -89,10 +99,21 @@ private fun WatchChatNotices(scene: WatchScene, layout: MinimizablePlayerLayout,
     val context = LocalContext.current
     val data = scene.data
     val chatViewModel = scene.chatViewModel
+    val shoutout = data.shoutout.value
+    val sourceLogin = shoutout?.sourceLogin
+    // Only the source's own name is read from the chatters, so other chatters joining do not recompose the notices.
+    val shoutoutSourceName by remember(sourceLogin) {
+        derivedStateOf { shoutoutSourceName(sourceLogin, data.sessionChatters.value) }
+    }
+    val shoutoutFollow = rememberShoutoutFollow(shoutout, scene.account)
+    FollowDialogs(shoutoutFollow.action, hidden = false)
     ChatNotices(
         messages = { data.messages.value },
         pin = data.pinnedChat.value,
         raid = data.outgoingRaid.value,
+        shoutout = shoutout,
+        shoutoutSourceName = shoutoutSourceName,
+        shoutoutFollow = shoutoutFollow,
         events = data.channelEvents.value,
         pointsIconUrl = scene.profile.channelPointsIconUrl,
         channelId = scene.profile.id,
@@ -108,6 +129,7 @@ private fun WatchChatNotices(scene: WatchScene, layout: MinimizablePlayerLayout,
             )
         },
         onHideEvent = chatViewModel::hideChannelEvent,
+        onOpenChatterCard = scene::openChatterCard,
     )
 }
 
@@ -151,7 +173,7 @@ internal fun WatchInputBar(scene: WatchScene, layout: MinimizablePlayerLayout) {
             channel = scene.inputChannel(layout, rememberChatModeControl(scene.profile.id, scene.ownBadges?.badges)),
             user = scene.inputUser(),
             compose = watchCompose(scene),
-            menu = scene.chatMenu(),
+            menu = scene.chatMenu(LocalGestureHints.current),
             bar = scene.inputBarLook(layout, context),
         )
     }
@@ -182,6 +204,11 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
     val settings = scene.settings
     val data = scene.data
     val chat = scene.chat
+    val userId = scene.account.userId
+    // Only the user's own emotes are read, so the sets that come for other chatters do not recompose the bar.
+    val ownPersonal by remember(userId, data.personalEmotes) {
+        derivedStateOf(structuralEqualityPolicy()) { data.personalEmotes.value.ownFor(userId) }
+    }
     return ChatCompose(
         draft = chat.draft,
         emotes = ChatInputEmotes(
@@ -192,6 +219,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
             bttv = data.bttvEmotes.value,
             ffz = data.ffzEmotes.value,
             completionWithoutColon = settings.emoteCompletionWithoutColon,
+            ownPersonal = ownPersonal,
         ),
         replyParentMessageId = replyParentMessageId(chat.replySession),
         replyFocusRequest = chat.replyFocusRequest,
@@ -217,7 +245,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
     )
 }
 
-private fun WatchScene.chatMenu() = ChatMenu(
+private fun WatchScene.chatMenu(gestureHints: GestureHintReporter?) = ChatMenu(
     settings = storedChatSettings,
     onReadableColorsChange = chatSettingsViewModel::setReadableColors,
     onTimestampsChange = chatSettingsViewModel::setTimestamps,
@@ -235,6 +263,10 @@ private fun WatchScene.chatMenu() = ChatMenu(
             messageTimes = { data.messages.value.map { it.timestampMillis } },
             onOpenSettings = { dismissToSettings(SettingsScrollTarget.ChatterPortraits) },
         )
+    },
+    streamHide = StreamHideToggle(streamHiding.hidden) { hide ->
+        gestureHints?.slowPathUsed(GestureHint.HideStream)
+        streamHiding.set(hide)
     },
 )
 

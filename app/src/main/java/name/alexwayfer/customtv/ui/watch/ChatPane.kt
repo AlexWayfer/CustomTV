@@ -39,6 +39,8 @@ import name.alexwayfer.customtv.chat.ChatBadge
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatRaiders
 import name.alexwayfer.customtv.chat.ChatterHistory
+import name.alexwayfer.customtv.chat.PersonalEmotes
+import name.alexwayfer.customtv.chat.SevenTvCosmetics
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.chat.SuspiciousChatters
 import name.alexwayfer.customtv.chat.channelHiddenPhrases
@@ -49,6 +51,7 @@ import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChatSettings
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.ChatterCardCache
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.settings.SettingsViewModel
 import name.alexwayfer.customtv.ui.settings.beforeRestore
 import name.alexwayfer.customtv.ui.theme.TwitchBg
@@ -79,8 +82,12 @@ internal fun ColumnScope.ChatPane(
     onStickToBottomChange: (Boolean) -> Unit,
     onOpenLink: (String) -> Unit,
     /** Opens a chatter's full channel profile from their card. */
-    onOpenChatterProfile: (login: String) -> Unit,
+    onOpenChatterProfile: (ChannelPreview) -> Unit,
     backgroundAlpha: () -> Float,
+    /** Read only by the rows of the chatters it holds; the live chat's alone, as a recording has none. */
+    personalEmotes: () -> PersonalEmotes = { PersonalEmotes() },
+    /** Read only by the rows of the chatters it holds; the live chat's alone, as 7TV sends them only live. */
+    sevenTvCosmetics: () -> SevenTvCosmetics = { SevenTvCosmetics() },
     selfLogin: String = "",
     selfDisplayName: String = "",
     ownFollow: OwnChannelFollow? = null,
@@ -112,13 +119,15 @@ internal fun ColumnScope.ChatPane(
     val appSettings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val settings = appSettings.beforeRestore()
     val sources = emoteSources(settings)
+    val currentPersonalEmotes by rememberUpdatedState(personalEmotes)
+    val readPersonalEmotes = remember { { currentPersonalEmotes() } }
     val appearance = remember(
         chatSettings.readableColors, chatSettings.textSize, settings.meMessageItalic,
         badgeUrls, sources, sevenTvEmotes, ffzEmotes, bttvEmotes,
     ) {
         chatAppearance(
             chatSettings.readableColors, chatSettings.textSize, settings.meMessageItalic,
-            badgeUrls, ThirdPartyEmotes(sources, sevenTvEmotes, ffzEmotes, bttvEmotes),
+            badgeUrls, ThirdPartyEmotes(sources, sevenTvEmotes, ffzEmotes, bttvEmotes, readPersonalEmotes),
         )
     }
     val mentions = ChatMentions(settings.highlightMentions, selfLogin, selfDisplayName, settings.keywordPhrases)
@@ -155,8 +164,10 @@ internal fun ColumnScope.ChatPane(
         LocalOnChatMention provides onMention,
     ) {
         ProvideChatRowLocals(channel, channelProfile, nickColors, settings.topChatterBadges) {
-            ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
-            belowList(appearance)
+            ProvideChatCosmetics(appSettings, sevenTvCosmetics) {
+                ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
+                belowList(appearance)
+            }
         }
     }
 }

@@ -55,6 +55,7 @@ internal fun PlayerContentArea(
                 Spacer(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .streamRoom(scene.streamHiding)
                         .aspectRatio(VIDEO_ASPECT_RATIO),
                 )
             }
@@ -72,7 +73,9 @@ private fun rememberMinimizablePlayerLayout(
     val chatBackgroundAlpha by rememberUpdatedState(
         if (layout.chat?.overPlayer == true) FULLSCREEN_OVERLAY_CHAT_ALPHA else frame.visualState.chromeAlpha,
     )
-    val playerBottomPx by rememberUpdatedState(frame.playerBounds.y + frame.playerBounds.height)
+    val playerBounds by rememberUpdatedState(frame.playerBounds)
+    // A hidden stream gives its room to the stream info and the chat; read when a sheet opens, not on each frame.
+    val streamHiding by rememberUpdatedState(scene.streamHiding)
     val chatOverVideo by rememberUpdatedState(layout.chat?.overPlayer == true)
     val containerHeightPx = frame.contentConstraints?.maxHeight ?: frame.maxHeightPx
     val fullscreenActive = scene.fullscreenActive
@@ -84,7 +87,9 @@ private fun rememberMinimizablePlayerLayout(
         MinimizablePlayerLayout(
             chatBackgroundAlpha = { chatBackgroundAlpha },
             containerHeightPx = containerHeightPx,
-            playerBottomPx = { playerBottomPx },
+            playerBottomPx = {
+                playerBounds.y + streamRoomHeightPx(playerBounds.height, streamHiding?.roomClosed ?: 0f)
+            },
             fullscreen = fullscreenActive,
             onComposerPanelPx = { ui.composerPanelPx = it },
             chatOverVideo = { chatOverVideo },
@@ -123,7 +128,12 @@ private fun Modifier.playerContent(
 ): Modifier = this
     .hiddenAtFullSize(hidden, frame.contentConstraints ?: frame.constraints)
     .fillMaxSize()
-    .then(layout.chat?.let { chat -> Modifier.fullscreenChatFrame(scene, frame, layout, chat) } ?: Modifier)
+    .hiddenStreamContentShift(scene.streamHiding, scene::fullscreenInfoRoomPx)
+    .then(
+        layout.chat?.let { chat -> Modifier.fullscreenChatFrame(scene, frame, layout, chat) }
+            // In landscape, the stream info and the chat keep clear of the display cutout at the side.
+            ?: Modifier.windowInsetsPadding(frame.cutout.only(WindowInsetsSides.Horizontal)),
+    )
     .then(clickBlocker)
     .then(
         if (frame.visualState.chromeAlpha < 1f) {

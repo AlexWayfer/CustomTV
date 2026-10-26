@@ -21,6 +21,8 @@ import name.alexwayfer.customtv.channel.isValidChannelLogin
 import name.alexwayfer.customtv.channel.normalizeChannelInput
 import name.alexwayfer.customtv.data.ChannelLookup
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.components.ChannelPreview
+import name.alexwayfer.customtv.ui.components.preview
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
 /**
@@ -39,7 +41,7 @@ internal fun HomeChannelSearch(
     signedIn: Boolean,
     opensIn: SearchMode,
     categoryShowsUnderSearch: Boolean,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,
     onSearchOpenChange: (Boolean) -> Unit,
 ) {
@@ -172,7 +174,7 @@ private fun homeChannelSubmit(
     searchState: SearchBarState,
     channelInput: MutableState<String>,
     onError: (String?) -> Unit,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
 ): (String) -> Unit {
     val checkingChannel by viewModel.checkingChannel.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -198,7 +200,7 @@ private fun homeChannelSubmit(
                     // would be saved and come back over the next screen that shows Home again.
                     scope.launch {
                         searchState.snapTo(0f)
-                        onOpen(result.profile.login, result.profile.isLive)
+                        onOpen(result.profile.preview(), result.profile.isLive)
                     }
                 }
                 ChannelLookup.NotFound -> onError(missingMessage)

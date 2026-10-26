@@ -15,8 +15,10 @@ internal fun chatTailVelocity(previous: Float, remaining: Float, elapsedMillis: 
 }
 
 /**
- * Whether the reveal moves the list on this frame: at most 60 steps a second, so a 120 Hz display redraws the chat on
- * every other frame. The step length follows the elapsed time, so the speed stays the same.
+ * Whether the reveal moves the list on this frame: at most 60 steps a second, which halves the scroll and layout work
+ * on a 120 Hz display. The display still runs at 120 Hz on Android 15 and later: Compose asks for the high frame rate
+ * whenever a node moves, and `Modifier.preferredFrameRate(60f)` on the list did not outvote it. The step length follows
+ * the elapsed time, so the speed stays the same.
  */
 internal fun chatTailStepDue(sinceLastStepNanos: Long): Boolean = sinceLastStepNanos >= CHAT_TAIL_MIN_STEP_NANOS
 
@@ -43,7 +45,7 @@ internal suspend fun revealChatTail(
     var revealed = false
     while (!revealed && shouldContinue()) {
         val frame = withFrameNanos { it }
-        // A frame without a scroll step draws nothing new, so the screen stays at 60 Hz while chat moves.
+        // A frame without a scroll step moves nothing, so the list is laid out at most 60 times a second.
         if (chatTailStepDue(frame - previousFrame)) {
             val deltaMillis = ((frame - previousFrame) / 1_000_000f).coerceIn(0.1f, 32f)
             previousFrame = frame

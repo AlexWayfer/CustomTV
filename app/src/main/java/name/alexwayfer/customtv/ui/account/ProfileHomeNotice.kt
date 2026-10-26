@@ -1,8 +1,10 @@
 package name.alexwayfer.customtv.ui.account
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -56,27 +58,32 @@ internal fun ColumnScope.ProfileHomeNotices(
             onRetry = { recordings.retryChapters(chaptersFailed) },
         )
     }
-    AnimatedVisibility(visible = notice == ProfileHomeNotice.Failed, enter = fadeIn(), exit = fadeOut()) {
-        ProfileLoadFailed(
-            text = stringResource(R.string.profile_videos_failed),
-            retrying = false,
-            onRetry = recordings::reload,
-        )
-    }
-    AnimatedVisibility(
-        visible = notice == ProfileHomeNotice.Loading,
-        modifier = Modifier.align(Alignment.CenterHorizontally),
-        enter = fadeIn(),
-        exit = fadeOut(),
-    ) {
-        CircularProgressIndicator(
-            modifier = Modifier
-                .padding(top = 16.dp)
-                .size(32.dp),
-        )
-    }
-    AnimatedVisibility(visible = notice == ProfileHomeNotice.Empty, enter = fadeIn(), exit = fadeOut()) {
-        ProfileHomeEmptyContent()
+    ProfileHomeNoticeSlot(notice, onRetry = recordings::reload)
+}
+
+/**
+ * The spinner, the failure, or the empty note, which cross-fade in one place: stacked, the next one would show
+ * below the one fading out and jump up once it is gone.
+ */
+@Composable
+internal fun ProfileHomeNoticeSlot(notice: ProfileHomeNotice, onRetry: () -> Unit) {
+    Crossfade(targetState = notice, modifier = Modifier.fillMaxWidth(), label = "profile home notice") { shown ->
+        when (shown) {
+            ProfileHomeNotice.Failed -> ProfileLoadFailed(
+                text = stringResource(R.string.profile_videos_failed),
+                retrying = false,
+                onRetry = onRetry,
+            )
+            ProfileHomeNotice.Loading -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .padding(top = 16.dp)
+                        .size(32.dp),
+                )
+            }
+            ProfileHomeNotice.Empty -> ProfileHomeEmptyContent()
+            ProfileHomeNotice.None -> Unit
+        }
     }
 }
 

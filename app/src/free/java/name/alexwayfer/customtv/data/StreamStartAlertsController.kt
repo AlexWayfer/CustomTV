@@ -13,7 +13,4 @@ internal object StreamStartAlertsController {
     fun onSignedIn(signedIn: Boolean) = Unit
 
     fun onFollowedLive(channels: List<FollowedChannel>, accessToken: String) = Unit
-
-    @Suppress("unused")
-    fun onBackgroundHold(hold: Boolean) = Unit
 }

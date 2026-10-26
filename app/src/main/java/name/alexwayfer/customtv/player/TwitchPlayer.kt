@@ -90,6 +90,11 @@ internal fun TwitchPlayer(
     modifier: Modifier = Modifier,
     gestures: PlayerGestures = PlayerGestures(),
     inPictureInPicture: Boolean = false,
+    /**
+     * The player is in the corner or on its way there: Twitch's controls stay out of sight, as in picture-in-picture,
+     * without a tap that would play a paused stream.
+     */
+    shrunk: Boolean = false,
     fullscreen: Boolean = false,
     /** Room between a recording's time labels and its seek bar, where the screen draws over the page. */
     seekbarGap: Dp = 0.dp,
@@ -101,7 +106,7 @@ internal fun TwitchPlayer(
     var tapSeekSeries by remember(target.key) { mutableStateOf<TapSeekSeries?>(null) }
     var zoom by remember { mutableStateOf(PlayerZoomTransform()) }
     val showWebView = rememberPlayerWebViewStarts()
-    PlayerHostEffects(host, inPictureInPicture, fullscreen, seekbarGap, serviceOwner)
+    PlayerHostEffects(host, inPictureInPicture, shrunk, fullscreen, seekbarGap, serviceOwner)
     Box(modifier.background(ComposeColor.Black)) {
         if (showWebView) {
             AndroidView(
@@ -200,13 +205,14 @@ private fun rememberPlayerWebViewStarts(): Boolean {
 }
 
 /**
- * Keeps the page playing out of sight, plays sound only where nobody sees it, and passes on picture-in-picture, full
- * screen, and the room over a recording's seek bar.
+ * Keeps the page playing out of sight, plays sound only where nobody sees it, and passes on picture-in-picture, the
+ * mini player, full screen, and the room over a recording's seek bar.
  */
 @Composable
 private fun PlayerHostEffects(
     host: TwitchWebViewHost?,
     inPictureInPicture: Boolean,
+    shrunk: Boolean,
     fullscreen: Boolean,
     seekbarGap: Dp,
     serviceOwner: Any,
@@ -240,8 +246,13 @@ private fun PlayerHostEffects(
         host?.setSoundOnly(soundOnly)
         onDispose { }
     }
-    DisposableEffect(host, inPictureInPicture) {
-        host?.setPictureInPicture(inPictureInPicture)
+    val smoothSound = appSettings.beforeRestore().smoothSound
+    DisposableEffect(host, smoothSound) {
+        host?.smoothSound?.set(smoothSound)
+        onDispose { }
+    }
+    DisposableEffect(host, inPictureInPicture, shrunk) {
+        host?.setPlacement(inPictureInPicture, shrunk)
         onDispose { }
     }
     DisposableEffect(host, fullscreen) {
@@ -337,14 +348,22 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         reloadPage = { restorePlayer(resetStartupReloads = false) },
         concealSurface = ::concealSurface,
     )
+    private val liveStall = LiveStallRecovery(
+        isLive = { loadedTarget is TwitchPlaybackTarget.Channel },
+        isPlaybackConfirmed = { recovery.playbackConfirmed },
+        restartPlayer = { webView.evaluateJavascript(scripts.restartLive, null) },
+        reloadPage = { restorePlayer(resetStartupReloads = false) },
+    )
     val keepAlive = PlayerKeepAlive(appContext, mainHandler, webView, scripts, isReleased = { released })
     private var soundOnly = false
+    val smoothSound = PlayerSmoothSound(webView, scripts, isReleased = { released })
     val seekbarGap = PlayerSeekbarGap(webView, scripts, isReleased = { released })
     private var pictureInPicture = false
+    private var shrunk = false
     private var reportedPlaying = false
     private val playbackCommands = StreamPlayback.Commands(
-        play = { setStreamPlaying(true) },
-        pause = { setStreamPlaying(false) },
+        play = { setStreamPlaying(true) {} },
+        pause = { onRun -> setStreamPlaying(false, onRun) },
         seek = { seconds ->
             if (!released) webView.evaluateJavascript(scripts.seek(seconds), null)
         },
@@ -404,7 +423,9 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     },
                     onPlayerError = recovery::playerError,
                     onPlayerReload = recovery::errorScreenReload,
+                    onLiveTick = liveStall::tick,
                 ),
+                isReleased = { released },
             ),
             "CustomTvPlayback",
         )
@@ -523,6 +544,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         quality.pageLoading()
         AppLog.i(PLAYER_LOG_TAG, "Loading ${target.key}")
         recovery.start(resetStartupReloads)
+        if (resetStartupReloads) liveStall.reset()
         controls.setVisible(false)
         surfaceRevealed = false
         onSettingsMenuOpen?.invoke(false)
@@ -564,18 +586,29 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         gestureHandler.release()
         keepAlive.release()
         mainHandler.removeCallbacksAndMessages(null)
-        webView.stopLoading()
-        webView.loadUrl("about:blank")
-        removeView(webView)
-        webView.destroy()
+        val destroyPage = Runnable {
+            webView.stopLoading()
+            webView.loadUrl("about:blank")
+            removeView(webView)
+            webView.destroy()
+        }
+        val closeDelayMs = playerCloseDelayMs(smoothSound.enabled)
+        if (closeDelayMs == 0L) {
+            destroyPage.run()
+            return
+        }
+        // The sound fades out before the page goes; the view has already left the screen.
+        webView.evaluateJavascript(scripts.pause, null)
+        mainHandler.postDelayed(destroyPage, closeDelayMs)
     }
 
-    private fun setStreamPlaying(playing: Boolean) {
+    /** Plays or pauses the page; [onRun] once the page has run it, so its reports from then on are after it. */
+    private fun setStreamPlaying(playing: Boolean, onRun: () -> Unit) {
         if (released) return
         webView.onResume()
         webView.resumeTimers()
         val js = if (playing) scripts.play else scripts.pause
-        webView.evaluateJavascript(js, null)
+        webView.evaluateJavascript(js) { onRun() }
         mainHandler.postDelayed({
             if (!released) webView.evaluateJavascript(js, null)
         }, PLAY_STATE_REPEAT_MS)
@@ -590,18 +623,27 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
 
     private fun injectHideTopOverlay() {
         if (released) return
+        smoothSound.pageLoaded()
         webView.evaluateJavascript(scripts.hideTopOverlay, null)
-        // A page that loaded again in picture-in-picture starts with the control bar.
-        if (pictureInPicture) webView.evaluateJavascript(scripts.pictureInPicture(true), null)
+        // A page that loaded again in picture-in-picture or the corner starts with the control bar.
+        if (controlsCovered) webView.evaluateJavascript(scripts.pictureInPicture(true), null)
         seekbarGap.pageLoaded()
     }
 
-    fun setPictureInPicture(value: Boolean) {
-        if (released || pictureInPicture == value) return
-        pictureInPicture = value
-        if (value) zoom.reset()
-        webView.evaluateJavascript(scripts.pictureInPicture(value), null)
+    /**
+     * In picture-in-picture, and in the corner or on the way there ([shrunk]), the player's controls stay out of
+     * sight without a tap.
+     */
+    fun setPlacement(pictureInPicture: Boolean, shrunk: Boolean) {
+        if (released || (this.pictureInPicture == pictureInPicture && this.shrunk == shrunk)) return
+        if (pictureInPicture && !this.pictureInPicture) zoom.reset()
+        this.pictureInPicture = pictureInPicture
+        this.shrunk = shrunk
+        webView.evaluateJavascript(scripts.pictureInPicture(controlsCovered), null)
     }
+
+    private val controlsCovered: Boolean
+        get() = pictureInPicture || shrunk
 
     private fun revealSurface() {
         if (released || surfaceRevealed) return

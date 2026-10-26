@@ -9,6 +9,9 @@ internal enum class ChatCommand(val word: String) {
     /** Opens the prediction in the channel points sheet, for the streamer and the channel's moderators. */
     Prediction("/prediction"),
 
+    /** Gives a shoutout to a channel, for the streamer and the channel's moderators. */
+    Shoutout("/shoutout"),
+
     // The chat modes, for the streamer and the channel's moderators.
     Slow("/slow"),
     SlowOff("/slowoff"),
@@ -23,11 +26,12 @@ internal enum class ChatCommand(val word: String) {
 }
 
 /** The commands that change the chat's modes. */
-internal val CHAT_MODE_COMMANDS = ChatCommand.entries.filter { it != ChatCommand.User && it != ChatCommand.Prediction }
+internal val CHAT_MODE_COMMANDS =
+    ChatCommand.entries - setOf(ChatCommand.User, ChatCommand.Prediction, ChatCommand.Shoutout)
 
 /**
- * The commands this user has: `/prediction` only for the streamer and the channel's moderators, and the chat mode
- * commands only for the streamer and the moderators ([chatModes]).
+ * The commands this user has: `/prediction` only for the streamer and the channel's moderators, and `/shoutout` and
+ * the chat mode commands only for the streamer and the moderators ([chatModes]).
  */
 internal fun availableChatCommands(predictionOpenable: Boolean, chatModes: Boolean): List<ChatCommand> =
     ChatCommand.entries.filter {

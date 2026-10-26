@@ -15,18 +15,34 @@ internal sealed interface ChatUserCommand {
 private val WHITESPACE = Regex("\\s+")
 private val TWITCH_LOGIN = Regex("[a-z0-9_]{1,25}")
 
+/** What follows a command at the start of a message, as [chatCommandNick] reads it: the login it names. */
+internal sealed interface ChatCommandNick {
+    data class Login(val login: String) : ChatCommandNick
+
+    /** The command without a nick that can be a login. */
+    data object Invalid : ChatCommandNick
+}
+
 /**
- * The `/user` command in [text], or null when [text] is a message to send. The nick may start with `@`,
- * may be in any case, and may be the display name of a session chatter in [chatters] (login to display name),
+ * The nick after [command] in [text], or null when [text] does not start with [command]. The nick may start with
+ * `@`, may be in any case, and may be the display name of a session chatter in [chatters] (login to display name),
  * as nick completion inserts it. Words after the nick are ignored.
  */
-internal fun chatUserCommand(text: String, chatters: Map<String, String>): ChatUserCommand? {
+internal fun chatCommandNick(text: String, command: ChatCommand, chatters: Map<String, String>): ChatCommandNick? {
     val words = text.trim().split(WHITESPACE, limit = 3)
-    if (!words[0].equals(ChatCommand.User.word, ignoreCase = true)) return null
+    if (!words[0].equals(command.word, ignoreCase = true)) return null
     val nick = words.getOrNull(1)?.removePrefix("@").orEmpty()
     val login = chatters.entries.firstOrNull { it.value.equals(nick, ignoreCase = true) }?.key ?: nick.lowercase()
-    return if (TWITCH_LOGIN.matches(login)) ChatUserCommand.Open(login) else ChatUserCommand.Invalid
+    return if (TWITCH_LOGIN.matches(login)) ChatCommandNick.Login(login) else ChatCommandNick.Invalid
 }
+
+/** The `/user` command in [text], or null when [text] is a message to send; [chatCommandNick] reads the nick. */
+internal fun chatUserCommand(text: String, chatters: Map<String, String>): ChatUserCommand? =
+    when (val nick = chatCommandNick(text, ChatCommand.User, chatters)) {
+        is ChatCommandNick.Login -> ChatUserCommand.Open(nick.login)
+        ChatCommandNick.Invalid -> ChatUserCommand.Invalid
+        null -> null
+    }
 
 /**
  * The card for [login], with the name, ID, and badges of their latest message in this chat when there is one;

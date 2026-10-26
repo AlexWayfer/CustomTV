@@ -11,13 +11,26 @@
     <string name="following_unavailable">Не удалось загрузить отслеживаемые каналы</string>
     <string name="channels_load_failed">Не удалось загрузить каналы</string>
     <string name="following_last_live">Последний эфир: %1$s</string>
-    <string name="following_last_live_today">Сегодня</string>
-    <string name="following_last_live_yesterday">Вчера</string>
+    <string name="following_last_live_just_now">Только что</string>
+    <string name="following_last_live_today_at">Сегодня в %1$s</string>
+    <string name="following_last_live_yesterday_at">Вчера в %1$s</string>
     <plurals name="whispers_unread">
         <item quantity="one">%d непрочитанный шёпот</item>
         <item quantity="few">%d непрочитанных шёпота</item>
         <item quantity="many">%d непрочитанных шёпотов</item>
         <item quantity="other">%d непрочитанного шёпота</item>
+    </plurals>
+    <plurals name="last_live_minutes_ago">
+        <item quantity="one">%d минуту назад</item>
+        <item quantity="few">%d минуты назад</item>
+        <item quantity="many">%d минут назад</item>
+        <item quantity="other">%d минуты назад</item>
+    </plurals>
+    <plurals name="last_live_hours_ago">
+        <item quantity="one">%d час назад</item>
+        <item quantity="few">%d часа назад</item>
+        <item quantity="many">%d часов назад</item>
+        <item quantity="other">%d часа назад</item>
     </plurals>
     <plurals name="following_last_live_days">
         <item quantity="one">%d день назад</item>
@@ -67,6 +80,15 @@
     <string name="chat_mode_followers_usage">Укажите время, например 30m, 2h, 1d, 1w или 3mo</string>
     <string name="chat_mode_change_failed">Не удалось изменить режим чата</string>
     <string name="chat_modes_premium_hint">Менять режимы чата можно в Premium</string>
+    <string name="chat_command_shoutout_argument">[канал]</string>
+    <string name="chat_command_shoutout_description">Отметить канал</string>
+    <string name="chat_shoutout_usage">Укажите канал после команды, например /shoutout имя</string>
+    <string name="chat_shoutout_offline">Отмечать каналы можно только во время стрима</string>
+    <string name="chat_shoutout_too_often">Отмечать можно раз в 2 минуты, а один и тот же канал — раз в час</string>
+    <string name="chat_shoutout_no_channel">Такого канала нет</string>
+    <string name="chat_shoutout_own_channel">Свой канал отметить нельзя</string>
+    <string name="chat_shoutout_failed">Не удалось отметить канал</string>
+    <string name="chat_shoutout_premium_hint">Отмечать каналы можно в Premium</string>
     <string name="chat_send_failed">Не удалось отправить сообщение</string>
     <string name="chat_send_log_in">Войдите снова, чтобы писать в чат</string>
     <string name="chat_send_not_allowed">Вы не можете писать в чат этого канала</string>
@@ -207,6 +229,20 @@
         <item quantity="many">Назначена %d чаттерам</item>
         <item quantity="other">Назначена %d чаттерам</item>
     </plurals>
+    <plurals name="chatter_labels_chatters_found">
+        <item quantity="one">Подходит %d чаттер</item>
+        <item quantity="few">Подходят %d чаттера</item>
+        <item quantity="many">Подходят %d чаттеров</item>
+        <item quantity="other">Подходят %d чаттера</item>
+    </plurals>
+    <string name="chatter_labels_search">Поиск по нику</string>
+    <string name="chatter_labels_search_empty">Ни у одного лейбла нет таких чаттеров.</string>
+    <string name="chatter_labels_chatters_show">Показать чаттеров</string>
+    <string name="chatter_labels_chatters_hide">Скрыть чаттеров</string>
+    <string name="chatter_labels_chatter_banned">Этот аккаунт заблокирован на Twitch.</string>
+    <string name="chatter_labels_chatter_not_found">Twitch не нашёл этот аккаунт: возможно, он удалён.</string>
+    <string name="chatter_labels_chatter_loading">Логин чаттера ещё загружается. Попробуйте чуть позже.</string>
+    <string name="chatter_labels_chatter_load_failed">Не удалось загрузить логин чаттера.</string>
     <string name="chatter_labels_add">Добавить метку</string>
     <string name="chatter_labels_save">Сохранить</string>
     <string name="chatter_labels_error_save_failed">Не удалось сохранить метки.</string>
@@ -301,6 +337,12 @@
         <item quantity="other">%1$d подписки подарено на этом канале</item>
     </plurals>
     <string name="chat_community_gift_hide">Скрыть подарок сообществу</string>
+    <string name="chat_shoutout">Отметка канала</string>
+    <string name="chat_shoutout_by">%1$s отмечает канал</string>
+    <string name="chat_shoutout_description">%1$s отмечает канал %2$s</string>
+    <string name="chat_shoutout_description_anonymous">Отметка канала %1$s</string>
+    <string name="chat_shoutout_hide">Скрыть отметку</string>
+    <string name="chat_notice_show_shoutout">Показать отметку</string>
     <string name="raid_outgoing_lead">Рейд на</string>
     <string name="raid_outgoing_with">с</string>
     <plurals name="chat_hype_train_events_to_start">
@@ -373,6 +415,7 @@
     <string name="profile_videos">Видео</string>
     <string name="profile_clips">Клипы</string>
     <string name="chatter_card_whisper">Шёпот</string>
+    <string name="profile_message_logs">Открыть логи сообщений</string>
     <string name="moderation_section">Модерация</string>
     <string name="settings_section_notifications">Уведомления</string>
     <string name="settings_section_chatter_portraits">ИИ-портреты и пересказ</string>
@@ -392,6 +435,7 @@
     <string name="profile_about_extensions">Некоторые панели — расширения, их показывает только Twitch.</string>
     <string name="profile_panel_link">Открыть ссылку панели</string>
     <string name="retry">Повторить</string>
+    <string name="search_clear">Очистить</string>
     <plurals name="profile_followers">
         <item quantity="one">%1$s фолловер</item>
         <item quantity="few">%1$s фолловера</item>
@@ -399,8 +443,9 @@
         <item quantity="other">%1$s фолловера</item>
     </plurals>
     <string name="profile_last_live">Последний эфир %1$s</string>
-    <string name="profile_last_live_today">сегодня</string>
-    <string name="profile_last_live_yesterday">вчера</string>
+    <string name="profile_last_live_just_now">только что</string>
+    <string name="profile_last_live_today_at">сегодня в %1$s</string>
+    <string name="profile_last_live_yesterday_at">вчера в %1$s</string>
     <plurals name="profile_last_live_days_ago">
         <item quantity="one">%1$d день назад</item>
         <item quantity="few">%1$d дня назад</item>
@@ -421,12 +466,16 @@
     <string name="twitch_links_still">Twitch всё ещё открывает эти ссылки</string>
     <string name="twitch_device_waiting">Ждём Twitch…</string>
     <string name="twitch_login_reopen">Открыть страницу входа</string>
-    <string name="seven_tv_emotes">Эмоуты 7TV</string>
+    <string name="third_party_emotes">Эмоуты</string>
+    <string name="third_party_badges">Значки</string>
     <string name="seven_tv_emotes_hint">Эмоуты 7TV в чате</string>
-    <string name="ffz_emotes">Эмоуты FFZ</string>
+    <string name="seven_tv_badges_hint">Значки от 7TV, например за подписку на 7TV</string>
+    <string name="seven_tv_paints">Раскраска ников</string>
+    <string name="seven_tv_paints_hint">Градиенты и картинки 7TV поверх ников</string>
     <string name="ffz_emotes_hint">Эмоуты FrankerFaceZ в чате</string>
-    <string name="bttv_emotes">Эмоуты BTTV</string>
+    <string name="ffz_badges_hint">Значки FrankerFaceZ и свои значки модераторов и VIP канала</string>
     <string name="bttv_emotes_hint">Эмоуты BetterTTV в чате</string>
+    <string name="bttv_badges_hint">Значки BetterTTV у его разработчиков и помощников</string>
     <string name="emote_completion_without_colon">Подсказывать эмоуты без двоеточия</string>
     <string name="emote_completion_without_colon_hint">Kappa предлагается, пока вы пишете Ka</string>
     <string name="keep_keyboard_after_send">Не прятать клавиатуру после отправки</string>
@@ -460,12 +509,13 @@
     <string name="app_update_play_protect_title">Play Protect может заблокировать обновление</string>
     <string name="app_update_play_protect_text">CustomTV установлен не из Google Play, поэтому Play Protect может написать «Приложение заблокировано для защиты устройства». Нажмите «Подробнее», затем «Всё равно установить».</string>
     <string name="app_update_play_protect_install">Установить</string>
-    <string name="settings_section_emotes">Эмоуты</string>
     <string name="settings_section_messages">Сообщения</string>
     <string name="settings_section_sending">Отправка</string>
     <string name="settings_section_playback">Воспроизведение</string>
     <string name="background_sound_only">Только звук в фоне</string>
     <string name="background_sound_only_hint">Экономит батарею и трафик. Воспроизведение замирает на секунду, когда вы блокируете экран или возвращаетесь.</string>
+    <string name="smooth_sound">Плавный звук</string>
+    <string name="smooth_sound_hint">Звук плавно нарастает и затихает при запуске, паузе и закрытии.</string>
     <string name="me_messages">Сообщения /me</string>
     <string name="me_messages_name_color">Цвет ника</string>
     <string name="me_messages_italic">Курсив</string>
@@ -499,6 +549,7 @@
     <string name="emote_picker_frequent">Часто используемые</string>
     <string name="emote_picker_channel_follow">%1$s · Фолловерам</string>
     <string name="emote_picker_channel_subscriptions">%1$s · Подписчикам</string>
+    <string name="emote_picker_personal">Личные · %1$s</string>
     <string name="close">Закрыть</string>
     <string name="cancel">Отмена</string>
     <string name="chat_open_link_title">Открыть ссылку?</string>
@@ -521,6 +572,7 @@
     <string name="sleep_timer_warning">Плеер скоро закроется</string>
     <string name="readable_colors">Читаемые цвета</string>
     <string name="timestamps">Время сообщений</string>
+    <string name="hide_stream">Скрыть стрим</string>
     <string name="chat_text_size">Размер текста</string>
     <string name="refresh_emotes_and_labels">Обновить эмоуты и метки</string>
     <string name="chat_copy">Копировать</string>
@@ -608,6 +660,7 @@
     <string name="emote_preview_library_global">Глобальный эмоут %1$s</string>
     <string name="emote_preview_library_channel">Эмоут %1$s на %2$s</string>
     <string name="emote_preview_library">Эмоут %1$s</string>
+    <string name="emote_preview_library_personal">Личный эмоут %1$s</string>
     <string name="diagnostics_channel">Отчёты о проблемах</string>
     <string name="diagnostics_text">Отправьте отчёт разработчику, чтобы это исправили.</string>
     <string name="diagnostics_send">Отправить отчёт</string>
@@ -635,7 +688,7 @@
     <string name="premium_feature_channel_points">Баллы канала</string>
     <string name="premium_feature_poll_voting">Голосование в опросах и прогнозах</string>
     <string name="smooth_new_messages">Плавные новые сообщения</string>
-    <string name="smooth_new_messages_hint">Плавная прокрутка, которая ускоряется, когда сообщения идут быстро</string>
+    <string name="smooth_new_messages_hint">Плавная прокрутка, которая ускоряется, когда сообщения идут быстро. Чуть больше расходует батарею</string>
     <string name="player_fullscreen">Во весь экран</string>
     <string name="player_fullscreen_exit">Выйти из полноэкранного режима</string>
     <string name="fullscreen_chat_settings">Чат во весь экран</string>
@@ -659,7 +712,7 @@
     <string name="settings_page_chat_hint">Эмоуты и сообщения</string>
     <string name="settings_page_mentions">Упоминания</string>
     <string name="settings_page_mentions_hint">Выделение, звук и вибрация</string>
-    <string name="settings_page_playback_hint">Звук в фоне</string>
+    <string name="settings_page_playback_hint">Звук в фоне и плавный звук</string>
     <string name="gestures">Жесты</string>
     <string name="gestures_hint">Что делают свайпы и удержания</string>
     <string name="settings_licenses">Лицензии</string>
@@ -694,6 +747,10 @@
     <string name="gesture_player_down_result">Сворачивает его</string>
     <string name="gesture_player_up">Свайп плеера вверх</string>
     <string name="gesture_player_up_result">Открывает полный экран</string>
+    <string name="gesture_stream_info_up">Свайп плашки стрима вверх</string>
+    <string name="gesture_stream_info_up_result">Скрывает стрим и ставит его на паузу, оставляя чат</string>
+    <string name="gesture_stream_info_down">Свайп плашки стрима вниз, пока стрим скрыт</string>
+    <string name="gesture_stream_info_down_result">Возвращает стрим в прямой эфир</string>
     <string name="gesture_mini_player_up">Свайп мини-плеера вверх</string>
     <string name="gesture_mini_player_up_result">Разворачивает его</string>
     <string name="gesture_mini_player_sideways">Свайп мини-плеера вбок</string>
@@ -715,6 +772,7 @@
     <string name="gesture_hint_exit_fullscreen">Совет: чтобы выйти из полного экрана, смахните видео вниз</string>
     <string name="gesture_hint_fullscreen_chat_side">Совет: чтобы перенести чат на другую сторону, перетащите его через экран</string>
     <string name="gesture_hint_fullscreen_chat_hide">Совет: чтобы скрыть чат, смахните его к краю, а свайп по видео вернёт его</string>
+    <string name="gesture_hint_hide_stream">Совет: чтобы скрыть стрим, смахните плашку под ним вверх, а вниз — чтобы вернуть</string>
     <plurals name="tap_seek_forward">
         <item quantity="one">+%1$d с</item>
         <item quantity="few">+%1$d с</item>

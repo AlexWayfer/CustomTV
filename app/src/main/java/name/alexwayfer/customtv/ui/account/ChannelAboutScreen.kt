@@ -39,6 +39,7 @@ import name.alexwayfer.customtv.auth.TwitchAccount
 import name.alexwayfer.customtv.auth.TwitchProfileLink
 import name.alexwayfer.customtv.data.ProfileDetailsRepository
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import java.text.NumberFormat
@@ -58,19 +59,19 @@ private data class ChannelAbout(
 
 @Composable
 internal fun ChannelAboutScreen(
-    channel: String,
+    channel: ChannelPreview,
     backEnabled: Boolean,
     onLeave: () -> Unit,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onShowCategories: () -> Unit,
     firstTabRequest: Int,
     canWhisper: Boolean,
 ) {
-    val profile = rememberChannelProfile(channel)
-    val details by produceState(initialValue = ProfileDetailsRepository.cached(channel), channel) {
+    val profile = rememberChannelProfile(channel.login, preview = channel)
+    val details by produceState(initialValue = ProfileDetailsRepository.cached(channel.login), channel.login) {
         // A failed load keeps what the profile already shows.
-        ProfileDetailsRepository.load(channel)?.let { value = it }
+        ProfileDetailsRepository.load(channel.login)?.let { value = it }
     }
     ChannelAboutContent(
         about = ChannelAbout(
@@ -99,7 +100,7 @@ internal fun AccountAboutScreen(
     account: TwitchAccount,
     onLeave: () -> Unit,
     onLogOut: () -> Unit,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onShowCategories: () -> Unit,
 ) {
@@ -134,7 +135,7 @@ internal fun AccountAboutScreen(
 private fun ChannelAboutContent(
     about: ChannelAbout,
     onLeave: () -> Unit,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onShowCategories: () -> Unit,
     backEnabled: Boolean = true,
@@ -169,7 +170,7 @@ private fun ChannelAboutContent(
 private fun ChannelAboutPage(
     about: ChannelAbout,
     onLeave: () -> Unit,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,
     backEnabled: Boolean,
@@ -252,7 +253,7 @@ private fun ChannelAboutTab(about: ChannelAbout) {
 @Composable
 private fun ProfileBanner(url: String?) {
     AsyncImage(
-        model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(true).build(),
+        model = ImageRequest.Builder(LocalContext.current).data(url).crossfade(PROFILE_IMAGE_FADE_MS).build(),
         contentDescription = null,
         modifier = Modifier.fillMaxWidth().height(BannerHeight).background(TwitchSurfaceAlt),
         contentScale = ContentScale.Crop,
@@ -306,6 +307,7 @@ private fun BoxScope.ProfileOverlay(
     )
     onLogOut?.let { logOut ->
         AccountMenu(
+            login = about.login,
             onLogOut = logOut,
             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
         )

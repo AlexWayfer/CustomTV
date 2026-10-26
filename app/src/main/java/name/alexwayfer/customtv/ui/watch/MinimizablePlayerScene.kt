@@ -26,6 +26,7 @@ import name.alexwayfer.customtv.data.GestureHint
 import name.alexwayfer.customtv.player.PlayerSeekbar
 import name.alexwayfer.customtv.player.TwitchPlaybackTarget
 import name.alexwayfer.customtv.ui.GestureHintReporter
+import kotlin.math.roundToInt
 
 /** What the player does when it is minimized, expanded, closed, or moved through, and what it reports. */
 internal data class PlayerActions(
@@ -58,6 +59,9 @@ internal class PlayerSceneState {
     val compactChatHeight = FullscreenCompactChatHeight()
     val keyboardMemory = FullscreenKeyboardMemory()
 
+    // The stream info under a full screen video, as it last measured.
+    var fullscreenInfoPx by mutableIntStateOf(0)
+
     /** The content stays composed behind the mini player, so expanding does not rebuild the chat. */
     val fullSize = FullSizeMemory()
 }
@@ -85,10 +89,19 @@ internal data class PlayerScene(
     /** How far the room for the control bar is open; read when laid out. */
     val controlBarShown: State<Float>,
     val gestureHints: GestureHintReporter?,
+    /** The stream's chat-only mode; null for a recording. */
+    val streamHiding: StreamHiding?,
+    /** The stream info under a full screen video shows, or is on its way in. */
+    val infoBarShownTarget: Boolean,
+    /** How far that stream info is in sight; read when laid out or drawn. */
+    val infoBarShown: State<Float>,
 ) {
     /** The mini player rests in the corner; picture-in-picture shows the full one. */
     val compactSettled: Boolean get() = minimized && !inPictureInPicture
     val fullscreenActive: Boolean get() = fullscreen.active
+
+    /** The room the stream info in sight takes under a full screen video; read when laid out or drawn. */
+    fun fullscreenInfoRoomPx(): Int = (ui.fullscreenInfoPx * infoBarShown.value).roundToInt()
 
     fun expandPlayer() {
         chrome.show(true)
@@ -229,6 +242,7 @@ internal fun rememberFullscreenChatLayout(scene: PlayerScene, areaWidthPx: Int):
                     controlBarPx = controlBarHeightPx ?: TwitchControlBarHeight.roundToPx(),
                     controlBarShown = controlBarShown.value,
                     chatEdgePx = OverlayChatEdgeGap.roundToPx(),
+                    infoBarPx = scene.fullscreenInfoRoomPx(),
                 ),
             )
         },

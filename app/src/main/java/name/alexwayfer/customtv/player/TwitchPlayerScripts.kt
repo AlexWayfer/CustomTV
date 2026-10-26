@@ -27,6 +27,9 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
 
     val reloadPlayer: String get() = script("reload-player.js")
 
+    /** Pauses a live stream in Twitch's player and plays it again, which resumes it away from where it stood. */
+    val restartLive: String get() = script("restart-live.js")
+
     val hideTopOverlay: String get() = script("hide-top-overlay.js")
 
     /**
@@ -64,6 +67,9 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
      * window, or shows it again. The bar keeps its layout, so the reported control bar height stays.
      */
     fun pictureInPicture(enabled: Boolean): String = call("picture-in-picture.js", enabled.toString())
+
+    /** Sets how long the sound fades on play, pause, start, and close; 0 turns the fades off. */
+    fun soundFade(fadeMs: Long): String = call("sound-fade.js", fadeMs.toString())
 
     private fun script(name: String): String = "${load(COMMON)}\n${load(name)}"
 

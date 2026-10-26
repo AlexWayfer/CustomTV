@@ -19,10 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.data.WatchingChannel
 import name.alexwayfer.customtv.diagnostics.AppLog
@@ -35,6 +33,9 @@ import name.alexwayfer.customtv.ui.watch.WatchPlacement
 import name.alexwayfer.customtv.ui.watch.WatchScreen
 import name.alexwayfer.customtv.ui.watch.closeWatchedChannels
 import name.alexwayfer.customtv.ui.watch.watchBackReturnsToPreviousChannel
+import name.alexwayfer.customtv.ui.watch.watchChannelArguments
+import name.alexwayfer.customtv.ui.watch.watchChannelPreview
+import name.alexwayfer.customtv.ui.watch.watchRoute
 
 /** The stream's route: full screen, in the corner, or out of sight while no stream is open. */
 @Composable
@@ -64,7 +65,7 @@ internal fun BoxScope.AppPlayerHost(scene: AppScene) {
         composable(route = "home") {}
         composable(
             route = WATCH_CHANNEL_ROUTE,
-            arguments = listOf(navArgument("channel") { type = NavType.StringType }),
+            arguments = watchChannelArguments,
             enterTransition = {
                 if (shell.openPlayerFromHome) {
                     fadeIn(tween(PLAYER_FROM_HOME_FADE_MS)) +
@@ -83,7 +84,8 @@ internal fun BoxScope.AppPlayerHost(scene: AppScene) {
 @Composable
 private fun WatchRoute(scene: AppScene, entry: NavBackStackEntry) {
     val shell = scene.shell
-    val channel = entry.arguments?.getString("channel").orEmpty()
+    val preview = watchChannelPreview(entry.arguments)
+    val channel = preview.login
     DisposableEffect(channel, shell.player.liveClosedWithPip) {
         WatchingChannel.login = if (shell.player.liveClosedWithPip || channel.isBlank()) null else channel
         onDispose {
@@ -104,6 +106,7 @@ private fun WatchRoute(scene: AppScene, entry: NavBackStackEntry) {
     if (shell.player.liveClosedWithPip) return
     WatchScreen(
         channel = channel,
+        preview = preview,
         chatViewModel = chatViewModel,
         placement = WatchPlacement(
             inPictureInPicture = scene.inPip,
@@ -141,13 +144,13 @@ private fun AppScene.watchAccount(): WatchAccount {
 
 private fun AppScene.watchNavigation(): WatchNavigation = WatchNavigation(
     onOpenChannel = { target ->
-        AppLog.i(PLAYER_NAV_LOG_TAG, "open $target from the stream")
+        AppLog.i(PLAYER_NAV_LOG_TAG, "open ${target.login} from the stream")
         shell.openPlayerFromHome = shell.fullPlayerCovering
         shell.player = shell.player.withLiveMinimized(false)
-        homeViewModel.addRecent(target)
+        homeViewModel.addRecent(target.login)
         val currentChannel = currentEntry.value?.arguments?.getString("channel")
-        if (!currentChannel.equals(target, ignoreCase = true)) {
-            navController.navigate("watch/$target")
+        if (!currentChannel.equals(target.login, ignoreCase = true)) {
+            navController.navigate(watchRoute(target))
         }
     },
     onOpenChannelProfile = { target ->

@@ -4,6 +4,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import name.alexwayfer.customtv.data.RecentLastLive
+import name.alexwayfer.customtv.data.recentLastLive
 import java.time.Instant
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -15,26 +17,20 @@ internal fun profileStatValueRange(text: String, value: String): IntRange? {
     return if (start < 0) null else start until start + value.length
 }
 
-/** How the profile names the day of the last stream: by its distance while recent, by its date after a week. */
+/** How the profile names when the channel was last live: by its distance while recent, by its date after a week. */
 internal sealed interface LastLiveDay {
-    data object Today : LastLiveDay
-    data object Yesterday : LastLiveDay
+    data class Recent(val age: RecentLastLive) : LastLiveDay
     data class DaysAgo(val days: Int) : LastLiveDay
     data object OnDate : LastLiveDay
 }
 
-internal fun lastLiveDay(startedAtMillis: Long, nowMillis: Long, zone: ZoneId): LastLiveDay {
+internal fun lastLiveDay(lastLiveMillis: Long, nowMillis: Long, zone: ZoneId): LastLiveDay {
+    recentLastLive(lastLiveMillis, nowMillis, zone)?.let { return LastLiveDay.Recent(it) }
     val days = ChronoUnit.DAYS.between(
-        Instant.ofEpochMilli(startedAtMillis).atZone(zone).toLocalDate(),
+        Instant.ofEpochMilli(lastLiveMillis).atZone(zone).toLocalDate(),
         Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate(),
     )
-    return when {
-        // A clock behind the stream's start still reads as today.
-        days <= 0 -> LastLiveDay.Today
-        days == 1L -> LastLiveDay.Yesterday
-        days <= LAST_LIVE_RELATIVE_DAYS -> LastLiveDay.DaysAgo(days.toInt())
-        else -> LastLiveDay.OnDate
-    }
+    return if (days <= LAST_LIVE_RELATIVE_DAYS) LastLiveDay.DaysAgo(days.toInt()) else LastLiveDay.OnDate
 }
 
 private const val LAST_LIVE_RELATIVE_DAYS = 7

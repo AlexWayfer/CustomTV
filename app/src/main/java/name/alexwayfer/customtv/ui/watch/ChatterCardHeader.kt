@@ -50,6 +50,7 @@ import coil.request.ImageRequest
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.ChatterProfile
 import name.alexwayfer.customtv.data.chatterSharedChatSourceRoomId
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 
 /** Where the dark fade under the text starts, down the banner image. */
@@ -89,7 +90,7 @@ internal fun ChatterCardSheetHeader(
         onOpenProfile = openProfile?.let { open ->
             {
                 onDismiss()
-                open(chatter.login)
+                open(ChannelPreview(chatter.login, chatter.name, profile?.avatarUrl))
             }
         },
         onMention = onMention,

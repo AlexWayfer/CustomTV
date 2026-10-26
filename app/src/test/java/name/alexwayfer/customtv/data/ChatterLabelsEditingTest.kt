@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.data
 
+import java.time.Instant
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -28,18 +29,74 @@ class ChatterLabelsEditingTest {
     }
 
     @Test
-    fun countsEachChatterOncePerLabel() {
+    fun listsEachChatterOncePerLabelAndSkipsEntriesWithoutIds() {
         val assignments = JSONArray(
             """[
-                {"userId":"1","labelId":"a"},
-                {"userId":"1","labelId":"a"},
-                {"userId":"2","labelId":"a"},
-                {"userId":"1","labelId":"b"},
-                {"userId":"","labelId":"b"}
+                {"userId":"1","login":"one","username":"One","labelId":"a","assignedAt":"2026-10-01T10:00:00.000Z"},
+                {"userId":"1","login":"one","username":"One","labelId":"a","assignedAt":"2026-10-05T10:00:00.000Z"},
+                {"userId":"2","login":"two","username":"Two","labelId":"a"},
+                {"userId":"1","login":"one","username":"One","labelId":"b"},
+                {"userId":"","login":"nobody","labelId":"b"},
+                {"userId":"3","login":"three"},
+                "not an assignment"
             ]""",
         )
 
-        assertEquals(mapOf("a" to 2, "b" to 1), chatterLabelChatterCounts(assignments))
+        val assignees = chatterLabelAssignees(assignments)
+
+        assertEquals(setOf("a", "b"), assignees.keys)
+        assertEquals(listOf("1", "2"), assignees.getValue("a").map { it.userId })
+        assertEquals(listOf("1"), assignees.getValue("b").map { it.userId })
+        // The first entry keeps its time.
+        assertEquals(
+            Instant.parse("2026-10-01T10:00:00Z").toEpochMilli(),
+            assignees.getValue("a").first().assignedAtMillis,
+        )
+    }
+
+    @Test
+    fun sortsChattersByLoginIgnoringCaseAndFallsBackToTheName() {
+        val assignments = JSONArray(
+            """[
+                {"userId":"1","login":"zed","username":"Zed","labelId":"a"},
+                {"userId":"2","login":"","username":"Mia","labelId":"a"},
+                {"userId":"3","login":"Bob","username":"Bob","labelId":"a"},
+                {"userId":"4","login":"anna","username":"Anna","labelId":"a"}
+            ]""",
+        )
+
+        assertEquals(
+            listOf("4", "3", "2", "1"),
+            chatterLabelAssignees(assignments).getValue("a").map { it.userId },
+        )
+    }
+
+    @Test
+    fun aChatterShowsTheLoginOnlyWhenItDiffersFromTheName() {
+        assertEquals("Anna", ChatterLabelAssignee("1", login = "anna", displayName = "Anna", null).shownName)
+        assertEquals("Анна (anna)", ChatterLabelAssignee("1", login = "anna", displayName = "Анна", null).shownName)
+        assertEquals("Anna", ChatterLabelAssignee("1", login = "", displayName = "Anna", null).shownName)
+        assertEquals("anna", ChatterLabelAssignee("1", login = "anna", displayName = "", null).shownName)
+        assertEquals("1", ChatterLabelAssignee("1", login = "", displayName = "", null).shownName)
+    }
+
+    @Test
+    fun aNullLoginIsNoLogin() {
+        val assignments = JSONArray("""[{"userId":"1","username":"Anna","login":null,"labelId":"a"}]""")
+
+        assertEquals("", chatterLabelAssignees(assignments).getValue("a").single().login)
+    }
+
+    @Test
+    fun aMissingOrBrokenTimeLeavesTheDateOut() {
+        val assignments = JSONArray(
+            """[
+                {"userId":"1","login":"a","labelId":"a"},
+                {"userId":"2","login":"b","labelId":"a","assignedAt":"yesterday"}
+            ]""",
+        )
+
+        assertEquals(listOf(null, null), chatterLabelAssignees(assignments).getValue("a").map { it.assignedAtMillis })
     }
 
     @Test

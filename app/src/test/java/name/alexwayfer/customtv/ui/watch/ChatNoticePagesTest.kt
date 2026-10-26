@@ -68,6 +68,14 @@ class ChatNoticePagesTest {
     }
 
     @Test
+    fun aShoutoutFollowsThePredictionAndPrecedesGifts() {
+        assertEquals(
+            listOf(ChatNoticePage.Prediction, ChatNoticePage.Shoutout, ChatNoticePage.CommunityGift),
+            chatNoticePages(setOf(ChatNoticePage.CommunityGift, ChatNoticePage.Shoutout, ChatNoticePage.Prediction)),
+        )
+    }
+
+    @Test
     fun aPredictionAloneIsTheOnlyPage() {
         assertEquals(
             listOf(ChatNoticePage.Prediction),

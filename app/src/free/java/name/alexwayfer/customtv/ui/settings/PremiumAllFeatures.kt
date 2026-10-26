@@ -55,7 +55,10 @@ import name.alexwayfer.customtv.ui.watch.rememberStopAtScrollTop
 /** A group of the full Premium list under its [title]. */
 private class PremiumFeatureSection(@param:StringRes val title: Int, val features: List<Int>)
 
-/** Everything Premium adds, which the short list only samples. Add a line here with every new Premium feature. */
+/**
+ * Everything Premium adds, which the short list only samples. Add a line here with every new Premium feature, and raise
+ * the count in `PremiumAllFeaturesTouchTest` with it.
+ */
 private val premiumFeatureSections = listOf(
     PremiumFeatureSection(
         R.string.premium_section_watching,
@@ -86,6 +89,7 @@ private val premiumFeatureSections = listOf(
             R.string.premium_all_live_alerts,
             R.string.premium_all_title_alerts,
             R.string.premium_all_alerts_per_channel,
+            R.string.premium_all_home_widget,
         ),
     ),
     PremiumFeatureSection(
@@ -95,6 +99,7 @@ private val premiumFeatureSections = listOf(
             R.string.premium_all_message_deletion,
             R.string.premium_all_warnings,
             R.string.premium_all_chat_modes,
+            R.string.premium_all_shoutouts,
             R.string.premium_all_automod,
             R.string.premium_all_mod_logs,
             R.string.premium_all_suspicious_users,

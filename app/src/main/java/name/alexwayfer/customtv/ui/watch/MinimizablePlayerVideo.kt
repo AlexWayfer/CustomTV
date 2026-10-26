@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -63,7 +64,6 @@ internal fun BoxScope.PlayerVideoBox(
     scene: PlayerScene,
     frame: PlayerFrame,
     layout: FullscreenChatLayout,
-    fullscreenInfo: @Composable () -> Unit,
     seekbarOverlay: PlayerSeekbarOverlay?,
 ) {
     val touches = PlayerTouches(
@@ -88,7 +88,8 @@ internal fun BoxScope.PlayerVideoBox(
                 },
             )
             .clipToBounds()
-            .background(Color.Black),
+            .background(Color.Black)
+            .outOfSightSemantics(scene),
     ) {
         TwitchPlayer(
             target = scene.target,
@@ -97,20 +98,15 @@ internal fun BoxScope.PlayerVideoBox(
             centerFree = playerCenterFree(scene.compactSettled, scene.progress, scene.ui.twitchSettingsOpen),
             gestures = touches.gestures(),
             inPictureInPicture = scene.inPictureInPicture,
+            shrunk = scene.progress > 0f,
             fullscreen = scene.fullscreenActive,
             seekbarGap = seekbarOverlay?.gap ?: 0.dp,
-            // The web page keeps its full size in the mini player too; only the picture shrinks.
-            // A resize would show the old frame unscaled until the page draws at the new size.
-            modifier = if (scene.inPictureInPicture || scene.fullscreenActive || fullWidthPx == null) {
-                Modifier.fillMaxSize()
-            } else {
-                Modifier.playerScaledFromFullWidth(fullWidthPx)
-            },
+            modifier = Modifier.playerPageLayout(scene, frame, fullWidthPx),
         )
         if (seekbarOverlay != null) PlayerSeekbarLayer(scene, seekbarOverlay)
         if (!scene.inPictureInPicture && !scene.compactSettled && scene.progress < MINIMIZE_BUTTON_UNTIL) {
             MinimizeButton(scene)
-            FullscreenPlayerButtons(scene, frame, layout, fullscreenInfo)
+            FullscreenPlayerButtons(scene, frame, layout)
         }
         if ((scene.compactSettled || frame.visualState.controlsAlpha > 0f) && !scene.inPictureInPicture) {
             MiniPlayerControls(
@@ -121,6 +117,41 @@ internal fun BoxScope.PlayerVideoBox(
         }
     }
 }
+
+/**
+ * The web page keeps its full size in the mini player too; only the picture shrinks. A resize would show the old
+ * frame unscaled until the page draws at the new size. [fullWidthPx]: the full player's width, once known.
+ */
+private fun Modifier.playerPageLayout(scene: PlayerScene, frame: PlayerFrame, fullWidthPx: Int?): Modifier =
+    this then when {
+        scene.inPictureInPicture || scene.fullscreenActive || fullWidthPx == null -> Modifier.fillMaxSize()
+        // Fits the video to the screen as full screen does, clear of the display cutout at the side and shrunk above
+        // the stream info's room, at the page's full screen size.
+        scene.streamHiding?.coversScreen(scene.progress) == true -> Modifier
+            .fillMaxSize()
+            .padding(horizontal = frame.fullscreenSide)
+            .fullscreenVideo { area ->
+                fullscreenPlacement(
+                    bounds = null,
+                    areaWidthPx = area.maxWidth,
+                    areaHeightPx = frame.constraints.maxHeight,
+                    keyboard = FullscreenKeyboard(),
+                    insets = FullscreenChatInsets(controlBarPx = 0, infoBarPx = scene.fullscreenInfoRoomPx()),
+                )
+            }
+        else -> Modifier.playerScaledFromFullWidth(fullWidthPx)
+    }
+
+/**
+ * TalkBack does not reach into the full player's video while its stream is hidden all out of sight; the mini player
+ * and picture-in-picture show it.
+ */
+private fun Modifier.outOfSightSemantics(scene: PlayerScene): Modifier =
+    if (scene.streamHiding?.fullyHidden == true && !scene.inPictureInPicture && scene.progress == 0f) {
+        clearAndSetSemantics {}
+    } else {
+        this
+    }
 
 /** The screen's layer over a recording's seek bar, once the page has told where the bar sits. */
 @Composable
@@ -171,11 +202,21 @@ private fun Modifier.playerBox(
         else -> {
             val bounds = frame.playerBounds
             val playerCorner = RoundedCornerShape(lerp(0.dp, MiniPlayerCorner, scene.progress))
-            Modifier
-                .offset { IntOffset(bounds.x, bounds.y) }
-                .fixedPlayerLayout(bounds.width, bounds.height)
+            val place = if (scene.streamHiding?.coversScreen(scene.progress) == true) {
+                // The whole screen but the room of the stream info under it.
+                Modifier.streamCover(frame.constraints.maxWidth, frame.constraints.maxHeight) {
+                    scene.fullscreenInfoRoomPx()
+                }
+            } else {
+                Modifier
+                    .offset { IntOffset(bounds.x, bounds.y) }
+                    .fixedPlayerLayout(bounds.width, bounds.height)
+            }
+            place
                 .shadow(lerp(0.dp, 8.dp, scene.progress), playerCorner)
                 .clip(playerCorner)
+                // Inside the clip, so the hiding video slides up under the box's top edge.
+                .hiddenStreamMotion(scene.streamHiding, scene.progress)
         }
     }
 
@@ -237,6 +278,7 @@ private class PlayerTouches(
                 headerExpanded = chrome.headerExpanded,
                 minimizeControl = chrome.minimizeControl,
                 minimized = scene.minimized,
+                playerOutOfSight = chrome.playerOutOfSight,
             )
         ) {
             chrome.followPlayer(true)
@@ -365,15 +407,14 @@ private fun BoxScope.MinimizeButton(scene: PlayerScene) {
 }
 
 /**
- * The stream info, the chat button, and the sleep timer at the top; full screen, the chat mode, and the overlaid
- * chat's actions at the bottom.
+ * The chat button and the sleep timer at the top; full screen, the chat mode, and the overlaid chat's actions at the
+ * bottom. The stream info of a full screen player is under the video ([FullscreenInfoBar]).
  */
 @Composable
 private fun BoxScope.FullscreenPlayerButtons(
     scene: PlayerScene,
     frame: PlayerFrame,
     layout: FullscreenChatLayout,
-    fullscreenInfo: @Composable () -> Unit,
 ) {
     val fullscreen = scene.fullscreen
     val fullscreenActive = scene.fullscreenActive
@@ -396,13 +437,12 @@ private fun BoxScope.FullscreenPlayerButtons(
         fullscreenPlayerButtonsEndPx(settledChat, restPlacement).toDp()
     }
     val buttonsEnd by animateDpAsState(targetValue = buttonsEndTarget, label = "player buttons end")
-    // The compact chat keeps to its bottom corner, so the stream info and the gear take the whole width.
+    // The compact chat keeps to its bottom corner, so the buttons at the top keep to the video's corner.
     val topEnd by animateDpAsState(
         targetValue = if (layout.overlayChat == FullscreenOverlayChatHeight.Compact) 0.dp else buttonsEndTarget,
         label = "player top end",
     )
     Box(modifier = Modifier.matchParentSize().padding(end = topEnd)) {
-        PlayerFullscreenInfo(visible = shown && fullscreenActive, content = fullscreenInfo)
         PlayerFullscreenChatButton(visible = shown && fullscreenActive)
         PlayerSleepTimerButton(visible = shown, fullscreen = fullscreenActive)
     }

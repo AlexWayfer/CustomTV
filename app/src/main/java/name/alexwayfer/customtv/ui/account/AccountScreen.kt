@@ -6,13 +6,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import name.alexwayfer.customtv.auth.TwitchAccount
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 
 @Composable
 internal fun AccountScreen(
     account: TwitchAccount,
     onLeave: () -> Unit,
     onLogOut: () -> Unit,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onShowCategories: () -> Unit,
 ) {

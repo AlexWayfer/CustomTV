@@ -208,7 +208,7 @@ private fun ColumnScope.PinnedDetails(
                     textSize = headerSize,
                     badgeSize = badgeSize,
                     modifier = Modifier.weight(1f),
-                    labelsUserId = message.userId,
+                    userId = message.userId,
                     topChatterLogin = message.userLogin,
                 )
                 Text(

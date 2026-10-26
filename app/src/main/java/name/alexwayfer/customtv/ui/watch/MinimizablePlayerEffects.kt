@@ -108,6 +108,7 @@ private fun HeaderCollapseEffects(chrome: PlayerChromeVisibility, shrunk: Boolea
         chrome.headerRevealCount,
         chrome.headerHeld,
         chrome.videoLoading,
+        chrome.playerOutOfSight,
     ) {
         if (
             !headerCollapseTimerRuns(
@@ -115,12 +116,13 @@ private fun HeaderCollapseEffects(chrome: PlayerChromeVisibility, shrunk: Boolea
                 minimizeControl = chrome.minimizeControl,
                 held = chrome.headerHeld,
                 videoLoading = chrome.videoLoading,
+                playerOutOfSight = chrome.playerOutOfSight,
             )
         ) {
             return@LaunchedEffect
         }
         delay(HEADER_COLLAPSE_AFTER)
-        snapshotFlow { headerCollapsesAfterTimer(chrome.playerControls) }.first { it }
+        snapshotFlow { headerCollapsesAfterTimer(chrome.playerControls, chrome.playerOutOfSight) }.first { it }
         chrome.show(false)
     }
 }

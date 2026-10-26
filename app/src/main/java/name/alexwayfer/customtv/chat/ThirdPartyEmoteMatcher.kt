@@ -1,22 +1,27 @@
 package name.alexwayfer.customtv.chat
 
-/** Matches BTTV, FFZ, and 7TV emotes and the modifiers of the enabled platforms in chat text. */
+/**
+ * Matches BTTV, FFZ, and 7TV emotes and the modifiers of the enabled platforms in chat text. The author's personal
+ * emotes win over the channel's, as in chatterino7.
+ */
 object ThirdPartyEmoteMatcher {
     fun overlay(
         parts: List<ChatPart>,
         emotes: Map<String, SevenTvEmote>,
         modifierPlatforms: Set<EmotePlatform> = emptySet(),
+        personal: Map<String, SevenTvEmote> = emptyMap(),
     ): List<ChatPart> {
         if (parts.isEmpty()) return parts
         val bttvModifiers = EmotePlatform.Bttv in modifierPlatforms
         val ffzModifiers = EmotePlatform.Ffz in modifierPlatforms
+        val lookup = EmoteLookup(emotes, personal)
         val items = chatItems(parts)
         val words = items.filter { it.isWord }
-        val kinds = words.map { it.kind(emotes, bttvModifiers, ffzModifiers) }
+        val kinds = words.map { it.kind(lookup, bttvModifiers, ffzModifiers) }
         val targets = emoteWordTargets(kinds)
         val wordIndexes = HashMap<ChatItem, Int>(words.size)
         words.forEachIndexed { index, item -> wordIndexes[item] = index }
-        return ChatItemBuilder(words, kinds, targets, emotes).build(items, wordIndexes).ifEmpty { parts }
+        return ChatItemBuilder(words, kinds, targets, lookup).build(items, wordIndexes).ifEmpty { parts }
     }
 
     /**
@@ -40,6 +45,16 @@ object ThirdPartyEmoteMatcher {
     private val TOKEN_SPLIT = Regex("(?<=\\s)|(?=\\s)")
 }
 
+/** The emote a word names: the author's personal one first, then the channel's or a global one. */
+private class EmoteLookup(
+    private val emotes: Map<String, SevenTvEmote>,
+    private val personal: Map<String, SevenTvEmote>,
+) {
+    operator fun get(word: String): SevenTvEmote? = personal[word] ?: emotes[word]
+
+    fun isPersonal(word: String): Boolean = word in personal
+}
+
 /** One word, whitespace, or whole part of a message being matched; compared by identity. */
 private class ChatItem(val token: String? = null, val part: ChatPart? = null) {
     /** Whitespace and empty text are not words: they neither apply to emotes nor end a run of them. */
@@ -50,7 +65,7 @@ private class ChatItem(val token: String? = null, val part: ChatPart? = null) {
             else -> true
         }
 
-    fun kind(emotes: Map<String, SevenTvEmote>, bttvModifiers: Boolean, ffzModifiers: Boolean): EmoteWordKind {
+    fun kind(emotes: EmoteLookup, bttvModifiers: Boolean, ffzModifiers: Boolean): EmoteWordKind {
         if (part != null) return if (part is ChatPart.Emote) EmoteWordKind.Emote else EmoteWordKind.Other
         val word = token.orEmpty()
         if (bttvModifiers && EmoteEffects.bttv(word) != null) return EmoteWordKind.BttvModifier
@@ -74,7 +89,7 @@ private class ChatItemBuilder(
     private val words: List<ChatItem>,
     private val kinds: List<EmoteWordKind>,
     private val targets: IntArray,
-    private val emotes: Map<String, SevenTvEmote>,
+    private val emotes: EmoteLookup,
 ) {
     private val out = ArrayList<ChatPart>()
 
@@ -147,8 +162,13 @@ private class ChatItemBuilder(
     }
 
     private fun emotePart(token: String): ChatPart.Emote {
-        val emote = emotes.getValue(token)
-        return ChatPart.Emote(name = token, url = emote.url, aspectRatio = emote.aspectRatio)
+        val emote = checkNotNull(emotes[token])
+        return ChatPart.Emote(
+            name = token,
+            url = emote.url,
+            aspectRatio = emote.aspectRatio,
+            personal = emotes.isPersonal(token),
+        )
     }
 
     /** [part] with the BTTV modifiers that wait for word [index]. */

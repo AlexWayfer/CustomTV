@@ -32,6 +32,15 @@ potential-bugs:
     excludes: ['**/test/**', '**/testPremium/**', '**/testFree/**', '**/androidTest/**']
 
 style:
+  # Android Studio finds a use in the other flavor or a test on its own and reports such a suppression as redundant;
+  # a parameter that a counterpart ignores is excluded under UnusedParameter instead. Only the JavaScript bridges,
+  # called from the player page alone, and the one free composable that ignores a parameter need it.
+  ForbiddenSuppress:
+    active: true
+    rules: ['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE']
+    excludes:
+      - '**/*Bridge.kt'
+      - '**/free/**/ui/account/ChannelProfileTabs.kt'
   ForbiddenImport:
     # Material's text and outlined buttons draw the theme's primary purple text, which reads poorly on the dark
     # surfaces; ui/components has the same buttons with the readable purple.
@@ -53,9 +62,13 @@ style:
   UnusedImport:
     active: true
   UnusedParameter:
-    # The free build's no-op counterparts take the premium signatures and ignore them; Android Studio, which does not
-    # flag them, reports a suppression on each as redundant. Its own unused parameter check still covers free.
-    excludes: ['**/free/**']
+    # The free build's no-op counterparts take the premium signatures and ignore them, and so do the premium
+    # counterparts of free parts that read more; Android Studio, which does not flag them, reports a suppression on each
+    # as redundant. Its own unused parameter check still covers these files.
+    excludes:
+      - '**/free/**'
+      - '**/premium/**/ui/PremiumBanner.kt'
+      - '**/premium/**/ui/watch/ChatModesMenu.kt'
 
 naming:
   FunctionNaming:

@@ -12,6 +12,11 @@ class TwitchGqlTest {
     }
 
     @Test
+    fun itemsAskedWithTwoAliasesEachFitHalfAsManyABatch() {
+        assertEquals(listOf((1..7).toList(), (8..14).toList(), listOf(15)), gqlAliasBatches((1..15).toList(), 2))
+    }
+
+    @Test
     fun fifteenItemsFitOneBatch() {
         assertEquals(1, gqlAliasBatches((1..15).toList()).size)
     }

@@ -122,7 +122,7 @@ private fun EmotePreviewItem(emote: ChatPart.Emote, isOverlay: Boolean = false) 
         textAlign = TextAlign.Center,
         style = MaterialTheme.typography.titleLarge,
     )
-    EmotePreviewCaption(name = emote.name, url = emote.url)
+    EmotePreviewCaption(name = emote.name, url = emote.url, personal = emote.personal)
 }
 
 @Composable
@@ -177,8 +177,8 @@ private fun twitchDetailsOrigin(details: TwitchEmoteDetails): EmoteOrigin {
 }
 
 @Composable
-internal fun EmotePreviewCaption(name: String, url: String) {
-    val origin = rememberEmotePreviewOrigin(name, url) ?: return
+internal fun EmotePreviewCaption(name: String, url: String, personal: Boolean = false) {
+    val origin = rememberEmotePreviewOrigin(name, url, personal) ?: return
     Text(
         text = emoteOriginText(origin),
         modifier = Modifier.padding(top = 4.dp),
@@ -189,28 +189,28 @@ internal fun EmotePreviewCaption(name: String, url: String) {
 }
 
 @Composable
-private fun rememberEmotePreviewOrigin(name: String, url: String): EmoteOrigin? {
+private fun rememberEmotePreviewOrigin(name: String, url: String, personal: Boolean): EmoteOrigin? {
     val channel = LocalEmotePreviewChannel.current
     val library = emoteLibraryFromUrl(url)
     val twitchId = twitchEmoteId(url)
-    var origin by remember(url, name, channel) {
+    var origin by remember(url, name, channel, personal) {
         mutableStateOf(
             twitchId?.let { TwitchEmoteDetailsRepository.peek(it) }?.let(::twitchDetailsOrigin)
                 ?: if (twitchId != null) {
                     EmoteOrigin.Twitch
                 } else {
-                    library?.let { cachedLibraryOrigin(it, name, channel) }
+                    library?.let { cachedLibraryOrigin(it, name, channel, personal) }
                 },
         )
     }
-    LaunchedEffect(twitchId, name, channel) {
+    LaunchedEffect(twitchId, name, channel, personal) {
         val known = twitchId?.let { TwitchEmoteDetailsRepository.peek(it) }
         if (known != null) {
             origin = twitchDetailsOrigin(known)
         } else if (twitchId != null) {
             TwitchEmoteDetailsRepository.details(twitchId)?.let { origin = twitchDetailsOrigin(it) }
         } else {
-            origin = library?.let { cachedLibraryOrigin(it, name, channel) }
+            origin = library?.let { cachedLibraryOrigin(it, name, channel, personal) }
         }
     }
     return origin
@@ -242,6 +242,10 @@ private fun emoteOriginText(origin: EmoteOrigin): String = when (origin) {
         origin.channel,
     )
     is EmoteOrigin.Library -> stringResource(R.string.emote_preview_library, libraryName(origin.library))
+    is EmoteOrigin.LibraryPersonal -> stringResource(
+        R.string.emote_preview_library_personal,
+        libraryName(origin.library),
+    )
 }
 
 @Composable
@@ -255,6 +259,7 @@ private fun cachedLibraryOrigin(
     library: EmoteLibrary,
     name: String,
     channel: EmotePreviewChannel,
+    personal: Boolean,
 ): EmoteOrigin {
     val emotes = when (library) {
         EmoteLibrary.SevenTv -> SevenTvRepository.emotes
@@ -263,5 +268,5 @@ private fun cachedLibraryOrigin(
     }
     val onChannel = name in emotes.cachedChannel(channel.twitchUserId)
     val global = name in emotes.cachedGlobal()
-    return libraryEmoteOrigin(library, onChannel, channel.displayName, global)
+    return libraryEmoteOrigin(library, onChannel, channel.displayName, global, personal)
 }

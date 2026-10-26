@@ -27,6 +27,7 @@ internal fun ChatterCardModeration(
     message: ChatMessage?,
     renderMessage: @Composable (ChatMessage) -> Unit,
     onOpenLogs: (tab: Int) -> Unit,
+    onShoutoutGiven: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (!tools.locked) return

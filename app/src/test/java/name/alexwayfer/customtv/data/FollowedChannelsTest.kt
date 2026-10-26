@@ -307,18 +307,18 @@ class FollowedChannelsTest {
     }
 
     @Test
-    fun aBroadcastEarlierTodayIsToday() {
+    fun aBroadcastEarlierTodayIsRecent() {
         assertEquals(
-            FollowedLastBroadcastAge.Today,
-            followedLastBroadcastAge(millis("2026-09-24T01:00:00Z"), millis("2026-09-24T15:00:00Z"), ZoneOffset.UTC),
+            FollowedLastBroadcastAge.Recent(RecentLastLive.HoursAgo(2)),
+            followedLastBroadcastAge(millis("2026-09-24T13:00:00Z"), millis("2026-09-24T15:00:00Z"), ZoneOffset.UTC),
         )
     }
 
     @Test
-    fun aBroadcastOnThePreviousCalendarDayIsYesterday() {
+    fun aBroadcastOnThePreviousCalendarDayIsRecent() {
         assertEquals(
-            FollowedLastBroadcastAge.Yesterday,
-            followedLastBroadcastAge(millis("2026-09-23T23:00:00Z"), millis("2026-09-24T01:00:00Z"), ZoneOffset.UTC),
+            FollowedLastBroadcastAge.Recent(RecentLastLive.Yesterday),
+            followedLastBroadcastAge(millis("2026-09-23T10:00:00Z"), millis("2026-09-24T01:00:00Z"), ZoneOffset.UTC),
         )
     }
 

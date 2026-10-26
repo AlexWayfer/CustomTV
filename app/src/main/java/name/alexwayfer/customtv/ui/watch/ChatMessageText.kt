@@ -28,7 +28,9 @@ import androidx.compose.ui.unit.em
 import name.alexwayfer.customtv.channel.displayNameLoginSuffix
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatPart
+import name.alexwayfer.customtv.chat.ThirdPartyBadge
 import name.alexwayfer.customtv.chat.flaggedTermRanges
+import name.alexwayfer.customtv.chat.shownBadges
 import name.alexwayfer.customtv.data.ChatterLabelIcon
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 import name.alexwayfer.customtv.ui.theme.ChatFlaggedTerm
@@ -80,6 +82,10 @@ internal data class ChatMessageLook(
     val topChatter: TopChatterBadge? = null,
     /** The channel a shared chat message was sent from; null for this channel's own. */
     val sharedChatSource: SharedChatSourceLook? = null,
+    /** The author's badges from 7TV, FFZ, and BTTV. */
+    val extraBadges: List<ThirdPartyBadge> = emptyList(),
+    /** The author's 7TV paint over their name; null keeps [nickColor]. */
+    val namePaint: SpanStyle? = null,
 ) {
     val bodyColor: Color get() = if (actionColor) nickColor else TwitchText
     val bodyFontStyle: FontStyle get() = if (actionItalic) FontStyle.Italic else FontStyle.Normal
@@ -147,13 +153,12 @@ private fun AnnotatedString.Builder.appendChatAuthor(
         onClick = actions.openAuthor,
         onLongClick = actions.longClick,
     )
-    message.badges.forEachIndexed { index, badge ->
-        val url = look.badgeUrls[badge.key] ?: return@forEachIndexed
+    shownBadges(message.badges, look.badgeUrls, look.extraBadges).forEachIndexed { index, badge ->
         val key = "badge_$index"
-        appendInlineContent(key, badge.setId)
+        appendInlineContent(key, badge.description)
         inlineContent[key] = badgeInlineContent(
-            model = url,
-            contentDescription = badge.setId,
+            model = badge,
+            contentDescription = badge.description,
             sizes = sizes,
             onClick = actions.openAuthor,
             onLongClick = actions.longClick,
@@ -166,12 +171,13 @@ private fun AnnotatedString.Builder.appendChatAuthor(
         onClick = actions.openAuthor,
         onLongClick = actions.longClick,
     )
-    appendAuthorName(message, look.nickColor, sizes.text, actions.openAuthor)
+    appendAuthorName(message, look.nickColor, look.namePaint, sizes.text, actions.openAuthor)
 }
 
 private fun AnnotatedString.Builder.appendAuthorName(
     message: ChatMessage,
     nickColor: Color,
+    namePaint: SpanStyle?,
     textSize: TextUnit,
     openAuthor: () -> Unit,
 ) {
@@ -180,7 +186,7 @@ private fun AnnotatedString.Builder.appendAuthorName(
         fontWeight = FontWeight.Bold,
         fontSize = textSize,
         textDecoration = TextDecoration.None,
-    )
+    ).merge(namePaint)
     withLink(
         LinkAnnotation.Clickable(
             tag = CHAT_AUTHOR_LINK_TAG,

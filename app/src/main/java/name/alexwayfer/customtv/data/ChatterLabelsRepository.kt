@@ -27,6 +27,8 @@ import name.alexwayfer.customtv.data.ChatterLabelsGistClient.LABELS_FILE
 import org.json.JSONArray
 import org.json.JSONObject
 
+internal const val CHATTER_LABELS_TAG = "ChatterLabels"
+
 object ChatterLabelsRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -103,6 +105,25 @@ object ChatterLabelsRepository {
             parseChatterLabels(labels, assignments)
         }
         show(data)
+    }
+
+    /**
+     * Gives every assignment of a chatter in [users] the name and login the chatter has now, as the extension does when
+     * their card opens. It reads the Gist again first, so an assignment made in the meantime stays, and writes only
+     * when an entry changed. Returns the assignments as they are now, or null when none needed a change.
+     */
+    internal suspend fun syncAssignmentUsers(users: Map<String, LabeledChatter>): JSONArray? = mutex.withLock {
+        val saved = _credentials.value ?: throw ChatterLabelsException(R.string.chatter_labels_error_not_connected)
+        val written = withContext(Dispatchers.IO) {
+            val files = ChatterLabelsGistClient.fetchFiles(saved)
+            val labels = JSONArray(ChatterLabelsGistClient.readFile(files, LABELS_FILE) ?: "[]")
+            val assignments = JSONArray(ChatterLabelsGistClient.readFile(files, ASSIGNMENTS_FILE) ?: "[]")
+            val synced = syncChatterAssignmentUsers(assignments, users) ?: return@withContext null
+            ChatterLabelsGistClient.writeFiles(saved, mapOf(ASSIGNMENTS_FILE to formatChatterLabelsJson(synced)))
+            labels to synced
+        } ?: return@withLock null
+        show(parseChatterLabels(written.first, written.second))
+        written.second
     }
 
     /** Reads both Gist files for the settings page to edit; chat shows what was read too. */

@@ -278,6 +278,7 @@ private fun ChatterCardActions(
             message = chatter.sourceMessage,
             renderMessage = renderMessage,
             onOpenLogs = nav::openLogs,
+            onShoutoutGiven = onDismiss,
         )
     }
     ChatterCardWhisperItem(

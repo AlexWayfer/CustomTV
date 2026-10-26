@@ -23,6 +23,20 @@ internal enum class DeviceTurn { Portrait, Landscape }
  */
 internal fun playerFullscreen(expanded: Boolean, displayLandscape: Boolean): Boolean = expanded && displayLandscape
 
+/** Which system bars the player's screen shows. */
+internal enum class PlayerSystemBars { Shown, StatusHidden, Hidden }
+
+/**
+ * Full screen hides the system bars. The landscape chat of a hidden stream ([chatOnly]) hides the status bar, for the
+ * chat's room and so the bar does not come and go as the stream slides out of full screen and back.
+ */
+internal fun playerSystemBars(fullscreen: Boolean, displayLandscape: Boolean, chatOnly: Boolean): PlayerSystemBars =
+    when {
+        fullscreen -> PlayerSystemBars.Hidden
+        displayLandscape && chatOnly -> PlayerSystemBars.StatusHidden
+        else -> PlayerSystemBars.Shown
+    }
+
 /** Leaving full screen while the screen is in landscape holds it in portrait, or it would enter again at once. */
 internal fun lockAfterFullscreenExit(displayLandscape: Boolean): FullscreenLock =
     if (displayLandscape) FullscreenLock.Portrait else FullscreenLock.None

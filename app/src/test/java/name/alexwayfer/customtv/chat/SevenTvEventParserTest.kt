@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.chat
 
 import androidx.compose.ui.graphics.Color
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -49,13 +50,13 @@ class SevenTvEventParserTest {
                             .put("actor", JSONObject().put("display_name", "Editor"))
                             .put(
                                 "pulled",
-                                org.json.JSONArray().put(
+                                JSONArray().put(
                                     JSONObject().put("old_value", emoteJson("Oldge", "old-id")),
                                 ),
                             )
                             .put(
                                 "updated",
-                                org.json.JSONArray().put(
+                                JSONArray().put(
                                     JSONObject()
                                         .put("old_value", emoteJson("peepoHappy", "happy-id"))
                                         .put("value", emoteJson("widepeepoHappy", "happy-id")),
@@ -94,7 +95,7 @@ class SevenTvEventParserTest {
                 JSONObject()
                     .put("type", "emote_set.update")
                     .put("actor", JSONObject().put("display_name", "Editor"))
-                    .put("pushed", org.json.JSONArray().put(emoteChange())),
+                    .put("pushed", JSONArray().put(emoteChange())),
             )
             .toString()
         val messages = (SevenTvEventParser.parseFrame(json) as SevenTvFrame.Dispatch).messages
@@ -102,7 +103,89 @@ class SevenTvEventParserTest {
         assertEquals("Sadge", messages[0].emoteChange?.emoteName)
     }
 
-    private fun dispatch(pushed: JSONObject): String {
+    @Test
+    fun theChannelSetsUpdateStaysAChatLine() {
+        val frame = SevenTvEventParser.parseFrame(dispatch(pushed = emoteChange(), setId = "channel"), "channel")
+
+        assertEquals("Sadge", (frame as SevenTvFrame.Dispatch).messages.single().emoteChange?.emoteName)
+    }
+
+    @Test
+    fun anotherSetsUpdateChangesThatPersonalSet() {
+        val renamed = JSONObject()
+            .put("old_value", emoteJson("peepoHappy", "happy-id"))
+            .put("value", emoteJson("widepeepoHappy", "happy-id"))
+        val json = JSONObject()
+            .put("op", 0)
+            .put(
+                "d",
+                JSONObject()
+                    .put("type", "emote_set.update")
+                    .put(
+                        "body",
+                        JSONObject()
+                            .put("id", "personal")
+                            .put("pushed", JSONArray().put(emoteChange()))
+                            .put("pulled", JSONArray().put(JSONObject().put("old_value", emoteJson("Oldge", "old"))))
+                            .put("updated", JSONArray().put(renamed)),
+                    ),
+            )
+            .toString()
+
+        val frame = SevenTvEventParser.parseFrame(json, "channel")
+
+        val change = (frame as SevenTvFrame.Personal).event as PersonalEmoteEvent.SevenTvSetChanged
+        assertEquals("personal", change.setId)
+        assertEquals(setOf("Sadge", "widepeepoHappy"), change.added.keys)
+        assertEquals("https://cdn.7tv.app/emote/sadge-id/2x.webp", change.added["Sadge"]?.url)
+        assertEquals(setOf("Oldge", "peepoHappy"), change.removed)
+    }
+
+    @Test
+    fun anEmoteSetEntitlementGivesTheSetToTheChattersTwitchAccount() {
+        val frame = SevenTvEventParser.parseFrame(
+            """
+            {"op":0,"d":{"type":"entitlement.create","body":{"id":"0","kind":5,"object":{
+              "id":"0","kind":"EMOTE_SET","ref_id":"personal",
+              "user":{"id":"7tv-user","username":"infected0660","connections":[
+                {"id":"557969778053218304","platform":"DISCORD"},
+                {"id":"431995282","platform":"TWITCH","username":"infected0660"}
+              ]}
+            }}}}
+            """.trimIndent(),
+            "channel",
+        )
+
+        assertEquals(
+            SevenTvFrame.Personal(PersonalEmoteEvent.SevenTvSetAssigned("personal", listOf("431995282"))),
+            frame,
+        )
+    }
+
+    @Test
+    fun otherEntitlementsLeaveNoTrace() {
+        val avatar = SevenTvEventParser.parseFrame(
+            """
+            {"op":0,"d":{"type":"entitlement.create","body":{"object":{
+              "kind":"AVATAR","ref_id":"avatar","user":{"connections":[{"id":"1","platform":"TWITCH"}]}
+            }}}}
+            """.trimIndent(),
+            "channel",
+        )
+        val noTwitch = SevenTvEventParser.parseFrame(
+            """
+            {"op":0,"d":{"type":"entitlement.create","body":{"object":{
+              "kind":"EMOTE_SET","ref_id":"set","user":{"connections":[{"id":"1","platform":"KICK"}]}
+            }}}}
+            """.trimIndent(),
+            "channel",
+        )
+
+        assertEquals(SevenTvFrame.Dispatch(emptyList()), avatar)
+        assertEquals(SevenTvFrame.Dispatch(emptyList()), noTwitch)
+    }
+
+    private fun dispatch(pushed: JSONObject, setId: String? = null): String {
         return JSONObject()
             .put("op", 0)
             .put("t", 1_700_000_000_000L)
@@ -113,13 +196,14 @@ class SevenTvEventParserTest {
                     .put(
                         "body",
                         JSONObject()
+                            .putOpt("id", setId)
                             .put(
                                 "actor",
                                 JSONObject()
                                     .put("display_name", "AlexWayfer")
                                     .put("style", JSONObject().put("color", 4_278_190_335L)),
                             )
-                            .put("pushed", org.json.JSONArray().put(pushed)),
+                            .put("pushed", JSONArray().put(pushed)),
                     ),
             )
             .toString()
@@ -145,7 +229,7 @@ class SevenTvEventParserTest {
                             .put("url", "//cdn.7tv.app/emote/$id")
                             .put(
                                 "files",
-                                org.json.JSONArray().put(
+                                JSONArray().put(
                                     JSONObject()
                                         .put("name", "2x.webp")
                                         .put("width", 64)

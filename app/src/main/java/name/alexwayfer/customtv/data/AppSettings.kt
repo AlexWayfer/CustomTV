@@ -4,6 +4,12 @@ data class AppSettings(
     val sevenTvEmotes: Boolean = true,
     val ffzEmotes: Boolean = true,
     val bttvEmotes: Boolean = true,
+    val sevenTvBadges: Boolean = true,
+    /** 7TV's gradients and pictures over chatters' names. */
+    val sevenTvPaints: Boolean = true,
+    /** FFZ's chatter badges, and the channel's custom moderator and VIP badges from FFZ. */
+    val ffzBadges: Boolean = true,
+    val bttvBadges: Boolean = true,
     val meMessageItalic: Boolean = true,
     val highlightFirstMessages: Boolean = false,
     val markRaiders: Boolean = true,
@@ -29,11 +35,15 @@ data class AppSettings(
     /** Whether [hiddenPhrases] also hide messages in the channels the user moderates. */
     val hidePhrasesWhenModerator: Boolean = false,
     val backgroundSoundOnly: Boolean = true,
+    /** The player's sound fades in as it starts or plays, and out as it pauses or closes. */
+    val smoothSound: Boolean = true,
     val streamStartNotifications: Boolean = true,
     val streamChangeNotifications: Boolean = false,
     val watchStreakNotifications: Boolean = true,
     /** A red glow along the bottom of an expanded player while a whisper is unread. */
     val whisperUnreadGlow: Boolean = true,
+    /** The home screen widget lists the channels that went offline last under the live ones. */
+    val liveWidgetEnded: Boolean = true,
     val linkPreviewMode: LinkPreviewMode = LinkPreviewMode.None,
     val autoClaimBonus: Boolean = false,
     val portraitLanguage: PortraitLanguage = PortraitLanguage.System,

@@ -13,9 +13,9 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -37,6 +37,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,14 +51,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.data.ChatterLabelAssignee
+import name.alexwayfer.customtv.data.ChatterLabelProblem
+import name.alexwayfer.customtv.data.EditableChatterLabel
 import name.alexwayfer.customtv.data.ChatterLabelsCredentials
 import name.alexwayfer.customtv.data.readChatterLabelIcon
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.asString
+import name.alexwayfer.customtv.ui.components.ChannelPreview
+import name.alexwayfer.customtv.ui.components.SearchField
 import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import sh.calvin.reorderable.ReorderableColumn
+import sh.calvin.reorderable.ReorderableColumnScope
 
 private enum class LabelsPhase { Loading, Failed, Ready }
 
@@ -70,9 +77,11 @@ internal fun ChatterLabelsEditor(
     credentials: ChatterLabelsCredentials,
     state: ChatterLabelsEditorState,
     leaveGuard: SettingsLeaveGuard,
+    onOpenProfile: (ChannelPreview) -> Unit,
+    onNotice: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    LaunchedEffect(credentials) { state.load() }
+    LaunchedEffect(credentials) { state.load(credentials) }
 
     var pendingLeave by remember { mutableStateOf<(() -> Unit)?>(null) }
     val changed = state.changed
@@ -102,11 +111,12 @@ internal fun ChatterLabelsEditor(
             ) {
                 CircularProgressIndicator()
             }
-            LabelsPhase.Failed -> LabelsLoadFailed(state.loadError, onRetry = { scope.launch { state.load() } })
+            LabelsPhase.Failed -> LabelsLoadFailed(state.loadError) { scope.launch { state.load(credentials) } }
             LabelsPhase.Ready -> ChatterLabelsList(
                 state = state,
                 onChooseIcon = chooseIcon,
                 onDelete = { id -> if (state.isSaved(id)) deletingId = id else state.delete(id) },
+                onChatterTap = rememberChatterTap(state, onOpenProfile, onNotice),
             )
         }
     }
@@ -114,7 +124,7 @@ internal fun ChatterLabelsEditor(
     deletingId?.let { id -> state.labels.find { it.id == id } }?.let { label ->
         ChatterLabelDeleteDialog(
             name = label.name,
-            chatters = state.chatterCounts[label.id] ?: 0,
+            chatters = state.assignees[label.id]?.size ?: 0,
             onConfirm = {
                 deletingId = null
                 state.delete(label.id)
@@ -172,16 +182,33 @@ private fun LabelsLoadFailed(error: UiText?, onRetry: () -> Unit) {
     }
 }
 
-/** The labels to drag into a new order and edit, and Add under them. */
+/**
+ * The labels to drag into a new order and edit, and Add under them. A search by nick above them leaves only the
+ * labels of the chatters that match, with those chatters listed; the order and Add wait until it is cleared.
+ */
 @Composable
 private fun ChatterLabelsList(
     state: ChatterLabelsEditorState,
     onChooseIcon: (String) -> Unit,
     onDelete: (String) -> Unit,
+    onChatterTap: (ChatterLabelAssignee) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
+    var query by rememberSaveable { mutableStateOf("") }
+    val term = chatterSearchTerm(query)
+    val searching = term != null
     Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
         val labels = state.labels
+        // Shown while something is typed too, so the search can be cleared after its last label is deleted.
+        if (labels.isNotEmpty() || query.isNotEmpty()) {
+            SearchField(
+                query = query,
+                onQueryChange = { query = it },
+                placeholder = R.string.chatter_labels_search,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                contentPadding = ChatterLabelFieldPadding,
+            )
+        }
         if (labels.isEmpty()) {
             Text(
                 text = stringResource(R.string.chatter_labels_empty),
@@ -192,37 +219,116 @@ private fun ChatterLabelsList(
         }
         val problems = if (state.showProblems) state.problems else emptyMap()
         val labelsById = labels.associateBy { it.id }
+        val shownAssignees = shownAssignees(state, term)
         ReorderableColumn(
             // The IDs, not the labels: the list's drag state starts over whenever the list changes, and a typed
             // letter must not do that.
             list = labels.map { it.id },
             onSettle = { from, to -> state.move(from, to) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
             onMove = { haptic.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick) },
         ) { index, id, dragging ->
             val label = labelsById[id] ?: return@ReorderableColumn
             key(id) {
-                ReorderableItem {
-                    ChatterLabelCard(
-                        label = label,
-                        chatters = if (state.isSaved(id)) state.chatterCounts[id] ?: 0 else 0,
-                        problems = problems[id].orEmpty(),
-                        dragging = dragging,
-                        enabled = !state.saving,
-                        onMoveUp = if (index > 0) ({ state.move(index, index - 1) }) else null,
-                        onMoveDown = if (index < labels.lastIndex) ({ state.move(index, index + 1) }) else null,
-                        onChooseIcon = { onChooseIcon(id) },
-                        onNameChange = { name -> state.update(id) { it.copy(name = name) } },
-                        onEnabledChange = { enabled -> state.update(id) { it.copy(enabled = enabled) } },
-                        onDelete = { onDelete(id) },
-                    )
-                }
+                LabelListItem(
+                    state = state,
+                    label = label,
+                    index = index,
+                    lastIndex = labels.lastIndex,
+                    assignees = shownAssignees[id].orEmpty(),
+                    problems = problems[id].orEmpty(),
+                    dragging = dragging,
+                    searching = searching,
+                    onChooseIcon = onChooseIcon,
+                    onDelete = onDelete,
+                    onChatterTap = onChatterTap,
+                )
             }
         }
+        LabelsListFooter(
+            searching = searching,
+            nothingFound = searching && labels.none { shownAssignees[it.id].orEmpty().isNotEmpty() },
+            saving = state.saving,
+            onAdd = state::add,
+        )
+    }
+}
+
+/** The chatters each label lists, by label ID: the ones that match [term], and none for a label not saved yet. */
+private fun shownAssignees(state: ChatterLabelsEditorState, term: String?): Map<String, List<ChatterLabelAssignee>> =
+    state.labels.associate { label ->
+        val all = if (state.isSaved(label.id)) state.assignees[label.id].orEmpty() else emptyList()
+        label.id to assigneesMatching(all, term)
+    }
+
+/**
+ * A label in the list, which the search hides when none of its chatters match, and which it cannot move meanwhile.
+ * The gap above it goes with it, so a hidden label leaves none.
+ */
+@Composable
+private fun ReorderableColumnScope.LabelListItem(
+    state: ChatterLabelsEditorState,
+    label: EditableChatterLabel,
+    index: Int,
+    lastIndex: Int,
+    assignees: List<ChatterLabelAssignee>,
+    problems: Set<ChatterLabelProblem>,
+    dragging: Boolean,
+    searching: Boolean,
+    onChooseIcon: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onChatterTap: (ChatterLabelAssignee) -> Unit,
+) {
+    val id = label.id
+    // Outside the hiding, as the item takes its place from its own position in the list.
+    ReorderableItem {
+        AnimatedVisibility(
+            visible = !searching || assignees.isNotEmpty(),
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(Modifier.padding(top = if (index > 0) 8.dp else 0.dp)) {
+                ChatterLabelCard(
+                    label = label,
+                    assignees = assignees,
+                    problems = problems,
+                    dragging = dragging,
+                    enabled = !state.saving,
+                    reorderable = !searching,
+                    searching = searching,
+                    onMoveUp = if (index > 0 && !searching) ({ state.move(index, index - 1) }) else null,
+                    onMoveDown = if (index < lastIndex && !searching) ({ state.move(index, index + 1) }) else null,
+                    onChooseIcon = { onChooseIcon(id) },
+                    onNameChange = { name -> state.update(id) { it.copy(name = name) } },
+                    onEnabledChange = { enabled -> state.update(id) { it.copy(enabled = enabled) } },
+                    onDelete = { onDelete(id) },
+                    onChatterTap = onChatterTap,
+                )
+            }
+        }
+    }
+}
+
+/** Under the labels: that the search found none, or Add, which waits until the search is cleared. */
+@Composable
+private fun ColumnScope.LabelsListFooter(
+    searching: Boolean,
+    nothingFound: Boolean,
+    saving: Boolean,
+    onAdd: () -> Unit,
+) {
+    AnimatedVisibility(visible = nothingFound, enter = fadeIn(), exit = fadeOut()) {
+        Text(
+            text = stringResource(R.string.chatter_labels_search_empty),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+    AnimatedVisibility(visible = !searching, enter = fadeIn(), exit = fadeOut()) {
         TextButton(
-            onClick = state::add,
-            enabled = !state.saving,
+            onClick = onAdd,
+            enabled = !saving,
             modifier = Modifier.padding(start = 4.dp, top = 4.dp),
         ) {
             Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.padding(end = 8.dp))

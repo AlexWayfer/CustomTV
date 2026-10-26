@@ -60,6 +60,8 @@ internal fun MinimizablePlayer(
     modifier: Modifier = Modifier,
     inPictureInPicture: Boolean = false,
     appNavigationBarHeightPx: Int = 0,
+    // The stream's chat-only mode; none for a recording.
+    streamHiding: StreamHiding? = null,
     overlays: @Composable BoxScope.(compactSettled: Boolean) -> Unit = {},
     // The stream info over a full screen player, shown with its controls.
     fullscreenInfo: @Composable () -> Unit = {},
@@ -72,32 +74,45 @@ internal fun MinimizablePlayer(
     val ui = remember { PlayerSceneState() }
     val chatSwipeScope = rememberCoroutineScope()
     val chatSwipe = remember { FullscreenChatSwipeState(chatSwipeScope) }
+    val fullscreen = rememberPlayerFullscreen(minimized, inPictureInPicture, streamHiding?.partlyHidden == true)
+    val progress = when {
+        inPictureInPicture -> 0f
+        state.dragging -> state.dragProgress
+        else -> state.collapse.value
+    }
+    val infoBarShownTarget = fullscreenInfoBarShown(
+        controls = chromeVisibility.minimizeControl,
+        composerOpen = ui.chatComposerOpen,
+        fullscreen = fullscreen.active,
+        covers = streamHiding?.coversScreen(progress) == true,
+    )
     val scene = PlayerScene(
         state = state,
         chrome = chromeVisibility,
         ui = ui,
-        fullscreen = rememberPlayerFullscreen(minimized, inPictureInPicture),
+        fullscreen = fullscreen,
         chatSwipe = chatSwipe,
         target = target,
         actions = actions,
         minimized = minimized,
         inPictureInPicture = inPictureInPicture,
-        progress = when {
-            inPictureInPicture -> 0f
-            state.dragging -> state.dragProgress
-            else -> state.collapse.value
-        },
+        progress = progress,
         screenHeightPx = LocalWindowInfo.current.containerSize.height.toFloat(),
         controlBarHeightPx = playerControlBarHeightPx(target, ui.measuredControlBarPx),
         controlBarShown = animateControlBarShown(chromeVisibility),
         gestureHints = LocalGestureHints.current,
+        streamHiding = streamHiding,
+        infoBarShownTarget = infoBarShownTarget,
+        infoBarShown = animateFullscreenInfoBarShown(infoBarShownTarget),
     )
     MinimizablePlayerEffects(scene)
     val density = LocalDensity.current
     val controlBarTop = playerControlBarTop(scene.controlBarHeightPx)
-    // A snackbar, such as a gesture tip, rises over the control bar while it shows, at the pace of the chat beside it.
+    // A snackbar, such as a gesture tip, rises over the stream info and the control bar while they show, at the pace
+    // of the chat beside it.
     LiftSnackbar(active = scene.fullscreenActive) {
-        with(density) { (controlBarTop.toPx() * scene.controlBarShown.value).roundToInt() }
+        val controlBarPx = with(density) { (controlBarTop.toPx() * scene.controlBarShown.value).roundToInt() }
+        controlBarPx + scene.fullscreenInfoRoomPx()
     }
     val swipeOffsetX = if (state.swipeDragging) state.swipeDragX else state.swipeX.value
     val visualState = playerVisualState(scene, with(density) { MiniPlayerWidth.toPx() }, swipeOffsetX)
@@ -203,7 +218,8 @@ private fun BoxWithConstraintsScope.PlayerSceneBody(
     )
     val layout = rememberFullscreenChatLayout(scene, constraints.maxWidth - 2 * fullscreenSidePx)
     PlayerContent(scene, frame, layout, slots.content)
-    PlayerVideoBox(scene, frame, layout, slots.fullscreenInfo, slots.seekbarOverlay)
+    PlayerVideoBox(scene, frame, layout, slots.seekbarOverlay)
+    FullscreenInfoBar(scene, frame, layout, slots.fullscreenInfo)
     // The expanded player covers the navigation bar and its unread dot.
     WhisperUnreadGlow(
         minimized = scene.minimized,

@@ -8,12 +8,13 @@ import kotlinx.coroutines.delay
 import name.alexwayfer.customtv.chat.OutgoingRaid
 import name.alexwayfer.customtv.chat.raidSecondsRemaining
 import name.alexwayfer.customtv.chat.raidTargetToOpen
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 
 @Composable
 internal fun OutgoingRaidCountdown(
     raid: OutgoingRaid?,
     currentChannel: String,
-    onOpen: (String) -> Unit,
+    onOpen: (ChannelPreview) -> Unit,
     onFinished: () -> Unit,
 ) {
     val open = rememberUpdatedState(onOpen)
@@ -25,7 +26,9 @@ internal fun OutgoingRaidCountdown(
             delay((current.goAtMillis - System.currentTimeMillis()).coerceAtLeast(1L).milliseconds)
         }
         if (current.leaving) {
-            raidTargetToOpen(currentChannel, current.targetLogin)?.let { open.value(it) }
+            raidTargetToOpen(currentChannel, current.targetLogin)?.let { login ->
+                open.value(ChannelPreview(login, current.targetDisplayName, current.targetAvatarUrl))
+            }
             finished.value()
         }
     }

@@ -414,19 +414,12 @@ private fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, fi
                 open()
             }
         },
-        onViewChatRules = if (input.channel.rules.isNullOrEmpty()) {
-            null
-        } else {
-            {
-                field.menuOpen = false
-                composer.rulesTrigger = ChatRulesTrigger.Settings
-                composer.rulesOpen = true
-            }
-        },
+        onViewChatRules = menuRulesOpener(input, composer, field),
         onDismiss = {
             field.menuOpen = false
             input.sheetKeyboard.onDismiss()
         },
+        streamHide = menu.streamHide,
         initialSubpage = modesPage?.takeIf { field.menuAtModes },
         firstRow = { openSubpage ->
             ChannelPanelRows(channel.broadcasterId, channel.browserSheetHeightPx, openSubpage)

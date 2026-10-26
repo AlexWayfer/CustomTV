@@ -35,10 +35,12 @@
     <string name="premium_all_live_alerts">Когда отслеживаемый канал выходит в эфир</string>
     <string name="premium_all_title_alerts">Когда канал в эфире меняет название или категорию</string>
     <string name="premium_all_alerts_per_channel">Настройки уведомлений для каждого канала</string>
+    <string name="premium_all_home_widget">Виджет для рабочего стола</string>
     <string name="premium_all_bans">Бан, таймаут и разбан из карточки чаттера</string>
     <string name="premium_all_message_deletion">Удаление сообщений</string>
     <string name="premium_all_warnings">Предупреждения чаттерам</string>
     <string name="premium_all_chat_modes">Смена режимов чата</string>
+    <string name="premium_all_shoutouts">Отметка каналов (/shoutout)</string>
     <string name="premium_all_automod">Одобрение и отклонение сообщений, задержанных AutoMod</string>
     <string name="premium_all_mod_logs">Модерские логи чаттера: сообщения, действия, комментарии</string>
     <string name="premium_all_suspicious_users">Подсветка подозрительных пользователей</string>
@@ -50,7 +52,7 @@
     <string name="premium_all_predictions_and_polls">Создание прогнозов и опросов и управление ими</string>
     <string name="premium_all_voting">Голосование в опросах и прогнозах в приложении</string>
     <string name="premium_all_following_buttons">Кнопки «Отслеживать» в приложении</string>
-    <string name="premium_all_raider_marks">Отметки рейдеров для модераторов</string>
+    <string name="premium_all_raider_marks">Подсветка рейдеров для модераторов</string>
     <string name="premium_all_reports">Жалобы на пользователей</string>
     <string name="premium_upgrade">Перейти на Premium</string>
     <string name="premium_not_now">Не сейчас</string>

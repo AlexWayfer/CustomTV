@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.ui.account.TwitchUserAccess
 import name.alexwayfer.customtv.ui.components.AppTitle
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.notifications.HomeAlertsPrompts
 import name.alexwayfer.customtv.ui.notifications.HomeNotificationPrompt
 import name.alexwayfer.customtv.ui.rememberLifecycleResumed
@@ -61,8 +62,8 @@ internal fun HomeScreen(
     earlyFollowAccess: () -> TwitchUserAccess?,
     onFollowPermissionRejected: () -> Unit,
     scrollListToTop: OneShotRequest<Unit>?,
-    onWatch: (String) -> Unit,
-    onOpenProfile: (String) -> Unit,
+    onWatch: (ChannelPreview) -> Unit,
+    onOpenProfile: (ChannelPreview) -> Unit,
     onLogIn: () -> Unit,
     onSearchOpenChange: (Boolean) -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,
@@ -128,12 +129,12 @@ internal fun HomeScreen(
 
 /** Opens a channel from Home: its stream when it is live, its profile otherwise. */
 private fun homeChannelOpener(
-    onWatch: (String) -> Unit,
-    onOpenProfile: (String) -> Unit,
-): (login: String, live: Boolean) -> Unit = { login, live ->
+    onWatch: (ChannelPreview) -> Unit,
+    onOpenProfile: (ChannelPreview) -> Unit,
+): (channel: ChannelPreview, live: Boolean) -> Unit = { channel, live ->
     when (homeChannelTarget(live)) {
-        HomeChannelTarget.Stream -> onWatch(login)
-        HomeChannelTarget.Profile -> onOpenProfile(login)
+        HomeChannelTarget.Stream -> onWatch(channel)
+        HomeChannelTarget.Profile -> onOpenProfile(channel)
     }
 }
 
@@ -162,7 +163,7 @@ private fun ColumnScope.HomeFollowedChannels(
     follows: HomeFollows,
     access: suspend () -> TwitchUserAccess?,
     scrollToTop: OneShotRequest<Unit>?,
-    onOpen: (login: String, live: Boolean) -> Unit,
+    onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
 ) {
     val channels by follows.channels.collectAsStateWithLifecycle()
     val fromCache by follows.fromCache.collectAsStateWithLifecycle()
@@ -186,9 +187,9 @@ private fun ColumnScope.HomeFollowedChannels(
                 }
             }
         },
-        onOpen = { login, live ->
+        onOpen = { channel, live ->
             focusManager.clearFocus()
-            onOpen(login, live)
+            onOpen(channel, live)
         },
         scrollToTop = scrollToTop,
         modifier = Modifier.weight(1f),

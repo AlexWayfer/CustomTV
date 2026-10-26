@@ -208,8 +208,8 @@ internal class ChatInputActions(
 
     /**
      * Opens the card `/user` names, or the prediction for `/prediction` with the keyboard going down first, or changes
-     * a chat mode; true when the text was one of them, valid or not. A user without `/prediction` or the chat mode
-     * commands sends them to chat as typed.
+     * a chat mode, or gives a shoutout; true when the text was one of them, valid or not. A user without
+     * `/prediction`, `/shoutout`, or the chat mode commands sends them to chat as typed.
      */
     private fun runFieldCommand(): Boolean {
         val now = input.value
@@ -219,6 +219,11 @@ internal class ChatInputActions(
         val modeCommand = modeControl?.let { chatModeCommand(text) }
         if (modeControl != null && modeCommand != null) {
             composer.runChatModeCommand(modeCommand, modeControl, text, compose.draft, scope)
+            return true
+        }
+        val shoutoutCommand = modeControl?.let { chatShoutoutCommand(text, compose.sessionChatters()) }
+        if (modeControl != null && shoutoutCommand != null) {
+            composer.runShoutoutCommand(shoutoutCommand, modeControl, text, compose.draft, scope)
             return true
         }
         val openPrediction = compose.onOpenPrediction
@@ -292,6 +297,18 @@ internal fun openChatMenu(
     sheetKeyboard.open { field.menuOpen = true }
 }
 
+/** The menu's Chat rules row: closes the menu and opens the rules; null when the channel has none. */
+internal fun menuRulesOpener(input: ChatInput, composer: ChatComposerState, field: ChatFieldState): (() -> Unit)? =
+    if (input.channel.rules.isNullOrEmpty()) {
+        null
+    } else {
+        {
+            field.menuOpen = false
+            composer.rulesTrigger = ChatRulesTrigger.Settings
+            composer.rulesOpen = true
+        }
+    }
+
 /**
  * A chat mode command: the free build points to Premium, and Premium sends the change as the send under way. The
  * draft goes once Twitch makes the change; a refusal stays over the field with the draft, to fix it.
@@ -311,6 +328,35 @@ private fun ChatComposerState.runChatModeCommand(
             sendError = null
             startSend(scope) {
                 val error = change(run.change)
+                if (error != null) {
+                    sendError = error
+                } else if (draft.text.toString() == text) {
+                    draft.clearText()
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A `/shoutout`: the free build points to Premium, and Premium gives the shoutout as the send under way. The draft goes
+ * once Twitch gives it; a refusal stays over the field with the draft, to fix it.
+ */
+private fun ChatComposerState.runShoutoutCommand(
+    command: ChatShoutoutCommand,
+    control: ChatModeControl,
+    text: String,
+    draft: TextFieldState,
+    scope: CoroutineScope,
+) {
+    if (sending) return
+    when (val run = chatShoutoutCommandRun(command, locked = control is ChatModeControl.Locked)) {
+        is ChatShoutoutCommandRun.Show -> sendError = run.error
+        is ChatShoutoutCommandRun.Send -> {
+            val shoutout = (control as? ChatModeControl.Available)?.shoutout ?: return
+            sendError = null
+            startSend(scope) {
+                val error = shoutout(run.login)
                 if (error != null) {
                     sendError = error
                 } else if (draft.text.toString() == text) {

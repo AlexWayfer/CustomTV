@@ -11,13 +11,23 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
-object ChatBadgeRepository {
+/** A channel's badge pictures by Twitch badge key: Twitch's own, and FFZ's custom moderator and VIP ones. */
+internal data class ChannelBadgeUrls(
+    val twitch: Map<String, String> = emptyMap(),
+    val ffzRoom: Map<String, String> = emptyMap(),
+) {
+    /** The pictures the chat shows: FFZ's in place of Twitch's while [ffzBadges] is on. */
+    fun shown(ffzBadges: Boolean): Map<String, String> =
+        if (ffzBadges && ffzRoom.isNotEmpty()) twitch + ffzRoom else twitch
+}
+
+internal object ChatBadgeRepository {
     private val http = sharedHttpClient.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
-    private val channelCache = ConcurrentHashMap<String, Map<String, String>>()
-    private val channelInFlight = ConcurrentHashMap<String, CompletableDeferred<Map<String, String>>>()
+    private val channelCache = ConcurrentHashMap<String, ChannelBadgeUrls>()
+    private val channelInFlight = ConcurrentHashMap<String, CompletableDeferred<ChannelBadgeUrls>>()
     private val titleByUrl = ConcurrentHashMap<String, String>()
     private val globalLock = CompletableDeferred<Map<String, StoredBadge>>()
     @Volatile
@@ -27,14 +37,14 @@ object ChatBadgeRepository {
 
     fun titleForImage(url: String): String? = titleByUrl[url]
 
-    suspend fun forChannel(login: String): Map<String, String> {
+    suspend fun forChannel(login: String): ChannelBadgeUrls {
         val key = login.lowercase()
         return channelCache[key] ?: loadChannelOnce(key)
     }
 
     /** The first caller for [key] loads its badges; the others wait for its answer. */
-    private suspend fun loadChannelOnce(key: String): Map<String, String> {
-        val created = CompletableDeferred<Map<String, String>>()
+    private suspend fun loadChannelOnce(key: String): ChannelBadgeUrls {
+        val created = CompletableDeferred<ChannelBadgeUrls>()
         val existing = channelInFlight.putIfAbsent(key, created)
         if (existing != null) return existing.await()
         return try {
@@ -55,7 +65,7 @@ object ChatBadgeRepository {
     }
 
     /** The badges the last start kept for [login]'s channel, shown until [forChannel] answers. */
-    suspend fun restore(login: String): Map<String, String>? = withContext(Dispatchers.IO) {
+    suspend fun restore(login: String): ChannelBadgeUrls? = withContext(Dispatchers.IO) {
         val key = login.lowercase()
         channelCache[key]?.let { return@withContext it }
         ChannelAvatarRepository.awaitRestored()
@@ -68,9 +78,9 @@ object ChatBadgeRepository {
     }
 
     // FFZ's custom moderator and VIP badges keep the title of the Twitch badge they replace.
-    private fun badgeUrls(twitch: Map<String, StoredBadge>, ffz: Map<String, String>): Map<String, String> {
+    private fun badgeUrls(twitch: Map<String, StoredBadge>, ffz: Map<String, String>): ChannelBadgeUrls {
         val custom = withTitles(ffz.mapValues { (badge, url) -> StoredBadge(url, twitch[badge]?.title) })
-        return (twitch + custom).mapValues { it.value.url }
+        return ChannelBadgeUrls(twitch.mapValues { it.value.url }, custom.mapValues { it.value.url })
     }
 
     /** Remembers the title of each badge by its picture, for the chatter card, and passes the badges on. */

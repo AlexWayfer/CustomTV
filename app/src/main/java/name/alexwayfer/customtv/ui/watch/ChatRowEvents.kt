@@ -93,7 +93,10 @@ private fun ChatRowRewardHeader(message: ChatMessage, look: ChatRowLook) {
     )
 }
 
-/** The event the row tells of: a raid, a watch streak, a subscription, a moderation notice, or a system line. */
+/**
+ * The event the row tells of: a raid, a watch streak, a subscription, a moderation notice, a shoutout, or a system
+ * line.
+ */
 @Composable
 internal fun ChatRowEventLine(message: ChatMessage, look: ChatRowLook) {
     val sizes = look.sizes
@@ -137,6 +140,13 @@ internal fun ChatRowEventLine(message: ChatMessage, look: ChatRowLook) {
             ChatModerationNoticeLine(message.moderationNotice, timestampText, sizes.text, sizes.lineHeight)
         message.warningNotice != null ->
             ChatWarningNoticeLine(message.warningNotice, timestampText, sizes.text, sizes.lineHeight)
+        message.shoutoutNotice != null -> ChatShoutoutLine(
+            notice = message.shoutoutNotice,
+            timestampText = timestampText,
+            textSize = sizes.text,
+            lineHeight = sizes.lineHeight,
+            badgeUrls = look.appearance.badgeUrls,
+        )
         !message.systemText.isNullOrBlank() -> ChatSystemTextLine(message, message.systemText, look)
     }
 }

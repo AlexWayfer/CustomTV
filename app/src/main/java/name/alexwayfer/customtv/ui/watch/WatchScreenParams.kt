@@ -4,6 +4,7 @@ import name.alexwayfer.customtv.chat.ChatterFollow
 import name.alexwayfer.customtv.chat.FollowForChatMode
 import name.alexwayfer.customtv.chat.SubForChatMode
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 
 /** Where the stream screen leads: the player's moves and the app's other sections. */
@@ -16,8 +17,8 @@ internal data class WatchNavigation(
     val onFullPlayerExpanded: () -> Unit,
     val onMinimizeDragDismissesKeyboard: () -> Unit = {},
     val onLiveStatus: (Boolean) -> Unit = {},
-    val onOpenChannel: (String) -> Unit = {},
-    val onOpenChannelProfile: (String) -> Unit = {},
+    val onOpenChannel: (ChannelPreview) -> Unit = {},
+    val onOpenChannelProfile: (ChannelPreview) -> Unit = {},
     val onOpenSettings: (SettingsScrollTarget) -> Unit = {},
     /** Opens the stream's category in Explore; null in an edition without Explore. */
     val onOpenCategory: ((TwitchCategory) -> Unit)? = null,

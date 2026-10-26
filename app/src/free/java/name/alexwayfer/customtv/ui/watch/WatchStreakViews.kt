@@ -10,6 +10,10 @@ import name.alexwayfer.customtv.chat.ChatMessage
 internal fun WatchPresenceEffect(channelLogin: String, isLive: Boolean, chatMessages: StateFlow<List<ChatMessage>>) =
     Unit
 
+/** Stream start alerts are a Premium feature: the free build has none to clear. */
+@Composable
+internal fun WatchedStartAlertEffect(channelId: String?, isLive: Boolean) = Unit
+
 @Composable
 internal fun ChannelPointsChip(
     channelLogin: String,

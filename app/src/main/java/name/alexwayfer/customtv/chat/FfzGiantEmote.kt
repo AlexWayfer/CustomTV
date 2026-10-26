@@ -44,8 +44,9 @@ object FfzGiantEmote {
 fun ChatMessage.withDisplayParts(
     thirdPartyEmotes: Map<String, SevenTvEmote>,
     modifierPlatforms: Set<EmotePlatform>,
+    personalEmotes: Map<String, SevenTvEmote> = emptyMap(),
 ): ChatMessage {
-    val overlaid = ThirdPartyEmoteMatcher.overlay(parts, thirdPartyEmotes, modifierPlatforms)
+    val overlaid = ThirdPartyEmoteMatcher.overlay(parts, thirdPartyEmotes, modifierPlatforms, personalEmotes)
     val next = if (reward?.giantEmote == true) FfzGiantEmote.pluckLast(overlaid) else overlaid
     return if (next == parts) this else copy(parts = next)
 }

@@ -1,5 +1,20 @@
 # CustomTV (free version)
 
+## v1.13.0 (2026-10-26)
+
+*   Show channel shoutouts in the chat
+*   Show 7TV, FFZ, and BTTV badges and 7TV name paints in the chat
+*   Show 7TV and BTTV personal emotes in the chat
+*   Hide the stream and keep the chat with a swipe on the stream info
+*   Fade the player's sound in and out, with a Smooth sound setting
+*   Show the full screen stream info under the video
+*   Restart a live stream that stalls or falls behind
+*   Show minutes and hours since a channel's last broadcast
+*   Improve the visuals and animations of a channel's page
+*   Add Open message logs to the profile menus
+*   Search chatter labels by nick, and show a label's chatters from its count
+*   Keep a stream paused when it is paused while loading
+
 ## v1.12.0 (2026-10-23)
 
 *   Show finished emotes in the chat field as pictures, with their modifiers

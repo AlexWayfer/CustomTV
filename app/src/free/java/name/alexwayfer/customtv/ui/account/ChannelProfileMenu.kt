@@ -24,6 +24,7 @@ internal fun ChannelProfileMenu(
 ) {
     val context = LocalContext.current
     ProfileMenu(description = stringResource(R.string.profile_menu), modifier = modifier) { close ->
+        MessageLogsMenuItem(login, close)
         DropdownMenuItem(
             text = { Text(stringResource(R.string.report_user)) },
             leadingIcon = { Icon(painterResource(R.drawable.ic_report_flag), contentDescription = null) },

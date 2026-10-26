@@ -19,11 +19,18 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.player.PlayerChrome
 import name.alexwayfer.customtv.player.chromeChangeSyncsControls
 
-/** The header and the minimize button appear together with the player's own controls. */
+/**
+ * The header and the minimize button appear together with the player's own controls. [outOfSight] tells when the
+ * player is hidden for the chat: the header then shows and collapses on its own, apart from the paused player.
+ */
 @Stable
-internal class PlayerChromeVisibility {
+internal class PlayerChromeVisibility(private val outOfSight: () -> Boolean = { false }) {
     /** Moves the player's own controls along when [show] changes the chrome. */
     val player = PlayerChrome()
+
+    /** The player is hidden for the chat, so the header goes its own way. */
+    val playerOutOfSight: Boolean
+        get() = outOfSight()
 
     var headerExpanded by mutableStateOf(true)
     var minimizeControl by mutableStateOf(false)
@@ -43,7 +50,7 @@ internal class PlayerChromeVisibility {
 
     /** Shows or hides the chrome from the app side; the player's controls follow. */
     fun show(visible: Boolean) {
-        val syncControls = chromeChangeSyncsControls(headerExpanded, minimizeControl, visible)
+        val syncControls = chromeChangeSyncsControls(headerExpanded, minimizeControl, visible, playerOutOfSight)
         followPlayer(visible)
         if (syncControls) player.request(visible)
     }

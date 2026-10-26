@@ -48,6 +48,7 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.notifications.SettingsNotificationPrompt
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
 
@@ -55,6 +56,8 @@ import name.alexwayfer.customtv.ui.watch.OneShotRequest
 internal fun SettingsScreen(
     onClose: () -> Unit,
     onOpenCategory: (TwitchCategory) -> Unit,
+    onOpenProfile: (ChannelPreview) -> Unit,
+    onNotice: (String) -> Unit,
     signedIn: Boolean,
     accountName: String?,
     reselected: OneShotRequest<Unit>?,
@@ -106,7 +109,7 @@ internal fun SettingsScreen(
                 // A subpage shows once every stored value is read, so no control animates from a placeholder.
                 // The labels page lays out its own column, with Save floating over it.
                 SettingsPage.ChatterLabels -> if (body != null) {
-                    ChatterLabelsSettings(body.labelSeed, leaveGuard, pageModifier)
+                    ChatterLabelsSettings(body.labelSeed, leaveGuard, viewModel, onOpenProfile, onNotice, pageModifier)
                 }
                 else -> if (body != null) {
                     SettingsPageColumn(

@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.account
 
+import name.alexwayfer.customtv.data.RecentLastLive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -14,13 +15,18 @@ class ProfileStatTextTest {
         ZonedDateTime.of(2026, 10, 5, hour, 0, 0, 0, zone).minusDays(days).toInstant().toEpochMilli()
 
     @Test
-    fun aStreamStartedEarlierTodayIsToday() {
-        assertEquals(LastLiveDay.Today, lastLiveDay(daysBefore(0, hour = 0), now, zone))
+    fun aStreamThatEndedHalfAnHourAgoCountsMinutes() {
+        assertEquals(LastLiveDay.Recent(RecentLastLive.MinutesAgo(30)), lastLiveDay(daysBefore(0, hour = 0), now, zone))
     }
 
     @Test
-    fun aStreamFromLastNightIsYesterdayEvenAnHourAgo() {
-        assertEquals(LastLiveDay.Yesterday, lastLiveDay(daysBefore(1), now, zone))
+    fun aStreamFromLastNightCountsHours() {
+        assertEquals(LastLiveDay.Recent(RecentLastLive.HoursAgo(1)), lastLiveDay(daysBefore(1), now, zone))
+    }
+
+    @Test
+    fun aStreamFromYesterdayMorningIsYesterday() {
+        assertEquals(LastLiveDay.Recent(RecentLastLive.Yesterday), lastLiveDay(daysBefore(1, hour = 10), now, zone))
     }
 
     @Test
@@ -39,8 +45,8 @@ class ProfileStatTextTest {
     }
 
     @Test
-    fun aStartAheadOfTheClockIsToday() {
-        assertEquals(LastLiveDay.Today, lastLiveDay(now + 3_600_000, now, zone))
+    fun anEndAheadOfTheClockIsJustNow() {
+        assertEquals(LastLiveDay.Recent(RecentLastLive.JustNow), lastLiveDay(now + 3_600_000, now, zone))
     }
 
     @Test

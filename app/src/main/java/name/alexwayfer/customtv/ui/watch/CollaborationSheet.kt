@@ -48,6 +48,7 @@ import name.alexwayfer.customtv.data.CollaborationResult
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.collaborationRowOpensChannel
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.theme.TwitchText
@@ -74,7 +75,7 @@ internal fun CollaborationSheet(
     result: CollaborationResult?,
     sharedViewerCount: Int?,
     currentLogin: String,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -162,7 +163,7 @@ private fun CollaborationTitle(sharedViewerCount: Int?) {
 private fun CollaborationChannelRow(
     channel: CollaborationChannel,
     currentLogin: String,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
 ) {
     val label = displayNameLabel(channel.displayName, channel.login)
     val suffix = displayNameLoginSuffix(channel.displayName, channel.login)
@@ -177,7 +178,9 @@ private fun CollaborationChannelRow(
         modifier = Modifier
             .then(
                 if (opensChannel) {
-                    Modifier.clickable(onClick = { onOpenChannel(channel.login) })
+                    Modifier.clickable {
+                        onOpenChannel(ChannelPreview(channel.login, channel.displayName, channel.avatarUrl))
+                    }
                 } else {
                     Modifier
                 },

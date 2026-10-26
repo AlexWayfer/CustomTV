@@ -32,6 +32,7 @@ internal fun rememberChatPickerCatalog(input: ChatInput): EmotePickerCatalog {
         bttvEmotes = emotes.bttv,
         ffzEmotes = emotes.ffz,
         accessToken = input.user.accessToken,
+        ownPersonal = emotes.ownPersonal,
     )
 }
 

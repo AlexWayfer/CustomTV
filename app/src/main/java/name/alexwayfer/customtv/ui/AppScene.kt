@@ -31,9 +31,11 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.account.AccountViewModel
 import name.alexwayfer.customtv.ui.account.DeviceLoginPrompt
 import name.alexwayfer.customtv.ui.account.ProfileVideoPlayback
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.home.HomeViewModel
 import name.alexwayfer.customtv.ui.home.followedChannelIds
 import name.alexwayfer.customtv.ui.watch.closeWatchedChannels
+import name.alexwayfer.customtv.ui.watch.watchRoute
 
 /** The signed-in account and the login under way, as the account view model streams them. */
 internal data class AppAccount(
@@ -173,17 +175,18 @@ internal data class AppScene(
      */
     fun returnFromVideoToStream(channel: String) {
         AppLog.i(PLAYER_NAV_LOG_TAG, "back from the recording to $channel")
-        openChannel(channel, fromHome = false)
+        openChannel(ChannelPreview(channel), fromHome = false)
     }
 
-    fun openChannel(channel: String, fromHome: Boolean) {
-        AppLog.i(PLAYER_NAV_LOG_TAG, "open $channel, from home: $fromHome")
+    /** Opens [channel]'s stream, which shows what the opener knows of the channel until its profile loads. */
+    fun openChannel(channel: ChannelPreview, fromHome: Boolean) {
+        AppLog.i(PLAYER_NAV_LOG_TAG, "open ${channel.login}, from home: $fromHome")
         shell.openPlayerFromHome = fromHome
         shell.player = shell.player.liveOpened()
-        homeViewModel.addRecent(channel)
+        homeViewModel.addRecent(channel.login)
         val currentChannel = currentEntry.value?.arguments?.getString("channel")
-        if (!(watching && currentChannel.equals(channel, ignoreCase = true))) {
-            navController.navigate("watch/$channel") {
+        if (!(watching && currentChannel.equals(channel.login, ignoreCase = true))) {
+            navController.navigate(watchRoute(channel)) {
                 launchSingleTop = true
                 popUpTo("home")
             }

@@ -1,19 +1,34 @@
 package name.alexwayfer.customtv.chat
 
+import name.alexwayfer.customtv.data.objects
 import name.alexwayfer.customtv.data.text
 import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
 
 internal object BttvEventParser {
-    fun parseFrame(text: String): ChatMessage? {
+    fun parseFrame(text: String): BttvFrame? {
         val json = text.toJsonObjectOrNull() ?: return null
         val data = json.optJSONObject("data") ?: return null
-        return when (json.optString("name")) {
+        val message = when (json.optString("name")) {
             "emote_create" -> parseCreateOrUpdate(data, EmoteChangeAction.Added)
             "emote_update" -> parseCreateOrUpdate(data, EmoteChangeAction.Renamed)
             "emote_delete" -> parseDelete(data)
+            "lookup_user" -> return parseLookupUser(data)?.let(BttvFrame::Personal)
             else -> null
         }
+        return message?.let(BttvFrame::EmoteChange)
+    }
+
+    /** A chatter that told BTTV it is in the channel; only a Pro one has personal emotes. */
+    private fun parseLookupUser(data: JSONObject): PersonalEmoteEvent.BttvUser? {
+        if (!data.optBoolean("pro")) return null
+        val userId = data.text("providerId") ?: return null
+        val emotes = data.optJSONArray("emotes")?.objects().orEmpty().mapNotNull { item ->
+            val code = item.text("code") ?: return@mapNotNull null
+            val id = item.text("id") ?: return@mapNotNull null
+            code to SevenTvEmote(url = "$CDN/$id/2x.webp", aspectRatio = aspectRatio(item), id = id)
+        }
+        return PersonalEmoteEvent.BttvUser(userId, emotes.toMap())
     }
 
     private fun parseCreateOrUpdate(data: JSONObject, action: EmoteChangeAction): ChatMessage? {
@@ -73,4 +88,9 @@ internal object BttvEventParser {
     }
 
     private const val CDN = "https://cdn.betterttv.net/emote"
+}
+
+internal sealed interface BttvFrame {
+    data class EmoteChange(val message: ChatMessage) : BttvFrame
+    data class Personal(val event: PersonalEmoteEvent.BttvUser) : BttvFrame
 }

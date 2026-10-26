@@ -2,21 +2,32 @@ package name.alexwayfer.customtv.player
 
 /**
  * The app shows or hides the chrome: the player's controls follow once per change. A repeated call
- * with the same state, such as a second expand, does not tap the player again.
+ * with the same state, such as a second expand, does not tap the player again, and a player out of sight
+ * ([playerOutOfSight]: its stream hidden for the chat) is not tapped at all.
  */
-internal fun chromeChangeSyncsControls(headerExpanded: Boolean, minimizeControl: Boolean, visible: Boolean): Boolean =
-    headerExpanded != visible || minimizeControl != visible
+internal fun chromeChangeSyncsControls(
+    headerExpanded: Boolean,
+    minimizeControl: Boolean,
+    visible: Boolean,
+    playerOutOfSight: Boolean,
+): Boolean = !playerOutOfSight && (headerExpanded != visible || minimizeControl != visible)
 
 internal enum class PlayerControlsSync { None, Tap, ShowWithoutTap, HideWithoutTap }
 
 /**
- * How the player's controls follow the wanted state, only when they differ from it. On a stream a tap toggles them.
- * On a recording a tap on the video also plays or pauses it, so the page shows or hides the controls without one.
+ * How the player's controls follow the wanted state, only when they differ from it. On a playing stream a tap toggles
+ * them. On a recording, and on a [paused] stream, a tap on the video would also play it, so the page shows or hides
+ * the controls without one.
  */
-internal fun playerControlsSync(recording: Boolean, wanted: Boolean, controlsVisible: Boolean): PlayerControlsSync =
+internal fun playerControlsSync(
+    recording: Boolean,
+    paused: Boolean,
+    wanted: Boolean,
+    controlsVisible: Boolean,
+): PlayerControlsSync =
     when {
         wanted == controlsVisible -> PlayerControlsSync.None
-        !recording -> PlayerControlsSync.Tap
+        !recording && !paused -> PlayerControlsSync.Tap
         wanted -> PlayerControlsSync.ShowWithoutTap
         else -> PlayerControlsSync.HideWithoutTap
     }
@@ -51,13 +62,17 @@ internal fun playerTouchEnd(withinTapSlop: Boolean, offPage: Boolean, onDisclosu
         else -> PlayerTouchEnd.PageTap
     }
 
-/** The stream info collapses on a timer, except while something on it, such as a menu, is open. */
+/**
+ * The stream info collapses on a timer, except while something on it, such as a menu, is open, or while the video
+ * loads; a video out of sight ([playerOutOfSight]) does not hold it.
+ */
 internal fun headerCollapseTimerRuns(
     headerExpanded: Boolean,
     minimizeControl: Boolean,
     held: Boolean,
     videoLoading: Boolean,
-): Boolean = !held && !videoLoading && (headerExpanded || minimizeControl)
+    playerOutOfSight: Boolean,
+): Boolean = !held && (!videoLoading || playerOutOfSight) && (headerExpanded || minimizeControl)
 
 internal enum class ShrinkChrome { Hide, Show, Keep }
 
@@ -72,13 +87,17 @@ internal fun chromeOnPlayerShrink(shrunk: Boolean, wasShrunk: Boolean): ShrinkCh
         else -> ShrinkChrome.Keep
     }
 
-/** Controls that appear on their own, such as when the video starts, bring the stream info along. */
+/**
+ * Controls that appear on their own, such as when the video starts, bring the stream info along; not on a player
+ * out of sight ([playerOutOfSight]), whose controls show as its stream pauses.
+ */
 internal fun controlsShowChrome(
     controlsVisible: Boolean,
     headerExpanded: Boolean,
     minimizeControl: Boolean,
     minimized: Boolean,
-): Boolean = controlsVisible && !minimized && !(headerExpanded && minimizeControl)
+    playerOutOfSight: Boolean,
+): Boolean = controlsVisible && !minimized && !playerOutOfSight && !(headerExpanded && minimizeControl)
 
 /**
  * The stream info under the player leaves beside a full screen player, and while the keyboard or the emote picker is
@@ -87,5 +106,9 @@ internal fun controlsShowChrome(
 internal fun streamInfoShownUnderPlayer(fullscreen: Boolean, composerOpen: Boolean): Boolean =
     !fullscreen && !composerOpen
 
-/** Once the timer is over, the stream info still waits while the player's own controls are on screen. */
-internal fun headerCollapsesAfterTimer(playerControlsVisible: Boolean): Boolean = !playerControlsVisible
+/**
+ * Once the timer is over, the stream info still waits while the player's own controls are on screen; not for a player
+ * out of sight ([playerOutOfSight]), whose paused page keeps them up.
+ */
+internal fun headerCollapsesAfterTimer(playerControlsVisible: Boolean, playerOutOfSight: Boolean): Boolean =
+    playerOutOfSight || !playerControlsVisible

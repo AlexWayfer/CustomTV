@@ -51,13 +51,14 @@ internal enum class ChatNoticePage {
     HypeTrain,
     Poll,
     Prediction,
+    Shoutout,
     CommunityGift,
     Pinned,
 }
 
 /**
  * The [present] pages in the default order. Timed notices come first: a raid, a hype train, a poll and a prediction,
- * then gifts and the pin.
+ * then a shoutout, gifts, and the pin.
  */
 internal fun chatNoticePages(present: Set<ChatNoticePage>): List<ChatNoticePage> =
     ChatNoticePage.entries.filter { it in present }

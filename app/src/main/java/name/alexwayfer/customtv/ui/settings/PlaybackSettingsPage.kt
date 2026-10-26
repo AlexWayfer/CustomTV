@@ -14,4 +14,10 @@ internal fun PlaybackSettings(settings: AppSettings, viewModel: SettingsViewMode
         checked = settings.backgroundSoundOnly,
         onCheckedChange = viewModel::setBackgroundSoundOnly,
     )
+    SettingsToggle(
+        label = stringResource(R.string.smooth_sound),
+        hint = stringResource(R.string.smooth_sound_hint),
+        checked = settings.smoothSound,
+        onCheckedChange = viewModel::setSmoothSound,
+    )
 }

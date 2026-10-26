@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object SevenTvRepository {
     private val channelSetIds = ConcurrentHashMap<String, String>()
+    private val userIds = ConcurrentHashMap<String, String>()
     internal val emotes = EmoteSourceCache(
         file = "7tv",
         globalUrl = "$API/emote-sets/global",
@@ -20,6 +21,16 @@ object SevenTvRepository {
         return channelSetIds[twitchUserId]
     }
 
+    /**
+     * The 7TV account of the Twitch user, from the same answer that holds their channel's emotes; null when they have
+     * none or it cannot be loaded.
+     */
+    suspend fun sevenTvAccount(twitchUserId: String): String? {
+        userIds[twitchUserId]?.let { return it }
+        emotes.loadChannel(twitchUserId)
+        return userIds[twitchUserId]
+    }
+
     private fun parseChannel(twitchUserId: String, body: String): Map<String, SevenTvEmote> {
         val json = JSONObject(body)
         val set = json.optJSONObject("emote_set")
@@ -27,8 +38,11 @@ object SevenTvRepository {
         if (setId != null) {
             channelSetIds[twitchUserId] = setId
         }
+        sevenTvUserId(json)?.let { userIds[twitchUserId] = it }
         return parseEmotes(set?.optJSONArray("emotes"))
     }
+
+    internal fun sevenTvUserId(channel: JSONObject): String? = channel.optJSONObject("user")?.text("id")
 
     private fun parseSet(body: String): Map<String, SevenTvEmote> =
         parseEmotes(JSONObject(body).optJSONArray("emotes"))
@@ -37,7 +51,7 @@ object SevenTvRepository {
         val name = item.text("name") ?: return null
         val host = item.optJSONObject("data")?.optJSONObject("host")
             ?: item.optJSONObject("host")
-        val url = emoteUrl(host) ?: return null
+        val url = hostImageUrl(host) ?: return null
         val id = item.optJSONObject("data")?.text("id") ?: item.text("id")
         val data = item.optJSONObject("data")
         val tags = data?.optJSONArray("tags")?.let { array ->
@@ -58,7 +72,8 @@ object SevenTvRepository {
         return array?.objects()?.mapNotNull(::parseSetItem)?.toMap().orEmpty()
     }
 
-    private fun emoteUrl(host: JSONObject?): String? {
+    /** The picture of a 7TV image host, an emote's or a badge's, at twice its base size. */
+    internal fun hostImageUrl(host: JSONObject?): String? {
         val raw = host?.text("url") ?: return null
         val base = if (raw.startsWith("//")) "https:$raw" else raw.trimEnd('/')
         return "$base/2x.webp"

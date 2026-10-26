@@ -38,6 +38,7 @@ data class ChatMessage(
     val autoModNotice: AutoModNotice? = null,
     val moderationNotice: ChatModerationNotice? = null,
     val warningNotice: ChatWarningNotice? = null,
+    val shoutoutNotice: ChatShoutoutNotice? = null,
     /** The room of another channel in a shared chat that the message was sent in; null for this channel's own. */
     val sourceRoomId: String? = null,
 )
@@ -278,6 +279,8 @@ sealed interface ChatPart {
         val overlays: List<Emote> = emptyList(),
         val effects: EmoteEffects = EmoteEffects(),
         val modifiers: List<EmoteModifier> = emptyList(),
+        /** One of the author's 7TV or BTTV personal emotes. */
+        val personal: Boolean = false,
     ) : ChatPart
     data class Gif(
         val name: String,

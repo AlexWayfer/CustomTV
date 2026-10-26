@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.data.ChatterLabelsCredentials
@@ -60,6 +62,7 @@ import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 import org.json.JSONException
 import java.io.IOException
 import java.security.GeneralSecurityException
+import java.util.UUID
 
 internal val ChatterLabelsSettingsTitle = R.string.chatter_labels
 
@@ -74,11 +77,23 @@ internal fun ChatterLabelsSettingsEntry(onOpen: () -> Unit) {
     )
 }
 
-/** The Gist connection and, once connected, its labels, with Save floating at the bottom while there are changes. */
+/**
+ * The Gist connection and, once connected, its labels, with Save floating at the bottom while there are changes. A
+ * chatter's name opens their profile with [onOpenProfile], or tells with [onNotice] why it cannot.
+ */
 @Composable
-internal fun ChatterLabelsSettings(seed: ChatterLabelFieldSeed, leaveGuard: SettingsLeaveGuard, modifier: Modifier) {
+internal fun ChatterLabelsSettings(
+    seed: ChatterLabelFieldSeed,
+    leaveGuard: SettingsLeaveGuard,
+    viewModel: SettingsViewModel,
+    onOpenProfile: (ChannelPreview) -> Unit,
+    onNotice: (String) -> Unit,
+    modifier: Modifier,
+) {
     val saved by ChatterLabelsRepository.credentials.collectAsStateWithLifecycle()
-    val editor = remember { ChatterLabelsEditorState() }
+    // Saved, so the page that comes back from a profile finds the same editor.
+    val opening = rememberSaveable { UUID.randomUUID().toString() }
+    val editor = remember(opening) { viewModel.chatterLabelsEditor(opening) }
     val saveShown = saved != null && editor.ready && (editor.changed || editor.saving)
     // The keyboard lifts Save with the page's end.
     Box(modifier = modifier.fillMaxSize().imePadding()) {
@@ -91,7 +106,7 @@ internal fun ChatterLabelsSettings(seed: ChatterLabelFieldSeed, leaveGuard: Sett
                 exit = shrinkVertically() + fadeOut(),
             ) {
                 Column {
-                    shownCredentials?.let { ChatterLabelsEditor(it, editor, leaveGuard) }
+                    shownCredentials?.let { ChatterLabelsEditor(it, editor, leaveGuard, onOpenProfile, onNotice) }
                 }
             }
             // Room under the last label, so Save never covers it.

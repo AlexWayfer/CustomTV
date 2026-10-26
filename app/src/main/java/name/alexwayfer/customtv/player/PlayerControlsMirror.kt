@@ -31,7 +31,7 @@ internal class PlayerControlsMirror(
     fun match(visible: Boolean) {
         handler.post {
             if (isReleased()) return@post
-            when (playerControlsSync(isRecording(), visible, this.visible)) {
+            when (playerControlsSync(isRecording(), StreamPlayback.userPaused, visible, this.visible)) {
                 PlayerControlsSync.None -> Unit
                 PlayerControlsSync.Tap -> dispatchPlayerTap()
                 PlayerControlsSync.ShowWithoutTap ->

@@ -17,4 +17,11 @@ internal fun chatSendErrorText(error: ChatSendError): String = when (error) {
     ChatSendError.FollowersUsage -> stringResource(R.string.chat_mode_followers_usage)
     ChatSendError.ChatModeFailed -> stringResource(R.string.chat_mode_change_failed)
     ChatSendError.ChatModesPremium -> stringResource(R.string.chat_modes_premium_hint)
+    ChatSendError.ShoutoutUsage -> stringResource(R.string.chat_shoutout_usage)
+    ChatSendError.ShoutoutOffline -> stringResource(R.string.chat_shoutout_offline)
+    ChatSendError.ShoutoutTooOften -> stringResource(R.string.chat_shoutout_too_often)
+    ChatSendError.ShoutoutNoChannel -> stringResource(R.string.chat_shoutout_no_channel)
+    ChatSendError.ShoutoutOwnChannel -> stringResource(R.string.chat_shoutout_own_channel)
+    ChatSendError.ShoutoutFailed -> stringResource(R.string.chat_shoutout_failed)
+    ChatSendError.ShoutoutPremium -> stringResource(R.string.chat_shoutout_premium_hint)
 }

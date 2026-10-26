@@ -27,8 +27,10 @@ import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.player.StreamMediaArtwork
 import name.alexwayfer.customtv.ui.components.CategoryGridSpacing
 import name.alexwayfer.customtv.ui.components.CategoryTile
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.LiveStreamCard
 import name.alexwayfer.customtv.ui.components.categoryGridColumns
+import name.alexwayfer.customtv.ui.components.preview
 
 /**
  * The categories of the recent recordings, most recent first, each once. Within a recording the
@@ -66,7 +68,7 @@ internal fun recentCategories(videos: List<TwitchVideo>, chapters: Map<String, V
 internal fun ChannelProfileHome(
     profile: ChannelProfile,
     recordings: ChannelRecordingsState,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
     onOpenVideo: (ProfileVideoPlayback) -> Unit,
     onOpenCategory: ((TwitchCategory) -> Unit)? = null,
 ) {
@@ -88,7 +90,7 @@ internal fun ChannelProfileHome(
                 LiveStreamCard(
                     profile = profile,
                     previewUrl = rememberProfilePreviewUrl(profile.login),
-                    onClick = { onOpenChannel(profile.login) },
+                    onClick = { onOpenChannel(profile.preview()) },
                     channelShown = false,
                 )
             }
@@ -97,7 +99,7 @@ internal fun ChannelProfileHome(
                 LiveStreamCard(
                     profile = primary.channel,
                     previewUrl = rememberProfilePreviewUrl(primary.channel.login),
-                    onClick = { onOpenChannel(primary.channel.login) },
+                    onClick = { onOpenChannel(primary.channel.preview()) },
                 )
             }
             is ProfileHomePrimary.PastBroadcast -> ProfileHomePastBroadcast(

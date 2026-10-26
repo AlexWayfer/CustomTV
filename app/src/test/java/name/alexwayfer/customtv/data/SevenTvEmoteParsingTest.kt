@@ -35,4 +35,15 @@ class SevenTvEmoteParsingTest {
         assertNull(emote.originalName)
         assertEquals(emptyList<String>(), emote.tags)
     }
+
+    @Test
+    fun `a channel answer names the 7TV account of its Twitch user`() {
+        assertEquals(
+            "01F6MBDQ7R0005TFYTWP1R54KA",
+            SevenTvRepository.sevenTvUserId(
+                JSONObject("""{"id":"157054245","user":{"id":"01F6MBDQ7R0005TFYTWP1R54KA"}}"""),
+            ),
+        )
+        assertNull(SevenTvRepository.sevenTvUserId(JSONObject("""{"id":"157054245"}""")))
+    }
 }

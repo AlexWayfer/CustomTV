@@ -80,6 +80,8 @@ internal fun ChatSettingsSheet(
     /** Null when the channel has no rules to show. */
     onViewChatRules: (() -> Unit)?,
     onDismiss: () -> Unit,
+    /** The Hide stream switch over the live stream; none over a replayed chat. */
+    streamHide: StreamHideToggle? = null,
     /** The page the menu opens at instead of its rows, such as the chat modes. */
     initialSubpage: ChatMenuSubpage? = null,
     /**
@@ -132,6 +134,7 @@ internal fun ChatSettingsSheet(
                 ChatProfileAndRulesRows(onOpenOwnProfile, onViewChatRules, hideThen)
                 modesRow(openSubpage)
                 recapRow(hideThen)
+                streamHide?.let { toggle -> StreamHideRow(toggle) }
                 ChatLookToggles(readableColors, timestamps, onReadableColorsChange, onTimestampsChange)
                 ChatTextSizeSlider(textSize, onTextSizeChange)
                 SmoothChatScrollSettings(enabled = smoothChatScroll, onChange = onSmoothChatScrollChange)
@@ -160,6 +163,17 @@ private fun ChatTextSizeSlider(textSize: Int, onTextSizeChange: (Int) -> Unit) {
         resolve = ::chatTextSizeFromStored,
         onChange = onTextSizeChange,
         onPreview = {},
+    )
+}
+
+/** Hides the stream and leaves the chat, as a drag up on the stream info does; switched off, brings it back. */
+@Composable
+private fun StreamHideRow(toggle: StreamHideToggle) {
+    ChatSettingsToggle(
+        label = stringResource(R.string.hide_stream),
+        icon = painterResource(R.drawable.ic_visibility_off),
+        checked = toggle.hidden,
+        onCheckedChange = toggle.onChange,
     )
 }
 

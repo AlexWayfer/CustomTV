@@ -30,6 +30,7 @@ import name.alexwayfer.customtv.data.TwitchLanguage
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import name.alexwayfer.customtv.update.AppUpdates
+import name.alexwayfer.customtv.widget.LiveWidgets
 
 /** The share of the app's memory that decoded images may hold. */
 private const val IMAGE_MEMORY_CACHE_SHARE = 0.15
@@ -51,6 +52,7 @@ class CustomTvApplication : Application() {
         ChatSettingsStore.start(this)
         HiddenCategoriesStore.start(this)
         StreamStartAlertsController.start(this)
+        LiveWidgets.start(this)
         WhispersFeature.start(this)
         ExperimentalFeature.start(this)
         RecentChannelsStore.start(this)

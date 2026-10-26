@@ -196,12 +196,16 @@ internal class FollowedChannelsRepository(
         return FollowedRead.OkLive(localizedFollowedLive(live, names))
     }
 
+    /** When the last broadcast of each of [logins] ended, by lowercase login; a failed answer leaves its logins out. */
+    suspend fun lastBroadcastEnds(logins: List<String>): Map<String, Long> =
+        withContext(Dispatchers.IO) { followedUserDetails(logins).lastBroadcastAtMillis }
+
     private fun followedUserDetails(logins: List<String>): FollowedUserDetails {
         val dates = mutableMapOf<String, Long>()
         val collaborations = mutableMapOf<String, FollowedCollaboration>()
         val fetched = mutableSetOf<String>()
         for (batch in logins.distinct().chunked(FOLLOWED_PAGE_SIZE)) {
-            val body = lastBroadcastsBody(batch) ?: continue
+            val body = lastBroadcastsBody(http, batch) ?: continue
             val parsedDates = parseLastBroadcasts(body)
             val parsedCollaborations = parseFollowedCollaborations(body)
             if (parsedDates != null && parsedCollaborations != null) {
@@ -211,26 +215,6 @@ internal class FollowedChannelsRepository(
             }
         }
         return FollowedUserDetails(dates, collaborations, fetched)
-    }
-
-    /** The answer about the last broadcasts and shared streams of [logins]; null when it failed. */
-    private fun lastBroadcastsBody(logins: List<String>): String? {
-        val request = twitchGqlRequest(lastBroadcastsQuery(logins)).build()
-        return try {
-            http.newCall(request).execute().use { response ->
-                val text = response.body.string()
-                Diagnostics.reportGql(FOLLOWED_CHANNELS_TAG, "last broadcasts", response.code, text)
-                if (response.code !in HTTP_SUCCESS) {
-                    AppLog.w(FOLLOWED_CHANNELS_TAG, "last broadcast failed HTTP ${response.code}")
-                    null
-                } else {
-                    text
-                }
-            }
-        } catch (error: IOException) {
-            AppLog.w(FOLLOWED_CHANNELS_TAG, "last broadcast failed ${error.javaClass.simpleName}")
-            null
-        }
     }
 
     private fun readAvatars(accessToken: String, userIds: List<String>): Map<String, String> {
@@ -271,6 +255,26 @@ internal class FollowedChannelsRepository(
         data class Ok(val channels: List<FollowedChannel>) : FollowedRead
         data class OkLive(val live: Map<String, FollowedLive>) : FollowedRead
         data class Failed(val failure: FollowedChannelsResult) : FollowedRead
+    }
+}
+
+/** The answer about the last broadcasts and shared streams of [logins]; null when it failed. */
+private fun lastBroadcastsBody(http: OkHttpClient, logins: List<String>): String? {
+    val request = twitchGqlRequest(lastBroadcastsQuery(logins)).build()
+    return try {
+        http.newCall(request).execute().use { response ->
+            val text = response.body.string()
+            Diagnostics.reportGql(FOLLOWED_CHANNELS_TAG, "last broadcasts", response.code, text)
+            if (response.code !in HTTP_SUCCESS) {
+                AppLog.w(FOLLOWED_CHANNELS_TAG, "last broadcast failed HTTP ${response.code}")
+                null
+            } else {
+                text
+            }
+        }
+    } catch (error: IOException) {
+        AppLog.w(FOLLOWED_CHANNELS_TAG, "last broadcast failed ${error.javaClass.simpleName}")
+        null
     }
 }
 

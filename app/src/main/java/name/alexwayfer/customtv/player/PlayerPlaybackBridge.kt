@@ -17,30 +17,38 @@ internal data class PlayerPlaybackEvents(
     val onAudienceGate: () -> Unit,
     val onPlayerError: () -> Unit,
     val onPlayerReload: () -> Unit,
+    val onLiveTick: (LiveTick) -> Unit,
 )
 
+/**
+ * Hands [PlayerPlaybackEvents] to the page as `CustomTvPlayback`. A released player's page still runs while its sound
+ * fades out, and its reports would land on the playback of the player that took over, so they are dropped.
+ */
 internal class PlayerPlaybackBridge(
     private val handler: Handler,
     private val events: PlayerPlaybackEvents,
+    private val isReleased: () -> Boolean,
 ) {
+    private fun post(event: () -> Unit) {
+        handler.post { if (!isReleased()) event() }
+    }
+
     @JavascriptInterface
-    @Suppress("unused")
     fun onState(playing: Boolean) {
-        handler.post { events.onPlaybackState(playing) }
+        post { events.onPlaybackState(playing) }
     }
 
     /** The video stopped while Twitch's player still means to play it. */
     @JavascriptInterface
     @Suppress("unused")
     fun onInterrupted() {
-        handler.post(events.onInterrupted)
+        post(events.onInterrupted)
     }
 
     @JavascriptInterface
-    @Suppress("unused")
     fun onPosition(seconds: Double) {
         if (seconds.isFinite() && seconds >= 0.0) {
-            handler.post { events.onPositionSeconds(seconds) }
+            post { events.onPositionSeconds(seconds) }
         }
     }
 
@@ -48,37 +56,58 @@ internal class PlayerPlaybackBridge(
     @Suppress("unused")
     fun onSeek(seconds: Double) {
         if (seconds.isFinite() && seconds >= 0.0) {
-            handler.post { events.onSeekSeconds(seconds) }
+            post { events.onSeekSeconds(seconds) }
         }
     }
 
     @JavascriptInterface
     @Suppress("unused")
     fun onPlayerReady() {
-        handler.post(events.onPlayerReady)
+        post(events.onPlayerReady)
     }
 
     @JavascriptInterface
     @Suppress("unused")
     fun onOffline() {
-        handler.post(events.onOffline)
+        post(events.onOffline)
     }
 
     @JavascriptInterface
     @Suppress("unused")
     fun onAudienceGate() {
-        handler.post(events.onAudienceGate)
+        post(events.onAudienceGate)
     }
 
     @JavascriptInterface
     @Suppress("unused")
     fun onPlayerError() {
-        handler.post(events.onPlayerError)
+        post(events.onPlayerError)
     }
 
     @JavascriptInterface
     @Suppress("unused")
     fun onPlayerReload() {
-        handler.post(events.onPlayerReload)
+        post(events.onPlayerReload)
+    }
+
+    /** A live page's tick: the video's position and buffer, and the latency and state of Twitch's player. */
+    @JavascriptInterface
+    @Suppress("unused")
+    fun onLiveTick(
+        positionSeconds: Double,
+        latencySeconds: Double,
+        state: String?,
+        adBreak: Boolean,
+        buffered: String?,
+    ) {
+        if (!positionSeconds.isFinite() || positionSeconds < 0.0) return
+        val tick = LiveTick(
+            positionSeconds = positionSeconds,
+            latencySeconds = latencySeconds.takeIf { it.isFinite() && it >= 0.0 } ?: Double.NaN,
+            state = state.orEmpty(),
+            adBreak = adBreak,
+            buffered = buffered.orEmpty(),
+        )
+        post { events.onLiveTick(tick) }
     }
 }

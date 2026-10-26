@@ -8,6 +8,7 @@ import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.ChatRoomModes
+import name.alexwayfer.customtv.chat.OwnEmotes
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.data.ChatSettings
 
@@ -44,6 +45,8 @@ internal data class ChatInputEmotes(
     val bttv: Map<String, SevenTvEmote>,
     val ffz: Map<String, SevenTvEmote>,
     val completionWithoutColon: Boolean,
+    /** The user's own 7TV and BTTV personal emotes. */
+    val ownPersonal: OwnEmotes = OwnEmotes(),
 )
 
 /** What the user writes, what it answers, and what happens once it is sent. */
@@ -88,7 +91,11 @@ internal data class ChatMenu(
     val onOpenOwnProfile: (() -> Unit)?,
     /** The live chat a recap retells; null until the channel's ID is known. */
     val recap: ChatRecapSource?,
+    val streamHide: StreamHideToggle,
 )
+
+/** The chat menu's Hide stream switch: whether the stream is hidden, and what switching it does. */
+internal class StreamHideToggle(val hidden: Boolean, val onChange: (Boolean) -> Unit)
 
 /** The live chat a recap retells: its channel, the send times of the messages it shows, and the AI settings. */
 internal class ChatRecapSource(

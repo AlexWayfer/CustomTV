@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
+import android.content.res.Configuration
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -16,7 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import name.alexwayfer.customtv.MainActivity
@@ -32,16 +33,18 @@ import name.alexwayfer.customtv.data.TwitchCategory
 import name.alexwayfer.customtv.data.collaborationRowOpensChannel
 import name.alexwayfer.customtv.player.TwitchPlaybackTarget
 import name.alexwayfer.customtv.player.streamInfoShownUnderPlayer
+import name.alexwayfer.customtv.ui.components.ChannelPreview
+import name.alexwayfer.customtv.ui.components.preview
 import name.alexwayfer.customtv.ui.components.rememberChannelProfile
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.settings.SettingsViewModel
 import name.alexwayfer.customtv.ui.settings.beforeRestore
-import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun WatchScreen(
     channel: String,
+    preview: ChannelPreview,
     chatViewModel: ChatViewModel,
     navigation: WatchNavigation,
     account: WatchAccount,
@@ -54,7 +57,7 @@ internal fun WatchScreen(
     val settings = appSettings.beforeRestore()
     val data = collectWatchChatData(chatViewModel)
     WatchRaidEffects(channel, chatViewModel, data.outgoingRaid.value, account, navigation.onOpenChannel)
-    val profile = rememberChannelProfile(channel, pollEvery = 30.seconds, forceRefresh = true)
+    val profile = rememberChannelProfile(channel, pollEvery = 30.seconds, forceRefresh = true, preview = preview)
     val ownBadges = rememberOwnChatBadges(
         account.userId,
         profile.id,
@@ -67,6 +70,10 @@ internal fun WatchScreen(
     LiveChatHiding(chatViewModel, account, settings, moderates)
     val mode =rememberWatchChatMode(channel, profile, chatViewModel, account, ownBadges?.badges)
     val chat = remember(channel) { WatchChatState() }
+    val streamHiding = rememberStreamHiding(
+        channel,
+        overScreen = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE,
+    )
     val scene = WatchScene(
         channel = channel,
         chatViewModel = chatViewModel,
@@ -80,8 +87,9 @@ internal fun WatchScreen(
         profile = profile,
         mode = mode,
         follow = rememberWatchFollow(channel, profile, account, mode),
-        chrome = remember(channel) { PlayerChromeVisibility() },
+        chrome = remember(streamHiding) { PlayerChromeVisibility(outOfSight = { streamHiding.hidden }) },
         playerState = rememberMinimizablePlayerState(placement.minimized),
+        streamHiding = streamHiding,
         highlightPins = rememberTemporaryHighlightPins(channel),
         ownFollow = rememberOwnChannelFollow(account),
         ownBadges = ownBadges,
@@ -119,6 +127,7 @@ internal data class WatchScene(
     val follow: WatchFollow,
     val chrome: PlayerChromeVisibility,
     val playerState: MinimizablePlayerState,
+    val streamHiding: StreamHiding,
     val highlightPins: TemporaryHighlightPins,
     val ownFollow: OwnChannelFollow?,
     val ownBadges: OwnChatBadges?,
@@ -127,7 +136,7 @@ internal data class WatchScene(
     val chatSettingsViewModel: ChatSettingsViewModel,
     val settingsViewModel: SettingsViewModel,
 ) {
-    fun dismissToChannelProfile(target: String) {
+    fun dismissToChannelProfile(target: ChannelPreview) {
         playerState.minimize(
             before = { navigation.onOpenChannelProfile(target) },
             after = navigation.onMinimizeOverSection,
@@ -192,7 +201,8 @@ private fun WatchPlayer(scene: WatchScene) {
         actions = scene.playerActions(),
         inPictureInPicture = scene.placement.inPictureInPicture,
         appNavigationBarHeightPx = scene.placement.appNavigationBarHeightPx,
-        fullscreenInfo = { WatchChannelHeader(scene, expanded = true, overVideo = true) },
+        streamHiding = scene.streamHiding,
+        fullscreenInfo = { WatchChannelHeader(scene, expanded = true, fullscreen = true) },
         overlays = { compactSettled -> WatchOverlays(scene, compactSettled) },
     ) { layout ->
         WatchChatColumn(scene, layout)
@@ -201,13 +211,15 @@ private fun WatchPlayer(scene: WatchScene) {
 }
 
 /**
- * The channel's header: under the player, and over it in full screen, where it shows whole with the controls on a
- * see-through ground and without the tags.
+ * The channel's header under the player, where a drag up or down hides or shows the stream. Under a [fullscreen]
+ * video it shows whole with the controls and without the tags, and a drag up hides the stream there too.
  */
 @Composable
-private fun WatchChannelHeader(scene: WatchScene, expanded: Boolean, overVideo: Boolean) {
+private fun WatchChannelHeader(scene: WatchScene, expanded: Boolean, fullscreen: Boolean) {
     val profile = scene.profile
+    val hideDrag = rememberWatchStreamHideDrag(scene.streamHiding)
     ChannelHeader(
+        modifier = Modifier.streamHideDrag(scene.streamHiding, hideDrag),
         channel = scene.channel,
         profile = profile,
         expanded = expanded,
@@ -218,14 +230,17 @@ private fun WatchChannelHeader(scene: WatchScene, expanded: Boolean, overVideo: 
         },
         // Toggles what the panel shows, so a tap on the panel shown whole over a full screen player hides the controls.
         onToggle = { scene.chrome.show(!expanded) },
-        onOpenProfile = { scene.dismissToChannelProfile(scene.channel) },
+        onOpenProfile = { scene.dismissToChannelProfile(profile.preview()) },
         onOpenCategory = scene.navigation.onOpenCategory?.let { scene::dismissToCategory },
         followStatus = scene.follow.channel.status,
         followAction = scene.follow.action,
         onOpenSettings = { scene.dismissToSettings(SettingsScrollTarget.Notifications) },
         onHeldChange = { held -> scene.chrome.headerHeld = held },
-        containerColor = if (overVideo) Color.Transparent else TwitchSurface,
-        showTags = !overVideo,
+        showTags = !fullscreen,
+        // In landscape the panel of a hidden stream sits at the screen's top, with no status bar over it.
+        contentPadding = streamInfoCornersPadding(
+            active = !fullscreen && scene.streamHiding.overScreen && scene.streamHiding.partlyHidden,
+        ),
     )
 }
 
@@ -239,11 +254,11 @@ private fun WatchOverlays(scene: WatchScene, compactSettled: Boolean) {
             result = scene.collaboration,
             sharedViewerCount = scene.profile.sharedViewerCount,
             currentLogin = scene.channel,
-            onOpenChannel = { login ->
-                if (!collaborationRowOpensChannel(login, scene.channel)) return@CollaborationSheet
+            onOpenChannel = { target ->
+                if (!collaborationRowOpensChannel(target.login, scene.channel)) return@CollaborationSheet
                 chat.showCollaboration = false
                 scene.sheetKeyboard.onDismiss()
-                scene.navigation.onOpenChannel(login)
+                scene.navigation.onOpenChannel(target)
             },
             onDismiss = {
                 chat.showCollaboration = false
@@ -282,7 +297,7 @@ private fun ColumnScope.WatchChatColumn(scene: WatchScene, layout: MinimizablePl
             enter = if (headerSlides) expandVertically(expandFrom = Alignment.Bottom) else EnterTransition.None,
             exit = if (headerSlides) shrinkVertically(shrinkTowards = Alignment.Bottom) else ExitTransition.None,
         ) {
-            WatchChannelHeader(scene, expanded = scene.chrome.headerExpanded, overVideo = false)
+            WatchChannelHeader(scene, expanded = scene.chrome.headerExpanded, fullscreen = false)
         }
         Column(
             modifier = Modifier

@@ -21,6 +21,8 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
+import name.alexwayfer.customtv.ui.recentLastLiveText
+import name.alexwayfer.customtv.ui.rememberMinuteClock
 import name.alexwayfer.customtv.ui.watch.formatChatterCreatedDate
 import java.time.ZoneId
 
@@ -37,9 +39,13 @@ internal fun ProfileHeaderAvatar(login: String, displayName: String, avatarUrl: 
             channel = login,
             profile = ChannelProfile(login = login, displayName = displayName, avatarUrl = avatarUrl),
             size = 96.dp,
+            fadeInMillis = PROFILE_IMAGE_FADE_MS,
         )
     }
 }
+
+/** How long the profile's avatar and banner fade in once loaded, as long as its notes cross-fade. */
+internal const val PROFILE_IMAGE_FADE_MS = 300
 
 /** A long name shrinks to one line instead of breaking mid-word. */
 @Composable
@@ -84,9 +90,14 @@ internal fun ProfileHeaderDetails(login: String, displayName: String, followerCo
         val shownLastLive = rememberLastNonNull(lastLiveMillis)
         AnimatedVisibility(visible = lastLiveMillis != null) {
             shownLastLive?.let { millis ->
-                val date = when (val day = lastLiveDay(millis, System.currentTimeMillis(), ZoneId.systemDefault())) {
-                    LastLiveDay.Today -> stringResource(R.string.profile_last_live_today)
-                    LastLiveDay.Yesterday -> stringResource(R.string.profile_last_live_yesterday)
+                val date = when (val day = lastLiveDay(millis, rememberMinuteClock(), ZoneId.systemDefault())) {
+                    is LastLiveDay.Recent -> recentLastLiveText(
+                        day.age,
+                        millis,
+                        justNow = R.string.profile_last_live_just_now,
+                        todayAt = R.string.profile_last_live_today_at,
+                        yesterdayAt = R.string.profile_last_live_yesterday_at,
+                    )
                     is LastLiveDay.DaysAgo -> pluralStringResource(
                         R.plurals.profile_last_live_days_ago,
                         day.days,

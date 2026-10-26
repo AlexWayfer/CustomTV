@@ -54,6 +54,46 @@ class EmotePickerSectionsTest {
     }
 
     @Test
+    fun theUsersPersonalEmotesFollowTheChannelsOfTheEnabledPlatforms() {
+        val channel = ChannelEmoteSource(label = "Quin69", sevenTv = mapOf("Zed" to emote("z")))
+        val own = ChannelEmoteSource(label = "alex", twitch = listOf(twitch("MySub", TwitchEmoteGroup.Subscriptions)))
+        val ownEmotes = OwnEmotes(
+            sevenTv = mapOf("nnysBop" to emote("bop"), "Abc" to emote("abc")),
+            bttv = mapOf("Faaah" to emote("faaah")),
+        )
+
+        val sections = emotePickerSections(
+            channel = channel,
+            own = own,
+            global = GlobalEmoteSource(),
+            sources = EmoteSources(sevenTv = true, ffz = true, bttv = true),
+            ownEmotes = ownEmotes,
+        )
+        val withoutBttv = emotePickerSections(
+            channel = channel,
+            own = own,
+            global = GlobalEmoteSource(),
+            sources = EmoteSources(sevenTv = true, ffz = true, bttv = false),
+            ownEmotes = ownEmotes,
+        )
+
+        assertEquals(
+            listOf(
+                "Channel SevenTv Quin69",
+                "Personal SevenTv ",
+                "Personal Bttv ",
+                "OwnChannel Subscriptions alex",
+            ),
+            sections.map { "${it.place} ${it.kind} ${it.label}" },
+        )
+        assertEquals(listOf("Abc", "nnysBop"), sections[1].emotes.map { it.name })
+        assertEquals(
+            listOf("Channel SevenTv Quin69", "Personal SevenTv ", "OwnChannel Subscriptions alex"),
+            withoutBttv.map { "${it.place} ${it.kind} ${it.label}" },
+        )
+    }
+
+    @Test
     fun frequentlyUsedMixesPlatformsAndHidesWhenNothingWasUsed() {
         val sections = emotePickerSections(
             channel = ChannelEmoteSource(
@@ -86,10 +126,12 @@ class EmotePickerSectionsTest {
             own = null,
             global = GlobalEmoteSource(twitch = listOf(twitch("Kappa", TwitchEmoteGroup.Global))),
             sources = noThirdParty,
-            personal = UserTwitchEmotes(
-                smilies = emptyList(),
-                turbo = emptyList(),
-                unlocked = listOf(UnlockedSourceEmote("HypeYawn", "https://emote/HypeYawn", "hypetrain")),
+            ownEmotes = OwnEmotes(
+                twitch = UserTwitchEmotes(
+                    smilies = emptyList(),
+                    turbo = emptyList(),
+                    unlocked = listOf(UnlockedSourceEmote("HypeYawn", "https://emote/HypeYawn", "hypetrain")),
+                ),
             ),
         )
 
@@ -111,10 +153,12 @@ class EmotePickerSectionsTest {
                 ),
             ),
             sources = noThirdParty,
-            personal = UserTwitchEmotes(
-                smilies = emptyList(),
-                turbo = listOf(
-                    TwitchCatalogEmote(":-O", "https://emote/turbo", TwitchEmoteGroup.Global),
+            ownEmotes = OwnEmotes(
+                twitch = UserTwitchEmotes(
+                    smilies = emptyList(),
+                    turbo = listOf(
+                        TwitchCatalogEmote(":-O", "https://emote/turbo", TwitchEmoteGroup.Global),
+                    ),
                 ),
             ),
         )

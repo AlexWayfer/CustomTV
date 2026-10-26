@@ -11,10 +11,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import name.alexwayfer.customtv.chat.ChannelEvents
+import name.alexwayfer.customtv.chat.ChannelShoutout
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatReplySession
 import name.alexwayfer.customtv.chat.ChatViewModel
 import name.alexwayfer.customtv.chat.OutgoingRaid
+import name.alexwayfer.customtv.chat.PersonalEmotes
+import name.alexwayfer.customtv.chat.SevenTvCosmetics
 import name.alexwayfer.customtv.chat.PinnedChat
 import name.alexwayfer.customtv.chat.RecentChatLoadState
 import name.alexwayfer.customtv.chat.SevenTvEmote
@@ -47,9 +50,12 @@ internal data class WatchChatData(
     val sevenTvEmotes: State<Map<String, SevenTvEmote>>,
     val ffzEmotes: State<Map<String, SevenTvEmote>>,
     val bttvEmotes: State<Map<String, SevenTvEmote>>,
+    val personalEmotes: State<PersonalEmotes>,
+    val sevenTvCosmetics: State<SevenTvCosmetics>,
     val nickColors: State<Map<String, Color>>,
     val pinnedChat: State<PinnedChat?>,
     val outgoingRaid: State<OutgoingRaid?>,
+    val shoutout: State<ChannelShoutout?>,
     val channelEvents: State<ChannelEvents>,
 )
 
@@ -63,8 +69,11 @@ internal fun collectWatchChatData(chatViewModel: ChatViewModel): WatchChatData =
     sevenTvEmotes = chatViewModel.sevenTvEmotes.collectAsStateWithLifecycle(),
     ffzEmotes = chatViewModel.ffzEmotes.collectAsStateWithLifecycle(),
     bttvEmotes = chatViewModel.bttvEmotes.collectAsStateWithLifecycle(),
+    personalEmotes = chatViewModel.personalEmotes.collectAsStateWithLifecycle(),
+    sevenTvCosmetics = chatViewModel.sevenTvCosmetics.collectAsStateWithLifecycle(),
     nickColors = chatViewModel.nickColors.collectAsStateWithLifecycle(),
     pinnedChat = chatViewModel.pinnedChat.collectAsStateWithLifecycle(),
     outgoingRaid = chatViewModel.outgoingRaid.collectAsStateWithLifecycle(),
+    shoutout = chatViewModel.shoutout.collectAsStateWithLifecycle(),
     channelEvents = chatViewModel.channelEvents.collectAsStateWithLifecycle(),
 )

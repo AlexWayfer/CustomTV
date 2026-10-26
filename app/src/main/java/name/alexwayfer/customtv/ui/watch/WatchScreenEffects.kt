@@ -18,6 +18,7 @@ import name.alexwayfer.customtv.chat.threadEntriesFromKnown
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.ChatThreadRepository
 import name.alexwayfer.customtv.ui.HoldGestureTips
+import name.alexwayfer.customtv.ui.components.ChannelPreview
 
 /** Mentions of the user in the live chat vibrate or sound, as the settings ask, and gather on their own card. */
 @Composable
@@ -60,7 +61,7 @@ internal fun WatchRaidEffects(
     chatViewModel: ChatViewModel,
     outgoingRaid: OutgoingRaid?,
     account: WatchAccount,
-    onOpenChannel: (String) -> Unit,
+    onOpenChannel: (ChannelPreview) -> Unit,
 ) {
     val openChannel = rememberUpdatedState(onOpenChannel)
     OutgoingRaidCountdown(
@@ -102,7 +103,10 @@ internal fun WatchChannelEffects(scene: WatchScene) {
         accessToken = account.raidToken,
         chatViewModel = chatViewModel,
     )
+    val signedInUserId = account.userId?.takeIf { account.signedIn }
+    LaunchedEffect(chatViewModel, signedInUserId) { chatViewModel.setSignedInUser(signedInUserId) }
     WatchPresenceEffect(channelLogin = scene.channel, isLive = profile.isLive, chatMessages = chatViewModel.messages)
+    WatchedStartAlertEffect(channelId = profile.id, isLive = profile.isLive)
     val liveStatusHandler = rememberUpdatedState(scene.navigation.onLiveStatus)
     LaunchedEffect(profile.isLive) {
         liveStatusHandler.value(profile.isLive)

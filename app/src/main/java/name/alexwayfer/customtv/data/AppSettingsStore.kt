@@ -34,6 +34,10 @@ class AppSettingsStore(context: Context) {
             sevenTvEmotes = prefs[SEVEN_TV_EMOTES] ?: defaults.sevenTvEmotes,
             ffzEmotes = prefs[FFZ_EMOTES] ?: defaults.ffzEmotes,
             bttvEmotes = prefs[BTTV_EMOTES] ?: defaults.bttvEmotes,
+            sevenTvBadges = prefs[SEVEN_TV_BADGES] ?: defaults.sevenTvBadges,
+            sevenTvPaints = prefs[SEVEN_TV_PAINTS] ?: defaults.sevenTvPaints,
+            ffzBadges = prefs[FFZ_BADGES] ?: defaults.ffzBadges,
+            bttvBadges = prefs[BTTV_BADGES] ?: defaults.bttvBadges,
             meMessageItalic = prefs[ME_MESSAGE_ITALIC] ?: defaults.meMessageItalic,
             highlightFirstMessages = prefs[HIGHLIGHT_FIRST_MESSAGES]
                 ?: defaults.highlightFirstMessages,
@@ -58,6 +62,7 @@ class AppSettingsStore(context: Context) {
             hiddenPhrases = decodeKeywordPhrases(prefs[HIDDEN_PHRASES]),
             hidePhrasesWhenModerator = prefs[HIDE_PHRASES_WHEN_MODERATOR] ?: defaults.hidePhrasesWhenModerator,
             backgroundSoundOnly = prefs[BACKGROUND_SOUND_ONLY] ?: defaults.backgroundSoundOnly,
+            smoothSound = prefs[SMOOTH_SOUND] ?: defaults.smoothSound,
             streamStartNotifications = prefs[STREAM_START_NOTIFICATIONS]
                 ?: defaults.streamStartNotifications,
             streamChangeNotifications = prefs[STREAM_CHANGE_NOTIFICATIONS]
@@ -65,6 +70,7 @@ class AppSettingsStore(context: Context) {
             watchStreakNotifications = prefs[WATCH_STREAK_NOTIFICATIONS]
                 ?: defaults.watchStreakNotifications,
             whisperUnreadGlow = prefs[WHISPER_UNREAD_GLOW] ?: defaults.whisperUnreadGlow,
+            liveWidgetEnded = prefs[LIVE_WIDGET_ENDED] ?: defaults.liveWidgetEnded,
             linkPreviewMode = storedLinkPreviewMode(prefs[LINK_PREVIEW_MODE]),
             autoClaimBonus = prefs[AUTO_CLAIM_BONUS] ?: defaults.autoClaimBonus,
             portraitLanguage = storedPortraitLanguage(prefs[PORTRAIT_LANGUAGE]),
@@ -75,6 +81,10 @@ class AppSettingsStore(context: Context) {
 
     suspend fun setBackgroundSoundOnly(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[BACKGROUND_SOUND_ONLY] = enabled }
+    }
+
+    suspend fun setSmoothSound(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[SMOOTH_SOUND] = enabled }
     }
 
     suspend fun setStreamStartNotifications(enabled: Boolean) {
@@ -97,6 +107,10 @@ class AppSettingsStore(context: Context) {
 
     suspend fun setWhisperUnreadGlow(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[WHISPER_UNREAD_GLOW] = enabled }
+    }
+
+    suspend fun setLiveWidgetEnded(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[LIVE_WIDGET_ENDED] = enabled }
     }
 
     suspend fun setAutoClaimBonus(enabled: Boolean) {

@@ -23,6 +23,7 @@ internal data class PickerEmote(
 internal enum class EmotePickerPlace {
     Frequent,
     Channel,
+    Personal,
     OwnChannel,
     Unlocked,
     Global,
@@ -52,6 +53,16 @@ internal data class ChannelEmoteSource(
     val ffz: Map<String, SevenTvEmote> = emptyMap(),
 )
 
+/**
+ * The emotes that belong to the signed-in user and work in any channel: their unlocked Twitch sets, and their 7TV and
+ * BTTV personal emotes.
+ */
+internal data class OwnEmotes(
+    val twitch: UserTwitchEmotes? = null,
+    val sevenTv: Map<String, SevenTvEmote> = emptyMap(),
+    val bttv: Map<String, SevenTvEmote> = emptyMap(),
+)
+
 /** The emotes every channel shares: Twitch's own and the third-party platforms' global sets. */
 internal data class GlobalEmoteSource(
     val twitch: List<TwitchCatalogEmote> = emptyList(),
@@ -65,14 +76,16 @@ internal fun emotePickerSections(
     own: ChannelEmoteSource?,
     global: GlobalEmoteSource,
     sources: EmoteSources,
-    personal: UserTwitchEmotes? = null,
+    ownEmotes: OwnEmotes = OwnEmotes(),
 ): List<EmotePickerSection> {
     return buildList {
         addChannel(EmotePickerPlace.Channel, channel, sources)
+        if (sources.sevenTv) addPlatform(EmotePickerPlace.Personal, "", EmotePickerKind.SevenTv, ownEmotes.sevenTv)
+        if (sources.bttv) addPlatform(EmotePickerPlace.Personal, "", EmotePickerKind.Bttv, ownEmotes.bttv)
         if (own != null) {
             addChannel(EmotePickerPlace.OwnChannel, own, EmoteSources(sevenTv = false, ffz = false, bttv = false))
         }
-        unlockedEmoteGroups(personal?.unlocked.orEmpty()).forEach { group ->
+        unlockedEmoteGroups(ownEmotes.twitch?.unlocked.orEmpty()).forEach { group ->
             add(
                 EmotePickerSection(
                     place = EmotePickerPlace.Unlocked,
@@ -84,7 +97,13 @@ internal fun emotePickerSections(
         }
         addGlobal(
             EmotePickerKind.Twitch,
-            pickerEmotes(twitchPickerEmotes(global.twitch, personal?.smilies.orEmpty(), personal?.turbo.orEmpty())),
+            pickerEmotes(
+                twitchPickerEmotes(
+                    global.twitch,
+                    ownEmotes.twitch?.smilies.orEmpty(),
+                    ownEmotes.twitch?.turbo.orEmpty(),
+                ),
+            ),
         )
         if (sources.sevenTv) addGlobal(EmotePickerKind.SevenTv, pickerEmotes(global.sevenTv))
         if (sources.bttv) addGlobal(EmotePickerKind.Bttv, pickerEmotes(global.bttv))

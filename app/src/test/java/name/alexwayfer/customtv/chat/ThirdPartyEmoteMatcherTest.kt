@@ -24,6 +24,32 @@ class ThirdPartyEmoteMatcherTest {
     }
 
     @Test
+    fun theAuthorsPersonalEmotesWinOverTheChannelsAndAreMarked() {
+        val result = ThirdPartyEmoteMatcher.overlay(
+            listOf(ChatPart.Text("Sadge nnysBop catJAM")),
+            mapOf(
+                "Sadge" to SevenTvEmote("https://cdn.7tv.app/emote/channel-sadge/2x.webp"),
+                "catJAM" to SevenTvEmote("https://cdn.betterttv.net/emote/cat/2x.webp"),
+            ),
+            personal = mapOf(
+                "Sadge" to SevenTvEmote("https://cdn.7tv.app/emote/own-sadge/2x.webp"),
+                "nnysBop" to SevenTvEmote("https://cdn.7tv.app/emote/bop/2x.webp"),
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                ChatPart.Emote("Sadge", "https://cdn.7tv.app/emote/own-sadge/2x.webp", personal = true),
+                ChatPart.Text(" "),
+                ChatPart.Emote("nnysBop", "https://cdn.7tv.app/emote/bop/2x.webp", personal = true),
+                ChatPart.Text(" "),
+                ChatPart.Emote("catJAM", "https://cdn.betterttv.net/emote/cat/2x.webp"),
+            ),
+            result,
+        )
+    }
+
+    @Test
     fun keepsWideEmoteAspectRatio() {
         val parts = listOf(ChatPart.Text("widepeepoHappy"))
         val result = ThirdPartyEmoteMatcher.overlay(

@@ -2,11 +2,15 @@ package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.structuralEqualityPolicy
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatPart
 import name.alexwayfer.customtv.chat.EmotePlatform
 import name.alexwayfer.customtv.chat.EmoteSources
+import name.alexwayfer.customtv.chat.PersonalEmotes
 import name.alexwayfer.customtv.chat.SevenTvEmote
 import name.alexwayfer.customtv.chat.withDisplayParts
 
@@ -23,14 +27,20 @@ internal data class ChatAppearance(
     val modifierPlatforms: Set<EmotePlatform>,
     /** Each platform's logo emote for emote change lines. */
     val platformLogos: Map<EmotePlatform, ChatPart.Emote>,
+    /**
+     * The chatters' personal emotes of the enabled platforms. Each row reads only its author's, so a set that comes
+     * for another chatter does not recompose it.
+     */
+    val personalEmotes: () -> PersonalEmotes = { PersonalEmotes() },
 )
 
-/** The chat's 7TV, FFZ, and BTTV emotes, and which of these platforms are turned on. */
+/** The chat's 7TV, FFZ, and BTTV emotes, its chatters' personal ones, and which of these platforms are turned on. */
 internal data class ThirdPartyEmotes(
     val sources: EmoteSources,
     val sevenTv: Map<String, SevenTvEmote>,
     val ffz: Map<String, SevenTvEmote>,
     val bttv: Map<String, SevenTvEmote>,
+    val personal: () -> PersonalEmotes = { PersonalEmotes() },
 )
 
 internal fun chatAppearance(
@@ -58,14 +68,20 @@ internal fun chatAppearance(
         platformLogoEmote(emotes.bttv, listOf("bttv", "BTTV"))?.let { put(EmotePlatform.Bttv, it) }
         platformLogoEmote(emotes.ffz, listOf("ffz", "FFZ"))?.let { put(EmotePlatform.Ffz, it) }
     },
+    personalEmotes = { emotes.personal().enabled(emotes.sources) },
 )
 
-/** The [message] with the third-party emotes and modifiers of [appearance] put into its text. */
+/** The [message] with the third-party emotes and modifiers of [appearance], and its author's own, put into its text. */
 @Composable
-internal fun rememberDisplayMessage(message: ChatMessage, appearance: ChatAppearance): ChatMessage =
-    remember(message, appearance.thirdPartyEmotes, appearance.modifierPlatforms) {
-        message.withDisplayParts(appearance.thirdPartyEmotes, appearance.modifierPlatforms)
+internal fun rememberDisplayMessage(message: ChatMessage, appearance: ChatAppearance): ChatMessage {
+    val userId = message.userId
+    val personal by remember(userId, appearance.personalEmotes) {
+        derivedStateOf(structuralEqualityPolicy()) { appearance.personalEmotes().forUser(userId) }
     }
+    return remember(message, appearance.thirdPartyEmotes, appearance.modifierPlatforms, personal) {
+        message.withDisplayParts(appearance.thirdPartyEmotes, appearance.modifierPlatforms, personal)
+    }
+}
 
 private fun platformLogoEmote(emotes: Map<String, SevenTvEmote>, names: List<String>): ChatPart.Emote? {
     val found = names.firstNotNullOfOrNull { name ->

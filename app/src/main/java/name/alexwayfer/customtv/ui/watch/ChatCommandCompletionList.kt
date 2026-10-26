@@ -82,6 +82,7 @@ internal fun ChatCommandCompletionList(
 private val ChatCommand.argument: Int?
     get() = when (this) {
         ChatCommand.User -> R.string.chat_command_user_argument
+        ChatCommand.Shoutout -> R.string.chat_command_shoutout_argument
         ChatCommand.Slow -> R.string.chat_command_slow_argument
         ChatCommand.Followers -> R.string.chat_command_followers_argument
         else -> null
@@ -92,6 +93,7 @@ private val ChatCommand.description: Int
     get() = when (this) {
         ChatCommand.User -> R.string.chat_command_user_description
         ChatCommand.Prediction -> R.string.chat_command_prediction_description
+        ChatCommand.Shoutout -> R.string.chat_command_shoutout_description
         ChatCommand.Slow -> R.string.chat_command_slow_description
         ChatCommand.SlowOff -> R.string.chat_command_slow_off_description
         ChatCommand.Followers -> R.string.chat_command_followers_description

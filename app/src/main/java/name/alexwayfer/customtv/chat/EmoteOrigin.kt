@@ -26,6 +26,8 @@ internal sealed interface EmoteOrigin {
     data class LibraryGlobal(val library: EmoteLibrary) : EmoteOrigin
     data class LibraryChannel(val library: EmoteLibrary, val channel: String) : EmoteOrigin
     data class Library(val library: EmoteLibrary) : EmoteOrigin
+    /** One of the author's own emotes, which they may use in any channel. */
+    data class LibraryPersonal(val library: EmoteLibrary) : EmoteOrigin
 }
 
 internal fun twitchEmoteOrigin(
@@ -58,9 +60,11 @@ internal fun libraryEmoteOrigin(
     onThisChannel: Boolean,
     channelName: String,
     global: Boolean,
+    personal: Boolean = false,
 ): EmoteOrigin {
     val channel = channelName.takeIf { it.isNotBlank() }
     return when {
+        personal -> EmoteOrigin.LibraryPersonal(library)
         onThisChannel && channel != null -> EmoteOrigin.LibraryChannel(library, channel)
         global -> EmoteOrigin.LibraryGlobal(library)
         else -> EmoteOrigin.Library(library)

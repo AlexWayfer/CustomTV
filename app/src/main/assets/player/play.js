@@ -26,9 +26,13 @@
         }
       } catch (e) {}
     }
-    if (isAdBreak(doc)) return;
     var v = doc.querySelector('video');
-    if (v && !v.paused) return;
+    if (v && !v.paused) {
+      // A pause that still fades out turns back; Twitch's player has not paused yet.
+      if (customTvFadingOut(v)) customTvFade(v, 1, function() { customTvFullVolume(doc); });
+      return;
+    }
+    if (isAdBreak(doc)) return;
     var btn = doc.querySelector('[data-a-target="player-play-pause-button"]');
     var twitchPaused = true;
     if (btn) {
@@ -41,6 +45,8 @@
         twitchPaused = true;
       }
     }
+    // The sound starts silent and fades in once the video plays.
+    if (v) customTvFade(v, 1, function() { customTvFullVolume(doc); });
     if (btn && twitchPaused) {
       try { btn.click(); } catch (e) {}
     }

@@ -10,10 +10,13 @@ import name.alexwayfer.customtv.data.toJsonObjectOrNull
 import org.json.JSONObject
 
 internal object SevenTvEventParser {
-    fun parseFrame(text: String): SevenTvFrame {
+    /** A frame of the socket that follows the channel whose own emote set is [channelSetId]. */
+    fun parseFrame(text: String, channelSetId: String? = null): SevenTvFrame {
         val json = text.toJsonObjectOrNull() ?: return SevenTvFrame.Ignore
         return when (json.optInt("op", -1)) {
-            OP_DISPATCH -> SevenTvFrame.Dispatch(parseDispatch(json))
+            OP_DISPATCH -> parsePersonal(json, channelSetId)?.let(SevenTvFrame::Personal)
+                ?: parseCosmetic(json)?.let(SevenTvFrame::Cosmetic)
+                ?: SevenTvFrame.Dispatch(parseDispatch(json))
             OP_HELLO -> {
                 val interval = json.optJSONObject("d")?.optLong("heartbeat_interval") ?: 25_000L
                 SevenTvFrame.Hello(heartbeatMs = interval.coerceAtLeast(MIN_HEARTBEAT_MILLIS))
@@ -82,6 +85,52 @@ internal object SevenTvEventParser {
         return messages
     }
 
+    /**
+     * A change of a chatter's personal emotes: an update of a set other than the channel's, or a set given to a
+     * chatter. Null for anything else, the channel's own set among it.
+     */
+    private fun parsePersonal(json: JSONObject, channelSetId: String?): PersonalEmoteEvent? {
+        val data = json.optJSONObject("d") ?: return null
+        val body = data.optJSONObject("body") ?: return null
+        return when (data.optString("type")) {
+            "emote_set.update" -> {
+                val setId = body.text("id")?.takeIf { it != channelSetId } ?: return null
+                parsePersonalSetChange(setId, body)
+            }
+            "entitlement.create" -> parseEmoteSetEntitlement(body.optJSONObject("object"))
+            else -> null
+        }
+    }
+
+    private fun parseCosmetic(json: JSONObject): SevenTvCosmeticEvent? {
+        val data = json.optJSONObject("d") ?: return null
+        val body = data.optJSONObject("body") ?: return null
+        return SevenTvCosmeticParser.parse(data.optString("type"), body)
+    }
+
+    private fun parsePersonalSetChange(setId: String, body: JSONObject): PersonalEmoteEvent.SevenTvSetChanged {
+        val updated = body.optJSONArray("updated")?.objects().orEmpty()
+        val added = parseChanged(body.optJSONArray("pushed"), valueKey = "value") +
+            updated.mapNotNull { parseValue(it.optJSONObject("value")) }
+        val removed = parseChanged(body.optJSONArray("pulled"), valueKey = "old_value") +
+            updated.mapNotNull { parseValue(it.optJSONObject("old_value")) }
+        return PersonalEmoteEvent.SevenTvSetChanged(
+            setId = setId,
+            added = added.mapNotNull { change -> change.emote?.let { change.name to it } }.toMap(),
+            removed = removed.mapTo(HashSet()) { it.name },
+        )
+    }
+
+    private fun parseEmoteSetEntitlement(entitlement: JSONObject?): PersonalEmoteEvent.SevenTvSetAssigned? {
+        if (entitlement?.optString("kind") != "EMOTE_SET") return null
+        val setId = entitlement.text("ref_id") ?: return null
+        val userIds = entitlement.optJSONObject("user")?.optJSONArray("connections")?.objects().orEmpty()
+            .filter { it.optString("platform") == "TWITCH" }
+            .mapNotNull { it.text("id") }
+        if (userIds.isEmpty()) return null
+        return PersonalEmoteEvent.SevenTvSetAssigned(setId, userIds)
+    }
+
     private fun parseChanged(array: JSONArray?, valueKey: String): List<ParsedEmote> {
         if (array == null) return emptyList()
         val result = mutableListOf<ParsedEmote>()
@@ -135,6 +184,8 @@ internal object SevenTvEventParser {
 internal sealed interface SevenTvFrame {
     data class Hello(val heartbeatMs: Long) : SevenTvFrame
     data class Dispatch(val messages: List<ChatMessage>) : SevenTvFrame
+    data class Personal(val event: PersonalEmoteEvent) : SevenTvFrame
+    data class Cosmetic(val event: SevenTvCosmeticEvent) : SevenTvFrame
     data object Reconnect : SevenTvFrame
     data object Ignore : SevenTvFrame
 }

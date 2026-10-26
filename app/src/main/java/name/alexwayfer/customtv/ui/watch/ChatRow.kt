@@ -51,7 +51,7 @@ internal fun ChatRow(
     val appearance = settings.appearance
     val sizes = chatRowSizes(appearance.textSize)
     if (chatOwnLine(message, appearance, sizes, settings.showTimestamps, stripeColor = settings.highlightColor)) return
-    // Every shown row runs this again with each new message; the text match runs once per row.
+    // Remembered, so a row composed again runs the text match once.
     val mentioned = remember(message, settings.mentions) { settings.mentions.matches(message) }
     val displayMessage = rememberDisplayMessage(message, appearance)
     // Read on each frame by the scroll that keeps the row in sight, not by the composition.

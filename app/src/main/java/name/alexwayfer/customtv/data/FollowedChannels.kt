@@ -18,6 +18,7 @@ internal data class FollowedChannel(
     val sharedViewerCount: Int? = null,
     val collaborationCount: Int? = null,
     val collaboratorAvatarUrls: List<String> = emptyList(),
+    /** When the last broadcast ended: Twitch's `lastBroadcast.startedAt` holds the end, despite its name. */
     val lastBroadcastAtMillis: Long? = null,
     val streamTitle: String? = null,
     /** When the shown stream preview was taken; a new value loads a new preview. Null while offline. */
@@ -134,8 +135,7 @@ internal fun followedLastBroadcastMillis(channel: FollowedChannel): Long? {
 }
 
 internal sealed interface FollowedLastBroadcastAge {
-    data object Today : FollowedLastBroadcastAge
-    data object Yesterday : FollowedLastBroadcastAge
+    data class Recent(val age: RecentLastLive) : FollowedLastBroadcastAge
     data class DaysAgo(val days: Int) : FollowedLastBroadcastAge
     data class MonthsAgo(val months: Int) : FollowedLastBroadcastAge
     data class YearsAgo(val years: Int) : FollowedLastBroadcastAge
@@ -146,15 +146,17 @@ internal fun followedLastBroadcastAge(
     nowMillis: Long,
     zone: ZoneId = ZoneId.systemDefault(),
 ): FollowedLastBroadcastAge {
+    val recent = recentLastLive(lastBroadcastAtMillis, nowMillis, zone)
     val broadcastDay = Instant.ofEpochMilli(lastBroadcastAtMillis).atZone(zone).toLocalDate()
     val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
-    val days = ChronoUnit.DAYS.between(broadcastDay, today).toInt()
-    if (days <= 1) return if (days == 1) FollowedLastBroadcastAge.Yesterday else FollowedLastBroadcastAge.Today
     val months = ChronoUnit.MONTHS.between(broadcastDay, today).toInt()
-    if (months < 1) return FollowedLastBroadcastAge.DaysAgo(days)
     val years = ChronoUnit.YEARS.between(broadcastDay, today).toInt()
-    if (years < 1) return FollowedLastBroadcastAge.MonthsAgo(months)
-    return FollowedLastBroadcastAge.YearsAgo(years)
+    return when {
+        recent != null -> FollowedLastBroadcastAge.Recent(recent)
+        months < 1 -> FollowedLastBroadcastAge.DaysAgo(ChronoUnit.DAYS.between(broadcastDay, today).toInt())
+        years < 1 -> FollowedLastBroadcastAge.MonthsAgo(months)
+        else -> FollowedLastBroadcastAge.YearsAgo(years)
+    }
 }
 
 private fun followedSortGroup(channel: FollowedChannel): Int {

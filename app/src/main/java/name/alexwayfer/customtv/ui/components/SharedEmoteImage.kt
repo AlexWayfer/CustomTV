@@ -43,7 +43,8 @@ fun SharedEmoteImage(
     size: Dp,
     modifier: Modifier = Modifier,
     aspectRatio: Float = 1f,
-    colorFilter: ColorFilter? = null,
+    // Read while drawing, so a filter that changes over time redraws the emote without recomposing it.
+    colorFilter: () -> ColorFilter? = { null },
 ) {
     val context = LocalContext.current
     val holder = remember(url) { SharedEmoteStore.acquire(url) }
@@ -71,7 +72,7 @@ fun SharedEmoteImage(
     ) {
         // Reading the animation tick here redraws a new frame without recomposing the emote.
         if (drawable == null || holder.tick < 0) return@Canvas
-        drawDrawableKeepAspect(drawable, colorFilter)
+        drawDrawableKeepAspect(drawable, colorFilter())
     }
 }
 

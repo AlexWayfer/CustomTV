@@ -33,10 +33,12 @@
     <string name="premium_all_live_alerts">When a followed channel goes live</string>
     <string name="premium_all_title_alerts">When a live channel changes its title or category</string>
     <string name="premium_all_alerts_per_channel">Notification settings per channel</string>
+    <string name="premium_all_home_widget">Home screen widget</string>
     <string name="premium_all_bans">Ban, timeout and unban from the chatter card</string>
     <string name="premium_all_message_deletion">Delete messages</string>
     <string name="premium_all_warnings">Warn chatters</string>
     <string name="premium_all_chat_modes">Change chat modes</string>
+    <string name="premium_all_shoutouts">Shoutouts (/shoutout)</string>
     <string name="premium_all_automod">Allow or deny messages held by AutoMod</string>
     <string name="premium_all_mod_logs">Chatter’s mod logs: messages, actions, comments</string>
     <string name="premium_all_suspicious_users">Highlighting suspicious users</string>

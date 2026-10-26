@@ -3,11 +3,9 @@ package name.alexwayfer.customtv.ui.watch
 import android.app.Application
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import name.alexwayfer.customtv.ui.ComposeHost
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -32,10 +30,7 @@ class WatchChannelCloseRenderTest {
             navController = rememberNavController()
             NavHost(navController = navController, startDestination = "home") {
                 composable(route = "home") {}
-                composable(
-                    route = WATCH_CHANNEL_ROUTE,
-                    arguments = listOf(navArgument("channel") { type = NavType.StringType }),
-                ) {}
+                composable(route = WATCH_CHANNEL_ROUTE, arguments = watchChannelArguments) {}
             }
         }
         compose.waitForIdle()

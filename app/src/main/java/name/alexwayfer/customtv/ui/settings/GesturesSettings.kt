@@ -53,6 +53,8 @@ private val GestureGroups = listOf(
         listOf(
             Gesture(R.string.gesture_player_down, R.string.gesture_player_down_result),
             Gesture(R.string.gesture_player_up, R.string.gesture_player_up_result),
+            Gesture(R.string.gesture_stream_info_up, R.string.gesture_stream_info_up_result),
+            Gesture(R.string.gesture_stream_info_down, R.string.gesture_stream_info_down_result),
             Gesture(R.string.gesture_mini_player_up, R.string.gesture_mini_player_up_result),
             Gesture(R.string.gesture_mini_player_sideways, R.string.gesture_mini_player_sideways_result),
         ),

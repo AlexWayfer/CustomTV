@@ -94,19 +94,7 @@ class GitHubReleaseTest {
     }
 
     @Test
-    fun aCheckKeepsOnlyTheOfferedApkAndItsDownload() {
-        val names = listOf("CustomTV-free-1.6.0.apk", "CustomTV-free-1.7.0.apk", "CustomTV-free-1.7.0.apk.part")
-        assertEquals(listOf("CustomTV-free-1.6.0.apk"), staleUpdateFiles(names, apk))
-    }
-
-    @Test
-    fun aCheckWithoutAnUpdateLeavesNoFile() {
-        val names = listOf("CustomTV-free-1.7.0.apk", "CustomTV-free-1.7.0.apk.part")
-        assertEquals(names, staleUpdateFiles(names, null))
-    }
-
-    @Test
-    fun hexIsLowercaseWithLeadingZeros() {
-        assertEquals("000fa0ff", byteArrayOf(0, 15, -96, -1).toLowerHex())
+    fun theApkIsNamedForItsVersion() {
+        assertEquals("CustomTV-free-1.7.0.apk", githubApkFileName(apk))
     }
 }

@@ -48,14 +48,7 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
                 cursor = span.endExclusive
             }
             is ChatNickSpan -> {
-                withStyle(
-                    bodyStyle.copy(
-                        color = chatNickColor(look.nickColors[span.key], look.readableColors),
-                        fontWeight = FontWeight.Bold,
-                    ),
-                ) {
-                    append(span.raw)
-                }
+                appendChatNick(span, bodyStyle, look)
                 cursor = span.endExclusive
             }
         }
@@ -63,6 +56,18 @@ internal fun AnnotatedString.Builder.appendChatTextWithLinks(
     if (cursor < text.length) {
         withStyle(bodyStyle) { append(keepCommandPrefixTogether(text.substring(cursor))) }
     }
+}
+
+/** The nick of [span] bold in its color, or in its 7TV paint, marked with [CHAT_NICK_PAINT_TAG] when it has one. */
+private fun AnnotatedString.Builder.appendChatNick(span: ChatNickSpan, bodyStyle: SpanStyle, look: ChatMessageLook) {
+    val style = bodyStyle.copy(
+        color = chatNickColor(look.nickColors[span.key], look.readableColors),
+        fontWeight = FontWeight.Bold,
+    ).merge(look.nickPaints[length])
+    val painted = span.key in look.paintedNicks
+    if (painted) pushStringAnnotation(CHAT_NICK_PAINT_TAG, span.key)
+    withStyle(style) { append(span.raw) }
+    if (painted) pop()
 }
 
 /** The link of [span] in [linkStyle], opening through [onClick] when [clickable]; the same text either way. */
@@ -128,7 +133,7 @@ internal fun AnnotatedString.Builder.appendWithChatterName(
 }
 
 /** A mentioned chatter's chat color, made readable on the dark chat when asked; white for one not seen yet. */
-private fun chatNickColor(known: Color?, readableColors: Boolean): Color {
+internal fun chatNickColor(known: Color?, readableColors: Boolean): Color {
     val color = known?.takeUnless { it == Color.Unspecified } ?: return Color.White
     return if (readableColors) ReadableChatColor.adjust(color, TwitchBg) else color
 }

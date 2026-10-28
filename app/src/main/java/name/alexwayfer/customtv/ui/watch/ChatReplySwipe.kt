@@ -1,37 +1,23 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import name.alexwayfer.customtv.R
-import name.alexwayfer.customtv.ui.theme.TwitchSurface
-import name.alexwayfer.customtv.ui.theme.TwitchText
 
-private val CHAT_REPLY_SWIPE_THRESHOLD = 64.dp
-private val CHAT_REPLY_SWIPE_ICON_SIZE = 20.dp
+internal val CHAT_REPLY_SWIPE_THRESHOLD = 64.dp
+internal val CHAT_REPLY_SWIPE_ICON_SIZE = 20.dp
 
 /** The circle under the arrow, so it reads over chat rows or the video behind them. */
-private val CHAT_REPLY_SWIPE_CIRCLE_SIZE = 32.dp
+internal val CHAT_REPLY_SWIPE_CIRCLE_SIZE = 32.dp
 
 /** Share of the finger travel past the threshold that still moves the row. */
 private const val CHAT_REPLY_SWIPE_OVERSHOOT = 0.3f
@@ -79,10 +65,21 @@ internal fun chatReplyArrowOffset(offsetPx: Float, thresholdPx: Float, iconPx: F
     return (1f - progress) * (thresholdPx + iconPx) / 2f
 }
 
-internal enum class ChatSwipeRelease { Reply, Copy, Dismiss, Back }
+internal enum class ChatSwipeRelease { Reply, Copy, Dismiss, Step, Back }
 
-/** What a swipe toward the end does: nothing, slides the row out to dismiss it, or copies its text. */
-internal enum class ChatSwipeTowardEnd { None, Dismiss, Copy }
+/**
+ * What a swipe toward the end does: nothing, slides the row out to dismiss it, copies its text, or picks one of
+ * [Steps], the first at the threshold and each next one [Steps.gapPx] farther.
+ */
+internal sealed interface ChatSwipeTowardEnd {
+    data object None : ChatSwipeTowardEnd
+
+    data object Dismiss : ChatSwipeTowardEnd
+
+    data object Copy : ChatSwipeTowardEnd
+
+    data class Steps(val count: Int, val gapPx: Float) : ChatSwipeTowardEnd
+}
 
 /**
  * The drag after the finger moves [amountTowardStartPx], as signed travel: toward the start replies,
@@ -104,18 +101,27 @@ internal fun chatSwipeRelease(dragPx: Float, thresholdPx: Float, towardEnd: Chat
     when {
         chatReplySwipeReplies(dragPx, thresholdPx) -> ChatSwipeRelease.Reply
         !chatReplySwipeReplies(-dragPx, thresholdPx) -> ChatSwipeRelease.Back
-        towardEnd == ChatSwipeTowardEnd.Copy -> ChatSwipeRelease.Copy
-        towardEnd == ChatSwipeTowardEnd.Dismiss -> ChatSwipeRelease.Dismiss
-        else -> ChatSwipeRelease.Back
+        else -> when (towardEnd) {
+            ChatSwipeTowardEnd.Copy -> ChatSwipeRelease.Copy
+            ChatSwipeTowardEnd.Dismiss -> ChatSwipeRelease.Dismiss
+            is ChatSwipeTowardEnd.Steps -> {
+                val step = chatSwipeStep(-dragPx, thresholdPx, towardEnd)
+                if (step >= 0) ChatSwipeRelease.Step else ChatSwipeRelease.Back
+            }
+            ChatSwipeTowardEnd.None -> ChatSwipeRelease.Back
+        }
     }
 
 /**
- * How far the row slides toward the start. Toward the end, to copy, it slides as it does to reply; to dismiss, it
- * follows the finger.
+ * How far the row slides toward the start. Toward the end, to copy, it slides as it does to reply; with steps, it
+ * follows the finger to the last step and slows past it as a reply does past its threshold; to dismiss, it follows
+ * the finger.
  */
 internal fun chatSwipeOffset(dragPx: Float, thresholdPx: Float, towardEnd: ChatSwipeTowardEnd): Float = when {
     dragPx >= 0f -> chatReplySwipeOffset(dragPx, thresholdPx)
     towardEnd == ChatSwipeTowardEnd.Copy -> -chatReplySwipeOffset(-dragPx, thresholdPx)
+    towardEnd is ChatSwipeTowardEnd.Steps ->
+        -chatReplySwipeOffset(-dragPx, chatSwipeLastStepPx(thresholdPx, towardEnd))
     else -> dragPx
 }
 
@@ -136,9 +142,11 @@ internal fun chatSwipeDismissAlpha(offsetPx: Float, widthPx: Int): Float {
  * Releasing past the threshold calls [onReply]; the row springs back either way. With [onCopy], the row
  * slides toward the end the same way, under a copy icon from the start, and releasing past the threshold
  * calls [onCopy]. With [onDismiss] instead, the row follows the finger toward the end, and releasing past
- * the threshold there slides it out and calls [onDismiss]. [onSwipingChange] reports the drag, so the list
- * can hold its scroll still, and [onSwipeEnd] reports how it ended, before the action it starts.
- * [onOffsetChange] follows the slide, toward the start positive, and reports rest again once the row leaves.
+ * the threshold there slides it out and calls [onDismiss]. With [steps] instead of a copy, the row follows the
+ * finger toward the end through each step in turn, under the step's icon and name, and releasing on one picks it.
+ * [onSwipingChange] reports the drag, so the list can hold its scroll still, and [onSwipeEnd] reports how it
+ * ended, before the action it starts. [onOffsetChange] follows the slide, toward the start positive, and reports
+ * rest again once the row leaves.
  */
 @Composable
 internal fun ChatReplySwipe(
@@ -147,6 +155,7 @@ internal fun ChatReplySwipe(
     onSwipingChange: (Boolean) -> Unit,
     onDismiss: (() -> Unit)? = null,
     onCopy: (() -> Unit)? = null,
+    steps: ChatSwipeSteps? = null,
     onSwipeEnd: (ChatSwipeRelease) -> Unit = {},
     onOffsetChange: (Float) -> Unit = {},
     content: @Composable () -> Unit,
@@ -154,14 +163,19 @@ internal fun ChatReplySwipe(
     val density = LocalDensity.current
     val thresholdPx = with(density) { CHAT_REPLY_SWIPE_THRESHOLD.toPx() }
     val circlePx = with(density) { CHAT_REPLY_SWIPE_CIRCLE_SIZE.toPx() }
+    val stepGapPx = with(density) { CHAT_SWIPE_STEP_GAP.toPx() }
     val towardStart = if (LocalLayoutDirection.current == LayoutDirection.Rtl) 1f else -1f
     val canReply = onReply != null
-    val towardEnd = when {
-        onDismiss != null -> ChatSwipeTowardEnd.Dismiss
-        onCopy != null -> ChatSwipeTowardEnd.Copy
-        else -> ChatSwipeTowardEnd.None
-    }
-    val swipe = rememberChatSwipe(onReply, onSwipingChange, onDismiss, onCopy, onSwipeEnd, onOffsetChange)
+    val towardEnd = chatSwipeTowardEnd(onDismiss != null, steps?.count ?: 0, onCopy != null, stepGapPx)
+    val swipe = rememberChatSwipe(
+        onReply = onReply,
+        onSwipingChange = onSwipingChange,
+        onDismiss = onDismiss,
+        onCopy = onCopy,
+        onStep = steps?.onStep,
+        onSwipeEnd = onSwipeEnd,
+        onOffsetChange = onOffsetChange,
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -175,17 +189,7 @@ internal fun ChatReplySwipe(
                 },
             ),
     ) {
-        // At rest the icons sit clipped beyond the row's edges; rows not being swiped skip them.
-        if (swipe.replyArrowShown) {
-            SwipeIcon(R.drawable.ic_reply_arrow, atEnd = true, iconOffsetPx = {
-                -towardStart * chatReplyArrowOffset(swipe.offset.value, thresholdPx, circlePx)
-            })
-        }
-        if (towardEnd == ChatSwipeTowardEnd.Copy && swipe.towardEndShown) {
-            SwipeIcon(R.drawable.ic_chat_copy, atEnd = false, iconOffsetPx = {
-                towardStart * chatReplyArrowOffset(-swipe.offset.value, thresholdPx, circlePx)
-            })
-        }
+        ReplyAndCopyIcons(swipe, copies = towardEnd == ChatSwipeTowardEnd.Copy, thresholdPx, circlePx, towardStart)
         Box(
             modifier = Modifier.graphicsLayer {
                 translationX = swipe.offset.value * towardStart
@@ -196,35 +200,11 @@ internal fun ChatReplySwipe(
         ) {
             content()
         }
-    }
-}
-
-/** The swipe's [icon] in its circle at the row's end, or its start, shifted by [iconOffsetPx] as the row slides. */
-@Composable
-private fun BoxScope.SwipeIcon(icon: Int, atEnd: Boolean, iconOffsetPx: () -> Float) {
-    val edgePadding = (CHAT_REPLY_SWIPE_THRESHOLD - CHAT_REPLY_SWIPE_CIRCLE_SIZE) / 2
-    Box(
-        modifier = Modifier
-            .matchParentSize()
-            .clipToBounds()
-            .then(if (atEnd) Modifier.padding(end = edgePadding) else Modifier.padding(start = edgePadding)),
-        contentAlignment = if (atEnd) Alignment.CenterEnd else Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                // A one-line row is lower than the circle: it shrinks to the row height and stays round.
-                .sizeIn(maxWidth = CHAT_REPLY_SWIPE_CIRCLE_SIZE, maxHeight = CHAT_REPLY_SWIPE_CIRCLE_SIZE)
-                .aspectRatio(1f)
-                .graphicsLayer { translationX = iconOffsetPx() }
-                .background(TwitchSurface, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = TwitchText,
-                modifier = Modifier.size(CHAT_REPLY_SWIPE_ICON_SIZE),
-            )
+        // Over the row, so the step's name reads even where the slid row has not uncovered it yet.
+        if (towardEnd is ChatSwipeTowardEnd.Steps && steps != null && swipe.towardEndShown) {
+            SwipeStepIndicator(steps, towardEnd, thresholdPx, offsetPx = { swipe.offset.value }, iconOffsetPx = {
+                towardStart * chatReplyArrowOffset(-swipe.offset.value, thresholdPx, circlePx)
+            })
         }
     }
 }

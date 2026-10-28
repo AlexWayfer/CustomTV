@@ -40,6 +40,7 @@
     <string name="premium_all_message_deletion">Удаление сообщений</string>
     <string name="premium_all_warnings">Предупреждения чаттерам</string>
     <string name="premium_all_message_menu_moderation">Действия модератора в меню сообщения</string>
+    <string name="premium_all_swipe_moderation">Модерация свайпом вправо</string>
     <string name="premium_all_chat_modes">Смена режимов чата</string>
     <string name="premium_all_shoutouts">Отметка каналов (/shoutout)</string>
     <string name="premium_all_automod">Одобрение и отклонение сообщений, задержанных AutoMod</string>

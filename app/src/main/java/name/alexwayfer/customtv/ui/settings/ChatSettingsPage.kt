@@ -62,7 +62,7 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
     HiddenMessageSettings(settings, viewModel)
 }
 
-/** A section for each of 7TV, FFZ, and BTTV with the switches of what it adds to the chat. */
+/** A section for each of 7TV, FFZ, BTTV, and CustomTV with the switches of what it adds to the chat. */
 @Composable
 private fun ThirdPartySettings(settings: AppSettings, viewModel: SettingsViewModel) {
     SettingsSection(stringResource(R.string.chat_emote_platform_7tv), first = true)
@@ -96,9 +96,18 @@ private fun ThirdPartySettings(settings: AppSettings, viewModel: SettingsViewMod
         R.string.third_party_badges, R.string.bttv_badges_hint,
         settings.bttvBadges, ThirdPartyChatOption.BttvBadges, viewModel,
     )
+    SettingsSection(stringResource(R.string.chat_platform_custom_tv))
+    ThirdPartyToggle(
+        R.string.third_party_badges, R.string.custom_tv_badges_hint,
+        settings.customTvBadges, ThirdPartyChatOption.CustomTvBadges, viewModel,
+    )
+    ThirdPartyToggle(
+        R.string.own_custom_tv_badge, R.string.own_custom_tv_badge_hint,
+        settings.ownCustomTvBadge, ThirdPartyChatOption.OwnCustomTvBadge, viewModel,
+    )
 }
 
-/** A switch of what 7TV, FFZ, or BTTV adds; the hint names the service, as the label does not. */
+/** A switch of what 7TV, FFZ, BTTV, or CustomTV adds; the hint names the service, as the label does not. */
 @Composable
 private fun ThirdPartyToggle(
     @StringRes label: Int,

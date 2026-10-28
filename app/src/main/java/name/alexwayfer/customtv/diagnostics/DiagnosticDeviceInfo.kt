@@ -38,6 +38,7 @@ internal fun diagnosticAccounts(context: Context): DiagnosticAccounts {
         twitchLogin = account?.login,
         twitchUserId = account?.userId,
         telegramUsername = reportTelegramUsername,
+        telegramUserId = reportTelegramUserId,
     )
 }
 

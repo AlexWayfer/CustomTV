@@ -401,11 +401,13 @@ private fun BoxMessage(
     onCopy: (() -> Unit)?,
     copySwipe: Boolean,
 ) {
+    val moderationSteps = rememberChatSwipeModeration(message)?.takeIf { !LocalPlayerContentFullscreen.current }
     ChatReplySwipe(
         enabled = true,
         onReply = onReply,
         onSwipingChange = onReplySwipingChange,
-        onCopy = onCopy?.takeIf { copySwipe },
+        onCopy = onCopy?.takeIf { copySwipe && moderationSteps == null },
+        steps = moderationSteps,
     ) {
     Box(
         modifier = Modifier

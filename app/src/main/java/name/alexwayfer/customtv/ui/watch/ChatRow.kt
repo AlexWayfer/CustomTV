@@ -109,8 +109,8 @@ internal fun ChatRow(
 }
 
 /**
- * The row's swipes to reply and to copy [copyText], which tell the list when one starts and how it ends. Full screen
- * leaves both to the chat's own sideways swipe.
+ * The row's swipes to reply and to copy [copyText], or to moderate where the user moderates and turned that on, which
+ * tell the list when one starts and how it ends. Full screen leaves them all to the chat's own sideways swipe.
  */
 @Composable
 private fun ChatRowSwipe(
@@ -123,13 +123,16 @@ private fun ChatRowSwipe(
     val context = LocalContext.current
     val fullscreen = LocalPlayerContentFullscreen.current
     val onReplySwipe = onReply?.takeIf { !fullscreen }?.let { reply -> { reply(message) } }
-    val onCopySwipe = copyText?.takeIf { actions.copySwipe && chatSwipeCopies(it, fullscreen) }
+    val moderationSteps = rememberChatSwipeModeration(message)?.takeIf { actions.copySwipe && !fullscreen }
+    val onCopySwipe = copyText
+        ?.takeIf { moderationSteps == null && actions.copySwipe && chatSwipeCopies(it, fullscreen) }
         ?.let { text -> { context.copyChatText(text) } }
     ChatReplySwipe(
-        enabled = onReplySwipe != null || onCopySwipe != null,
+        enabled = onReplySwipe != null || onCopySwipe != null || moderationSteps != null,
         onReply = onReplySwipe,
         onSwipingChange = actions.onReplySwipingChange,
         onCopy = onCopySwipe,
+        steps = moderationSteps,
         onSwipeEnd = actions.onReplySwipeEnd,
         content = content,
     )

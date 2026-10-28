@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Mention alerts vibrate. -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- Installs a new release downloaded from the edition's Telegram topic. -->
+    <!-- Installs a new release: free downloads it from GitHub, Premium from the Mecena server. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <queries>

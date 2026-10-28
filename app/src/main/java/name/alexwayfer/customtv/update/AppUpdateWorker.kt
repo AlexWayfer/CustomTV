@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 private const val APP_UPDATE_WORK_NAME = "app-update"
 
-/** The daily check for a new release; the check itself posts the notification. */
+/** The periodic check for a new release; the check itself posts the notification. */
 internal class AppUpdateWorker(
     context: Context,
     params: WorkerParameters,
@@ -23,8 +23,12 @@ internal class AppUpdateWorker(
     }
 }
 
+/** Each edition checks at its own [APP_UPDATE_CHECK_INTERVAL]: Premium's check also tells whether its access holds. */
 internal fun scheduleAppUpdateChecks(context: Context) {
-    val request = PeriodicWorkRequestBuilder<AppUpdateWorker>(1, TimeUnit.DAYS)
+    val request = PeriodicWorkRequestBuilder<AppUpdateWorker>(
+        APP_UPDATE_CHECK_INTERVAL.inWholeMinutes,
+        TimeUnit.MINUTES,
+    )
         .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
         .build()
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(

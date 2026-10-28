@@ -8,6 +8,17 @@ private val PLAYER_RELOAD_DELAYS_MS = longArrayOf(1_000, 4_000, 12_000)
 private const val PAGE_RESPONSE_TIMEOUT_MS = 10_000L
 
 /**
+ * What [PlayerPageRecovery] does to the page: reloads Twitch's player in it or the whole page, hides the video, and
+ * logs the page's state before it reloads a page that did not start.
+ */
+internal data class PlayerPageActions(
+    val reloadPlayer: () -> Unit,
+    val reloadPage: () -> Unit,
+    val concealSurface: () -> Unit,
+    val logPlayerState: (then: () -> Unit) -> Unit,
+)
+
+/**
  * Brings a stuck player page back: a page that does not answer or does not start, Twitch's player error, and the
  * error screen's own reload. Each kind of retry counts its attempts until the next load or playback.
  */
@@ -15,11 +26,14 @@ internal class PlayerPageRecovery(
     private val handler: Handler,
     private val isReleased: () -> Boolean,
     isSurfaceRevealed: () -> Boolean,
-    reloadPlayer: () -> Unit,
-    reloadPage: () -> Unit,
-    private val concealSurface: () -> Unit,
+    private val actions: PlayerPageActions,
 ) {
     val pageLoad = PlayerPageLoad()
+    // Counts the loads, so a reload that waited for the page's state skips a page that a newer load replaced.
+    // The playlist's request reads it on a WebView thread.
+    @Volatile private var loads = 0
+    private var playlistLoaded = false
+    private var waitedOnceMore = false
     /** The loaded channel or recording has played. */
     var playbackConfirmed = false
         private set
@@ -32,27 +46,53 @@ internal class PlayerPageRecovery(
     private val playerReload = Runnable {
         playerReloadPending = false
         if (isReleased() || StreamPlayback.isExplicitlyPaused) return@Runnable
-        reloadPlayer()
+        actions.reloadPlayer()
     }
     private val pageResponseWatchdog = Runnable {
         if (pageLoad.awaitingResponse) pageFailed("no response")
     }
     private val failedReload = Runnable {
         if (isReleased() || StreamPlayback.userPaused) return@Runnable
-        reloadPage()
+        actions.reloadPage()
     }
-    private val startupWatchdog = Runnable {
+    // Reloads a page that did not start once its state is in the log.
+    private val reloadStuckPage = {
+        val load = loads
+        actions.logPlayerState {
+            // A load that started meanwhile, such as on a network switch, has already replaced the page.
+            if (!isReleased() && load == loads) actions.reloadPage()
+        }
+    }
+    private val startupWatchdog: Runnable = Runnable {
         if (isReleased()) return@Runnable
-        if (!PlayerPageReloads.reloadsWithoutPlayback(playbackConfirmed, withheld, StreamPlayback.userPaused)) {
+        val state = if (ready) "Ready" else "Not ready"
+        val skip = PlayerPageReloads.noPlaybackReloadSkip(
+            played = playbackConfirmed,
+            withheld = withheld,
+            explicitlyPaused = StreamPlayback.isExplicitlyPaused,
+        )
+        if (skip != null) {
+            AppLog.i(PLAYER_LOG_TAG, "$state, no playback after $sinceLoadMs ms, not reloading: $skip")
+            return@Runnable
+        }
+        if (PlayerPageReloads.waitsOnceMore(playlistLoaded, waitedOnceMore)) {
+            waitedOnceMore = true
+            val delay = PlayerPageReloads.onceMoreDelayMs(startupReloadAttempts)
+            AppLog.i(
+                PLAYER_LOG_TAG,
+                "$state, no playback after $sinceLoadMs ms, the playlist answered: waiting $delay ms more",
+            )
+            handler.postDelayed(startupWatchdog, delay)
             return@Runnable
         }
         startupReloadAttempts += 1
-        val state = if (ready) "Ready" else "Not ready"
+        // A pause the app read from the page does not keep it, but it explains a Play button shown meanwhile.
+        val pauseRead = if (StreamPlayback.userPaused) ", though the page reported a pause" else ""
         AppLog.w(
             PLAYER_LOG_TAG,
-            "$state, no playback after $sinceLoadMs ms, reloading the page (attempt $startupReloadAttempts)",
+            "$state, no playback after $sinceLoadMs ms$pauseRead, reloading the page (attempt $startupReloadAttempts)",
         )
-        reloadPage()
+        reloadStuckPage()
     }
     private val errorReloadWatchdog = Runnable {
         if (isReleased()) return@Runnable
@@ -64,14 +104,17 @@ internal class PlayerPageRecovery(
             PLAYER_LOG_TAG,
             "No video after the error screen's reload, reloading the page (attempt $startupReloadAttempts)",
         )
-        reloadPage()
+        reloadStuckPage()
     }
 
     /** A page starts loading; a reload of the same target keeps counting its startup attempts. */
     fun start(resetStartupReloads: Boolean) {
+        loads += 1
         playbackConfirmed = false
         ready = false
         withheld = false
+        playlistLoaded = false
+        waitedOnceMore = false
         if (resetStartupReloads) startupReloadAttempts = 0
         loadStartedAt = SystemClock.elapsedRealtime()
         resetAutomaticReloads()
@@ -122,6 +165,15 @@ internal class PlayerPageRecovery(
         handler.postDelayed(startupWatchdog, PlayerPageReloads.delayMs(startupReloadAttempts))
     }
 
+    /**
+     * Any thread, as the player asks for its playlist: what tells this load that the playlist came. Taken before the
+     * request, so an answer that comes after a newer load started does not count for that one.
+     */
+    val playlistArrival: () -> () -> Unit = {
+        val load = loads
+        { handler.post { if (load == loads) playlistLoaded = true } }
+    }
+
     /** The page explains the missing video: the channel is offline, or Twitch's audience gate waits for a tap. */
     fun videoWithheld() {
         withheld = true
@@ -150,7 +202,7 @@ internal class PlayerPageRecovery(
             AppLog.w(PLAYER_LOG_TAG, "Player error, no automatic reloads left")
             return
         }
-        concealSurface()
+        actions.concealSurface()
         automaticReloadAttempts += 1
         playerReloadPending = true
         AppLog.w(PLAYER_LOG_TAG, "Player error, reload $automaticReloadAttempts in $delay ms")
@@ -160,7 +212,7 @@ internal class PlayerPageRecovery(
     fun errorScreenReload() {
         if (isReleased()) return
         AppLog.i(PLAYER_LOG_TAG, "Error screen reload pressed")
-        concealSurface()
+        actions.concealSurface()
         // A player that keeps loading without a network shows no error again: reload the page as at start.
         startupReloadAttempts = 0
         // The wait after this reload takes over from the wait for the first playback.

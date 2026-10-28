@@ -2,7 +2,9 @@ package name.alexwayfer.customtv.chat
 
 import androidx.compose.ui.graphics.Color
 import name.alexwayfer.customtv.data.AppSettings
+import name.alexwayfer.customtv.data.CustomTvBadgeEdition
 import name.alexwayfer.customtv.data.FfzBadgeList
+import name.alexwayfer.customtv.data.parseCustomTvBadges
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -40,6 +42,36 @@ class ChatCosmeticsTest {
 
         assertEquals(listOf(ffzBadge), chatter.badges)
         assertNull(chatter.paint)
+    }
+
+    @Test
+    fun customTvBadgeComesAfterTheOthersInItsEdition() {
+        val premium = ThirdPartyBadge(url = "android.resource://app/1", title = "CustomTV Premium")
+        val free = ThirdPartyBadge(url = "android.resource://app/2", title = "CustomTV")
+        val withCustomTv = cosmetics.copy(
+            customTv = parseCustomTvBadges("""{"premium":[42],"free":[8]}""")!!,
+            customTvPictures = mapOf(CustomTvBadgeEdition.Premium to premium, CustomTvBadgeEdition.Free to free),
+        )
+
+        assertEquals(listOf(sevenTvBadge, ffzBadge, bttvBadge, premium), withCustomTv.forUser("42").badges)
+        assertEquals(listOf(free), withCustomTv.forUser("8").badges)
+        assertEquals(CustomTvBadgeEdition.Free, withCustomTv.customTvEdition("8"))
+
+        val off = withCustomTv.copy(sources = cosmeticSources(AppSettings(customTvBadges = false)))
+        assertEquals(listOf(sevenTvBadge, ffzBadge, bttvBadge), off.forUser("42").badges)
+        assertNull(off.customTvEdition("8"))
+    }
+
+    @Test
+    fun mentionedNickHasThePaintOfTheChatterWithThatLogin() {
+        val known = cosmetics.copy(chatterIds = mapOf("viewer" to "42", "quiet" to "8"))
+
+        assertEquals(paint, known.paintForNick("viewer"))
+        assertNull(known.paintForNick("quiet"))
+        assertNull(known.paintForNick("stranger"))
+        assertNull(
+            known.copy(sources = cosmeticSources(AppSettings(sevenTvPaints = false))).paintForNick("viewer"),
+        )
     }
 
     @Test

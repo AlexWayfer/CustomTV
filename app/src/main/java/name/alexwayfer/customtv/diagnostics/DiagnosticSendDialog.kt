@@ -64,7 +64,7 @@ internal fun DiagnosticSendDialog(
 @Composable
 private fun privateItemText(item: DiagnosticPrivateItem): String = when (item) {
     is DiagnosticPrivateItem.TwitchAccount -> stringResource(R.string.diagnostics_privacy_twitch, item.name)
-    is DiagnosticPrivateItem.TelegramAccount -> stringResource(R.string.diagnostics_privacy_telegram, item.username)
+    is DiagnosticPrivateItem.TelegramAccount -> stringResource(R.string.diagnostics_privacy_telegram, item.name)
     DiagnosticPrivateItem.Viewing -> stringResource(R.string.diagnostics_privacy_viewing)
     DiagnosticPrivateItem.Device -> stringResource(R.string.diagnostics_privacy_device)
 }

@@ -3,7 +3,7 @@ package name.alexwayfer.customtv.diagnostics
 /** What a report holds that its sender may consider personal, listed before it goes out. */
 internal sealed interface DiagnosticPrivateItem {
     data class TwitchAccount(val name: String) : DiagnosticPrivateItem
-    data class TelegramAccount(val username: String) : DiagnosticPrivateItem
+    data class TelegramAccount(val name: String) : DiagnosticPrivateItem
 
     /** The channels and recordings the log names, with the times. */
     data object Viewing : DiagnosticPrivateItem
@@ -16,7 +16,8 @@ internal sealed interface DiagnosticPrivateItem {
 internal fun diagnosticPrivateItems(accounts: DiagnosticAccounts): List<DiagnosticPrivateItem> = listOfNotNull(
     (accounts.twitchLogin?.takeIf { it.isNotBlank() } ?: accounts.twitchUserId?.takeIf { it.isNotBlank() })
         ?.let(DiagnosticPrivateItem::TwitchAccount),
-    accounts.telegramUsername?.takeIf { it.isNotBlank() }?.let(DiagnosticPrivateItem::TelegramAccount),
+    (accounts.telegramUsername?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: accounts.telegramUserId?.toString())
+        ?.let(DiagnosticPrivateItem::TelegramAccount),
     DiagnosticPrivateItem.Viewing,
     DiagnosticPrivateItem.Device,
 )

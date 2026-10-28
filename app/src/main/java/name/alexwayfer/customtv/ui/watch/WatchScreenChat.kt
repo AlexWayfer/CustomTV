@@ -65,6 +65,7 @@ private fun ColumnScope.WatchChatPaneContent(scene: WatchScene, layout: Minimiza
         bttvEmotes = data.bttvEmotes.value,
         personalEmotes = { data.personalEmotes.value },
         sevenTvCosmetics = { data.sevenTvCosmetics.value },
+        chatterIds = { data.chatterIds.value },
         nickColors = { data.nickColors.value },
         listState = chat.listState,
         highlightPins = scene.highlightPins,

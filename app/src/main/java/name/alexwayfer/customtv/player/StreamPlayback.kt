@@ -22,6 +22,9 @@ object StreamPlayback {
         private set
     @Volatile
     private var playbackDisabled: Boolean = false
+    /** The channel is offline: its paused video is not the viewer's pause, until a frame plays or a new load. */
+    @Volatile
+    private var offline: Boolean = false
     private var playRequestedAt = 0L
     private val position = ReportedPosition()
     private val inferredPause = InferredPause(Handler(Looper.getMainLooper()))
@@ -53,11 +56,14 @@ object StreamPlayback {
 
     /** A playing report changes what the app shows: it was paused, waiting, or not confirmed yet. */
     private val playingChangesState: Boolean
-        get() = userPaused || awaitingPlayback || !isPlaybackConfirmed
+        get() = userPaused || awaitingPlayback || !isPlaybackConfirmed || offline
 
-    /** A paused report now is not the viewer's pause: it is held off, already known, pending, or still loading. */
+    /**
+     * A paused report now is not the viewer's pause: it is held off, already known, pending, still loading, or of an
+     * offline channel.
+     */
     private val pauseReportIgnored: Boolean
-        get() = inferredPause.suppressed || userPaused || inferredPause.isPending ||
+        get() = offline || inferredPause.suppressed || userPaused || inferredPause.isPending ||
             awaitingPlayback && SystemClock.elapsedRealtime() - playRequestedAt < LOAD_GRACE_MS
 
     fun bind(commands: Commands) {
@@ -69,6 +75,7 @@ object StreamPlayback {
         awaitingPlayback = false
         isPlaybackConfirmed = false
         playbackDisabled = false
+        offline = false
         position.set(0L)
         inferredPause.cancel()
         syncState()
@@ -83,10 +90,23 @@ object StreamPlayback {
         awaitingPlayback = true
         isPlaybackConfirmed = false
         playbackDisabled = false
+        offline = false
         playRequestedAt = SystemClock.elapsedRealtime()
         position.set(0L)
         syncState()
     }
+
+    /** The page shows the channel offline: nothing plays, and Play would have nothing to start. */
+    var channelOffline: Boolean
+        get() = offline
+        set(value) {
+            if (offline == value) return
+            inferredPause.cancel()
+            StreamInterruption.clear()
+            offline = value
+            if (value) awaitingPlayback = false
+            syncState()
+        }
 
     /** The recording's time as the page reports it while it plays. */
     fun reportPosition(seconds: Double) {
@@ -168,6 +188,7 @@ object StreamPlayback {
             isExplicitlyPaused = false
             awaitingPlayback = false
             isPlaybackConfirmed = true
+            offline = false
             if (changed) syncState()
             return
         }
@@ -188,7 +209,7 @@ object StreamPlayback {
 
     /** Tells the media session and the screen what changed. */
     private fun syncState() {
-        mutablePlayback.value = playerPlayback(userPaused, awaitingPlayback, isPlaybackConfirmed)
+        mutablePlayback.value = playerPlayback(userPaused, awaitingPlayback, isPlaybackConfirmed, offline)
         PlayerPlaybackService.sync()
     }
 

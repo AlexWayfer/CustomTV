@@ -1,11 +1,15 @@
 package name.alexwayfer.customtv.ui.watch
 
+import name.alexwayfer.customtv.ui.MIN_TEXT_CONTRAST
+import name.alexwayfer.customtv.ui.contrast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatReplySwipeTest {
+    private val fourSteps = ChatSwipeTowardEnd.Steps(count = 4, gapPx = 50f)
+
     @Test
     fun `row follows the finger up to the threshold`() {
         assertEquals(0f, chatReplySwipeOffset(0f, 100f), 0.0001f)
@@ -110,6 +114,77 @@ class ChatReplySwipeTest {
     fun `release past the threshold toward the start replies`() {
         assertEquals(ChatSwipeRelease.Reply, chatSwipeRelease(100f, 100f, ChatSwipeTowardEnd.Copy))
         assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(0f, 100f, ChatSwipeTowardEnd.Copy))
+    }
+
+    @Test
+    fun `a selected row dismisses toward the end, steps come before copying, and a row with neither stays put`() {
+        assertEquals(ChatSwipeTowardEnd.Dismiss, chatSwipeTowardEnd(true, 4, copies = true, stepGapPx = 50f))
+        assertEquals(fourSteps, chatSwipeTowardEnd(false, 4, copies = true, stepGapPx = 50f))
+        assertEquals(ChatSwipeTowardEnd.Copy, chatSwipeTowardEnd(false, 0, copies = true, stepGapPx = 50f))
+        assertEquals(ChatSwipeTowardEnd.None, chatSwipeTowardEnd(false, 0, copies = false, stepGapPx = 50f))
+    }
+
+    @Test
+    fun `travel toward the end short of the threshold reaches no step`() {
+        assertEquals(-1, chatSwipeStep(0f, 100f, fourSteps))
+        assertEquals(-1, chatSwipeStep(99f, 100f, fourSteps))
+    }
+
+    @Test
+    fun `the first step is at the threshold and each gap past it reaches the next`() {
+        assertEquals(0, chatSwipeStep(100f, 100f, fourSteps))
+        assertEquals(0, chatSwipeStep(149f, 100f, fourSteps))
+        assertEquals(1, chatSwipeStep(150f, 100f, fourSteps))
+        assertEquals(2, chatSwipeStep(200f, 100f, fourSteps))
+        assertEquals(3, chatSwipeStep(250f, 100f, fourSteps))
+    }
+
+    @Test
+    fun `travel past the last step stays on it`() {
+        assertEquals(3, chatSwipeStep(1000f, 100f, fourSteps))
+    }
+
+    @Test
+    fun `no steps or a zero threshold reach no step`() {
+        assertEquals(-1, chatSwipeStep(500f, 100f, ChatSwipeTowardEnd.Steps(count = 0, gapPx = 50f)))
+        assertEquals(-1, chatSwipeStep(500f, 0f, fourSteps))
+    }
+
+    @Test
+    fun `a row with steps follows the finger to the last step and slows past it`() {
+        assertEquals(-40f, chatSwipeDrag(0f, -40f, canReply = true, towardEnd = fourSteps), 0.0001f)
+        assertEquals(-200f, chatSwipeOffset(-200f, 100f, fourSteps), 0.0001f)
+        assertEquals(-250f, chatSwipeOffset(-250f, 100f, fourSteps), 0.0001f)
+        assertEquals(-chatReplySwipeOffset(350f, 250f), chatSwipeOffset(-350f, 100f, fourSteps), 0.0001f)
+    }
+
+    @Test
+    fun `release on a step toward the end picks the step`() {
+        assertEquals(ChatSwipeRelease.Step, chatSwipeRelease(-100f, 100f, fourSteps))
+        assertEquals(ChatSwipeRelease.Step, chatSwipeRelease(-400f, 100f, fourSteps))
+        assertEquals(ChatSwipeRelease.Back, chatSwipeRelease(-99f, 100f, fourSteps))
+        assertEquals(ChatSwipeRelease.Reply, chatSwipeRelease(100f, 100f, fourSteps))
+    }
+
+    @Test
+    fun `each step reached is a stage of its own, and a single action toward either side is one`() {
+        assertEquals(0, chatSwipeStage(0f, 100f, fourSteps))
+        assertEquals(0, chatSwipeStage(-99f, 100f, fourSteps))
+        assertEquals(1, chatSwipeStage(-100f, 100f, fourSteps))
+        assertEquals(2, chatSwipeStage(-150f, 100f, fourSteps))
+        assertEquals(4, chatSwipeStage(-1000f, 100f, fourSteps))
+        assertEquals(1, chatSwipeStage(100f, 100f, fourSteps))
+        assertEquals(1, chatSwipeStage(-100f, 100f, ChatSwipeTowardEnd.Copy))
+        assertEquals(0, chatSwipeStage(-50f, 100f, ChatSwipeTowardEnd.Copy))
+        assertEquals(0, chatSwipeStage(99f, 100f, ChatSwipeTowardEnd.None))
+    }
+
+    @Test
+    fun `the reply and copy icons read on the colors their circles take at the threshold`() {
+        listOf(ChatReplySwipeColors, ChatCopySwipeColors).forEach { colors ->
+            val contrast = contrast(colors.background, colors.content)
+            assertTrue("$contrast", contrast >= MIN_TEXT_CONTRAST)
+        }
     }
 
     @Test

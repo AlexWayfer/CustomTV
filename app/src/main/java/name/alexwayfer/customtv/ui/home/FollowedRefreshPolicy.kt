@@ -5,6 +5,16 @@ import name.alexwayfer.customtv.data.FollowedChannelsResult
 
 internal const val FOLLOWED_AUTO_REFRESH_INTERVAL_MS = 60_000L
 
+/** How old a shown follow list gets before Home dims it as out of date. */
+internal const val FOLLOWED_LIST_STALE_AFTER_MS = 60 * 60_000L
+
+/**
+ * Whether the follow list loaded at [shownAtMillis] is too old to pass for the current one; a list from a later time,
+ * after the clock moved back, is not. Without a shown list there is nothing to dim.
+ */
+internal fun followedListStale(shownAtMillis: Long?, nowMillis: Long): Boolean =
+    shownAtMillis != null && nowMillis - shownAtMillis >= FOLLOWED_LIST_STALE_AFTER_MS
+
 internal fun followedAutomaticRefreshAllowed(
     lastAtMillis: Long?,
     nowMillis: Long,

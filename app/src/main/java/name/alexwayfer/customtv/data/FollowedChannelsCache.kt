@@ -21,19 +21,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal class FollowedChannelsCache(context: Context) {
     private val file = File(context.applicationContext.filesDir, "followed-channels.json")
 
-    fun read(userId: String): List<FollowedChannel> {
-        if (userId.isBlank()) return emptyList()
-        synchronized(gate) {
-            return decodeFollowedChannelsCache(readRaw() ?: return emptyList(), userId)
-        }
-    }
+    /** The saved list of [userId], or null when there is none for that account. */
+    fun read(userId: String): SavedFollows? = readSaved()?.takeIf { it.userId == userId }
 
     /** The saved list with the account it belongs to, whichever account that is. */
     fun readSaved(): SavedFollows? {
         synchronized(gate) {
             val raw = readRaw() ?: return null
             val userId = decodeFollowedChannelsCacheOwner(raw) ?: return null
-            return SavedFollows(userId, decodeFollowedChannelsCache(raw, userId))
+            // The file is written after each load; the watch streaks the paid build adds follow within seconds.
+            return SavedFollows(userId, decodeFollowedChannelsCache(raw, userId), file.lastModified())
         }
     }
 
@@ -177,8 +174,8 @@ internal fun decodeFollowedChannelsCache(raw: String, userId: String): List<Foll
     }
 }
 
-/** A saved follow list and the account it belongs to. */
-internal class SavedFollows(val userId: String, val channels: List<FollowedChannel>)
+/** A saved follow list, the account it belongs to, and when it was saved. */
+internal class SavedFollows(val userId: String, val channels: List<FollowedChannel>, val savedAtMillis: Long)
 
 /** The account the saved list belongs to, or null when [raw] is unreadable or names none. */
 internal fun decodeFollowedChannelsCacheOwner(raw: String): String? =

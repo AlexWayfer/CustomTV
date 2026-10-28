@@ -29,7 +29,7 @@ internal fun GesturesSettingsEntry(onOpen: () -> Unit) {
     )
 }
 
-private class Gesture(@param:StringRes val title: Int, @param:StringRes val result: Int)
+internal class Gesture(@param:StringRes val title: Int, @param:StringRes val result: Int)
 
 private class GestureGroup(@param:StringRes val title: Int, val gestures: List<Gesture>)
 
@@ -43,6 +43,7 @@ private val GestureGroups = listOf(
         listOf(
             Gesture(R.string.gesture_message_swipe, R.string.gesture_message_swipe_result),
             Gesture(R.string.gesture_message_swipe_right, R.string.gesture_message_swipe_right_result),
+        ) + EditionMessageSwipeGestures + listOf(
             Gesture(R.string.gesture_message_hold, R.string.gesture_message_hold_result),
             Gesture(R.string.gesture_thread_swipe, R.string.gesture_thread_swipe_result),
             Gesture(R.string.gesture_chatter_card_hold, R.string.gesture_chatter_card_hold_result),

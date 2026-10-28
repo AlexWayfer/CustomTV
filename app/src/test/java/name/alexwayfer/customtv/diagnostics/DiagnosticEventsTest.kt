@@ -205,7 +205,7 @@ class DiagnosticEventsTest {
     fun reportNamesTheBuildTheAccountsAndEachProblem() {
         val report = diagnosticReport(
             device = pixel,
-            accounts = DiagnosticAccounts("viewer", "42", "viewer_tg"),
+            accounts = DiagnosticAccounts("viewer", "42", "viewer_tg", 7L),
             events = listOf(rejected(403, 0, "Missing scope").copy(lastAtMillis = 2 * minute, count = 3)),
             zone = ZoneOffset.UTC,
         )
@@ -219,7 +219,7 @@ class DiagnosticEventsTest {
             Languages: ru-RU, en-US
             SIM country: RU
             Twitch: viewer, id 42
-            Telegram: @viewer_tg
+            Telegram: @viewer_tg, id 7
 
             StreamStart: HTTP 403 helix/streams/followed
             1970-01-01T00:02:00Z, 3 times since 1970-01-01T00:00:00Z
@@ -261,7 +261,7 @@ class DiagnosticEventsTest {
     fun reportListsTheLogUnderTheProblem() {
         val report = diagnosticReport(
             device = pixel,
-            accounts = DiagnosticAccounts(null, null, null),
+            accounts = DiagnosticAccounts(null, null, null, null),
             events = listOf(rejected(404, 0, "Not Found").copy(recentLog = listOf("a", "b"))),
             zone = ZoneOffset.UTC,
         )
@@ -273,7 +273,7 @@ class DiagnosticEventsTest {
     fun reportFromTheSettingsEndsWithTheAppLogEvenWithoutProblems() {
         val report = diagnosticReport(
             device = pixel,
-            accounts = DiagnosticAccounts(null, null, null),
+            accounts = DiagnosticAccounts(null, null, null, null),
             events = emptyList(),
             zone = ZoneOffset.UTC,
             appLog = listOf("one", "two"),
@@ -286,7 +286,7 @@ class DiagnosticEventsTest {
     fun reportWithoutAppLogHasNoAppLogSection() {
         val report = diagnosticReport(
             device = pixel,
-            accounts = DiagnosticAccounts(null, null, null),
+            accounts = DiagnosticAccounts(null, null, null, null),
             events = emptyList(),
             zone = ZoneOffset.UTC,
         )
@@ -309,7 +309,7 @@ class DiagnosticEventsTest {
                 debug = false,
                 installedAtMillis = null,
             ),
-            accounts = DiagnosticAccounts(null, null, null),
+            accounts = DiagnosticAccounts(null, null, null, null),
             events = emptyList(),
             zone = ZoneOffset.UTC,
         )
@@ -355,7 +355,7 @@ class DiagnosticEventsTest {
     fun reportMarksADebugBuild() {
         val report = diagnosticReport(
             device = pixel.copy(debug = true),
-            accounts = DiagnosticAccounts(null, null, null),
+            accounts = DiagnosticAccounts(null, null, null, null),
             events = emptyList(),
             zone = ZoneOffset.UTC,
         )

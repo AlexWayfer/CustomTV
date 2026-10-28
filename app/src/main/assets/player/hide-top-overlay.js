@@ -204,7 +204,8 @@
     '.chapter-select-button__chapters [role="dialog"] > * { max-height: calc(100vh - 52px) !important; }',
   ].join('\n');
   function injectInto(doc) {
-    if (!doc) return;
+    // WebView's error page after a failed load has no document element to put the style in.
+    if (!doc || !doc.documentElement) return;
     var style = doc.getElementById('customtv-hide-top');
     var css = [
         'html, body, #root, .root { background: transparent !important; overflow: hidden !important; }',

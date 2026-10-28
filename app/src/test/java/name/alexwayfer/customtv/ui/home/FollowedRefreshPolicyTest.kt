@@ -239,4 +239,26 @@ class FollowedRefreshPolicyTest {
         }
         assertNull(followedChannelIds(signedIn = false, status = FollowedChannelsStatus.Ready, channels = channels))
     }
+
+    @Test
+    fun aListLoadedLessThanAnHourAgoIsNotStale() {
+        val now = 10 * FOLLOWED_LIST_STALE_AFTER_MS
+        assertFalse(followedListStale(shownAtMillis = now - FOLLOWED_LIST_STALE_AFTER_MS + 1, nowMillis = now))
+    }
+
+    @Test
+    fun aListLoadedAnHourAgoIsStale() {
+        val now = 10 * FOLLOWED_LIST_STALE_AFTER_MS
+        assertTrue(followedListStale(shownAtMillis = now - FOLLOWED_LIST_STALE_AFTER_MS, nowMillis = now))
+    }
+
+    @Test
+    fun aListFromALaterTimeIsNotStale() {
+        assertFalse(followedListStale(shownAtMillis = 2_000, nowMillis = 1_000))
+    }
+
+    @Test
+    fun noShownListIsNotStale() {
+        assertFalse(followedListStale(shownAtMillis = null, nowMillis = 10 * FOLLOWED_LIST_STALE_AFTER_MS))
+    }
 }

@@ -23,7 +23,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 37
+        versionCode = 39
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -39,30 +39,15 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.13.1"
+            versionName = "1.14.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.13.0"
+                versionName = "1.13.1"
                 buildConfigField("boolean", "PREMIUM", "true")
-                // Premium logs in to Telegram: its group gives the access and the updates.
-                val telegram = Properties().apply {
-                    val file = rootProject.file("telegram.properties")
-                    if (file.exists()) file.inputStream().use(::load)
-                }
-                val telegramApiId = telegram.getProperty("TELEGRAM_API_ID")?.toIntOrNull() ?: 0
-                val telegramApiHash = telegram.getProperty("TELEGRAM_API_HASH").orEmpty()
-                    .replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                val telegramPremiumChatId = telegram.getProperty("TELEGRAM_PREMIUM_CHAT_ID")?.toLongOrNull() ?: 0L
-                val telegramPremiumTopicId = telegram.getProperty("TELEGRAM_PREMIUM_TOPIC_ID")?.toIntOrNull() ?: 0
-                buildConfigField("int", "TELEGRAM_API_ID", "$telegramApiId")
-                buildConfigField("String", "TELEGRAM_API_HASH", "\"$telegramApiHash\"")
-                buildConfigField("long", "TELEGRAM_PREMIUM_CHAT_ID", "${telegramPremiumChatId}L")
-                buildConfigField("int", "TELEGRAM_PREMIUM_TOPIC_ID", "$telegramPremiumTopicId")
             }
         }
     }
@@ -138,7 +123,7 @@ android {
     }
 }
 
-// A release APK is named for its post in the edition's Telegram topic: CustomTV-free-1.0.3.apk.
+// A release APK is named for its edition and version, which the Mecena upload checks: CustomTV-free-1.0.3.apk.
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         variant.outputs.forEach { output ->
@@ -177,8 +162,6 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.browser)
     if (premiumSources) {
-        // Telegram for the Premium access and updates; its native library is most of an APK's size.
-        "premiumImplementation"(libs.tdlib.android.core)
         // The home screen widget of the live channels.
         "premiumImplementation"(libs.androidx.glance.appwidget)
     }

@@ -44,14 +44,15 @@ private suspend fun AwaitPointerEventScope.awaitSwipeStart(downId: PointerId, to
 }
 
 /**
- * What a swipe does: [onArmed] ticks when the travel crosses the threshold, and a release replies, copies, or
- * dismisses.
+ * What a swipe does: [onArmed] ticks when the travel crosses the threshold or reaches another step, and a release
+ * replies, copies, dismisses, or picks the step it stands on.
  */
 internal data class ChatSwipeActions(
     val onArmed: () -> Unit,
     val onReply: () -> Unit,
     val onCopy: () -> Unit,
     val onDismiss: () -> Unit,
+    val onStep: (Int) -> Unit,
 )
 
 /**
@@ -100,8 +101,8 @@ internal class ChatSwipe(
     }
 
     /**
-     * Follows each touch on the row: a swipe slides it, and its release replies, copies, dismisses, or springs it
-     * back.
+     * Follows each touch on the row: a swipe slides it, and its release replies, copies, dismisses, picks a step, or
+     * springs it back.
      */
     suspend fun handle(
         input: PointerInputScope,
@@ -123,10 +124,10 @@ internal class ChatSwipe(
                     // positionChange() reads zero once the change is consumed.
                     val amount = change.positionChange().x
                     change.consume()
-                    val wasArmed = chatSwipeRelease(dragPx, thresholdPx, towardEnd) != ChatSwipeRelease.Back
+                    val wasStage = chatSwipeStage(dragPx, thresholdPx, towardEnd)
                     dragPx = chatSwipeDrag(dragPx, amount * towardStart, canReply, towardEnd)
-                    val armed = chatSwipeRelease(dragPx, thresholdPx, towardEnd) != ChatSwipeRelease.Back
-                    if (!wasArmed && armed) actions.onArmed()
+                    val stage = chatSwipeStage(dragPx, thresholdPx, towardEnd)
+                    if (stage != wasStage && stage != 0) actions.onArmed()
                     val target = chatSwipeOffset(dragPx, thresholdPx, towardEnd)
                     scope.launch { snapTo(target) }
                 }.also { finished = true }
@@ -138,12 +139,16 @@ internal class ChatSwipe(
                 }
             }
             val release = if (lifted) chatSwipeRelease(dragPx, thresholdPx, towardEnd) else ChatSwipeRelease.Back
+            val step = when (towardEnd) {
+                is ChatSwipeTowardEnd.Steps -> chatSwipeStep(-dragPx, thresholdPx, towardEnd)
+                else -> -1
+            }
             endSwiping(release)
-            settle(release, size.width)
+            settle(release, size.width, step)
         }
     }
 
-    private fun settle(release: ChatSwipeRelease, widthPx: Int) {
+    private fun settle(release: ChatSwipeRelease, widthPx: Int, step: Int) {
         when (release) {
             ChatSwipeRelease.Dismiss -> scope.launch {
                 springTo(-widthPx.toFloat())
@@ -155,6 +160,10 @@ internal class ChatSwipe(
             }
             ChatSwipeRelease.Copy -> {
                 actions.onCopy()
+                scope.launch { springTo(0f) }
+            }
+            ChatSwipeRelease.Step -> {
+                actions.onStep(step)
                 scope.launch { springTo(0f) }
             }
             ChatSwipeRelease.Back -> scope.launch { springTo(0f) }
@@ -169,6 +178,7 @@ internal fun rememberChatSwipe(
     onSwipingChange: (Boolean) -> Unit,
     onDismiss: (() -> Unit)?,
     onCopy: (() -> Unit)?,
+    onStep: ((Int) -> Unit)?,
     onSwipeEnd: (ChatSwipeRelease) -> Unit,
     onOffsetChange: (Float) -> Unit,
 ): ChatSwipe {
@@ -178,6 +188,7 @@ internal fun rememberChatSwipe(
     val currentOnReply by rememberUpdatedState(onReply)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
     val currentOnCopy by rememberUpdatedState(onCopy)
+    val currentOnStep by rememberUpdatedState(onStep)
     val currentOnSwipingChange by rememberUpdatedState(onSwipingChange)
     val currentOnSwipeEnd by rememberUpdatedState(onSwipeEnd)
     val currentOnOffsetChange by rememberUpdatedState(onOffsetChange)
@@ -195,6 +206,7 @@ internal fun rememberChatSwipe(
                 },
                 onCopy = { currentOnCopy?.invoke() },
                 onDismiss = { currentOnDismiss?.invoke() },
+                onStep = { step -> currentOnStep?.invoke(step) },
             ),
         )
     }

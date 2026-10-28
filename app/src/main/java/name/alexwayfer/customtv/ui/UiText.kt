@@ -6,7 +6,7 @@ import androidx.compose.ui.res.stringResource
 
 /**
  * Text that state hands to a screen. The app's own words are a string resource, read when shown, so they follow the
- * app's language; a server's or library's own message, such as a TDLib error, is shown as it came.
+ * app's language; a server's or library's own message, such as a refusal's reason, is shown as it came.
  */
 internal sealed interface UiText {
     data class Resource(@param:StringRes val id: Int, val args: List<Any> = emptyList()) : UiText

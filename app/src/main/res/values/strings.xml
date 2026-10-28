@@ -10,6 +10,7 @@
     <string name="recents">Recent</string>
     <string name="following_live_now">Live now</string>
     <string name="following_offline">Offline channels</string>
+    <string name="following_out_of_date">Out of date</string>
     <string name="following_empty">You don’t follow any channels yet</string>
     <string name="following_unavailable">Couldn’t load the channels you follow</string>
     <string name="channels_load_failed">Couldn’t load channels</string>
@@ -421,6 +422,9 @@
     <string name="ffz_badges_hint">FrankerFaceZ badges, and the channel\'s own moderator and VIP badges</string>
     <string name="bttv_emotes_hint">BetterTTV emotes in chat</string>
     <string name="bttv_badges_hint">BetterTTV badges of its developers and helpers</string>
+    <string name="custom_tv_badges_hint">Gold for CustomTV Premium buyers, white for other CustomTV users</string>
+    <string name="own_custom_tv_badge">My badge</string>
+    <string name="own_custom_tv_badge_hint">Other CustomTV users see it by your name in chat</string>
     <string name="emote_completion_without_colon">Complete emotes without a colon</string>
     <string name="emote_completion_without_colon_hint">Suggest Kappa while you type Ka</string>
     <string name="keep_keyboard_after_send">Keep keyboard after sending a message</string>
@@ -576,6 +580,9 @@
     <string name="chat_emote_renamed">renamed the emote</string>
     <string name="chat_emote_platform_7tv" translatable="false">7TV</string>
     <string name="chat_emote_platform_bttv" translatable="false">BTTV</string>
+    <string name="chat_platform_custom_tv" translatable="false">CustomTV</string>
+    <string name="custom_tv_badge_premium" translatable="false">CustomTV Premium</string>
+    <string name="custom_tv_badge_free" translatable="false">CustomTV</string>
     <string name="chat_emote_platform_ffz" translatable="false">FFZ</string>
     <string name="stream_live_for">Live for %1$s</string>
     <plurals name="stream_viewers">
@@ -615,7 +622,7 @@
     <string name="diagnostics_privacy_advice">It\'s better to email the report or send it to the developer directly rather than post it in public chats.</string>
     <string name="diagnostics_privacy_data">The report contains data you may consider personal:</string>
     <string name="diagnostics_privacy_twitch">Twitch account: %1$s</string>
-    <string name="diagnostics_privacy_telegram">Telegram username: @%1$s</string>
+    <string name="diagnostics_privacy_telegram">Telegram account: %1$s</string>
     <string name="diagnostics_privacy_viewing">Channels and recordings you opened, and when</string>
     <string name="diagnostics_privacy_device">Phone model, languages, and SIM country</string>
     <string name="diagnostics_send_email">Send by email</string>
@@ -720,6 +727,7 @@
     <string name="gesture_hint_fullscreen_chat_side">Tip: swipe the chat across the screen to move it</string>
     <string name="gesture_hint_fullscreen_chat_hide">Tip: swipe the chat toward its edge to hide it, and swipe the video to bring it back</string>
     <string name="gesture_hint_hide_stream">Tip: swipe the stream info up to hide the stream, and down to bring it back</string>
+    <string name="gesture_hint_moderation_swipe">Tip: swipe a message right to moderate it, the farther, the stricter</string>
     <plurals name="tap_seek_forward">
         <item quantity="one">+%1$d s</item>
         <item quantity="other">+%1$d s</item>

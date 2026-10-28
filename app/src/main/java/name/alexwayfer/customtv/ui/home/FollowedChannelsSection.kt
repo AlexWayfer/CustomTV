@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.ui.home
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
@@ -46,10 +48,13 @@ private const val HIDDEN_LINE_KEY = "hidden-line"
 // With the list's 4dp spacing on both sides, the offline title stays as far from the last live row as before.
 private val OFFLINE_GAP = 12.dp
 
+private const val STALE_LIST_ALPHA = 0.5f
+
 @Composable
 internal fun FollowedChannelsSection(
     channels: List<FollowedChannel>,
     fromCache: Boolean,
+    stale: Boolean,
     status: FollowedChannelsStatus,
     refreshing: Boolean,
     onRefresh: () -> Unit,
@@ -78,7 +83,7 @@ internal fun FollowedChannelsSection(
                     }
                 }
             } else {
-                FollowedChannelList(channels, scrollToTop, onOpen, onHeaderHeight = { headerHeightPx = it })
+                FollowedChannelList(channels, stale, scrollToTop, onOpen, onHeaderHeight = { headerHeightPx = it })
             }
         }
     }
@@ -86,11 +91,12 @@ internal fun FollowedChannelsSection(
 
 /**
  * The live and the offline channels under their titles. The list stays at its top as it changes while the viewer
- * left it there, and keeps its place once they scroll away.
+ * left it there, and keeps its place once they scroll away. A [stale] list is dimmed until a load replaces it.
  */
 @Composable
 private fun FollowedChannelList(
     channels: List<FollowedChannel>,
+    stale: Boolean,
     scrollToTop: OneShotRequest<Unit>?,
     onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
     onHeaderHeight: (Int) -> Unit,
@@ -122,8 +128,11 @@ private fun FollowedChannelList(
     }
     val hiddenCategoryIds by HiddenCategoriesStore.ids.collectAsStateWithLifecycle()
     var hiddenShown by rememberSaveable { mutableStateOf(false) }
+    val listAlpha by animateFloatAsState(if (stale) STALE_LIST_ALPHA else 1f, label = "followed list alpha")
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = listAlpha },
         state = listState,
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -133,21 +142,29 @@ private fun FollowedChannelList(
             hiddenShown = hiddenShown,
             onHiddenToggle = { hiddenShown = !hiddenShown },
             onOpen = onOpen,
-            onHeaderHeight = onHeaderHeight,
+            headers = FollowedSectionHeaders(stale, onHeaderHeight),
         )
     }
 }
+
+/** The section titles report their height to [onHeight], and tell TalkBack when the [stale] list is dimmed. */
+private class FollowedSectionHeaders(val stale: Boolean, val onHeight: (Int) -> Unit)
 
 private fun LazyListScope.followedChannelRows(
     sections: FollowedSections,
     hiddenShown: Boolean,
     onHiddenToggle: () -> Unit,
     onOpen: (channel: ChannelPreview, live: Boolean) -> Unit,
-    onHeaderHeight: (Int) -> Unit,
+    headers: FollowedSectionHeaders,
 ) {
     val anyLive = sections.live.isNotEmpty() || sections.hidden.isNotEmpty()
     if (anyLive) {
-        sectionStickyHeader(key = LIVE_HEADER_KEY, text = R.string.following_live_now, onHeight = onHeaderHeight)
+        sectionStickyHeader(
+            key = LIVE_HEADER_KEY,
+            text = R.string.following_live_now,
+            onHeight = headers.onHeight,
+            stale = headers.stale,
+        )
         items(sections.live, key = { it.id }) { channel ->
             FollowedLiveItem(
                 channel = channel,
@@ -182,7 +199,12 @@ private fun LazyListScope.followedChannelRows(
                 Spacer(Modifier.animateItem().height(OFFLINE_GAP))
             }
         }
-        sectionStickyHeader(key = OFFLINE_HEADER_KEY, text = R.string.following_offline, onHeight = onHeaderHeight)
+        sectionStickyHeader(
+            key = OFFLINE_HEADER_KEY,
+            text = R.string.following_offline,
+            onHeight = headers.onHeight,
+            stale = headers.stale,
+        )
         items(sections.offline, key = { it.id }) { channel ->
             FollowedOfflineChannelRow(
                 channel = channel,

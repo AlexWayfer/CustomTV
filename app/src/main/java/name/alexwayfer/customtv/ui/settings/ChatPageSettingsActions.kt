@@ -47,6 +47,10 @@ class ChatPageSettingsActions(private val scope: CoroutineScope, private val sto
         scope.launch { store.setMessageMenuModeration(enabled) }
     }
 
+    fun setSwipeModeration(enabled: Boolean) {
+        scope.launch { store.setSwipeModeration(enabled) }
+    }
+
     fun setTopChatterBadges(enabled: Boolean) {
         scope.launch { store.setTopChatterBadges(enabled) }
     }

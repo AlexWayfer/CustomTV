@@ -1,5 +1,13 @@
 # CustomTV (free version)
 
+## v1.14.0 (2026-10-28)
+
+*   Show CustomTV badges in the chat
+*   Paint mentioned nicks with their 7TV paints
+*   Dim the follow list on Home while it is out of date
+*   Hide Play on an offline channel
+*   Fix a stream that never starts after a network switch
+
 ## v1.13.1 (2026-10-26)
 
 *   Make the chat scroll smoother

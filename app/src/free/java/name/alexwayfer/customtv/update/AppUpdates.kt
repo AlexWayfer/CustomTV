@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.SystemClock
 import java.io.File
 import java.io.IOException
-import java.security.MessageDigest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,18 +20,19 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
 import name.alexwayfer.customtv.ui.UiText
 import okhttp3.Request
-import okhttp3.ResponseBody
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /** The log tag of the free build's update check and download. */
 private const val GITHUB_TAG = "GitHub"
 
-// The same wait the Premium check gives Telegram.
+// The same wait the Premium check gives its server.
 private val CHECK_TIMEOUT = 30.seconds
 
-private const val BUFFER_BYTES = 64 * 1024
+/** The free build checks GitHub daily: there is no access to check. */
+internal val APP_UPDATE_CHECK_INTERVAL = 1.days
 
 /**
  * GitHub limits API calls without a token per address, and a shared mobile address can reach the limit. It
@@ -169,7 +169,9 @@ internal object AppUpdates {
         val newer = apk?.takeIf { it.version > installed }
         offered = newer
         val downloaded = updatesDir()?.let { dir ->
-            dir.list()?.let { names -> staleUpdateFiles(names.toList(), newer).forEach { File(dir, it).delete() } }
+            dir.list()?.let { names ->
+                staleUpdateFiles(names.toList(), newer?.let(::githubApkFileName)).forEach { File(dir, it).delete() }
+            }
             newer?.let { File(dir, githubApkFileName(it)) }?.takeIf { it.isFile }?.path
         }
         val update = newer?.let { AppRelease(it.id, it.version, downloaded) }
@@ -190,7 +192,6 @@ internal object AppUpdates {
 
     /** Downloads into a part file and gives it the APK's name only once its size and digest match. */
     private fun fetchApk(apk: GitHubApk, dir: File): AppUpdateDownload {
-        val part = File(dir, githubPartFileName(apk))
         return try {
             sharedHttpClient.newCall(Request.Builder().url(apk.url).build()).execute().use { response ->
                 if (!response.isSuccessful) {
@@ -200,53 +201,25 @@ internal object AppUpdates {
                     return AppUpdateDownload.Failed(apk.id, message)
                 }
                 val total = apk.size.takeIf { it > 0 } ?: response.body.contentLength()
-                val sha256 = copyWithProgress(response.body, part, total) { fraction ->
+                val target = saveCheckedApk(
+                    response.body,
+                    File(dir, githubApkFileName(apk)),
+                    total,
+                    intact = { size, sha256 -> githubDownloadIntact(apk, size, sha256) },
+                ) { fraction ->
                     _download.value = AppUpdateDownload.Running(apk.id, fraction)
                 }
-                val target = File(dir, githubApkFileName(apk))
-                if (githubDownloadIntact(apk, part.length(), sha256) && part.renameTo(target)) {
+                if (target != null) {
                     AppLog.i(GITHUB_TAG, "download finished")
                     AppUpdateDownload.Ready(apk.id, target.path)
                 } else {
-                    part.delete()
                     AppLog.w(GITHUB_TAG, "download damaged")
                     AppUpdateDownload.Failed(apk.id, UiText.Resource(R.string.github_download_damaged))
                 }
             }
         } catch (error: IOException) {
-            part.delete()
             AppLog.w(GITHUB_TAG, "download stopped ${error.javaClass.simpleName}")
             AppUpdateDownload.Failed(apk.id, UiText.Resource(R.string.app_update_download_stopped))
         }
     }
-}
-
-/**
- * Writes [body] to [file], passing its progress of [total] bytes to [onProgress], and returns the file's SHA-256 in
- * lowercase hex.
- */
-private fun copyWithProgress(body: ResponseBody, file: File, total: Long, onProgress: (Float) -> Unit): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    var copied = 0L
-    var shownPercent = 0
-    body.byteStream().use { input ->
-        file.outputStream().use { output ->
-            val buffer = ByteArray(BUFFER_BYTES)
-            while (true) {
-                val read = input.read(buffer)
-                if (read < 0) break
-                output.write(buffer, 0, read)
-                digest.update(buffer, 0, read)
-                copied += read
-                val fraction = downloadFraction(copied, total)
-                // One update per percent: the progress bar shows no finer step.
-                val percent = (fraction * 100).toInt()
-                if (percent != shownPercent) {
-                    shownPercent = percent
-                    onProgress(fraction)
-                }
-            }
-        }
-    }
-    return digest.digest().toLowerHex()
 }

@@ -9,11 +9,6 @@ internal const val GITHUB_REPOSITORY_URL = "https://github.com/$GITHUB_REPOSITOR
 internal const val GITHUB_RELEASES_PAGE_URL = "$GITHUB_REPOSITORY_URL/releases"
 
 private const val SHA256_PREFIX = "sha256:"
-private const val PART_SUFFIX = ".part"
-private const val HEX_DIGITS = "0123456789abcdef"
-private const val BYTE_MASK = 0xFF
-private const val NIBBLE_BITS = 4
-private const val NIBBLE_MASK = 0x0F
 
 /** The APK of the latest free release on GitHub. */
 internal data class GitHubApk(
@@ -68,23 +63,3 @@ internal fun githubDownloadIntact(apk: GitHubApk, size: Long, sha256: String): B
 
 /** The downloaded APK's file name: its version, so a newer release does not reuse an older file. */
 internal fun githubApkFileName(apk: GitHubApk): String = "CustomTV-free-${apk.version}.apk"
-
-/** The file the download writes until it is checked; only a checked file takes the APK's own name. */
-internal fun githubPartFileName(apk: GitHubApk): String = githubApkFileName(apk) + PART_SUFFIX
-
-/**
- * The files in the updates folder to delete after a check: everything but the offered APK and its download in
- * progress, so an installed or skipped release does not stay on the device.
- */
-internal fun staleUpdateFiles(names: List<String>, offered: GitHubApk?): List<String> {
-    val kept = offered?.let { setOf(githubApkFileName(it), githubPartFileName(it)) }.orEmpty()
-    return names.filterNot { it in kept }
-}
-
-internal fun ByteArray.toLowerHex(): String = buildString(size * 2) {
-    for (byte in this@toLowerHex) {
-        val value = byte.toInt() and BYTE_MASK
-        append(HEX_DIGITS[value ushr NIBBLE_BITS])
-        append(HEX_DIGITS[value and NIBBLE_MASK])
-    }
-}

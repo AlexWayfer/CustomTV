@@ -7,6 +7,7 @@
     <string name="recents">Недавние</string>
     <string name="following_live_now">Сейчас в эфире</string>
     <string name="following_offline">Не в эфире</string>
+    <string name="following_out_of_date">Данные устарели</string>
     <string name="following_empty">Вы пока не отслеживаете ни одного канала</string>
     <string name="following_unavailable">Не удалось загрузить отслеживаемые каналы</string>
     <string name="channels_load_failed">Не удалось загрузить каналы</string>
@@ -477,6 +478,9 @@
     <string name="ffz_badges_hint">Значки FrankerFaceZ и свои значки модераторов и VIP канала</string>
     <string name="bttv_emotes_hint">Эмоуты BetterTTV в чате</string>
     <string name="bttv_badges_hint">Значки BetterTTV у его разработчиков и помощников</string>
+    <string name="custom_tv_badges_hint">Золотые у покупателей CustomTV Premium, белые у остальных пользователей CustomTV</string>
+    <string name="own_custom_tv_badge">Мой значок</string>
+    <string name="own_custom_tv_badge_hint">Его видят другие пользователи CustomTV рядом с вашим ником в чате</string>
     <string name="emote_completion_without_colon">Подсказывать эмоуты без двоеточия</string>
     <string name="emote_completion_without_colon_hint">Kappa предлагается, пока вы пишете Ka</string>
     <string name="keep_keyboard_after_send">Не прятать клавиатуру после отправки</string>
@@ -670,7 +674,7 @@
     <string name="diagnostics_privacy_advice">Лучше отправлять отчёт по почте или напрямую разработчику, а не в общие чаты.</string>
     <string name="diagnostics_privacy_data">В отчёте есть данные, которые вы можете посчитать личными:</string>
     <string name="diagnostics_privacy_twitch">Аккаунт Twitch: %1$s</string>
-    <string name="diagnostics_privacy_telegram">Имя в Telegram: @%1$s</string>
+    <string name="diagnostics_privacy_telegram">Аккаунт Telegram: %1$s</string>
     <string name="diagnostics_privacy_viewing">Какие каналы и записи вы открывали и когда</string>
     <string name="diagnostics_privacy_device">Модель смартфона, языки и страна SIM-карты</string>
     <string name="diagnostics_send_email">Отправить по почте</string>
@@ -777,6 +781,7 @@
     <string name="gesture_hint_fullscreen_chat_side">Совет: чтобы перенести чат на другую сторону, перетащите его через экран</string>
     <string name="gesture_hint_fullscreen_chat_hide">Совет: чтобы скрыть чат, смахните его к краю, а свайп по видео вернёт его</string>
     <string name="gesture_hint_hide_stream">Совет: чтобы скрыть стрим, смахните плашку под ним вверх, а вниз — чтобы вернуть</string>
+    <string name="gesture_hint_moderation_swipe">Совет: чтобы модерировать, свайпните сообщение вправо — чем дальше, тем строже</string>
     <plurals name="tap_seek_forward">
         <item quantity="one">+%1$d с</item>
         <item quantity="few">+%1$d с</item>

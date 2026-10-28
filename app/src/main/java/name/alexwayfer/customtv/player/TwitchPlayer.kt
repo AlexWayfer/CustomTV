@@ -344,9 +344,12 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         handler = mainHandler,
         isReleased = { released },
         isSurfaceRevealed = { surfaceRevealed },
-        reloadPlayer = { webView.evaluateJavascript(scripts.reloadPlayer, null) },
-        reloadPage = { restorePlayer(resetStartupReloads = false) },
-        concealSurface = ::concealSurface,
+        actions = PlayerPageActions(
+            reloadPlayer = { webView.evaluateJavascript(scripts.reloadPlayer, null) },
+            reloadPage = { restorePlayer(resetStartupReloads = false) },
+            concealSurface = ::concealSurface,
+            logPlayerState = PlayerStateLog(mainHandler, webView, scripts)::logThen,
+        ),
     )
     private val liveStall = LiveStallRecovery(
         isLive = { loadedTarget is TwitchPlaybackTarget.Channel },
@@ -527,6 +530,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                 onPlayerPageLoaded = recovery::pageLoaded,
                 onPlayerPageFailed = recovery::pageFailed,
                 restorePlayer = ::restorePlayer,
+                playlistArrival = recovery.playlistArrival,
             ),
         )
         webView.webChromeClient = object : WebChromeClient() {
@@ -702,6 +706,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         AppLog.i(PLAYER_LOG_TAG, "Offline after ${recovery.sinceLoadMs} ms")
         recovery.videoWithheld()
         revealSurface()
+        StreamPlayback.channelOffline = true
         onOffline?.invoke()
     }
 

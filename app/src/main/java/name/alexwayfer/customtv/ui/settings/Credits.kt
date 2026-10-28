@@ -6,7 +6,6 @@ import name.alexwayfer.customtv.R
 /** A license a part of the app comes under. */
 internal enum class License(val title: String) {
     Apache2("Apache License 2.0"),
-    Boost("Boost Software License 1.0"),
     Gpl3("GNU General Public License v3.0"),
 }
 

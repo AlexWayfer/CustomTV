@@ -2,6 +2,8 @@ package name.alexwayfer.customtv.chat
 
 import androidx.compose.ui.graphics.Color
 import name.alexwayfer.customtv.data.AppSettings
+import name.alexwayfer.customtv.data.CustomTvBadgeEdition
+import name.alexwayfer.customtv.data.CustomTvBadgeList
 import name.alexwayfer.customtv.data.FfzBadgeList
 
 /** A badge a third-party service gives a chatter, shown after Twitch's own. */
@@ -20,6 +22,7 @@ internal data class CosmeticSources(
     val sevenTvPaints: Boolean,
     val ffzBadges: Boolean,
     val bttvBadges: Boolean,
+    val customTvBadges: Boolean,
 )
 
 internal fun cosmeticSources(settings: AppSettings): CosmeticSources = CosmeticSources(
@@ -27,6 +30,7 @@ internal fun cosmeticSources(settings: AppSettings): CosmeticSources = CosmeticS
     sevenTvPaints = settings.sevenTvPaints,
     ffzBadges = settings.ffzBadges,
     bttvBadges = settings.bttvBadges,
+    customTvBadges = settings.customTvBadges,
 )
 
 private val NoSources = CosmeticSources(
@@ -34,6 +38,7 @@ private val NoSources = CosmeticSources(
     sevenTvPaints = false,
     ffzBadges = false,
     bttvBadges = false,
+    customTvBadges = false,
 )
 
 /** What a chatter's name shows beyond Twitch: badges after Twitch's own, and a 7TV paint over the name. */
@@ -49,14 +54,28 @@ internal data class ChatCosmetics(
     val ffz: FfzBadgeList = FfzBadgeList(),
     /** BTTV's badges by Twitch user ID. */
     val bttv: Map<String, ThirdPartyBadge> = emptyMap(),
+    /** The Twitch user IDs of the chatters seen, by lowercase login and display name. */
+    val chatterIds: Map<String, String> = emptyMap(),
+    val customTv: CustomTvBadgeList = CustomTvBadgeList(),
+    /** The picture and name of each CustomTV badge. */
+    val customTvPictures: Map<CustomTvBadgeEdition, ThirdPartyBadge> = emptyMap(),
 ) {
-    /** The badges of [userId] by 7TV, FFZ, and BTTV in that order, and their 7TV paint. */
+    /** The 7TV paint of the chatter a message names by [nick], a lowercase login; null for one not seen in chat. */
+    fun paintForNick(nick: String): NamePaint? =
+        if (sources.sevenTvPaints) chatterIds[nick]?.let(sevenTv::paintFor) else null
+
+    /** The CustomTV badge [userId] shows; null for none, or while the switch is off. */
+    fun customTvEdition(userId: String?): CustomTvBadgeEdition? =
+        if (sources.customTvBadges) customTv.editionOf(userId) else null
+
+    /** The badges of [userId] by 7TV, FFZ, BTTV, and CustomTV in that order, and their 7TV paint. */
     fun forUser(userId: String?): ChatterCosmetics {
         if (userId.isNullOrBlank()) return NoCosmetics
         val badges = buildList {
             if (sources.sevenTvBadges) sevenTv.badgeFor(userId)?.let(::add)
             if (sources.ffzBadges) addAll(ffz.forUser(userId))
             if (sources.bttvBadges) bttv[userId]?.let(::add)
+            customTvEdition(userId)?.let(customTvPictures::get)?.let(::add)
         }
         val paint = if (sources.sevenTvPaints) sevenTv.paintFor(userId) else null
         return if (badges.isEmpty() && paint == null) NoCosmetics else ChatterCosmetics(badges, paint)

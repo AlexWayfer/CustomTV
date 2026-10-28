@@ -99,6 +99,7 @@ private val premiumFeatureSections = listOf(
             R.string.premium_all_message_deletion,
             R.string.premium_all_warnings,
             R.string.premium_all_message_menu_moderation,
+            R.string.premium_all_swipe_moderation,
             R.string.premium_all_chat_modes,
             R.string.premium_all_shoutouts,
             R.string.premium_all_automod,

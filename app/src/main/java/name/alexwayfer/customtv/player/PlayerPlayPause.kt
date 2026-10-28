@@ -1,10 +1,19 @@
 package name.alexwayfer.customtv.player
 
-/** Whether the player plays, stays paused, or is on its way to playing: loading, or starting again after a pause. */
-internal enum class PlayerPlayback { Playing, Paused, Starting }
+/**
+ * Whether the player plays, stays paused, is on its way to playing (loading, or starting again after a pause), or shows
+ * a channel that is offline, which has nothing to play.
+ */
+internal enum class PlayerPlayback { Playing, Paused, Starting, Offline }
 
-internal fun playerPlayback(paused: Boolean, awaitingPlayback: Boolean, playbackConfirmed: Boolean): PlayerPlayback =
+internal fun playerPlayback(
+    paused: Boolean,
+    awaitingPlayback: Boolean,
+    playbackConfirmed: Boolean,
+    offline: Boolean,
+): PlayerPlayback =
     when {
+        offline -> PlayerPlayback.Offline
         paused -> PlayerPlayback.Paused
         awaitingPlayback || !playbackConfirmed -> PlayerPlayback.Starting
         else -> PlayerPlayback.Playing
@@ -21,7 +30,8 @@ internal fun playerCenterFree(compactSettled: Boolean, progress: Float, settings
 
 /**
  * The button in the middle of the player. A paused player shows Play whether or not its controls are up; a playing one
- * shows Pause only with them. A starting player shows neither, since Twitch's spinner takes the middle then, and
+ * shows Pause only with them. A starting player shows neither, since Twitch's spinner takes the middle then, nor does
+ * an offline one, which has nothing to play, and
  * neither does a player whose middle is taken by something else, such as the seeking taps' count. [centerFree]: the
  * player rests at its full size, with nothing over its middle.
  */

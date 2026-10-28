@@ -3,8 +3,6 @@ package name.alexwayfer.customtv.player
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import java.io.IOException
-import name.alexwayfer.customtv.data.HTTP_FORBIDDEN
-import name.alexwayfer.customtv.data.HTTP_NOT_FOUND
 import name.alexwayfer.customtv.data.HTTP_REDIRECT
 import name.alexwayfer.customtv.data.sharedHttpClient
 import name.alexwayfer.customtv.diagnostics.AppLog
@@ -16,10 +14,14 @@ import okhttp3.Request
  * only in the background. Everything else in the player's own request and answer stays as it was.
  */
 internal object UsherAudioOnly {
-    /** The answer for [request] when it is a master playlist, or null to let the WebView load it. Any thread. */
-    fun intercept(request: WebResourceRequest): WebResourceResponse? {
+    /**
+     * The answer for [request] when it is a master playlist, or null to let the WebView load it. Any thread.
+     * [arrival] is taken before the request and told when an answer that counts as loaded comes.
+     */
+    fun intercept(request: WebResourceRequest, arrival: () -> () -> Unit): WebResourceResponse? {
         if (request.method != "GET") return null
         val url = usherUrlWithAudioOnly(request.url.toString()) ?: return null
+        val arrived = arrival()
         return try {
             val builder = Request.Builder().url(url)
             request.requestHeaders.forEach { (name, value) ->
@@ -33,13 +35,13 @@ internal object UsherAudioOnly {
                 return null
             }
             AppLog.i(PLAYER_LOG_TAG, "Playlist with sound only allowed, HTTP ${response.code}")
-            // 403 and 404 are routine: a subscriber-only or ended stream; the player shows those itself.
+            if (PlayerPageReloads.playlistAnswerCounts(response.code)) arrived()
             Diagnostics.reportHttp(
                 "UsherAudioOnly",
                 "usher master playlist",
                 response.code,
                 "",
-                setOf(HTTP_FORBIDDEN, HTTP_NOT_FOUND),
+                PLAYER_SHOWN_PLAYLIST_CODES,
             )
             val contentType = response.header("Content-Type") ?: "application/vnd.apple.mpegurl"
             val headers = response.headers.toMultimap()

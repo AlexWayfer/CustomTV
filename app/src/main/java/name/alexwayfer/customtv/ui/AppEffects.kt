@@ -20,6 +20,7 @@ import name.alexwayfer.customtv.data.StreamStartAlertsController
 import name.alexwayfer.customtv.data.StreamStartRequest
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.account.AccountNotice
+import name.alexwayfer.customtv.ui.account.OwnCustomTvBadgeSync
 import name.alexwayfer.customtv.ui.account.playerExpandsAfterLoginCancelled
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.HiddenCategoryUndoSnackbar
@@ -200,11 +201,15 @@ internal fun AppPipEffects(scene: AppScene) {
     }
 }
 
-/** The login: its notices as snackbars, and where the app goes once it finishes or is cancelled. */
+/**
+ * The login: its notices as snackbars, where the app goes once it finishes or is cancelled, and the account's CustomTV
+ * badge.
+ */
 @Composable
 internal fun AppLoginEffects(scene: AppScene) {
     val shell = scene.shell
     val accountViewModel = scene.accountViewModel
+    OwnCustomTvBadgeSync(accountViewModel.session)
     val accountNotice by accountViewModel.notice.collectAsStateWithLifecycle()
     val loginFailedMessage = stringResource(R.string.twitch_login_failed)
     val loginTimedOutMessage = stringResource(R.string.twitch_login_timed_out)

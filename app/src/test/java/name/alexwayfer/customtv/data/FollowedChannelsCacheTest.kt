@@ -106,28 +106,36 @@ class FollowedChannelsCacheTest {
 
     @Test
     fun savedListOfTheSavedAccountShowsAtStart() {
-        val saved = SavedFollows("42", listOf(live))
+        val saved = SavedFollows("42", listOf(live), savedAtMillis = 0)
 
         assertEquals(saved, followsShownAtStart(saved, sessionUserId = "42", followsCanLoad = true))
     }
 
     @Test
     fun anotherAccountsListStaysHiddenAtStart() {
-        assertNull(followsShownAtStart(SavedFollows("42", listOf(live)), sessionUserId = "7", followsCanLoad = true))
+        val saved = SavedFollows("42", listOf(live), savedAtMillis = 0)
+
+        assertNull(followsShownAtStart(saved, sessionUserId = "7", followsCanLoad = true))
     }
 
     @Test
     fun listStaysHiddenAtStartWithoutASession() {
-        assertNull(followsShownAtStart(SavedFollows("42", listOf(live)), sessionUserId = null, followsCanLoad = false))
+        val saved = SavedFollows("42", listOf(live), savedAtMillis = 0)
+
+        assertNull(followsShownAtStart(saved, sessionUserId = null, followsCanLoad = false))
     }
 
     @Test
     fun listStaysHiddenAtStartWhenFollowsCanNoLongerLoad() {
-        assertNull(followsShownAtStart(SavedFollows("42", listOf(live)), sessionUserId = "42", followsCanLoad = false))
+        val saved = SavedFollows("42", listOf(live), savedAtMillis = 0)
+
+        assertNull(followsShownAtStart(saved, sessionUserId = "42", followsCanLoad = false))
     }
 
     @Test
     fun emptySavedListShowsNothingAtStart() {
-        assertNull(followsShownAtStart(SavedFollows("42", emptyList()), sessionUserId = "42", followsCanLoad = true))
+        val saved = SavedFollows("42", emptyList(), savedAtMillis = 0)
+
+        assertNull(followsShownAtStart(saved, sessionUserId = "42", followsCanLoad = true))
     }
 }

@@ -72,6 +72,26 @@ class ChatParticipantColorsTest {
         assertNull(knownParticipantColor(colors, "missing", ""))
     }
 
+    @Test
+    fun remembersUserIdByLoginAndDisplayName() {
+        val result = rememberParticipantId(
+            ids = emptyMap(),
+            message = message(" Viewer ", "Display Name", Color.Red).copy(userId = "42"),
+            maxIds = 10,
+        )
+
+        assertEquals(mapOf("viewer" to "42", "display name" to "42"), result)
+    }
+
+    @Test
+    fun messageWithoutUserIdOrANoticeKeepsTheIds() {
+        val ids = mapOf("viewer" to "42")
+        val notice = message("other", "Other", Color.Red).copy(userId = "7", notice = ChatNotice.Welcome)
+
+        assertSame(ids, rememberParticipantId(ids, message("other", "Other", Color.Red), 10))
+        assertSame(ids, rememberParticipantId(ids, notice, 10))
+    }
+
     private fun message(login: String, displayName: String, color: Color) =
         testChatMessage("message", login = login, displayName = displayName, color = color)
 }

@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.player
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -36,29 +37,67 @@ class PlayerPageReloadsTest {
 
     @Test
     fun aPageThatHasNotPlayedIsReloadedEvenWhenTwitchsPlayerIsReady() {
-        assertTrue(noPlaybackReloads())
+        assertNull(noPlaybackReloadSkip())
     }
 
     @Test
     fun aPageThatPlayedIsNotReloaded() {
-        assertFalse(noPlaybackReloads(played = true))
+        assertEquals("it has played", noPlaybackReloadSkip(played = true))
     }
 
     @Test
     fun aPageThatExplainsTheMissingVideoIsNotReloaded() {
-        assertFalse(noPlaybackReloads(withheld = true))
+        assertEquals("the page explains the missing video", noPlaybackReloadSkip(withheld = true))
     }
 
     @Test
     fun aPageTheViewerPausedIsNotReloadedForMissingPlayback() {
-        assertFalse(noPlaybackReloads(userPaused = true))
+        assertEquals("the viewer paused it", noPlaybackReloadSkip(explicitlyPaused = true))
     }
 
-    private fun noPlaybackReloads(
+    private fun noPlaybackReloadSkip(
         played: Boolean = false,
         withheld: Boolean = false,
-        userPaused: Boolean = false,
-    ) = PlayerPageReloads.reloadsWithoutPlayback(played, withheld, userPaused)
+        explicitlyPaused: Boolean = false,
+    ) = PlayerPageReloads.noPlaybackReloadSkip(played, withheld, explicitlyPaused)
+
+    @Test
+    fun aPageWhosePlaylistCameWaitsOnceMoreInsteadOfReloading() {
+        assertTrue(PlayerPageReloads.waitsOnceMore(playlistLoaded = true, waitedOnceMore = false))
+    }
+
+    @Test
+    fun aPageThatAlreadyWaitedOnceMoreIsReloaded() {
+        assertFalse(PlayerPageReloads.waitsOnceMore(playlistLoaded = true, waitedOnceMore = true))
+    }
+
+    @Test
+    fun aPageWithoutItsPlaylistIsReloadedWithoutWaiting() {
+        assertFalse(PlayerPageReloads.waitsOnceMore(playlistLoaded = false, waitedOnceMore = false))
+    }
+
+    @Test
+    fun aPlaylistThatCameCountsAsLoaded() {
+        assertTrue(PlayerPageReloads.playlistAnswerCounts(code = 200))
+    }
+
+    @Test
+    fun anOfflineOrSubscriberOnlyAnswerCountsAsLoaded() {
+        assertTrue(PlayerPageReloads.playlistAnswerCounts(code = 404))
+        assertTrue(PlayerPageReloads.playlistAnswerCounts(code = 403))
+    }
+
+    @Test
+    fun aServerFailureDoesNotCountAsLoaded() {
+        assertFalse(PlayerPageReloads.playlistAnswerCounts(code = 500))
+        assertFalse(PlayerPageReloads.playlistAnswerCounts(code = 429))
+    }
+
+    @Test
+    fun theWaitOnceMoreIsTheNextReloadsDelay() {
+        assertEquals(20_000L, PlayerPageReloads.onceMoreDelayMs(attemptsMade = 0))
+        assertEquals(20_000L, PlayerPageReloads.onceMoreDelayMs(attemptsMade = 3))
+    }
 
     @Test
     fun hiddenVideoAfterTheErrorReloadReloadsThePage() {

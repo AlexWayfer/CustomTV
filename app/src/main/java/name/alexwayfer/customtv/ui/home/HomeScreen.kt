@@ -167,6 +167,7 @@ private fun ColumnScope.HomeFollowedChannels(
 ) {
     val channels by follows.channels.collectAsStateWithLifecycle()
     val fromCache by follows.fromCache.collectAsStateWithLifecycle()
+    val stale by follows.stale.collectAsStateWithLifecycle()
     val status by follows.status.collectAsStateWithLifecycle()
     val refreshing by follows.refreshing.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -175,6 +176,7 @@ private fun ColumnScope.HomeFollowedChannels(
     FollowedChannelsSection(
         channels = channels,
         fromCache = fromCache,
+        stale = stale,
         status = status,
         refreshing = refreshing,
         onRefresh = {

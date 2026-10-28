@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.TouchInjectionScope
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -14,6 +16,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.ui.ComposeHost
+import name.alexwayfer.customtv.ui.dragInSteps
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +34,9 @@ private val SHORT_OF_THRESHOLD = 30.dp
 
 /** Far enough sideways to start a swipe, which itself does not count toward the threshold. */
 private val SWIPE_START = 40.dp
+
+/** One frame's move of a swipe toward the end, in LTR. */
+private val STEP_MOVE = 10.dp
 
 @RunWith(RobolectricTestRunner::class)
 // The plain application: the app's own starts its stores and workers, which a touch of a row does not need.
@@ -50,6 +56,7 @@ class ChatReplySwipeTouchTest {
         canReply: Boolean = true,
         canDismiss: Boolean = false,
         canCopy: Boolean = false,
+        stepCount: Int = 0,
     ) {
         compose.setContent {
             ChatReplySwipe(
@@ -58,6 +65,21 @@ class ChatReplySwipeTouchTest {
                 onSwipingChange = { events += if (it) "swiping" else "still" },
                 onDismiss = if (canDismiss) ({ events += "dismiss" }) else null,
                 onCopy = if (canCopy) ({ events += "copy" }) else null,
+                steps = if (stepCount > 0) {
+                    ChatSwipeSteps(
+                        count = stepCount,
+                        look = {
+                            ChatSwipeStepLook(
+                                ColorPainter(Color.White),
+                                "step $it",
+                                ChatSwipeColors(background = Color.Black, content = Color.White),
+                            )
+                        },
+                        onStep = { events += "step $it" },
+                    )
+                } else {
+                    null
+                },
                 onSwipeEnd = { events += "end $it" },
             ) {
                 Box(Modifier.width(320.dp).height(40.dp).testTag(ROW))
@@ -213,6 +235,89 @@ class ChatReplySwipeTouchTest {
         }
 
         assertEquals(listOf("swiping", "still", "end Back"), events)
+    }
+
+    /**
+     * Swipes the row toward the end in 10 dp moves, one a frame: the first two start the swipe and do not count, and
+     * [countedDp] of travel follows them.
+     */
+    private fun swipeTowardEndInSteps(countedDp: Int, lift: Boolean = true) {
+        compose.dragInSteps(
+            compose.onNodeWithTag(ROW),
+            dx = STEP_MOVE,
+            dy = 0.dp,
+            steps = 2 + countedDp / STEP_MOVE.value.toInt(),
+            lift = lift,
+        )
+    }
+
+    @Test
+    fun `a swipe toward the end released past the threshold picks the first step`() {
+        showRow(stepCount = 4)
+
+        swipeTowardEndInSteps(countedDp = 90)
+
+        assertEquals(listOf("swiping", "still", "end Step", "step 0"), events)
+    }
+
+    @Test
+    fun `a swipe toward the end released between the third and the fourth step picks the third`() {
+        showRow(stepCount = 4)
+
+        swipeTowardEndInSteps(countedDp = 180)
+
+        assertEquals(listOf("swiping", "still", "end Step", "step 2"), events)
+    }
+
+    @Test
+    fun `a swipe toward the end past the last step picks the last`() {
+        showRow(stepCount = 4)
+
+        swipeTowardEndInSteps(countedDp = 300)
+
+        assertEquals(listOf("swiping", "still", "end Step", "step 3"), events)
+    }
+
+    @Test
+    fun `a swipe with steps short of the threshold springs back without a step`() {
+        showRow(stepCount = 4)
+
+        swipeTowardEndInSteps(countedDp = 30)
+
+        assertEquals(listOf("swiping", "still", "end Back"), events)
+    }
+
+    @Test
+    fun `a cancelled swipe with steps picks none`() {
+        showRow(stepCount = 4)
+
+        swipeTowardEndInSteps(countedDp = 180, lift = false)
+        touch { cancel() }
+
+        assertEquals(listOf("swiping", "still", "end Back"), events)
+    }
+
+    @Test
+    fun `steps take the swipe toward the end over copying`() {
+        showRow(canCopy = true, stepCount = 4)
+
+        swipeTowardEndInSteps(countedDp = 90)
+
+        assertEquals(listOf("swiping", "still", "end Step", "step 0"), events)
+    }
+
+    @Test
+    fun `a row with steps still replies toward the start`() {
+        showRow(stepCount = 4)
+
+        touch {
+            down(center)
+            moveLeft(SWIPE_START)
+            moveLeft(PAST_THRESHOLD)
+            up()
+        }
+
+        assertEquals(listOf("swiping", "still", "end Reply", "reply"), events)
     }
 
     @Test

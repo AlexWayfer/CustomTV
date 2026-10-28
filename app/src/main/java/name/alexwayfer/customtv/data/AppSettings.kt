@@ -10,11 +10,20 @@ data class AppSettings(
     /** FFZ's chatter badges, and the channel's custom moderator and VIP badges from FFZ. */
     val ffzBadges: Boolean = true,
     val bttvBadges: Boolean = true,
+    /** CustomTV's own badges of other users: gold for Premium buyers, white for the free edition's users. */
+    val customTvBadges: Boolean = true,
+    /** The user's own CustomTV badge, which the app registers for the logged-in Twitch account. */
+    val ownCustomTvBadge: Boolean = true,
     val meMessageItalic: Boolean = true,
     val highlightFirstMessages: Boolean = false,
     val markRaiders: Boolean = true,
     /** Premium: Delete, Warn, Timeout, and Ban at the end of a message's long-press menu, for a moderator. */
     val messageMenuModeration: Boolean = true,
+    /**
+     * Premium: in a channel the user moderates, a swipe toward the end of a message picks Delete, Warn, Timeout, or
+     * Ban by how far it goes, instead of copying the message.
+     */
+    val swipeModeration: Boolean = true,
     /** Premium: a badge with the place of each of the channel's top chatters, as StreamElements counts them. */
     val topChatterBadges: Boolean = true,
     val highlightMentions: Boolean = true,

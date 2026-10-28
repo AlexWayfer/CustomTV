@@ -18,5 +18,7 @@ internal fun premiumSwitchUrl(simCountryIso: String?): String {
     return if (country in rubleCountries) PREMIUM_SWITCH_URL_RUB else PREMIUM_SWITCH_URL_USD
 }
 
-internal fun premiumSwitchUrl(context: Context): String =
-    premiumSwitchUrl(context.getSystemService<TelephonyManager>()?.simCountryIso)
+internal fun premiumSwitchUrl(context: Context): String = premiumSwitchUrl(simCountryIso(context))
+
+/** The SIM's country, which also picks the currency the Premium login's bot offers first. */
+internal fun simCountryIso(context: Context): String? = context.getSystemService<TelephonyManager>()?.simCountryIso

@@ -58,6 +58,22 @@ internal fun rememberNamePaintTextStyle(paint: NamePaint?, fallback: Color): Spa
     }
 }
 
+/** A [paint] to draw over [box] of a text, showing [fallback] where it cannot be drawn. */
+internal data class BoxedNamePaint(val paint: NamePaint, val fallback: Color, val box: Rect)
+
+/** The styles of [paints] by where each starts in its text; one whose picture is loading is left out until it loads. */
+@Composable
+internal fun rememberNamePaintSpans(paints: Map<Int, BoxedNamePaint>): Map<Int, SpanStyle> {
+    val images = rememberPaintImages(paints.values.mapNotNullTo(mutableSetOf()) { it.paint.imageUrl })
+    val density = LocalDensity.current
+    return remember(paints, images, density) {
+        paints.mapNotNull { (start, boxed) ->
+            namePaintStyle(boxed.paint, boxed.paint.imageUrl?.let(images::get), boxed.fallback, boxed.box, density)
+                ?.let { start to it }
+        }.toMap()
+    }
+}
+
 private fun namePaintStyle(
     paint: NamePaint,
     image: ImageBitmap?,
@@ -160,13 +176,26 @@ private val paintImages = ConcurrentHashMap<String, ImageBitmap>()
 
 @Composable
 private fun rememberPaintImage(url: String?): ImageBitmap? {
-    val context = LocalContext.current
-    // The state outlives a change of the URL, so each run sets the picture of its own.
-    val image by produceState(url?.let(paintImages::get), url) {
-        value = url?.let { paintImages[it] ?: loadPaintImage(context, it) }
-    }
-    return image
+    val images = rememberPaintImages(setOfNotNull(url))
+    return url?.let(images::get)
 }
+
+/** The loaded pictures of [urls] by URL; one still loading or failed is missing. */
+@Composable
+private fun rememberPaintImages(urls: Set<String>): Map<String, ImageBitmap> {
+    val context = LocalContext.current
+    // The state outlives a change of the URLs, so each run starts from the pictures of its own.
+    val images by produceState(cachedPaintImages(urls), urls) {
+        value = cachedPaintImages(urls)
+        for (url in urls) {
+            if (url !in value) loadPaintImage(context, url)?.let { value = value + (url to it) }
+        }
+    }
+    return images
+}
+
+private fun cachedPaintImages(urls: Set<String>): Map<String, ImageBitmap> =
+    urls.mapNotNull { url -> paintImages[url]?.let { url to it } }.toMap()
 
 // A shader needs the pixels in memory; an animated picture gives its first frame.
 private suspend fun loadPaintImage(context: Context, url: String): ImageBitmap? {

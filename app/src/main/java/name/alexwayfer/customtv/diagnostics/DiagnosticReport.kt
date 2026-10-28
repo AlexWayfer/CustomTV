@@ -27,6 +27,7 @@ internal data class DiagnosticAccounts(
     val twitchLogin: String?,
     val twitchUserId: String?,
     val telegramUsername: String?,
+    val telegramUserId: Long?,
 )
 
 internal fun diagnosticReport(
@@ -47,7 +48,11 @@ internal fun diagnosticReport(
         accounts.twitchUserId?.takeIf { it.isNotBlank() }?.let { "id $it" },
     )
     appendLine("Twitch: ${twitch.joinToString(", ").ifEmpty { "not logged in" }}")
-    appendLine("Telegram: ${accounts.telegramUsername?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: "-"}")
+    val telegram = listOfNotNull(
+        accounts.telegramUsername?.takeIf { it.isNotBlank() }?.let { "@$it" },
+        accounts.telegramUserId?.let { "id $it" },
+    )
+    appendLine("Telegram: ${telegram.joinToString(", ").ifEmpty { "-" }}")
     events.forEach { event ->
         appendLine()
         appendLine(diagnosticHeadline(event))

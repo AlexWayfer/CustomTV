@@ -24,4 +24,5 @@ internal const val HTTP_UNPROCESSABLE_CONTENT = 422
 internal const val HTTP_TOO_EARLY = 425
 internal const val HTTP_TOO_MANY_REQUESTS = 429
 internal const val HTTP_BAD_GATEWAY = 502
+internal const val HTTP_SERVICE_UNAVAILABLE = 503
 internal const val HTTP_GATEWAY_TIMEOUT = 504

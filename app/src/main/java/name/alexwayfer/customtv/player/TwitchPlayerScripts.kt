@@ -32,6 +32,9 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
 
     val hideTopOverlay: String get() = script("hide-top-overlay.js")
 
+    /** What the video and Twitch's player show, as an object the WebView hands back as JSON. */
+    val playerState: String get() = script("player-state.js")
+
     /**
      * Switches the player to sound only, remembering whether it chose the quality itself or played a fixed one.
      * Does nothing while the playlist lacks the audio-only rendition.

@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,11 +68,19 @@ internal val SECTION_HEADER_BAND = 10.dp
  * A section title that stays on top of its list while the rows scroll under it. It reports its height in pixels
  * through [onHeight], so the loading bar can run along its bottom.
  */
-internal fun LazyListScope.sectionStickyHeader(key: Any, @StringRes text: Int, onHeight: (Int) -> Unit) {
+internal fun LazyListScope.sectionStickyHeader(
+    key: Any,
+    @StringRes text: Int,
+    onHeight: (Int) -> Unit,
+    stale: Boolean = false,
+) {
     stickyHeader(key = key) { _ ->
+        // TalkBack says what the dimmed list shows by its look.
+        val outOfDate = stringResource(R.string.following_out_of_date)
         FollowedSectionHeader(
             text = stringResource(text),
             modifier = Modifier
+                .semantics { if (stale) stateDescription = outOfDate }
                 .animateItem()
                 .onSizeChanged { onHeight(it.height) }
                 .fillMaxWidth()

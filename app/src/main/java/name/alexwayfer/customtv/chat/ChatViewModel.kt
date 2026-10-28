@@ -63,6 +63,7 @@ class ChatViewModel(
 
     private val colors = ParticipantColors()
     val nickColors: StateFlow<Map<String, Color>> = colors.colors
+    val chatterIds: StateFlow<Map<String, String>> = colors.ids
 
     internal val pins = ChatPins(viewModelScope, { currentChannelId }, colors::remember)
     val pinnedChat: StateFlow<PinnedChat?> = pins.pinned

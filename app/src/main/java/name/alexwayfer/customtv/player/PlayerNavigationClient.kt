@@ -17,6 +17,7 @@ internal data class PlayerPageEvents(
     val onPlayerPageLoaded: () -> Unit,
     val onPlayerPageFailed: (reason: String) -> Unit,
     val restorePlayer: () -> Unit,
+    val playlistArrival: () -> () -> Unit,
 )
 
 internal class PlayerNavigationClient(
@@ -33,7 +34,7 @@ internal class PlayerNavigationClient(
     )
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-        if (isReleased()) null else UsherAudioOnly.intercept(request)
+        if (isReleased()) null else UsherAudioOnly.intercept(request, events.playlistArrival)
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         if (isReleased() || !isPlayerDocumentUrl(url)) return

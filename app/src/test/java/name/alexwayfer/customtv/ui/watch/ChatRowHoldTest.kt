@@ -67,6 +67,11 @@ class ChatRowHoldTest {
     }
 
     @Test
+    fun `a swipe released on a step ends the hold as a dismissal, as a menu action that asks in a dialog does`() {
+        assertEquals(ChatRowHoldEnd.Dismiss, chatRowHoldEndOfSwipe(ChatSwipeRelease.Step))
+    }
+
+    @Test
     fun `the hold ends once no swipe or menu holds a row`() {
         assertTrue(chatRowHoldEnds(swiping = false, selectedMessageId = null))
     }

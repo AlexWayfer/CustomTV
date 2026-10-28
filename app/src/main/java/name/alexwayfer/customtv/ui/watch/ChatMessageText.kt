@@ -86,6 +86,10 @@ internal data class ChatMessageLook(
     val extraBadges: List<ThirdPartyBadge> = emptyList(),
     /** The author's 7TV paint over their name; null keeps [nickColor]. */
     val namePaint: SpanStyle? = null,
+    /** The nicks in the text with a 7TV paint, marked so their boxes are found once the text is laid out. */
+    val paintedNicks: Set<String> = emptySet(),
+    /** The paints of those nicks by where each starts in the text; a nick keeps its color until its box is known. */
+    val nickPaints: Map<Int, SpanStyle> = emptyMap(),
 ) {
     val bodyColor: Color get() = if (actionColor) nickColor else TwitchText
     val bodyFontStyle: FontStyle get() = if (actionItalic) FontStyle.Italic else FontStyle.Normal

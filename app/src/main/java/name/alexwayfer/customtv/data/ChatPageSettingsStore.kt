@@ -11,7 +11,7 @@ enum class ChatSendOption(internal val key: Preferences.Key<Boolean>) {
     SentMessageHistory(SENT_MESSAGE_HISTORY),
 }
 
-/** A switch in the 7TV, FFZ, or BTTV section of the Chat page. */
+/** A switch in the 7TV, FFZ, BTTV, or CustomTV section of the Chat page. */
 enum class ThirdPartyChatOption(internal val key: Preferences.Key<Boolean>) {
     SevenTvEmotes(SEVEN_TV_EMOTES),
     SevenTvBadges(SEVEN_TV_BADGES),
@@ -20,6 +20,8 @@ enum class ThirdPartyChatOption(internal val key: Preferences.Key<Boolean>) {
     FfzBadges(FFZ_BADGES),
     BttvEmotes(BTTV_EMOTES),
     BttvBadges(BTTV_BADGES),
+    CustomTvBadges(CUSTOM_TV_BADGES),
+    OwnCustomTvBadge(OWN_CUSTOM_TV_BADGE),
 }
 
 /** Writes the settings of the Chat page; [AppSettingsStore] reads them. */
@@ -50,6 +52,10 @@ class ChatPageSettingsStore(context: Context) {
 
     suspend fun setMessageMenuModeration(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[MESSAGE_MENU_MODERATION] = enabled }
+    }
+
+    suspend fun setSwipeModeration(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[SWIPE_MODERATION] = enabled }
     }
 
     suspend fun setTopChatterBadges(enabled: Boolean) {

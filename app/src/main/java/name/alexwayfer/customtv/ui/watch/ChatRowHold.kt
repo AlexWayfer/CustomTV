@@ -114,11 +114,14 @@ internal class ChatRowHold(
     }
 }
 
-/** How a swipe of a row ends its hold: as the menu action it does, or as a dismissal when it does none. */
+/**
+ * How a swipe of a row ends its hold: as the menu action it does, or as a dismissal when it does none or picks a step,
+ * which asks in a dialog as a moderator action from the menu does.
+ */
 internal fun chatRowHoldEndOfSwipe(release: ChatSwipeRelease): ChatRowHoldEnd = when (release) {
     ChatSwipeRelease.Reply -> ChatRowHoldEnd.Reply
     ChatSwipeRelease.Copy -> ChatRowHoldEnd.Copy
-    ChatSwipeRelease.Dismiss, ChatSwipeRelease.Back -> ChatRowHoldEnd.Dismiss
+    ChatSwipeRelease.Dismiss, ChatSwipeRelease.Step, ChatSwipeRelease.Back -> ChatRowHoldEnd.Dismiss
 }
 
 /** The hold ends once neither a swipe nor an open menu keeps a row held. */

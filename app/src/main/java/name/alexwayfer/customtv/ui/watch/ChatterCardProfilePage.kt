@@ -40,6 +40,7 @@ import name.alexwayfer.customtv.chat.ChatterBadgeLine
 import name.alexwayfer.customtv.chat.ChatterFollow
 import name.alexwayfer.customtv.chat.ChatterSubscription
 import name.alexwayfer.customtv.chat.calendarAge
+import name.alexwayfer.customtv.data.CustomTvBadgeEdition
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 import name.alexwayfer.customtv.ui.settings.SettingsScrollTarget
 import name.alexwayfer.customtv.ui.theme.TwitchDivider
@@ -69,7 +70,7 @@ internal fun ColumnScope.ChatterProfilePage(
         ChatterCardFacts(load, chatter.subscription)
         // In the order the chat shows them before the name: the top chatter's bubble, the badges, the labels.
         ChatterCardTopChatterItem(login = chatter.login)
-        ChatterCardBadges(chatter.badgeLines)
+        ChatterCardBadges(chatter.badgeLines, rememberChatterCustomTvEdition(chatter.userId))
         ChatterCardLabels(userId = chatter.userId, onManage = { nav.open(ChatterCardPage.Labels) })
         ChatterCardCountItem(
             title = stringResource(R.string.chatter_card_last_messages_count, chatter.messages.size),
@@ -229,9 +230,10 @@ private fun ChatterFollowFact(followLoading: Boolean, follow: ChatterFollow?) {
     }
 }
 
+/** The chatter's Twitch badges, then their CustomTV one, as the chat shows them. */
 @Composable
-private fun ChatterCardBadges(badgeLines: List<ChatterBadgeLine>) {
-    if (badgeLines.isEmpty()) return
+private fun ChatterCardBadges(badgeLines: List<ChatterBadgeLine>, customTv: CustomTvBadgeEdition?) {
+    if (badgeLines.isEmpty() && customTv == null) return
     Text(
         text = stringResource(R.string.chatter_card_badges),
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
@@ -239,6 +241,13 @@ private fun ChatterCardBadges(badgeLines: List<ChatterBadgeLine>) {
     )
     badgeLines.forEach { badge ->
         ChatterCardIconRow(image = badge.imageUrl, title = badge.title)
+    }
+    if (customTv != null) {
+        ChatterCardIconRow(
+            image = customTvBadgeImage(customTv),
+            title = stringResource(customTvBadgeTitle(customTv)),
+            onClick = customTvBadgeRowTap(customTv),
+        )
     }
 }
 

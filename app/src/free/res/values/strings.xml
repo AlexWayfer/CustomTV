@@ -38,6 +38,7 @@
     <string name="premium_all_message_deletion">Delete messages</string>
     <string name="premium_all_warnings">Warn chatters</string>
     <string name="premium_all_message_menu_moderation">Moderator actions in the message menu</string>
+    <string name="premium_all_swipe_moderation">Moderation by swiping right</string>
     <string name="premium_all_chat_modes">Change chat modes</string>
     <string name="premium_all_shoutouts">Shoutouts (/shoutout)</string>
     <string name="premium_all_automod">Allow or deny messages held by AutoMod</string>

@@ -88,6 +88,8 @@ internal fun ColumnScope.ChatPane(
     personalEmotes: () -> PersonalEmotes = { PersonalEmotes() },
     /** Read only by the rows of the chatters it holds; the live chat's alone, as 7TV sends them only live. */
     sevenTvCosmetics: () -> SevenTvCosmetics = { SevenTvCosmetics() },
+    /** The user IDs of the chatters seen, by login, for the paints of the nicks a message mentions. */
+    chatterIds: () -> Map<String, String> = { emptyMap() },
     selfLogin: String = "",
     selfDisplayName: String = "",
     ownFollow: OwnChannelFollow? = null,
@@ -164,8 +166,8 @@ internal fun ColumnScope.ChatPane(
         LocalOnChatMention provides onMention,
     ) {
         ProvideChatRowLocals(channel, channelProfile, nickColors, settings.topChatterBadges) {
-            ProvideChatCosmetics(appSettings, sevenTvCosmetics) {
-                ProvideMessageMenuModeration(enabled = settings.messageMenuModeration) {
+            ProvideChatCosmetics(appSettings, sevenTvCosmetics, chatterIds) {
+                ProvideMessageMenuModeration(settings.messageMenuModeration, settings.swipeModeration) {
                     ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
                     belowList(appearance)
                 }

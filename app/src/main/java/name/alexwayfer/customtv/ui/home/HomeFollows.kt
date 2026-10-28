@@ -30,6 +30,8 @@ internal class HomeFollows(private val application: Application, private val sco
     private val _fromCache = MutableStateFlow(false)
     /** The shown follow list is the one saved by the last start, not a fresh load yet. */
     val fromCache: StateFlow<Boolean> = _fromCache
+    private val age = FollowedListAge()
+    val stale: StateFlow<Boolean> = age.stale
     private val _status = MutableStateFlow(FollowedChannelsStatus.Loading)
     val status: StateFlow<FollowedChannelsStatus> = _status
     private val _refreshing = MutableStateFlow(false)
@@ -60,6 +62,7 @@ internal class HomeFollows(private val application: Application, private val sco
         if (refreshSkipped(userId, liveOnly, automatic, now)) return
         lastRefreshAtMillis = now
         lastUserId = userId
+        age.check()
         val current = _channels.value
         val full = followedLoadIsFull(liveOnly, current.isEmpty(), lastFullFailed)
         val failedBefore = lastFullFailed
@@ -160,6 +163,7 @@ internal class HomeFollows(private val application: Application, private val sco
         _refreshing.value = false
         _fromCache.value = false
         _channels.value = emptyList()
+        age.clear()
         _status.value = FollowedChannelsStatus.Loading
         lastRefreshAtMillis = null
         lastUserId = null
@@ -179,15 +183,18 @@ internal class HomeFollows(private val application: Application, private val sco
         lastUserId = saved.userId
         AppLog.i(FOLLOWED_CHANNELS_TAG, "showing ${saved.channels.size} saved at start")
         _fromCache.value = true
+        // Before the list, so an old one shows dimmed on its first frame.
+        age.showSaved(saved.savedAtMillis)
         _channels.value = saved.channels
         _status.value = FollowedChannelsStatus.Ready
     }
 
     private suspend fun showCached(userId: String) {
-        val cached = withContext(Dispatchers.IO) { cache.read(userId) }
-        if (cached.isEmpty() || _channels.value.isNotEmpty()) return
+        val cached = withContext(Dispatchers.IO) { cache.read(userId) } ?: return
+        if (cached.channels.isEmpty() || _channels.value.isNotEmpty()) return
         _fromCache.value = true
-        _channels.value = cached
+        age.showSaved(cached.savedAtMillis)
+        _channels.value = cached.channels
         _status.value = FollowedChannelsStatus.Ready
     }
 
@@ -203,6 +210,7 @@ internal class HomeFollows(private val application: Application, private val sco
                 prefetchFollowedPreviews(application, channels)
                 _fromCache.value = false
                 _channels.value = channels
+                age.showLoaded()
                 _status.value = FollowedChannelsStatus.Ready
                 withContext(Dispatchers.IO) { cache.write(userId, channels) }
                 if (result.liveKnown) StreamStartAlertsController.onFollowedLive(result.channels, accessToken)
@@ -211,6 +219,7 @@ internal class HomeFollows(private val application: Application, private val sco
                 AppLog.i(FOLLOWED_CHANNELS_TAG, "load needs permission")
                 _fromCache.value = false
                 _channels.value = emptyList()
+                age.clear()
                 _status.value = FollowedChannelsStatus.NeedsPermission
                 withContext(Dispatchers.IO) { cache.clear() }
             }

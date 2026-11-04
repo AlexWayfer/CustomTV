@@ -4,13 +4,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,7 +47,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -163,7 +162,7 @@ internal fun ChatterCardSheet(
     onMention: ((login: String, displayName: String) -> Unit)?,
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
-    val history by chatterHistory.collectAsStateWithLifecycle()
+    val history by rememberChatterHistory(card.login, chatterHistory)
     val key = card.login.lowercase()
     val userMessages = history.messages[key].orEmpty()
     val userMentions = history.mentions[key].orEmpty()
@@ -175,7 +174,9 @@ internal fun ChatterCardSheet(
     FollowChatterMessagesEnd(nav.page, scroll)
     val dismissSheet = rememberHideThenDismiss(sheetState, onDismiss)
     val dismissThenMention = rememberHideThenDismiss(sheetState) { onMention?.invoke(chatter.login, chatter.name) }
-    val sheetInsets = chatSheetWindowInsets()
+    val sheetInsets = chatterCardSheetInsets()
+    val pageTransition = updateTransition(nav.page, label = "chatterCardPage")
+    val contentMaxHeight = pageTransition.animateChatterCardContentMaxHeight(sheetInsets)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -191,8 +192,8 @@ internal fun ChatterCardSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                // The sheet stops at the player, so the stream stays in sight.
-                .heightIn(max = chatSheetContentMaxHeight(sheetInsets)),
+                // Label fields may use more room; other pages stop below the player.
+                .chatterCardHeight(contentMaxHeight, sheetInsets),
         ) {
             ChatterCardSheetHeader(
                 profile = load.profile,
@@ -203,11 +204,9 @@ internal fun ChatterCardSheet(
                 onMention = if (onMention != null) dismissThenMention.value else null,
             )
             // The recent messages and the logs pages come in from the end and go back the way they came.
-            AnimatedContent(
-                targetState = nav.page,
+            pageTransition.AnimatedContent(
                 transitionSpec = { lateralTransform(forward = targetState != ChatterCardPage.Profile) },
                 modifier = Modifier.weight(1f, fill = false),
-                label = "chatterCardPage",
             ) { shownPage ->
                 ChatterCardPageContent(
                     page = shownPage,

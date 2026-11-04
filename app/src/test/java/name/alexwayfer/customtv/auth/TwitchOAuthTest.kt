@@ -122,6 +122,33 @@ class TwitchOAuthTest {
     }
 
     @Test
+    fun aRejectedSavedTokenWaitsForRefreshEvenWithTimeLeft() {
+        assertNull(
+            freshSavedFollowAccess(
+                "token",
+                "42",
+                expiresAtMillis = 120_000,
+                nowMillis = 50_000,
+                rejectedAccessToken = "token",
+            ),
+        )
+    }
+
+    @Test
+    fun aTokenAnotherCallerAlreadyReplacedIsUsedAsIs() {
+        assertEquals(
+            "new" to "42",
+            freshSavedFollowAccess(
+                "new",
+                "42",
+                expiresAtMillis = 120_000,
+                nowMillis = 50_000,
+                rejectedAccessToken = "old",
+            ),
+        )
+    }
+
+    @Test
     fun accountJsonUsesDisplayNameAndDropsBlankAvatar() {
         val account = parseTwitchAccount(
             """{"data":[{"login":"alice","display_name":"Alice","profile_image_url":""}]}""",

@@ -61,7 +61,11 @@ internal fun transientGqlErrorPlace(body: String): String {
 
 private fun transientGqlErrors(body: String): List<JSONObject> {
     val errors = body.toJsonObjectOrNull()?.optJSONArray("errors") ?: return emptyList()
-    return errors.objects().filter { error -> isTransientGqlMessage(error.trimmedText("message").orEmpty()) }
+    return errors.objects().filter { error ->
+        val message = error.trimmedText("message").orEmpty()
+        // A generic server error is also worth retrying, but still belongs in the report if every attempt fails.
+        isTransientGqlMessage(message) || message.equals("server error", ignoreCase = true)
+    }
 }
 
 /**

@@ -21,6 +21,17 @@ class GqlTransientRetryTest {
     }
 
     @Test
+    fun aServerErrorIsRetriedAndStillReportedIfTheRetriesFail() {
+        val body = """{"errors":[{"message":"server error"}],"data":null}"""
+
+        assertTrue(hasTransientGqlError(body))
+        assertEquals("server error", transientGqlErrorPlace(body))
+        assertEquals(listOf("server error"), gqlErrorsToReport(body))
+        assertTrue(hasTransientGqlError("""{"errors":[{"message":"Server Error","path":["user"]}]}"""))
+        assertFalse(hasTransientGqlError("""{"errors":[{"message":"unknown server error field"}]}"""))
+    }
+
+    @Test
     fun theLoggedPlaceNamesTheFirstServerFailureAndItsField() {
         val body = """
             {"errors":[

@@ -1,12 +1,14 @@
 package name.alexwayfer.customtv.data
 
 import android.os.SystemClock
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration
 
 /** The users with a CustomTV badge, loaded from the Mecena server while the switch is on. */
 internal object CustomTvBadges {
@@ -18,21 +20,29 @@ internal object CustomTvBadges {
     private var etag: String? = null
 
     /**
-     * Loads the list with the first chat of a run, and again with a chat opened [CUSTOM_TV_BADGES_RELOAD] after the
-     * last load; a failed load tries again with the next chat.
+     * Loads the list when the last load is [CUSTOM_TV_BADGES_RELOAD] old or there was none, and tells how long until
+     * it is due again. A failed load tries again with the next chat, or after [CUSTOM_TV_BADGES_RELOAD] in the open
+     * one.
      */
-    suspend fun load() = lock.withLock {
+    private suspend fun load(): Duration = lock.withLock {
         val now = SystemClock.elapsedRealtime()
-        if (!customTvBadgesDue(loadedAtMillis, now)) return@withLock
-        when (val answer = CustomTvBadgeApi.list(etag)) {
-            is CustomTvBadgeListAnswer.Changed -> {
-                _list.value = answer.list
-                etag = answer.etag
+        if (customTvBadgesNextLoadIn(loadedAtMillis, now) == Duration.ZERO) {
+            when (val answer = CustomTvBadgeApi.list(etag)) {
+                is CustomTvBadgeListAnswer.Changed -> {
+                    _list.value = answer.list
+                    etag = answer.etag
+                }
+                CustomTvBadgeListAnswer.Unchanged -> Unit
+                CustomTvBadgeListAnswer.Failed -> return@withLock CUSTOM_TV_BADGES_RELOAD
             }
-            CustomTvBadgeListAnswer.Unchanged -> Unit
-            CustomTvBadgeListAnswer.Failed -> return@withLock
+            loadedAtMillis = now
         }
-        loadedAtMillis = now
+        customTvBadgesNextLoadIn(loadedAtMillis, now)
+    }
+
+    /** Keeps the list fresh while the caller runs, such as an open chat on screen. */
+    suspend fun keepLoaded(): Nothing {
+        while (true) delay(load())
     }
 
     /**

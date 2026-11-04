@@ -84,22 +84,24 @@ object ChatterLabelsRepository {
      * so an assignment the extension made in the meantime stays. Returns the assignments as they are now.
      */
     internal suspend fun saveAssignments(
-        userId: String,
-        login: String,
-        displayName: String,
+        chatter: LabeledChatter,
         shownLabelIds: Set<String>,
         checkedLabelIds: Set<String>,
+        comments: Map<String, String> = emptyMap(),
     ): JSONArray = mutex.withLock {
         val saved = _credentials.value ?: throw ChatterLabelsException(R.string.chatter_labels_error_not_connected)
         val written = withContext(Dispatchers.IO) {
             val files = ChatterLabelsGistClient.fetchFiles(saved)
             val labels = JSONArray(ChatterLabelsGistClient.readFile(files, LABELS_FILE) ?: "[]")
-            val assignments = updateChatterAssignments(
+            val selected = updateChatterAssignments(
                 assignments = JSONArray(ChatterLabelsGistClient.readFile(files, ASSIGNMENTS_FILE) ?: "[]"),
-                chatter = LabeledChatter(userId, login, displayName),
+                chatter = chatter,
                 shownLabelIds = shownLabelIds,
                 checkedLabelIds = checkedLabelIds,
                 now = Instant.now(),
+            )
+            val assignments = updateChatterAssignmentComments(
+                selected, chatter.userId, comments.filterKeys { it in checkedLabelIds },
             )
             ChatterLabelsGistClient.writeFiles(saved, mapOf(ASSIGNMENTS_FILE to formatChatterLabelsJson(assignments)))
             labels to assignments
@@ -246,7 +248,7 @@ internal fun parseChatterLabels(
         if (userId.isNotBlank() && icon != null) {
             val assignedAt = instantMillisOrNull(assignment.optString("assignedAt"))
             result.getOrPut(userId) { mutableListOf() }
-                .add(ChatterLabelIcon(icon.id, icon.name, icon.image, assignedAt))
+                .add(ChatterLabelIcon(icon.id, icon.name, icon.image, assignedAt, chatterAssignmentComment(assignment)))
         }
     }
     return ChatterLabelsData(icons.values.toList(), result)
@@ -271,7 +273,7 @@ internal fun reuseChatterLabelImages(data: ChatterLabelsData, previous: List<Cha
     }
     fun ChatterLabelIcon.withImage(): ChatterLabelIcon {
         val image = images[id] ?: return this
-        return if (image === this.image) this else ChatterLabelIcon(id, name, image, assignedAtMillis)
+        return if (image === this.image) this else ChatterLabelIcon(id, name, image, assignedAtMillis, comment)
     }
     return ChatterLabelsData(
         labels = data.labels.map { it.withImage() },

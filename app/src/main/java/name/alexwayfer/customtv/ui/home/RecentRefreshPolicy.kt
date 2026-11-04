@@ -2,6 +2,10 @@ package name.alexwayfer.customtv.ui.home
 
 internal const val RECENT_AUTO_REFRESH_INTERVAL_MS = 60_000L
 
+/** The whole recent list waits for the load, and unverified or old stream statuses stay visibly out of date. */
+internal fun recentListDimmed(readAtMillis: List<Long?>, refreshing: Boolean, nowMillis: Long): Boolean =
+    refreshing || readAtMillis.any { it == null || followedListStale(it, nowMillis) }
+
 internal fun shouldAutomaticallyRefreshRecents(lastRequestAtMillis: Long?, nowMillis: Long): Boolean =
     lastRequestAtMillis == null ||
         nowMillis < lastRequestAtMillis ||

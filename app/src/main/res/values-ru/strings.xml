@@ -190,6 +190,9 @@
     <string name="chatter_card_labels_manage">Изменить</string>
     <string name="chatter_card_labels_save">Сохранить</string>
     <string name="chatter_labels_edit">Изменить метки</string>
+    <string name="chatter_labels_comment_for">Комментарий для %1$s (необязательно)</string>
+    <string name="chatter_labels_comment">Комментарий (необязательно)</string>
+    <string name="chatter_labels_comment_toggle">Комментарий для %1$s</string>
     <string name="chatter_labels">Метки чаттеров</string>
     <string name="chatter_labels_hint">Метки из Gist рядом со значками в чате</string>
     <string name="chatter_labels_token">Токен GitHub</string>

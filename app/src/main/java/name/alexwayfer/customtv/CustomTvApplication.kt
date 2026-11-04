@@ -29,6 +29,7 @@ import name.alexwayfer.customtv.data.StreamStartAlertsController
 import name.alexwayfer.customtv.data.TwitchLanguage
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.diagnostics.Diagnostics
+import name.alexwayfer.customtv.diagnostics.MemoryDiagnostics
 import name.alexwayfer.customtv.update.AppUpdates
 import name.alexwayfer.customtv.widget.LiveWidgets
 
@@ -82,6 +83,7 @@ class CustomTvApplication : Application() {
                 .build(),
         )
         warmRecentAvatars()
+        MemoryDiagnostics.start(this)
     }
 
     private fun warmRecentAvatars() {

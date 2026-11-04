@@ -104,9 +104,11 @@ object ChannelAvatarRepository {
             val fetched = gqlAliasBatches(keys).map { batch ->
                 async {
                     try {
-                        ChannelProfileFetcher.many(batch).map { fetched ->
+                        val profiles = ChannelProfileFetcher.many(batch).map { fetched ->
                             profileWithKeptDetails(fetched, fetched.id?.let(::cachedById) ?: cache[fetched.login])
                         }
+                        val returned = profiles.mapTo(mutableSetOf()) { it.id }
+                        profiles + batch.filterNot(returned::contains).mapNotNull { id -> cachedById(id)?.identity() }
                     } catch (failure: IOException) {
                         AppLog.w(CHANNEL_AVATAR_TAG, "profiles fetch failed: ${failure.javaClass.simpleName}")
                         emptyList()
@@ -174,7 +176,9 @@ object ChannelAvatarRepository {
 
 /** The part of a profile worth saving: who the channel is, without its stream of the moment. */
 internal fun ChannelProfile.identity(): ChannelProfile = copy(
+    streamReadAtMillis = null,
     streamTitle = null,
+    lastBroadcastAtMillis = null,
     categoryName = null,
     categoryId = null,
     categoryBoxArtUrl = null,

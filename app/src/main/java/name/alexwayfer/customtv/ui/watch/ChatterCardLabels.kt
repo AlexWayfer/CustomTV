@@ -14,12 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +34,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +50,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChatterLabelIcon
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
+import name.alexwayfer.customtv.data.LabeledChatter
 import name.alexwayfer.customtv.data.chatterLabelsErrorText
 import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.asString
@@ -109,6 +107,8 @@ internal fun ChatterCardLabelsPage(
     val assignedIds = remember(assigned) { assigned.mapTo(mutableSetOf()) { it.id } }
     // A save that succeeded changes what the chatter has, and the checks start from it again.
     var checked by remember(assignedIds) { mutableStateOf<Set<String>>(assignedIds) }
+    var editedComments by remember(userId) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val changedComments = changedChatterComments(assigned, checked, editedComments)
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<UiText?>(null) }
     val scope = rememberCoroutineScope()
@@ -123,32 +123,36 @@ internal fun ChatterCardLabelsPage(
                 .nestedScroll(stopAtTop)
                 .verticalScroll(scrollState, overscrollEffect = overscroll),
         ) {
-            labels.forEach { label ->
-                LabelCheckRow(
-                    // The date stays the saved one until Save, so a fresh check shows none yet.
-                    label = assigned.find { it.id == label.id } ?: label,
-                    checked = label.id in checked,
-                    enabled = !saving,
-                    onCheckedChange = { on -> checked = if (on) checked + label.id else checked - label.id },
-                )
-            }
+            ChatterLabelAssignments(
+                labels = labels,
+                assigned = assigned,
+                checked = checked,
+                editedComments = editedComments,
+                enabled = !saving,
+                onCheckedChange = { id, on -> checked = if (on) checked + id else checked - id },
+                onCommentChange = { id, comment -> editedComments = editedComments + (id to comment) },
+            )
         }
         LabelsSaveError(error)
         Button(
             onClick = {
                 saving = true
                 error = null
-                val shownIds = labels.mapTo(mutableSetOf()) { it.id }
+                val shownIds = changedChatterAssignmentIds(assignedIds, checked)
                 val toSave = checked
+                val commentsToSave = changedComments
                 scope.launch {
                     try {
-                        error = saveLabelAssignments(userId, login, displayName, shownIds, toSave)
+                        error = saveLabelAssignments(
+                            LabeledChatter(userId, login, displayName), shownIds, toSave, commentsToSave,
+                        )
+                        if (error == null) editedComments = emptyMap()
                     } finally {
                         saving = false
                     }
                 }
             },
-            enabled = !saving && checked != assignedIds,
+            enabled = !saving && (checked != assignedIds || changedComments.isNotEmpty()),
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
         ) {
             Text(stringResource(R.string.chatter_card_labels_save))
@@ -158,13 +162,12 @@ internal fun ChatterCardLabelsPage(
 
 /** Saves which of the [shownIds] the chatter has; the reason when that failed, or null once saved. */
 private suspend fun saveLabelAssignments(
-    userId: String,
-    login: String,
-    displayName: String,
+    chatter: LabeledChatter,
     shownIds: Set<String>,
     assigned: Set<String>,
+    comments: Map<String, String>,
 ): UiText? = try {
-    ChatterLabelsRepository.saveAssignments(userId, login, displayName, shownIds, assigned)
+    ChatterLabelsRepository.saveAssignments(chatter, shownIds, assigned, comments)
     null
 } catch (e: IOException) {
     e.chatterLabelsErrorText(UiText.Raw(e.javaClass.simpleName))
@@ -216,34 +219,9 @@ private fun LabelsPageHeader(onBack: (() -> Unit)?) {
     }
 }
 
-/** A label with its checkbox; the whole row toggles it. */
-@Composable
-private fun LabelCheckRow(
-    label: ChatterLabelIcon,
-    checked: Boolean,
-    enabled: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .padding(start = 4.dp, end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = null,
-            enabled = enabled,
-            modifier = Modifier.padding(12.dp),
-        )
-        ChatterLabelRow(label = label, modifier = Modifier.padding(vertical = 6.dp))
-    }
-}
-
 /** A label's icon and name, with the time it was given to the chatter below when it was. */
 @Composable
-private fun ChatterLabelRow(label: ChatterLabelIcon, modifier: Modifier = Modifier) {
+internal fun ChatterLabelRow(label: ChatterLabelIcon, modifier: Modifier = Modifier) {
     val locale = LocalConfiguration.current.locales[0]
     Row(
         modifier = modifier.fillMaxWidth(),

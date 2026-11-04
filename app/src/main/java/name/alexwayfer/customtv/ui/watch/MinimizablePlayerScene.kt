@@ -69,6 +69,8 @@ internal class PlayerSceneState {
 /** The expanded player's constraints, kept while it is minimized; read during composition only. */
 internal class FullSizeMemory {
     var constraints: Constraints? = null
+    // The page's measured width, before any layer scaling, retained while the system resizes the PiP window.
+    var pageWidthPx: Int? = null
 }
 
 /** What the player's parts read as of this composition. */

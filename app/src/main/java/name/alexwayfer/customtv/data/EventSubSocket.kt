@@ -50,6 +50,7 @@ internal class EventSubSocket(
 ) {
     @Volatile
     private var webSocket: WebSocket? = null
+    private var socketListener: Listener? = null
 
     /** The session of the open socket, from its welcome; null while there is none. */
     @Volatile
@@ -72,9 +73,10 @@ internal class EventSubSocket(
 
     /** Whether a socket is open or opening, and the owner has not closed it. */
     val connected: Boolean
-        get() = webSocket != null && !closedByUser
+        get() = synchronized(this) { socketListener != null && !closedByUser }
 
     /** Opens a new socket in place of any current one. */
+    @Synchronized
     fun connect() {
         closedByUser = false
         disconnectSocket()
@@ -83,18 +85,24 @@ internal class EventSubSocket(
     }
 
     /** Closes the socket for good, until the next [connect]. */
+    @Synchronized
     fun close() {
         closedByUser = true
         disconnectSocket()
     }
 
     private fun openSocket() {
-        webSocket = open(Listener())
+        val listener = Listener()
+        // Callbacks can arrive before open returns the socket.
+        socketListener = listener
+        val opened = open(listener)
+        if (socketListener === listener) webSocket = opened else opened.cancel()
     }
 
     private fun disconnectSocket() {
         val current = webSocket
         webSocket = null
+        socketListener = null
         sessionId = null
         events.onDisconnect()
         silenceCheck?.invoke()
@@ -111,10 +119,12 @@ internal class EventSubSocket(
         if (closedByUser) return
         val timeoutSeconds = eventSubSilenceTimeoutSeconds(keepaliveSeconds)
         silenceCheck = schedule(timeoutSeconds) {
-            if (!closedByUser && webSocket == socket) {
-                AppLog.w(tag, "silent for ${timeoutSeconds}s, reconnect")
-                disconnectSocket()
-                scheduleReconnect()
+            synchronized(this) {
+                if (!closedByUser && webSocket == socket) {
+                    AppLog.w(tag, "silent for ${timeoutSeconds}s, reconnect")
+                    disconnectSocket()
+                    scheduleReconnect()
+                }
             }
         }
     }
@@ -122,21 +132,25 @@ internal class EventSubSocket(
     private fun scheduleReconnect() {
         if (closedByUser) return
         reconnect = schedule(EVENTSUB_RECONNECT_DELAY_SECONDS) {
-            if (!closedByUser && webSocket == null) {
-                AppLog.i(tag, "reconnect")
-                openSocket()
+            synchronized(this) {
+                if (!closedByUser && socketListener == null) {
+                    AppLog.i(tag, "reconnect")
+                    openSocket()
+                }
             }
         }
     }
 
     private inner class Listener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            if (webSocket != this@EventSubSocket.webSocket) return
-            watchSilence(webSocket)
+            withCurrent { watchSilence(webSocket) }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            if (webSocket != this@EventSubSocket.webSocket) return
+            withCurrent { onCurrentMessage(webSocket, text) }
+        }
+
+        private fun onCurrentMessage(webSocket: WebSocket, text: String) {
             val welcome = eventSubSessionId(text)
             if (welcome != null) {
                 AppLog.i(tag, "welcome")
@@ -158,24 +172,37 @@ internal class EventSubSocket(
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@EventSubSocket.webSocket) return
-            webSocket.close(code, reason)
+            withCurrent { webSocket.close(code, reason) }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@EventSubSocket.webSocket) return
-            this@EventSubSocket.webSocket = null
-            sessionId = null
-            AppLog.i(tag, "closed $code")
-            scheduleReconnect()
+            withCurrent {
+                dropCurrent()
+                AppLog.i(tag, "closed $code")
+                scheduleReconnect()
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (webSocket != this@EventSubSocket.webSocket) return
+            withCurrent {
+                dropCurrent()
+                AppLog.w(tag, "failed: ${t.javaClass.simpleName}")
+                scheduleReconnect()
+            }
+        }
+
+        private fun dropCurrent() {
             this@EventSubSocket.webSocket = null
+            socketListener = null
             sessionId = null
-            AppLog.w(tag, "failed: ${t.javaClass.simpleName}")
-            scheduleReconnect()
+            silenceCheck?.invoke()
+            silenceCheck = null
+        }
+
+        private fun withCurrent(action: () -> Unit) {
+            synchronized(this@EventSubSocket) {
+                if (socketListener === this) action()
+            }
         }
     }
 }

@@ -50,6 +50,7 @@ class ChatterLabelShownInChatTouchTest {
                     enabled = true,
                     onChatterTap = { tapped += it.userId },
                     onChatterDelete = {},
+                    onCommentSave = { _, _ -> null },
                 )
             }
         }

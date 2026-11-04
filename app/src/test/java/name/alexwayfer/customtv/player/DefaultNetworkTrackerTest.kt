@@ -42,17 +42,17 @@ class DefaultNetworkTrackerTest {
     }
 
     @Test
-    fun aSwitchReloadsALiveStream() {
-        assertTrue(networkSwitchReloadsPlayer(live = true, userPaused = false))
+    fun aSwitchWatchesALiveStreamForRecovery() {
+        assertTrue(networkSwitchWatchesPlayer(live = true, userPaused = false))
     }
 
     @Test
     fun aSwitchLeavesARecordingAlone() {
-        assertFalse(networkSwitchReloadsPlayer(live = false, userPaused = false))
+        assertFalse(networkSwitchWatchesPlayer(live = false, userPaused = false))
     }
 
     @Test
     fun aSwitchLeavesAStreamTheViewerPausedAlone() {
-        assertFalse(networkSwitchReloadsPlayer(live = true, userPaused = true))
+        assertFalse(networkSwitchWatchesPlayer(live = true, userPaused = true))
     }
 }

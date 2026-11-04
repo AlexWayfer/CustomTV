@@ -1,13 +1,62 @@
 package name.alexwayfer.customtv.ui.home
 
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.ChannelSearchHit
 import name.alexwayfer.customtv.data.FollowedChannel
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChannelSearchSuggestionsTest {
+    @Test
+    fun typingKeepsFreshLocalDetailsUntilTheChannelHasASearchAnswer() {
+        val live = ChannelProfile("foo", "Foo", null, isLive = true, viewerCount = 12, streamReadAtMillis = 1000)
+        val fresh = freshRecentDetails(live, 1000)
+        assertEquals(12, searchRowDetails(null, fresh)?.viewerCount)
+        val offline = ChannelSearchHit("foo", "Foo", null, isLive = false)
+        val updated = searchRowDetails(offline, fresh)
+        assertEquals(false, updated?.isLive)
+        assertEquals(null, updated?.viewerCount)
+        assertEquals(null, searchRowDetails(null, freshRecentDetails(live, 1000 + RECENT_AUTO_REFRESH_INTERVAL_MS)))
+    }
+
+    @Test
+    fun searchReusesLiveHomeDetailsIncludingZeroViewers() {
+        val recent = ChannelProfile("foo", "Foo", null, isLive = true, viewerCount = 0, categoryName = "Общение")
+        val details = homeSearchDetails(recent, null)
+        assertEquals(0, details?.viewerCount)
+        assertEquals("Общение", details?.categoryName)
+        assertEquals(details, homeSearchDetails(null, followed("foo", "Foo", live = true).copy(
+            viewerCount = 0, categoryName = "Общение",
+        )))
+    }
+
+    @Test
+    fun searchOnlyHasAnOfflineDateWhenHomeKnowsIt() {
+        val recent = ChannelProfile("foo", "Foo", null)
+        assertEquals(null, homeSearchDetails(recent, null)?.lastBroadcastAtMillis)
+        val ended = followed("foo", "Foo", lastBroadcast = 100)
+        assertEquals(null, homeSearchDetails(recent, ended)?.lastBroadcastAtMillis)
+        assertEquals(100L, homeSearchDetails(null, ended)?.lastBroadcastAtMillis)
+    }
+
+    @Test
+    fun emptyTwitchResultsKeepMatchingLocalNames() {
+        val matches = channelSearchMatches(history, noProfiles, listOf(followed("fox", "Fox")), emptyList(), "fo")
+        assertEquals(listOf("food", "foo"), matches.history)
+        assertEquals(listOf("fox"), matches.followed.map { it.login })
+        assertTrue(matches.found.isEmpty())
+    }
+
+    @Test
+    fun oldOrUnverifiedRecentProfilesOnlySupplyIdentity() {
+        val live = ChannelProfile("foo", "Foo", null, isLive = true, viewerCount = 12)
+        assertEquals(null, freshRecentDetails(live, 1000))
+        val loaded = live.copy(streamReadAtMillis = 1000)
+        assertEquals(12, freshRecentDetails(loaded, 1000)?.viewerCount)
+        assertEquals(null, freshRecentDetails(loaded, 1000 + RECENT_AUTO_REFRESH_INTERVAL_MS))
+    }
+
     private val history = listOf("food", "foo", "bar")
     private val noProfiles = emptyMap<String, ChannelProfile>()
 
@@ -104,21 +153,6 @@ class ChannelSearchSuggestionsTest {
         val suggested = followedSearchSuggestions(live + offline, shown = emptyList(), query = "")
         assertEquals(12, suggested.size)
         assertTrue(suggested.all { it.isLive })
-    }
-
-    @Test
-    fun aLiveProfileShowsTheLiveMark() {
-        assertTrue(searchHistoryIsLive(profileLive = true, followedLive = false))
-    }
-
-    @Test
-    fun aFollowedLiveChannelShowsTheLiveMark() {
-        assertTrue(searchHistoryIsLive(profileLive = false, followedLive = true))
-    }
-
-    @Test
-    fun anOfflineChannelHidesTheLiveMark() {
-        assertFalse(searchHistoryIsLive(profileLive = false, followedLive = false))
     }
 
     private fun followed(login: String, displayName: String, live: Boolean = false, lastBroadcast: Long? = null) =

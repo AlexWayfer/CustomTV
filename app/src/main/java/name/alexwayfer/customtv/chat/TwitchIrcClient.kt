@@ -27,7 +27,7 @@ private val CHAT_LINE_PARSERS: Map<String, (String) -> ChatMessage?> = mapOf(
 )
 
 class TwitchIrcClient(
-    private val client: OkHttpClient = OkHttpClient.Builder()
+    private val client: WebSocket.Factory = OkHttpClient.Builder()
         .pingInterval(SOCKET_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         // Bounds the TLS handshake and the upgrade answer; the open socket is watched by the ping.
         .readTimeout(SOCKET_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -46,10 +46,12 @@ class TwitchIrcClient(
     internal val roomModes: StateFlow<ChatRoomModes> = _roomModes
 
     private var webSocket: WebSocket? = null
+    private var socketListener: SocketListener? = null
     private var channel: String? = null
     @Volatile
     private var closedByUser = false
 
+    @Synchronized
     fun connect(channelLogin: String) {
         val normalized = channelLogin.lowercase().removePrefix("#")
         AppLog.i(CHAT_IRC_TAG, "connect $normalized")
@@ -67,6 +69,7 @@ class TwitchIrcClient(
         _roomModes.value = modes
     }
 
+    @Synchronized
     fun pause() {
         AppLog.i(CHAT_IRC_TAG, "pause")
         closedByUser = true
@@ -74,6 +77,7 @@ class TwitchIrcClient(
         _state.value = ChatConnectionState.Disconnected
     }
 
+    @Synchronized
     fun disconnect() {
         AppLog.i(CHAT_IRC_TAG, "disconnect")
         closedByUser = true
@@ -87,47 +91,62 @@ class TwitchIrcClient(
         val request = Request.Builder()
             .url(IRC_URL)
             .build()
-        webSocket = client.newWebSocket(request, SocketListener())
+        val listener = SocketListener()
+        // A fast DNS failure can arrive before newWebSocket returns its socket.
+        socketListener = listener
+        val opened = client.newWebSocket(request, listener)
+        if (socketListener === listener) webSocket = opened else opened.cancel()
     }
 
     private fun disconnectSocket() {
         val current = webSocket
         webSocket = null
+        socketListener = null
         current?.cancel()
     }
 
     private inner class SocketListener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            AppLog.i(CHAT_IRC_TAG, "socket open")
-            val nick = "justinfan${Random.nextInt(10_000, 99_999)}"
-            webSocket.send("CAP REQ :twitch.tv/tags twitch.tv/commands")
-            webSocket.send("PASS SCHMOOPIIE")
-            webSocket.send("NICK $nick")
+            withCurrent {
+                AppLog.i(CHAT_IRC_TAG, "socket open")
+                val nick = "justinfan${Random.nextInt(10_000, 99_999)}"
+                webSocket.send("CAP REQ :twitch.tv/tags twitch.tv/commands")
+                webSocket.send("PASS SCHMOOPIIE")
+                webSocket.send("NICK $nick")
+            }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            if (webSocket != this@TwitchIrcClient.webSocket) return
-            text.split("\r\n").forEach { line ->
-                if (line.isBlank()) return@forEach
-                handleLine(webSocket, line)
+            withCurrent {
+                text.split("\r\n").forEach { line ->
+                    if (line.isBlank() || socketListener !== this) return@forEach
+                    handleLine(webSocket, line)
+                }
             }
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@TwitchIrcClient.webSocket) return
-            webSocket.close(code, reason)
+            withCurrent { webSocket.close(code, reason) }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@TwitchIrcClient.webSocket) return
-            AppLog.i(CHAT_IRC_TAG, "socket closed code=$code reason=$reason")
-            handleDisconnect()
+            withCurrent {
+                AppLog.i(CHAT_IRC_TAG, "socket closed code=$code reason=$reason")
+                handleDisconnect()
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (webSocket != this@TwitchIrcClient.webSocket) return
-            AppLog.w(CHAT_IRC_TAG, "socket failed", t)
-            handleDisconnect()
+            withCurrent {
+                AppLog.w(CHAT_IRC_TAG, "socket failed", t)
+                handleDisconnect()
+            }
+        }
+
+        private fun withCurrent(action: () -> Unit) {
+            synchronized(this@TwitchIrcClient) {
+                if (socketListener === this) action()
+            }
         }
     }
 
@@ -157,6 +176,8 @@ class TwitchIrcClient(
     }
 
     private fun handleDisconnect() {
+        webSocket = null
+        socketListener = null
         if (closedByUser) {
             AppLog.i(CHAT_IRC_TAG, "closed")
             _state.value = ChatConnectionState.Disconnected

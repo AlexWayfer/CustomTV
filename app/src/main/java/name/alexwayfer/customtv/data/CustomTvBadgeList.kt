@@ -3,12 +3,14 @@ package name.alexwayfer.customtv.data
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Which CustomTV badge a chatter shows: gold for a Premium buyer's account, white for anyone else using the app. */
 internal enum class CustomTvBadgeEdition { Premium, Free }
 
-/** The list is loaded again when a chat opens this long after the last load. */
+/** The list is loaded again this long after the last load, while a chat is on screen. */
 internal val CUSTOM_TV_BADGES_RELOAD = 1.hours
 
 /**
@@ -69,8 +71,11 @@ internal fun parseCustomTvBadgeEdition(body: String): CustomTvBadgeEdition? {
     }
 }
 
-internal fun customTvBadgesDue(loadedAtMillis: Long?, nowMillis: Long): Boolean =
-    loadedAtMillis == null || nowMillis - loadedAtMillis >= CUSTOM_TV_BADGES_RELOAD.inWholeMilliseconds
+/** How long until the list loaded at [loadedAtMillis] is due again; zero for one due now or never loaded. */
+internal fun customTvBadgesNextLoadIn(loadedAtMillis: Long?, nowMillis: Long): Duration {
+    if (loadedAtMillis == null) return Duration.ZERO
+    return (CUSTOM_TV_BADGES_RELOAD - (nowMillis - loadedAtMillis).milliseconds).coerceAtLeast(Duration.ZERO)
+}
 
 private fun JSONArray.ids(): LongArray = (0 until length()).mapNotNull { (opt(it) as? Number)?.toLong() }.sortedIds()
 

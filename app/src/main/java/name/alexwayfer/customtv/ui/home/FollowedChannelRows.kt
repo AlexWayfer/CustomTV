@@ -253,7 +253,7 @@ private fun followedChannelProfile(channel: FollowedChannel) = ChannelProfile(
 )
 
 @Composable
-private fun followedLastBroadcastLabel(lastBroadcastAtMillis: Long, nowMillis: Long): String {
+internal fun followedLastBroadcastLabel(lastBroadcastAtMillis: Long, nowMillis: Long): String {
     return when (val age = followedLastBroadcastAge(lastBroadcastAtMillis, nowMillis)) {
         is FollowedLastBroadcastAge.Recent -> recentLastLiveText(
             age.age,

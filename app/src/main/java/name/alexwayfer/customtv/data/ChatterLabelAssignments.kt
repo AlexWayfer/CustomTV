@@ -37,7 +37,8 @@ internal fun updateChatterAssignments(
                 .put("username", chatter.displayName)
                 .put("login", chatter.login)
                 .put("labelId", labelId)
-                .put("assignedAt", assignedAt),
+                .put("assignedAt", assignedAt)
+                .put("comment", ""),
         )
     }
     return result

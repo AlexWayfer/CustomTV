@@ -13,6 +13,7 @@
     var w = doc.defaultView;
     if (w) w.__customTvUserPaused = true;
     var v = doc.querySelector('video');
+    customTvDiagnosticEvent(doc, v, 'pause-request');
     if (v && v.paused) {
       // A fade in that still waits for the stream to play is not wanted any more.
       customTvFadeStop(v);

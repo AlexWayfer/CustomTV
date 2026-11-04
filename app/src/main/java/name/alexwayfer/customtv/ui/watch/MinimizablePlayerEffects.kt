@@ -76,7 +76,7 @@ private fun PlayerBackAndFullscreenEffects(scene: PlayerScene) {
         if (onBack != null) onBack() else state.minimize(after = scene.actions.onMinimize)
     }
     val fullscreenActive = scene.fullscreenActive
-    BackHandler(enabled = fullscreenActive) { scene.fullscreen.exit() }
+    BackHandler(enabled = fullscreenActive) { scene.fullscreen.exit(FullscreenToggle.Back) }
     LaunchedEffect(fullscreenActive) {
         if (!fullscreenActive) scene.ui.chatModeNotice = null
         if (fullscreenActive) {

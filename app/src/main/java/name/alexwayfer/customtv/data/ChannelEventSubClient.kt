@@ -220,7 +220,7 @@ class ChannelEventSubClient(
                 AppLog.i(TAG, "subscribe outlived its session HTTP $httpCode $name")
             EventSubSubscribeOutcome.TransportLimit -> {
                 val delaySeconds = eventSubTransportRetrySeconds(socket.keepaliveSeconds, attempt)
-                AppLog.w(TAG, "subscribe hit the socket limit HTTP $httpCode $name, retry in ${delaySeconds}s")
+                AppLog.w(TAG, "subscribe hit a session limit HTTP $httpCode $name, retry in ${delaySeconds}s")
                 // The first refusal right after a reconnect is expected; a refused retry means live extra sockets.
                 if (attempt > 0) reportSubscribeRejected(httpCode, name, body)
                 scope.launch {

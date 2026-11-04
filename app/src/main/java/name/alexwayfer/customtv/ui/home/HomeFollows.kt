@@ -2,6 +2,9 @@ package name.alexwayfer.customtv.ui.home
 
 import android.app.Application
 import android.os.SystemClock
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -39,7 +42,8 @@ internal class HomeFollows(private val application: Application, private val sco
     private val _loadFailed = MutableStateFlow<OneShotRequest<Unit>?>(null)
     /** A whole load failed and left the list on screen out of date; the screen tells it once. */
     val loadFailed: StateFlow<OneShotRequest<Unit>?> = _loadFailed
-    private var request = false
+    var request by mutableStateOf(false)
+        private set
     private var job: Job? = null
     private var lastRefreshAtMillis: Long? = null
     private var lastUserId: String? = null

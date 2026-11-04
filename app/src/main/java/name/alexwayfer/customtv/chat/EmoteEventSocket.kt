@@ -19,6 +19,7 @@ internal class EmoteEventSocket(
     private val onFrame: (socket: WebSocket, target: String, text: String) -> Unit,
 ) {
     private var webSocket: WebSocket? = null
+    private var socketListener: Listener? = null
     private var target: String? = null
     private var reopen: (() -> Unit)? = null
 
@@ -26,6 +27,7 @@ internal class EmoteEventSocket(
     private var closedByUser = false
 
     /** Listens for [target]; the same target on an open socket keeps it, a blank one is ignored. */
+    @Synchronized
     fun listen(target: String) {
         val normalized = target.trim()
         if (normalized.isEmpty()) return
@@ -37,11 +39,13 @@ internal class EmoteEventSocket(
     }
 
     /** Sends [text] on the socket in use; nothing when there is none. */
+    @Synchronized
     fun send(text: String) {
         webSocket?.send(text)
     }
 
     /** Closes the socket for good, until the next [listen]. */
+    @Synchronized
     fun disconnect() {
         closedByUser = true
         target = null
@@ -49,6 +53,7 @@ internal class EmoteEventSocket(
     }
 
     /** Opens a new socket for the same target at once, as the service asks before it goes away. */
+    @Synchronized
     fun reconnect() {
         if (closedByUser) return
         val id = target ?: return
@@ -58,12 +63,17 @@ internal class EmoteEventSocket(
     }
 
     private fun openSocket() {
-        webSocket = open(Listener())
+        val listener = Listener()
+        // Callbacks can arrive before open returns the socket.
+        socketListener = listener
+        val opened = open(listener)
+        if (socketListener === listener) webSocket = opened else opened.cancel()
     }
 
     private fun disconnectSocket() {
         val current = webSocket
         webSocket = null
+        socketListener = null
         // A reopen planned for the socket before stays away from the next one.
         reopen?.invoke()
         reopen = null
@@ -74,38 +84,47 @@ internal class EmoteEventSocket(
         if (closedByUser) return
         val id = target ?: return
         webSocket = null
+        socketListener = null
         reopen = schedule(EMOTE_EVENTS_RECONNECT_DELAY_SECONDS) {
-            if (!closedByUser && target == id && webSocket == null) {
-                openSocket()
+            synchronized(this) {
+                if (!closedByUser && target == id && socketListener == null) {
+                    openSocket()
+                }
             }
         }
     }
 
     private inner class Listener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            val id = target ?: return
-            onOpened(webSocket, id)
+            withCurrent {
+                val id = target ?: return@withCurrent
+                onOpened(webSocket, id)
+            }
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            if (webSocket != this@EmoteEventSocket.webSocket) return
-            val id = target ?: return
-            onFrame(webSocket, id, text)
+            withCurrent {
+                val id = target ?: return@withCurrent
+                onFrame(webSocket, id, text)
+            }
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@EmoteEventSocket.webSocket) return
-            webSocket.close(code, reason)
+            withCurrent { webSocket.close(code, reason) }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@EmoteEventSocket.webSocket) return
-            handleDisconnect()
+            withCurrent { handleDisconnect() }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (webSocket != this@EmoteEventSocket.webSocket) return
-            handleDisconnect()
+            withCurrent { handleDisconnect() }
+        }
+
+        private fun withCurrent(action: () -> Unit) {
+            synchronized(this@EmoteEventSocket) {
+                if (socketListener === this) action()
+            }
         }
     }
 }

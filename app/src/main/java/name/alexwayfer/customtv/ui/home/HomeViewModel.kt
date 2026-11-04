@@ -1,13 +1,14 @@
 package name.alexwayfer.customtv.ui.home
 
 import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -18,9 +19,6 @@ import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChannelLookup
 import name.alexwayfer.customtv.data.ChannelProfile
-import name.alexwayfer.customtv.data.ChannelSearchHit
-import name.alexwayfer.customtv.data.ChannelSearchRepository
-import name.alexwayfer.customtv.data.channelSearchQuery
 import name.alexwayfer.customtv.data.RECENT_CHANNELS_TAG
 import name.alexwayfer.customtv.data.RecentChannelsSnapshot
 import name.alexwayfer.customtv.data.RecentStream
@@ -29,7 +27,6 @@ import name.alexwayfer.customtv.data.recentStreamsAfterRefresh
 import name.alexwayfer.customtv.data.RecentChannel
 import name.alexwayfer.customtv.data.RecentChannelsStore
 import name.alexwayfer.customtv.diagnostics.AppLog
-import kotlin.time.Duration.Companion.milliseconds
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val store = RecentChannelsStore(application)
@@ -42,10 +39,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val refreshingRecents: StateFlow<Boolean> = _refreshingRecents
     private val _recentProfiles = MutableStateFlow<Map<String, ChannelProfile>>(emptyMap())
     val recentProfiles: StateFlow<Map<String, ChannelProfile>> = _recentProfiles
-    private val _channelSearch = MutableStateFlow<List<ChannelSearchHit>>(emptyList())
-    val channelSearch: StateFlow<List<ChannelSearchHit>> = _channelSearch
-    private var channelSearchJob: Job? = null
-    private var refreshingRecentRequest = false
+    var refreshingRecentRequest by mutableStateOf(false)
+        private set
     private var lastRecentRefreshAtMillis: Long? = null
     internal val follows = HomeFollows(application, viewModelScope)
 
@@ -87,19 +82,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun recentProfileWithStream(profile: ChannelProfile): ChannelProfile =
         recentProfileForDisplay(profile, recentStreams, ChannelAvatarRepository::loadedThisRun)
-
-    fun updateChannelSearch(raw: String) {
-        channelSearchJob?.cancel()
-        val query = channelSearchQuery(raw)
-        if (query == null) {
-            _channelSearch.value = emptyList()
-            return
-        }
-        channelSearchJob = viewModelScope.launch {
-            delay(300.milliseconds)
-            _channelSearch.value = ChannelSearchRepository.suggest(query)
-        }
-    }
 
     /** Recents are keyed by channel ID, so an unknown channel waits for its profile first. */
     fun addRecent(login: String) {

@@ -14,6 +14,7 @@ internal data class RecentStream(
     val categoryName: String? = null,
     val streamStartedAtMillis: Long? = null,
     val viewerCount: Int? = null,
+    val lastBroadcastAtMillis: Long? = null,
     val sharedViewerCount: Int? = null,
     val collaborationCount: Int? = null,
     val collaboratorAvatarUrls: List<String> = emptyList(),
@@ -25,6 +26,7 @@ internal fun ChannelProfile.recentStream(): RecentStream = RecentStream(
     categoryName = categoryName,
     streamStartedAtMillis = streamStartedAtMillis,
     viewerCount = viewerCount,
+    lastBroadcastAtMillis = lastBroadcastAtMillis,
     sharedViewerCount = sharedViewerCount,
     collaborationCount = collaborationCount,
     collaboratorAvatarUrls = collaboratorAvatarUrls,
@@ -32,11 +34,13 @@ internal fun ChannelProfile.recentStream(): RecentStream = RecentStream(
 
 /** The profile's name and avatar with the saved stream in place of its own stream fields. */
 internal fun ChannelProfile.withRecentStream(stream: RecentStream): ChannelProfile = copy(
+    streamReadAtMillis = null,
     isLive = stream.isLive,
     streamTitle = stream.streamTitle,
     categoryName = stream.categoryName,
     streamStartedAtMillis = stream.streamStartedAtMillis,
     viewerCount = stream.viewerCount,
+    lastBroadcastAtMillis = stream.lastBroadcastAtMillis,
     sharedViewerCount = stream.sharedViewerCount,
     collaborationCount = stream.collaborationCount,
     collaboratorAvatarUrls = stream.collaboratorAvatarUrls,
@@ -112,8 +116,10 @@ internal fun encodeRecentStreams(streams: Map<String, RecentStream>): String {
                 .put("isLive", stream.isLive)
                 .putOpt("streamTitle", stream.streamTitle)
                 .putOpt("categoryName", stream.categoryName)
+                .put("categoryLanguage", TwitchLanguage.current())
                 .putOpt("streamStartedAtMillis", stream.streamStartedAtMillis)
                 .putOpt("viewerCount", stream.viewerCount)
+                .putOpt("lastBroadcastAtMillis", stream.lastBroadcastAtMillis)
                 .putOpt("sharedViewerCount", stream.sharedViewerCount)
                 .putOpt("collaborationCount", stream.collaborationCount)
                 .put("collaboratorAvatarUrls", JSONArray(stream.collaboratorAvatarUrls)),
@@ -135,13 +141,15 @@ internal fun decodeRecentStreams(raw: String): Map<String, RecentStream> {
                 RecentStream(
                     isLive = item.optBoolean("isLive"),
                     streamTitle = item.stringOrNull("streamTitle"),
-                    categoryName = item.stringOrNull("categoryName"),
+                    categoryName = item.stringOrNull("categoryName")
+                        ?.takeIf { item.stringOrNull("categoryLanguage") == TwitchLanguage.current() },
                     streamStartedAtMillis = if (item.has("streamStartedAtMillis")) {
                         item.optLong("streamStartedAtMillis")
                     } else {
                         null
                     },
                     viewerCount = item.intOrNull("viewerCount"),
+                    lastBroadcastAtMillis = item.longOrNull("lastBroadcastAtMillis"),
                     sharedViewerCount = item.intOrNull("sharedViewerCount"),
                     collaborationCount = item.intOrNull("collaborationCount"),
                     collaboratorAvatarUrls = (0 until (collaborators?.length() ?: 0)).mapNotNull { at ->

@@ -1,8 +1,8 @@
 package name.alexwayfer.customtv.player
 
 /**
- * Follows the app's default network, a VPN included, and tells when a working one replaces the last: the
- * connections Twitch's player had open die with the old network, and its own retries hang for most of a minute.
+ * Follows the app's default network, a VPN included, and tells when a working one replaces the last, so recovery
+ * can give Twitch's player time to reconnect before restarting it.
  */
 internal class DefaultNetworkTracker(initial: Long?) {
     private var last = initial
@@ -15,5 +15,5 @@ internal class DefaultNetworkTracker(initial: Long?) {
     }
 }
 
-/** Whether a switch of the network reloads the player page: a live stream the viewer has not paused. */
-internal fun networkSwitchReloadsPlayer(live: Boolean, userPaused: Boolean): Boolean = live && !userPaused
+/** Whether a network switch starts watching recovery: a live stream the viewer has not paused. */
+internal fun networkSwitchWatchesPlayer(live: Boolean, userPaused: Boolean): Boolean = live && !userPaused

@@ -12,7 +12,8 @@ internal fun crashEvent(thread: Thread, error: Throwable, screen: DiagnosticScre
         kind = DiagnosticKind.Crash,
         source = thread.name,
         detail = listOfNotNull(error.javaClass.name, frame?.let { "at $it" }).joinToString(" "),
-        message = diagnosticScreenLine(screen) + "\n" + Log.getStackTraceString(error),
+        message = diagnosticScreenLine(screen) + "\n" + Log.getStackTraceString(error) +
+            "\nMemory samples (bytes unless marked KiB):\n" + MemoryDiagnostics.crashHistory,
         firstAtMillis = System.currentTimeMillis(),
     )
 }

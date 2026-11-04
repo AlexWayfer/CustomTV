@@ -120,6 +120,19 @@ class EventSubSubscriptionsTest {
     }
 
     @Test
+    fun identicalSubscriptionsLeftAfterAReconnectUseTheConnectionLimitRetry() {
+        val message = "maximum subscriptions with type and condition exceeded"
+        for (condition in EventSubCondition.entries) {
+            assertEquals(EventSubSubscribeOutcome.TransportLimit, outcome(429, condition, message = message))
+        }
+        assertEquals(
+            EventSubSubscribeOutcome.Outdated,
+            outcome(429, EventSubCondition.Broadcaster, currentSession = "b", message = message),
+        )
+        assertEquals(EventSubSubscribeOutcome.Rejected, outcome(400, EventSubCondition.Broadcaster, message = message))
+    }
+
+    @Test
     fun theWelcomeNamesTheKeepaliveTimeout() {
         val welcome = """
             {

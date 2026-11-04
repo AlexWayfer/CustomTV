@@ -165,6 +165,9 @@
     <string name="chatter_card_labels_manage">Manage</string>
     <string name="chatter_card_labels_save">Save</string>
     <string name="chatter_labels_edit">Edit labels</string>
+    <string name="chatter_labels_comment_for">Comment for %1$s (optional)</string>
+    <string name="chatter_labels_comment">Comment (optional)</string>
+    <string name="chatter_labels_comment_toggle">Comment for %1$s</string>
     <string name="chatter_labels">Chatter Labels</string>
     <string name="chatter_labels_hint">Gist labels beside chat badges</string>
     <string name="chatter_labels_token">GitHub token</string>

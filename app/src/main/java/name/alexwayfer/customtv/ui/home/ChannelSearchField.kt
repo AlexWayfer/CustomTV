@@ -1,13 +1,14 @@
 package name.alexwayfer.customtv.ui.home
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,8 +22,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarState
@@ -32,13 +33,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -46,15 +43,13 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.channel.displayNameLabel
 import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChannelSearchHit
+import name.alexwayfer.customtv.data.ChannelSearchDetails
 import name.alexwayfer.customtv.data.FollowedChannel
+import name.alexwayfer.customtv.ui.rememberMinuteClock
 import name.alexwayfer.customtv.ui.theme.TwitchHint
-import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
-
-fun searchHistoryIsLive(profileLive: Boolean, followedLive: Boolean): Boolean {
-    return profileLive || followedLive
-}
+import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
 /** The shape of the field on the empty Home, which the search opens out of. */
 internal val ChannelSearchFieldShape: Shape = RoundedCornerShape(8.dp)
@@ -108,7 +103,15 @@ internal fun ChannelSearchCollapsedField(state: SearchBarState, value: String, m
                     .fillMaxWidth()
                     .channelSearchHeight(),
                 readOnly = true,
-                placeholder = { Text(stringResource(R.string.channel_hint), color = TwitchHint) },
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.channel_hint),
+                        color = TwitchHint,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                    )
+                },
                 // The same icon as the search button; the field itself is the action, so it is not announced.
                 trailingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = TwitchText) },
                 colors = searchInputColors(),
@@ -127,17 +130,19 @@ internal fun ChannelSearchSuggestions(
     history: List<String>,
     profiles: Map<String, ChannelProfile>,
     followed: List<FollowedChannel>,
+    followsFresh: Boolean,
     searchHits: List<ChannelSearchHit>,
-    liveLogins: Set<String>,
     onPick: (String) -> Unit,
 ) {
     val matches = channelSearchMatches(history, profiles, followed, searchHits, value)
+    val hits = searchHits.associateBy { it.login }
+    val now = rememberMinuteClock()
     LazyColumn {
         items(matches.history, key = { "history:$it" }) { login ->
             ChannelSearchItem(
                 login = login,
                 profile = profiles[login],
-                liveLogins = liveLogins,
+                details = searchRowDetails(hits[login], freshRecentDetails(profiles[login], now)),
                 onPick = { onPick(login) },
             )
         }
@@ -150,8 +155,12 @@ internal fun ChannelSearchSuggestions(
                     avatarUrl = channel.avatarUrl,
                     collaboratorAvatarUrls = channel.collaboratorAvatarUrls,
                     isLive = channel.isLive,
+                    viewerCount = channel.viewerCount,
                 ),
-                liveLogins = liveLogins,
+                details = searchRowDetails(
+                    hits[channel.login],
+                    if (followsFresh) homeSearchDetails(null, channel) else null,
+                ),
                 onPick = { onPick(channel.login) },
             )
         }
@@ -164,7 +173,7 @@ internal fun ChannelSearchSuggestions(
                     avatarUrl = hit.avatarUrl,
                     isLive = hit.isLive,
                 ),
-                liveLogins = liveLogins,
+                details = hit.currentDetails(),
                 onPick = { onPick(hit.login) },
             )
         }
@@ -175,51 +184,56 @@ internal fun ChannelSearchSuggestions(
 private fun ChannelSearchItem(
     login: String,
     profile: ChannelProfile?,
-    liveLogins: Set<String>,
+    details: ChannelSearchDetails?,
     onPick: () -> Unit,
 ) {
     val label = displayNameLabel(profile?.displayName ?: login, login)
-    val live = searchHistoryIsLive(
-        profileLive = profile?.isLive == true,
-        followedLive = login in liveLogins,
-    )
-    ListItem(
-        headlineContent = {
+    val live = details?.isLive == true
+    val viewers = details?.viewerCount
+    val category = details?.categoryName
+    val endedAt = details?.lastBroadcastAtMillis
+    val supporting: (@Composable () -> Unit)? = if (live) {
+        category?.let { name ->
+            { Text(name, color = TwitchTextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+    } else {
+        endedAt?.let { time -> { ChannelSearchLastLive(time) } }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable(onClick = onPick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ChannelAvatarWithCollaborators(
+            channel = login,
+            profile = profile,
+            collaboratorAvatarUrls = if (live) profile?.collaboratorAvatarUrls.orEmpty() else emptyList(),
+            ringColor = TwitchSurfaceAlt,
+            size = 32.dp,
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TwitchText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 if (live) {
-                    val liveDescription = stringResource(R.string.search_history_live)
                     Spacer(Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(TwitchLive)
-                            .semantics { contentDescription = liveDescription },
-                    )
+                    ChannelSearchLiveStatus(viewers)
                 }
             }
-        },
-        leadingContent = {
-            ChannelAvatarWithCollaborators(
-                channel = login,
-                profile = profile,
-                collaboratorAvatarUrls = if (live) profile?.collaboratorAvatarUrls.orEmpty() else emptyList(),
-                ringColor = TwitchSurfaceAlt,
-                size = 32.dp,
-            )
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = Color.Transparent,
-            headlineColor = TwitchText,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onPick),
-    )
+            if (supporting != null) {
+                ProvideTextStyle(MaterialTheme.typography.bodyMedium, supporting)
+            }
+        }
+    }
 }

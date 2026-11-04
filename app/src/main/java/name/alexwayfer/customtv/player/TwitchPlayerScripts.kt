@@ -74,10 +74,11 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
     /** Sets how long the sound fades on play, pause, start, and close; 0 turns the fades off. */
     fun soundFade(fadeMs: Long): String = call("sound-fade.js", fadeMs.toString())
 
-    private fun script(name: String): String = "${load(COMMON)}\n${load(name)}"
+    private fun script(name: String): String = "${load(COMMON)}\n${load(DIAGNOSTICS)}\n${load(name)}"
 
     /** A script that is a function expression, called with [argument]. */
-    private fun call(name: String, argument: String): String = "${load(COMMON)}\n${load(name).trimEnd()}($argument);"
+    private fun call(name: String, argument: String): String =
+        "${load(COMMON)}\n${load(DIAGNOSTICS)}\n${load(name).trimEnd()}($argument);"
 
     private fun load(name: String): String = loaded.getOrPut(name) {
         assets.open("$DIRECTORY/$name").bufferedReader().use { it.readText() }
@@ -86,6 +87,7 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
     private companion object {
         const val DIRECTORY = "player"
         const val COMMON = "common.js"
+        const val DIAGNOSTICS = "diagnostics.js"
         val loaded = ConcurrentHashMap<String, String>()
     }
 }

@@ -53,6 +53,7 @@ internal data class ChatterLabelAssignee(
     val login: String,
     val displayName: String,
     val assignedAtMillis: Long?,
+    val comment: String = "",
 ) {
     /** The name with the login after it when the two differ, as the extension lists its assignments. */
     val shownName: String
@@ -80,6 +81,7 @@ internal fun chatterLabelAssignees(assignments: JSONArray): Map<String, List<Cha
                 login = assignment.text("login").orEmpty(),
                 displayName = assignment.text("username").orEmpty(),
                 assignedAtMillis = parseAssignedAt(assignment.optString("assignedAt")),
+                comment = chatterAssignmentComment(assignment),
             )
         }
     }

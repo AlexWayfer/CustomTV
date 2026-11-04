@@ -16,14 +16,23 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 private val PUBSUB_PING_INTERVAL = 60.seconds
 
-class TwitchPubSubClient(
-    private val client: OkHttpClient = pushSocketHttpClient(),
+class TwitchPubSubClient internal constructor(
+    private val client: WebSocket.Factory,
+    private val pingExecutor: ScheduledExecutorService,
 ) {
+    constructor(client: OkHttpClient = pushSocketHttpClient()) : this(
+        client,
+        Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "pubsub-ping").apply { isDaemon = true }
+        },
+    )
+
     private val _messages = MutableSharedFlow<ChatMessage>(
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
@@ -73,11 +82,8 @@ class TwitchPubSubClient(
     )
     internal val hypeTrains: SharedFlow<HypeTrainEvent> = _hypeTrains
 
-    private val pingExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
-        Thread(runnable, "pubsub-ping").apply { isDaemon = true }
-    }
-
     private var webSocket: WebSocket? = null
+    private var socketListener: SocketListener? = null
     private var channelId: String? = null
     private var authToken: String? = null
     private var pingFuture: ScheduledFuture<*>? = null
@@ -86,6 +92,7 @@ class TwitchPubSubClient(
     private var lastLoggedPollUpdateId: String? = null
     private var lastLoggedPollUpdateAtMillis = 0L
 
+    @Synchronized
     fun listen(channelId: String, authToken: String? = null) {
         val normalized = channelId.trim()
         if (normalized.isEmpty()) return
@@ -99,6 +106,7 @@ class TwitchPubSubClient(
         openSocket()
     }
 
+    @Synchronized
     fun disconnect() {
         closedByUser = true
         channelId = null
@@ -106,6 +114,7 @@ class TwitchPubSubClient(
         disconnectSocket()
     }
 
+    @Synchronized
     fun close() {
         disconnect()
         pingExecutor.shutdownNow()
@@ -115,7 +124,12 @@ class TwitchPubSubClient(
         val request = Request.Builder()
             .url(PUBSUB_URL)
             .build()
-        webSocket = client.newWebSocket(request, SocketListener())
+        val listener = SocketListener()
+        // A fast DNS failure can arrive before newWebSocket returns its socket.
+        socketListener = listener
+        AppLog.i(TAG, "pubsub connecting")
+        val opened = client.newWebSocket(request, listener)
+        if (socketListener === listener) webSocket = opened else opened.cancel()
     }
 
     private fun disconnectSocket() {
@@ -123,6 +137,7 @@ class TwitchPubSubClient(
         pingFuture = null
         val current = webSocket
         webSocket = null
+        socketListener = null
         current?.cancel()
     }
 
@@ -160,6 +175,12 @@ class TwitchPubSubClient(
 
     private inner class SocketListener : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
+            withCurrent {
+                onCurrentOpen(webSocket)
+            }
+        }
+
+        private fun onCurrentOpen(webSocket: WebSocket) {
             val id = channelId ?: return
             sendListen(webSocket, id, authToken)
             AppLog.i(TAG, "pubsub connected")
@@ -169,7 +190,7 @@ class TwitchPubSubClient(
             pingFuture = try {
                 pingExecutor.scheduleWithFixedDelay(
                     {
-                        if (webSocket === this@TwitchPubSubClient.webSocket) {
+                        withCurrent {
                             webSocket.send("""{"type":"PING"}""")
                         }
                     },
@@ -183,7 +204,12 @@ class TwitchPubSubClient(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
-            if (webSocket != this@TwitchPubSubClient.webSocket) return
+            withCurrent {
+                onCurrentMessage(webSocket, text)
+            }
+        }
+
+        private fun onCurrentMessage(webSocket: WebSocket, text: String) {
             val type = text.toJsonObjectOrNull()?.optString("type")
             when (type) {
                 "PING" -> webSocket.send("""{"type":"PONG"}""")
@@ -200,20 +226,27 @@ class TwitchPubSubClient(
         }
 
         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@TwitchPubSubClient.webSocket) return
-            webSocket.close(code, reason)
+            withCurrent { webSocket.close(code, reason) }
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            if (webSocket != this@TwitchPubSubClient.webSocket) return
-            AppLog.w(TAG, "pubsub closed $code")
-            handleDisconnect()
+            withCurrent {
+                AppLog.w(TAG, "pubsub closed $code")
+                handleDisconnect()
+            }
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-            if (webSocket != this@TwitchPubSubClient.webSocket) return
-            AppLog.w(TAG, "pubsub failed ${t.javaClass.simpleName}")
-            handleDisconnect()
+            withCurrent {
+                AppLog.w(TAG, "pubsub failed ${t.javaClass.simpleName}")
+                handleDisconnect()
+            }
+        }
+
+        private fun withCurrent(action: () -> Unit) {
+            synchronized(this@TwitchPubSubClient) {
+                if (socketListener === this) action()
+            }
         }
     }
 
@@ -257,12 +290,15 @@ class TwitchPubSubClient(
         pingFuture?.cancel(false)
         pingFuture = null
         webSocket = null
+        socketListener = null
         if (!socketTaskAllowed(closedByUser, pingExecutor.isShutdown)) return
         try {
             pingExecutor.schedule(
                 {
-                    if (!closedByUser && channelId == id && webSocket == null) {
-                        openSocket()
+                    synchronized(this) {
+                        if (!closedByUser && channelId == id && socketListener == null) {
+                            openSocket()
+                        }
                     }
                 },
                 2,

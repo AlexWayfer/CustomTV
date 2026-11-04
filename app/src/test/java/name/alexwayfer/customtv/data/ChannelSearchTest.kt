@@ -22,15 +22,6 @@ class ChannelSearchTest {
     }
 
     @Test
-    fun remoteHitsAlreadyInHistoryStayInHistory() {
-        val remote = listOf(
-            hit("foo", "Foo"),
-            hit("bar", "Bar"),
-        )
-        assertEquals(listOf(hit("bar", "Bar")), channelSearchExtras(listOf("foo"), remote))
-    }
-
-    @Test
     fun suggestionsKeepChannelsAndSkipCategories() {
         val hits = parseChannelSearchSuggestions(
             """
@@ -40,7 +31,8 @@ class ChannelSearchTest {
                 "id":"123",
                 "login":"Poko",
                 "profileImageURL":"https://cdn/poko.png",
-                "isLive":true
+                "isLive":true,
+                "user":{"stream":{"viewersCount":3816,"game":{"displayName":"Общение"}}}
               }}},
               {"node":{"text":"Poker","content":{"__typename":"SearchSuggestionCategory"}}},
               {"node":{"text":"akira","content":null}},
@@ -54,6 +46,8 @@ class ChannelSearchTest {
         assertEquals("https://cdn/poko.png", hits[0].avatarUrl)
         assertTrue(hits[0].isLive)
         assertEquals("123", hits[0].userId)
+        assertEquals(3816, hits[0].details?.viewerCount)
+        assertEquals("Общение", hits[0].details?.categoryName)
     }
 
     @Test
@@ -65,7 +59,10 @@ class ChannelSearchTest {
         assertNull(hits.single().userId)
     }
 
-    private fun hit(login: String, displayName: String): ChannelSearchHit {
-        return ChannelSearchHit(login = login, displayName = displayName, avatarUrl = null, isLive = false)
+    @Test
+    fun offlineSuggestionReadsItsBroadcastDate() {
+        val user = org.json.JSONObject("""{"stream":null,"lastBroadcast":{"startedAt":"2026-11-01T12:00:00Z"}}""")
+        assertEquals(1793534400000L, channelSearchUserDetails(user).lastBroadcastAtMillis)
+        assertNull(channelSearchUserDetails(org.json.JSONObject()).lastBroadcastAtMillis)
     }
 }

@@ -32,9 +32,15 @@ class EmoteEventSocketTest {
     private val subscribed = mutableListOf<String>()
     private val frames = mutableListOf<Pair<String, String>>()
     private var scheduling = true
+    private var onOpening: (FakeSocket, WebSocketListener) -> Unit = { _, _ -> }
 
     private val socket = EmoteEventSocket(
-        open = { listener -> FakeSocket().also { opened += it to listener } },
+        open = { listener ->
+            FakeSocket().also {
+                opened += it to listener
+                onOpening(it, listener)
+            }
+        },
         schedule = { delaySeconds, run ->
             if (scheduling) {
                 val task = Task(delaySeconds, run)
@@ -96,10 +102,12 @@ class EmoteEventSocketTest {
 
         oldListener.onMessage(old, "frame")
         oldListener.onFailure(old, IOException(), null)
+        oldListener.onOpen(old, response())
 
         assertTrue(old.cancelled)
         assertEquals(2, opened.size)
         assertTrue(frames.isEmpty())
+        assertTrue(subscribed.isEmpty())
         assertTrue(tasks.isEmpty())
     }
 
@@ -181,5 +189,33 @@ class EmoteEventSocketTest {
 
         assertEquals(1, opened.size)
         assertTrue(tasks.isEmpty())
+    }
+
+    @Test
+    fun anImmediateFailureKeepsRetryingWithoutKeepingTheFailedSocket() {
+        onOpening = { ws, listener -> listener.onFailure(ws, IOException(), null) }
+
+        socket.listen("123")
+
+        assertEquals(1, tasks.size)
+        assertTrue(current.first.cancelled)
+        runPlanned()
+        assertEquals(2, opened.size)
+        assertEquals(1, tasks.size)
+        socket.disconnect()
+        assertTrue(tasks.isEmpty())
+    }
+
+    @Test
+    fun framesThatArriveBeforeOpenReturnsStillReachTheOwner() {
+        onOpening = { ws, listener ->
+            listener.onOpen(ws, response())
+            listener.onMessage(ws, "frame")
+        }
+
+        socket.listen("123")
+
+        assertEquals(listOf("123"), subscribed)
+        assertEquals(listOf("123" to "frame"), frames)
     }
 }

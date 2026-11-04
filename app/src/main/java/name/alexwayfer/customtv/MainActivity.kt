@@ -16,6 +16,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.links.OutsideLinkRoute
 import name.alexwayfer.customtv.links.TwitchLinkRequest
 import name.alexwayfer.customtv.links.linkHandlerPackage
@@ -23,6 +24,7 @@ import name.alexwayfer.customtv.links.openInBrowser
 import name.alexwayfer.customtv.links.outsideLinkRoute
 import name.alexwayfer.customtv.links.twitchLinkTarget
 import name.alexwayfer.customtv.ui.CustomTvApp
+import name.alexwayfer.customtv.ui.PLAYER_NAV_LOG_TAG
 import name.alexwayfer.customtv.ui.PremiumAccessGate
 import name.alexwayfer.customtv.ui.theme.CustomTvTheme
 import name.alexwayfer.customtv.ui.watch.SleepTimer
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
     var onResumeAfterPipClosed: (() -> Unit)? = null
 
     private var pipEnabled = false
+    internal val pipVideoSources = PipVideoSources { applyPipParams(autoEnter = pipEnabled) }
     private var pipSession = false
     private var pipClosed = false
     private var leavingForExternalLink = false
@@ -129,6 +132,7 @@ class MainActivity : ComponentActivity() {
         newConfig: Configuration,
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        AppLog.i(PLAYER_NAV_LOG_TAG, "picture-in-picture ${if (isInPictureInPictureMode) "on" else "off"}")
         _inPictureInPicture.value = isInPictureInPictureMode
         if (isInPictureInPictureMode) {
             pipSession = true

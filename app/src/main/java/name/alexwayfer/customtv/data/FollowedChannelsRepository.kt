@@ -108,8 +108,9 @@ internal class FollowedChannelsRepository(
                         )
                     }
                     if (response.code in HTTP_CLIENT_ERROR) {
-                        AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows rejected HTTP ${response.code}")
-                        return@withContext LiveFollowedRead.Rejected(response.code, twitchAuthMessage(response.body))
+                        val message = twitchAuthMessage(response.body)
+                        AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows rejected HTTP ${response.code}: $message")
+                        return@withContext LiveFollowedRead.Rejected(response.code, message)
                     }
                     if (response.code !in HTTP_SUCCESS) {
                         AppLog.w(FOLLOWED_CHANNELS_TAG, "live follows failed HTTP ${response.code}")

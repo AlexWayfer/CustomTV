@@ -71,7 +71,7 @@ internal class PlayerNavigationClient(
     }
 
     override fun onPageFinished(view: WebView, url: String) {
-        if (isReleased()) return
+        if (isReleased() || url == "about:blank") return
         if (!isPlayerDocumentUrl(url)) {
             AppLog.w(PLAYER_LOG_TAG, "Left the player page, restoring it")
             events.restorePlayer()

@@ -16,8 +16,9 @@ class ChannelProfileParserTest {
                   "login":"",
                   "displayName":"",
                   "stream":null,
+                  "lastBroadcast":{"startedAt":"2026-11-01T12:00:00Z"},
                   "broadcastSettings":{"title":"Offline title",
-                    "game":{"id":"509658","name":"Just Chatting","boxArtURL":"jc.jpg"}}
+                    "game":{"id":"509658","displayName":"Общение","boxArtURL":"jc.jpg"}}
                 }}}
             """.trimIndent(),
             requestedLogin = "requested",
@@ -26,10 +27,11 @@ class ChannelProfileParserTest {
         assertEquals("requested", parsed.profile.login)
         assertEquals("requested", parsed.profile.displayName)
         assertEquals("Offline title", parsed.profile.streamTitle)
-        assertEquals("Just Chatting", parsed.profile.categoryName)
+        assertEquals("Общение", parsed.profile.categoryName)
         assertEquals("509658", parsed.profile.categoryId)
         assertEquals("jc.jpg", parsed.profile.categoryBoxArtUrl)
         assertFalse(parsed.profile.isLive)
+        assertEquals(1793534400000L, parsed.profile.lastBroadcastAtMillis)
         assertNull(parsed.profile.viewerCount)
     }
 
@@ -47,7 +49,7 @@ class ChannelProfileParserTest {
             "archiveVideo":{"id":"video-42"},
             "viewersCount":100,
             "collaborationViewersCount":250,
-            "game":{"name":"Game"},
+            "game":{"displayName":"Game"},
             "freeformTags":[
               {"name":"English"},
               {"name":" "},

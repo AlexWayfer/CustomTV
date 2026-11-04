@@ -36,10 +36,16 @@ class EventSubSocketTest {
     private val welcomes = mutableListOf<String>()
     private val messages = mutableListOf<String?>()
     private var disconnects = 0
+    private var onOpening: (FakeSocket, WebSocketListener) -> Unit = { _, _ -> }
 
     private val socket = EventSubSocket(
         "EventSubSocketTest",
-        open = { listener -> FakeSocket().also { opened += it to listener } },
+        open = { listener ->
+            FakeSocket().also {
+                opened += it to listener
+                onOpening(it, listener)
+            }
+        },
         schedule = { delaySeconds, run ->
             val task = Task(delaySeconds, run)
             tasks += task
@@ -148,6 +154,7 @@ class EventSubSocketTest {
 
         oldListener.onMessage(old, """{"metadata":{"message_type":"notification"},"payload":{}}""")
         oldListener.onFailure(old, IOException(), null)
+        oldListener.onOpen(old, response())
 
         assertTrue(old.cancelled)
         assertTrue(messages.isEmpty())
@@ -189,6 +196,37 @@ class EventSubSocketTest {
 
         // The first connect drops nothing yet but tells the owner all the same, as a new login starts clean.
         assertEquals(3, disconnects)
+    }
+
+    @Test
+    fun anImmediateFailureKeepsRetryingWithoutKeepingTheFailedSocket() {
+        onOpening = { ws, listener -> listener.onFailure(ws, IOException(), null) }
+
+        socket.connect()
+
+        assertFalse(socket.connected)
+        assertEquals(1, tasks.count { !it.cancelled })
+        assertTrue(current.first.cancelled)
+        runPlanned(EVENTSUB_RECONNECT_DELAY_SECONDS)
+        assertEquals(2, opened.size)
+        assertEquals(1, tasks.count { !it.cancelled })
+        socket.close()
+        assertTrue(tasks.all { it.cancelled })
+    }
+
+    @Test
+    fun aWelcomeThatArrivesBeforeOpenReturnsStillStartsTheSession() {
+        onOpening = { ws, listener ->
+            listener.onOpen(ws, response())
+            welcome()
+        }
+
+        socket.connect()
+
+        assertTrue(socket.connected)
+        assertEquals(listOf(SESSION_ID), welcomes)
+        assertEquals(SESSION_ID, socket.sessionId)
+        assertEquals(1, tasks.count { !it.cancelled })
     }
 
     private companion object {

@@ -193,7 +193,7 @@ private fun BoxWithConstraintsScope.PlayerSceneBody(
     val miniWidthPx = with(density) { MiniPlayerWidth.toPx() }
     val miniPaddingPx = with(density) { MiniPlayerPadding.toPx() }
     val fullSize = scene.ui.fullSize
-    if (!scene.compactSettled) fullSize.constraints = constraints
+    if (!scene.compactSettled && !scene.inPictureInPicture) fullSize.constraints = constraints
     val frame = PlayerFrame(
         playerBounds = miniPlayerBounds(
             fullWidthPx = constraints.maxWidth.toFloat(),

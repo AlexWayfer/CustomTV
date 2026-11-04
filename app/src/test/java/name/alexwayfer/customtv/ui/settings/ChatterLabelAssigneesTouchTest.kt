@@ -43,6 +43,7 @@ class ChatterLabelAssigneesTouchTest {
                 enabled = enabled,
                 onChatterTap = { tapped += it.userId },
                 onChatterDelete = { deleted += it.userId },
+                onCommentSave = { _, _ -> null },
             )
         }
     }

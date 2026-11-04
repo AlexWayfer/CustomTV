@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.ui.home
 
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBarState
 import androidx.compose.runtime.Composable
@@ -21,6 +22,8 @@ import name.alexwayfer.customtv.channel.isValidChannelLogin
 import name.alexwayfer.customtv.channel.normalizeChannelInput
 import name.alexwayfer.customtv.data.ChannelLookup
 import name.alexwayfer.customtv.data.TwitchCategory
+import name.alexwayfer.customtv.ui.LoadingBar
+import name.alexwayfer.customtv.ui.rememberLoadingBarState
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.preview
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
@@ -63,7 +66,6 @@ internal fun HomeChannelSearch(
         onValueChange = {
             channelInput.value = it
             error = null
-            if (channels) viewModel.updateChannelSearch(it)
         },
         placeholder = if (channels) R.string.channel_hint else categorySearchHint(),
         onSubmit = {
@@ -100,7 +102,6 @@ internal fun HomeChannelSearch(
                     // Cleared as for an opened channel, the category being first in the history now; only once the
                     // search has closed, so its list does not turn to the history while it closes.
                     channelInput.value = ""
-                    viewModel.updateChannelSearch("")
                 }
             },
         )
@@ -121,18 +122,18 @@ private fun ColumnScope.HomeSearchPages(
     onPickChannel: (String) -> Unit,
     onCategory: (TwitchCategory) -> Unit,
 ) {
-    val channels = @Composable { HomeChannelSuggestions(viewModel, value, signedIn, onPickChannel) }
+    val channels = @Composable {
+        if (mode == null || mode == SearchMode.Channels) {
+            HomeChannelSuggestions(viewModel, value, signedIn, onPickChannel)
+        }
+    }
     if (mode == null) {
         channels()
         return
     }
     SearchModePager(
         mode = mode,
-        onMode = { shown ->
-            // The channels were not asked while the categories showed.
-            if (shown == SearchMode.Channels && mode != shown) viewModel.updateChannelSearch(value)
-            onMode(shown)
-        },
+        onMode = onMode,
         channels = channels,
         categories = { CategorySearchSuggestions(value, categorySubmit, onCategory) },
     )
@@ -148,19 +149,32 @@ private fun HomeChannelSuggestions(
 ) {
     val recents by viewModel.recents.collectAsStateWithLifecycle()
     val recentProfiles by viewModel.recentProfiles.collectAsStateWithLifecycle()
-    val channelSearch by viewModel.channelSearch.collectAsStateWithLifecycle()
+    val channelSearch = rememberSearchResults(value, viewModel)
     val followedChannels by viewModel.follows.channels.collectAsStateWithLifecycle()
-    ChannelSearchSuggestions(
-        value = value,
-        history = recents.map { it.login },
-        profiles = recentProfiles,
-        followed = if (signedIn) followedChannels else emptyList(),
-        searchHits = channelSearch,
-        liveLogins = followedChannels.mapNotNullTo(mutableSetOf()) { channel ->
-            channel.login.lowercase().takeIf { channel.isLive }
-        },
-        onPick = onPick,
-    )
+    val followsCached by viewModel.follows.fromCache.collectAsStateWithLifecycle()
+    val followsStale by viewModel.follows.stale.collectAsStateWithLifecycle()
+    val checking by viewModel.checkingChannel.collectAsStateWithLifecycle()
+    SearchLoadingList(channelSearch.loading || viewModel.refreshingRecentRequest ||
+        (signedIn && viewModel.follows.request) || checking) {
+        ChannelSearchSuggestions(
+            value = value,
+            history = recents.map { it.login },
+            profiles = recentProfiles,
+            followed = if (signedIn) followedChannels else emptyList(),
+            followsFresh = !followsCached && !followsStale,
+            searchHits = channelSearch.hits,
+            onPick = onPick,
+        )
+    }
+}
+
+/** Overlays the top edge so that progress never shifts the search results. */
+@Composable
+internal fun SearchLoadingList(loading: Boolean, content: @Composable () -> Unit) {
+    Box {
+        content()
+        LoadingBar(rememberLoadingBarState(loading))
+    }
 }
 
 /**
@@ -195,7 +209,6 @@ private fun homeChannelSubmit(
             when (result) {
                 is ChannelLookup.Found -> {
                     channelInput.value = channelInputAfterLookup(channelInput.value, result)
-                    viewModel.updateChannelSearch(channelInput.value)
                     // Closed before Home goes: an animation would be cancelled with it, and the open search
                     // would be saved and come back over the next screen that shows Home again.
                     scope.launch {

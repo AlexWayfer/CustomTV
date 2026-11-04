@@ -51,7 +51,17 @@ import name.alexwayfer.customtv.data.ChatSettingsStore
 import name.alexwayfer.customtv.data.FullscreenChatMode
 import name.alexwayfer.customtv.data.FullscreenChatSide
 import name.alexwayfer.customtv.data.GestureHint
+import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.LocalGestureHints
+
+internal const val PLAYER_FULLSCREEN_LOG_TAG = "PlayerFullscreen"
+
+/** What entered or left full screen, for the log. */
+internal enum class FullscreenToggle(val logName: String) {
+    Button("button"),
+    Drag("drag"),
+    Back("Back"),
+}
 
 /** Whether the player fills the screen in landscape, from the full screen button, a drag up, or turning the device. */
 @Stable
@@ -62,6 +72,7 @@ internal class PlayerFullscreen(
     private val chatSettings: State<ChatSettings?>,
     private val store: ChatSettingsStore,
 ) {
+    /** Set through [hold], which logs it. */
     var lock by mutableStateOf(FullscreenLock.None)
 
     // A swipe shows its choice at once, before the store saves it and reads it back.
@@ -84,12 +95,14 @@ internal class PlayerFullscreen(
 
     /** Switches the chat to [mode] at once, as the chat mode button does, and saves it. */
     fun setChatMode(mode: FullscreenChatMode) {
+        AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "chat mode $chatMode -> $mode")
         chatModeChosen = mode
         scope.launch { store.setFullscreenChatMode(mode) }
     }
 
     /** Shows the hidden chat over the video on [side], as a swipe or the Chat button brings it. */
     fun showChat(side: FullscreenChatSide) {
+        AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "chat mode $chatMode -> ${FullscreenChatMode.Overlay}, side $side")
         chatModeChosen = FullscreenChatMode.Overlay
         chatSideChosen = side
         scope.launch {
@@ -100,6 +113,7 @@ internal class PlayerFullscreen(
 
     fun moveChatAcross() {
         val side = if (chatSide == FullscreenChatSide.Left) FullscreenChatSide.Right else FullscreenChatSide.Left
+        AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "chat side $chatSide -> $side")
         chatSideChosen = side
         scope.launch { store.setFullscreenChatSide(side) }
     }
@@ -122,13 +136,19 @@ internal class PlayerFullscreen(
     val active: Boolean
         get() = playerFullscreen(expanded.value, displayLandscape.value)
 
-    fun enter() {
-        lock = FullscreenLock.Landscape
+    fun enter(cause: FullscreenToggle) {
+        AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "enter by ${cause.logName}")
+        hold(FullscreenLock.Landscape, "enter")
     }
 
-    fun exit() {
-        lock = lockAfterFullscreenExit(displayLandscape.value)
+    fun exit(cause: FullscreenToggle) {
+        AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "exit by ${cause.logName}, landscape ${displayLandscape.value}")
+        hold(lockAfterFullscreenExit(displayLandscape.value), "exit")
     }
+
+    /** What decides whether the player is in full screen, for the log. */
+    val activeCause: String
+        get() = "expanded ${expanded.value}, landscape ${displayLandscape.value}, lock $lock"
 
     /**
      * Follows a vertical drag on the player. True when the drag belongs to full screen: any drag while it is on,
@@ -159,7 +179,7 @@ internal class PlayerFullscreen(
         if (!gesture.ownsDrag) return false
         if (fullscreenDragToggles(gesture, offsetY, velocityY, screenHeightPx)) {
             val entering = gesture != FullscreenDrag.Exit
-            if (entering) enter() else exit()
+            if (entering) enter(FullscreenToggle.Drag) else exit(FullscreenToggle.Drag)
             onToggle(entering)
         } else {
             val from = dragOffsetY
@@ -177,6 +197,13 @@ internal class PlayerFullscreen(
 
     /** How much the player grows or shrinks at the current drag, by the share of the distance to the threshold. */
     fun dragScale(screenHeightPx: Float): Float = fullscreenDragScale(dragOffsetY, screenHeightPx)
+}
+
+/** Turns the screen as [next] says, with [cause] in the log. */
+internal fun PlayerFullscreen.hold(next: FullscreenLock, cause: String) {
+    if (next == lock) return
+    AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "lock $lock -> $next: $cause")
+    lock = next
 }
 
 @Composable
@@ -204,31 +231,16 @@ internal fun rememberPlayerFullscreen(
     }
 
     LaunchedEffect(minimized) {
-        if (minimized) fullscreen.lock = lockAfterMinimize(fullscreen.lock)
+        if (minimized) fullscreen.hold(lockAfterMinimize(fullscreen.lock), "minimized")
     }
-    LaunchedEffect(fullscreen.lock) {
-        activity.requestedOrientation = when (fullscreen.lock) {
-            FullscreenLock.None -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            FullscreenLock.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            FullscreenLock.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        }
-    }
-    DisposableEffect(fullscreen.lock) {
-        val held = fullscreen.lock
-        if (held == FullscreenLock.None) return@DisposableEffect onDispose {}
-        val listener = object : OrientationEventListener(activity) {
-            override fun onOrientationChanged(orientation: Int) {
-                val next = lockAfterDeviceTurn(held, deviceTurn(orientation)) {
-                    Settings.System.getInt(activity.contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
-                }
-                if (next != held) fullscreen.lock = next
-            }
-        }
-        listener.enable()
-        onDispose { listener.disable() }
-    }
+    FullscreenLockEffects(activity, fullscreen)
     val active = fullscreen.active
+    val loggedActive = remember { mutableStateOf(false) }
     LaunchedEffect(active) {
+        if (active != loggedActive.value) {
+            loggedActive.value = active
+            AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "full screen ${if (active) "on" else "off"}: ${fullscreen.activeCause}")
+        }
         fullscreen.releaseDrag()
         if (!active) fullscreen.overlayChatExpanded = false
     }
@@ -242,12 +254,42 @@ internal fun rememberPlayerFullscreen(
     )
     DisposableEffect(activity) {
         onDispose {
+            if (fullscreen.lock != FullscreenLock.None) {
+                AppLog.i(PLAYER_FULLSCREEN_LOG_TAG, "player gone, lock ${fullscreen.lock} released")
+            }
             activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             WindowCompat.getInsetsController(activity.window, activity.window.decorView)
                 .show(WindowInsetsCompat.Type.systemBars())
         }
     }
     return fullscreen
+}
+
+/** Turns the screen as the lock holds it, and hands it back to the device once the device turns that way. */
+@Composable
+private fun FullscreenLockEffects(activity: Activity, fullscreen: PlayerFullscreen) {
+    LaunchedEffect(fullscreen.lock) {
+        activity.requestedOrientation = when (fullscreen.lock) {
+            FullscreenLock.None -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            FullscreenLock.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            FullscreenLock.Portrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
+    DisposableEffect(fullscreen.lock) {
+        val held = fullscreen.lock
+        if (held == FullscreenLock.None) return@DisposableEffect onDispose {}
+        val listener = object : OrientationEventListener(activity) {
+            override fun onOrientationChanged(orientation: Int) {
+                val turn = deviceTurn(orientation)
+                val next = lockAfterDeviceTurn(held, turn) {
+                    Settings.System.getInt(activity.contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+                }
+                if (next != held) fullscreen.hold(next, "device turned $turn at $orientation°")
+            }
+        }
+        listener.enable()
+        onDispose { listener.disable() }
+    }
 }
 
 /** Shows and hides the system bars as [bars] says; a swipe from the edge brings a hidden bar back for a moment. */
@@ -315,10 +357,10 @@ internal fun BoxScope.PlayerFullscreenButton(
             onClick = {
                 if (active) {
                     gestureHints?.slowPathUsed(GestureHint.ExitFullscreen)
-                    fullscreen.exit()
+                    fullscreen.exit(FullscreenToggle.Button)
                 } else {
                     gestureHints?.slowPathUsed(GestureHint.EnterFullscreen)
-                    fullscreen.enter()
+                    fullscreen.enter(FullscreenToggle.Button)
                 }
             },
             modifier = Modifier.size(PlayerButtonSize),

@@ -40,6 +40,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.currentStateAsState
@@ -107,7 +108,7 @@ internal fun TwitchPlayer(
     var zoom by remember { mutableStateOf(PlayerZoomTransform()) }
     val showWebView = rememberPlayerWebViewStarts()
     PlayerHostEffects(host, inPictureInPicture, shrunk, fullscreen, seekbarGap, serviceOwner)
-    Box(modifier.background(ComposeColor.Black)) {
+    Box(modifier.then(rememberPlayerPipSource()).background(ComposeColor.Black)) {
         if (showWebView) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -224,13 +225,17 @@ private fun PlayerHostEffects(
     val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
     val context = LocalContext.current
-    val keepAwake = inPictureInPicture || lifecycleState < Lifecycle.State.RESUMED
     DisposableEffect(context, serviceOwner) {
         onDispose { PlayerPlaybackService.stop(context, serviceOwner) }
     }
-    DisposableEffect(host, keepAwake) {
-        host?.keepAlive?.keepAwake(keepAwake)
-        onDispose { }
+    DisposableEffect(host, lifecycleOwner, inPictureInPicture) {
+        val lifecycle = lifecycleOwner.lifecycle
+        val observer = LifecycleEventObserver { _, _ ->
+            host?.keepAlive?.keepAwake(inPictureInPicture || lifecycle.currentState < Lifecycle.State.RESUMED)
+        }
+        lifecycle.addObserver(observer)
+        host?.keepAlive?.keepAwake(inPictureInPicture || lifecycle.currentState < Lifecycle.State.RESUMED)
+        onDispose { lifecycle.removeObserver(observer) }
     }
     val appSettings by AppSettingsStore.restored.collectAsStateWithLifecycle()
     val screenUnlocked by rememberScreenUnlocked(lifecycleState)
@@ -332,6 +337,15 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     private var loadedTarget: TwitchPlaybackTarget? = null
     private var surfaceRevealed = false
     private var released = false
+    private val offlinePage: OfflinePlayerPage = OfflinePlayerPage(
+        unload = {
+            AppLog.i(PLAYER_LOG_TAG, "Unloading offline player in the background")
+            recovery.resetAutomaticReloads()
+            webView.stopLoading()
+            webView.loadUrl("about:blank")
+        },
+        reload = { restorePlayer() },
+    )
     val controls = PlayerControlsMirror(
         handler = mainHandler,
         webView = webView,
@@ -342,7 +356,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     )
     private val recovery = PlayerPageRecovery(
         handler = mainHandler,
-        isReleased = { released },
+        isReleased = { released || offlinePage.suspended },
         isSurfaceRevealed = { surfaceRevealed },
         actions = PlayerPageActions(
             reloadPlayer = { webView.evaluateJavascript(scripts.reloadPlayer, null) },
@@ -361,9 +375,16 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         appContext = appContext,
         handler = mainHandler,
         isLive = { loadedTarget is TwitchPlaybackTarget.Channel },
-        reloadPage = { restorePlayer() },
+        onNetworkChanged = liveStall::networkChanged,
     )
-    val keepAlive = PlayerKeepAlive(appContext, mainHandler, webView, scripts, isReleased = { released })
+    val keepAlive = PlayerKeepAlive(
+        appContext,
+        mainHandler,
+        webView,
+        scripts,
+        isReleased = { released || offlinePage.suspended },
+        onBackgroundChanged = { if (!released) offlinePage.update(it, StreamPlayback.channelOffline) },
+    )
     private var soundOnly = false
     val smoothSound = PlayerSmoothSound(webView, scripts, isReleased = { released })
     val seekbarGap = PlayerSeekbarGap(webView, scripts, isReleased = { released })
@@ -435,10 +456,18 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                     onPlayerReload = recovery::errorScreenReload,
                     onLiveTick = liveStall::tick,
                 ),
-                isReleased = { released },
+                isReleased = { released || offlinePage.suspended },
                 isCurrentPage = { recovery.pageLoad.current },
             ),
             "CustomTvPlayback",
+        )
+        webView.addJavascriptInterface(
+            PlayerDiagnosticsBridge(
+                handler = mainHandler,
+                isReleased = { released || offlinePage.suspended },
+                isCurrentPage = { recovery.pageLoad.current },
+            ),
+            "CustomTvDiagnostics",
         )
         webView.addJavascriptInterface(
             PlayerControlsBridge(
@@ -523,7 +552,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         networkWatch.register()
         webView.webViewClient = PlayerNavigationClient(
             handler = mainHandler,
-            isReleased = { released },
+            isReleased = { released || offlinePage.suspended },
             events = PlayerPageEvents(
                 hideTopOverlay = ::injectHideTopOverlay,
                 onPlayerPageStarted = recovery::pageResponded,
@@ -568,6 +597,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     }
 
     private fun restorePlayer(resetStartupReloads: Boolean = true) {
+        if (offlinePage.suspended) return
         val target = loadedTarget ?: return
         loadedTarget = null
         load(target, resetStartupReloads)
@@ -708,6 +738,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         revealSurface()
         StreamPlayback.channelOffline = true
         onOffline?.invoke()
+        offlinePage.update(offline = true)
     }
 
     private companion object {

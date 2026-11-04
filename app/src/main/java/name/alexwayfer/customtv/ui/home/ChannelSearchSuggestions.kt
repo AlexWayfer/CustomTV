@@ -2,13 +2,33 @@ package name.alexwayfer.customtv.ui.home
 
 import name.alexwayfer.customtv.channel.normalizeChannelInput
 import name.alexwayfer.customtv.data.ChannelProfile
+import name.alexwayfer.customtv.data.ChannelSearchDetails
 import name.alexwayfer.customtv.data.ChannelSearchHit
 import name.alexwayfer.customtv.data.FollowedChannel
-import name.alexwayfer.customtv.data.channelSearchExtras
+import name.alexwayfer.customtv.data.channelSearchQuery
 
 // The empty field is a hint of whom to watch, not a second list of the follows.
 /** How many followed channels an empty search field suggests, the live ones first; all live ones show even past it. */
 internal const val EMPTY_SEARCH_FOLLOWED = 10
+
+internal fun freshRecentDetails(profile: ChannelProfile?, nowMillis: Long): ChannelSearchDetails? {
+    val readAt = profile?.streamReadAtMillis ?: return null
+    return homeSearchDetails(profile, null).takeIf { nowMillis - readAt < RECENT_AUTO_REFRESH_INTERVAL_MS }
+}
+
+internal fun ChannelSearchHit.currentDetails() = details ?: ChannelSearchDetails(isLive, null, null, null)
+
+/** A suggestion replaces the whole local status. Its absence says nothing about this channel's stream. */
+internal fun searchRowDetails(hit: ChannelSearchHit?, fresh: ChannelSearchDetails?): ChannelSearchDetails? =
+    hit?.currentDetails() ?: fresh
+
+/** A complete search subtitle and count already available on Home. */
+internal fun homeSearchDetails(profile: ChannelProfile?, followed: FollowedChannel?): ChannelSearchDetails? {
+    if (profile != null) return ChannelSearchDetails(
+        profile.isLive, profile.viewerCount, profile.categoryName, profile.lastBroadcastAtMillis,
+    )
+    return followed?.let { ChannelSearchDetails(it.isLive, it.viewerCount, it.categoryName, it.lastBroadcastAtMillis) }
+}
 
 /** What the search suggests, in its order: the recents, then the follows, then the channels Twitch found. */
 internal data class ChannelSearchMatches(
@@ -27,7 +47,8 @@ internal fun channelSearchMatches(
 ): ChannelSearchMatches {
     val historyMatches = channelSearchSuggestions(history, profiles, query)
     val followedMatches = followedSearchSuggestions(followed, historyMatches, query)
-    val found = channelSearchExtras(historyMatches + followedMatches.map { it.login }, searchHits)
+    val local = (historyMatches + followedMatches.map { it.login }).mapTo(HashSet()) { it.lowercase() }
+    val found = if (channelSearchQuery(query) == null) emptyList() else searchHits.filterNot { it.login in local }
     return ChannelSearchMatches(historyMatches, followedMatches, found)
 }
 

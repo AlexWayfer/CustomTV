@@ -12,6 +12,7 @@ data class ChannelProfile(
     val categoryBoxArtUrl: String? = null,
     val streamStartedAtMillis: Long? = null,
     val currentStreamVideoId: String? = null,
+    val lastBroadcastAtMillis: Long? = null,
     val viewerCount: Int? = null,
     val sharedViewerCount: Int? = null,
     val collaborationCount: Int? = null,
@@ -25,6 +26,8 @@ data class ChannelProfile(
     val tags: List<String> = emptyList(),
     /** Null until the channel's own profile request brings them; not saved with the profile. */
     val chatRules: List<String>? = null,
+    /** When Twitch supplied this stream status. Persisted identities have no verified status. */
+    val streamReadAtMillis: Long? = null,
 ) {
     companion object {
         const val DEFAULT_HIGHLIGHT_COST = 100

@@ -36,7 +36,7 @@ internal enum class LiveStallWatch {
     /** Twitch's player means to play the video. */
     Playing,
 
-    /** Twitch's player says it has stopped, as it may after a restart while its requests hang: a stall only then. */
+    /** Twitch's player stopped: watched during recovery or after a network switch until the video moves on. */
     Stopped,
 }
 
@@ -51,16 +51,21 @@ internal class LiveStallWatchdog {
     private var lastTickAtMs: Long? = null
     private var stepsTaken = 0
     private var lastStepAtMs: Long? = null
+    private var networkWait = false
+    private var networkGraceUntilMs = 0L
 
     /** A step was taken and the video has not moved on since, whatever state Twitch's player reports. */
     var recovering = false
         private set
 
     fun tick(nowMs: Long, watch: LiveStallWatch, positionSeconds: Double, latencySeconds: Double): LiveStallAction {
-        if (watch == LiveStallWatch.Off) recovering = false
-        val watching = watch == LiveStallWatch.Playing || watch == LiveStallWatch.Stopped && recovering
+        if (watch == LiveStallWatch.Off) {
+            recovering = false
+            networkWait = false
+        }
+        val watching = watch == LiveStallWatch.Playing || watch == LiveStallWatch.Stopped && (recovering || networkWait)
         follow(nowMs, watching, positionSeconds)
-        if (!watching) return LiveStallAction.None
+        if (!watching || nowMs < networkGraceUntilMs) return LiveStallAction.None
         val stalled = nowMs - anchorAtMs >= STALL_MS
         val behind = latencySeconds > BEHIND_SECONDS
         return when {
@@ -73,12 +78,25 @@ internal class LiveStallWatchdog {
         }
     }
 
+    /** Lets the new network recover the stream before any step, including when Twitch stops the player. */
+    fun networkChanged(nowMs: Long) {
+        stepsTaken = 0
+        lastStepAtMs = null
+        recovering = false
+        networkWait = true
+        networkGraceUntilMs = nowMs + STALL_MS
+        anchorAtMs = nowMs
+        lastTickAtMs = nowMs
+    }
+
     /** A new channel: the steps taken for the last one do not count. */
     fun reset() {
         lastTickAtMs = null
         stepsTaken = 0
         lastStepAtMs = null
         recovering = false
+        networkWait = false
+        networkGraceUntilMs = 0L
     }
 
     private fun step(nowMs: Long, positionSeconds: Double): LiveStallAction {
@@ -91,6 +109,7 @@ internal class LiveStallWatchdog {
         stepsTaken += 1
         lastStepAtMs = nowMs
         recovering = action != LiveStallAction.GiveUp
+        networkWait = false
         anchor(nowMs, positionSeconds)
         return action
     }
@@ -104,7 +123,10 @@ internal class LiveStallWatchdog {
         lastTickAtMs = nowMs
         val reportGap = previousTickAtMs == null || nowMs - previousTickAtMs > REPORT_GAP_MS
         val movedOn = positionSeconds - anchorSeconds >= PROGRESS_SECONDS
-        if (movedOn) recovering = false
+        if (movedOn) {
+            recovering = false
+            networkWait = false
+        }
         val elsewhere = movedOn || positionSeconds < anchorSeconds
         if (!watching || reportGap || elsewhere) anchor(nowMs, positionSeconds)
     }

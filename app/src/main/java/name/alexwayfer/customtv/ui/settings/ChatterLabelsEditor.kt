@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.R
@@ -171,7 +172,8 @@ private fun DeleteConfirmations(
             label = label.name,
             onConfirm = {
                 onClose()
-                scope.launch { state.unassign(deletion.assignee, deletion.labelId) }
+                state.error = null
+                scope.launch { state.error = state.assignments.unassign(deletion.assignee, deletion.labelId) }
             },
             onDismiss = onClose,
         )
@@ -318,6 +320,7 @@ private fun ReorderableColumnScope.LabelListItem(
     onChatterDelete: (labelId: String, ChatterLabelAssignee) -> Unit,
 ) {
     val id = label.id
+    val scope = rememberCoroutineScope()
     // Outside the hiding, as the item takes its place from its own position in the list.
     ReorderableItem {
         AnimatedVisibility(
@@ -342,6 +345,10 @@ private fun ReorderableColumnScope.LabelListItem(
                     onDelete = { onDelete(id) },
                     onChatterTap = onChatterTap,
                     onChatterDelete = { assignee -> onChatterDelete(id, assignee) },
+                    onCommentSave = { assignee, comment ->
+                        // Scrolling a lazy chatter row off screen must not cancel its write.
+                        scope.async { state.assignments.saveComment(assignee, id, comment) }.await()
+                    },
                 )
             }
         }

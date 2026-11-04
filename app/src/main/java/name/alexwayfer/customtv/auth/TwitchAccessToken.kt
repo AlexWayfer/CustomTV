@@ -34,13 +34,18 @@ internal fun twitchErrorMessage(body: String): String {
     return root.optString("message").ifBlank { root.optString("error") }.trim()
 }
 
+/**
+ * The saved token and user ID while the token is not about to expire. [rejectedAccessToken] is one Twitch just refused:
+ * it waits for a refresh even with time left, while a token another caller has already put in its place is used.
+ */
 internal fun freshSavedFollowAccess(
     accessToken: String,
     userId: String?,
     expiresAtMillis: Long,
     nowMillis: Long,
+    rejectedAccessToken: String? = null,
 ): Pair<String, String>? {
-    if (accessToken.isBlank()) return null
+    if (accessToken.isBlank() || accessToken == rejectedAccessToken) return null
     val id = userId?.takeIf { it.isNotBlank() } ?: return null
     if (shouldRefreshAccessToken(expiresAtMillis, nowMillis)) return null
     return accessToken to id

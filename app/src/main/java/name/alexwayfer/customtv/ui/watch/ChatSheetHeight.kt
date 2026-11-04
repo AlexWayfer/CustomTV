@@ -34,8 +34,11 @@ internal fun chatSheetContentMaxHeightPx(sheetMaxPx: Int, dragHandlePx: Int, bot
  * modifier allows, so a limit there would lift it off the bottom.
  */
 @Composable
-internal fun chatSheetContentMaxHeight(sheetInsets: WindowInsets = WindowInsets.safeDrawing): Dp {
-    val sheetMaxPx = LocalChatSheetMaxHeightPx.current() ?: return Dp.Unspecified
+internal fun chatSheetContentMaxHeight(
+    sheetInsets: WindowInsets = WindowInsets.safeDrawing,
+    sheetMaxHeightPx: Int? = LocalChatSheetMaxHeightPx.current(),
+): Dp {
+    val sheetMaxPx = sheetMaxHeightPx ?: return Dp.Unspecified
     val density = LocalDensity.current
     val px = chatSheetContentMaxHeightPx(
         sheetMaxPx = sheetMaxPx,
@@ -65,9 +68,8 @@ internal fun chatSheetInsetsShown(live: ChatSheetInsetsPx, held: ChatSheetInsets
  * back.
  */
 @Composable
-internal fun chatSheetWindowInsets(): WindowInsets {
+internal fun chatSheetWindowInsets(insets: WindowInsets = WindowInsets.safeDrawing): WindowInsets {
     val density = LocalDensity.current
-    val insets = WindowInsets.safeDrawing
     val live = ChatSheetInsetsPx(top = insets.getTop(density), bottom = insets.getBottom(density))
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val inFront = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)

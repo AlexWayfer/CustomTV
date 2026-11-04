@@ -18,6 +18,13 @@ class RecentChannelsSnapshotTest {
     private val restored = ChannelProfile(login = "alpha", displayName = "Alpha", avatarUrl = "a.png", id = "1")
 
     @Test
+    fun offlineHistoryRestoresTheLastBroadcastFromItsProfile() {
+        val stream = restored.copy(lastBroadcastAtMillis = 1234L).recentStream()
+        val saved = decodeRecentStreams(encodeRecentStreams(mapOf("1" to stream)))
+        assertEquals(1234L, restored.withRecentStream(saved.getValue("1")).lastBroadcastAtMillis)
+    }
+
+    @Test
     fun savedStreamsComeBackWithEveryField() {
         val streams = mapOf("1" to liveStream, "2" to RecentStream(isLive = false))
 

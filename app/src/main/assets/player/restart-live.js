@@ -4,8 +4,10 @@
   customTvDocs().forEach(function(doc) {
     var p = customTvPlayer(doc);
     if (!p || !p.pause || !p.play) return;
+    customTvDiagnosticEvent(doc, doc.querySelector('video'), 'restart-request');
     try { p.pause(); } catch (e) { return; }
     setTimeout(function() {
+      customTvDiagnosticEvent(doc, doc.querySelector('video'), 'restart-play');
       try { p.play(); } catch (e) {}
     }, 500);
   });

@@ -30,9 +30,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.GestureHint
+import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.player.PlayerPlayback
 import name.alexwayfer.customtv.player.StreamPlayback
 import name.alexwayfer.customtv.ui.LocalGestureHints
+import name.alexwayfer.customtv.ui.PLAYER_NAV_LOG_TAG
 
 /**
  * The stream screen's chat-only mode: the player slides up out of sight and pauses, and the stream info and the chat
@@ -87,7 +89,7 @@ internal class StreamHiding(
     /** Hides or shows the stream, as the chat menu's switch does. */
     fun set(hide: Boolean) {
         if (hide == hidden) return
-        switchTo(hide)
+        switchTo(hide, "menu")
         settleTo(if (hide) 1f else 0f)
     }
 
@@ -109,7 +111,7 @@ internal class StreamHiding(
         val progress = streamHideDragProgress(startHidden, offsetY, travelPx)
         val hide = streamHiddenAfterDrag(startHidden, progress, velocityY)
         val switched = hide != hidden
-        if (switched) switchTo(hide)
+        if (switched) switchTo(hide, "drag")
         settleFromDrag(if (hide) 1f else 0f)
         return switched
     }
@@ -123,11 +125,13 @@ internal class StreamHiding(
     /** The stream played again while hidden, such as from the mini player or a headset: it shows. */
     fun playbackChanged(playback: PlayerPlayback) {
         if (!hidden || streamStaysHidden(hidden = true, playback = playback)) return
+        AppLog.i(PLAYER_NAV_LOG_TAG, "stream shown: it played while hidden")
         hidden = false
         if (dragStartHidden == null) settleTo(0f)
     }
 
-    private fun switchTo(hide: Boolean) {
+    private fun switchTo(hide: Boolean, cause: String) {
+        AppLog.i(PLAYER_NAV_LOG_TAG, "stream ${if (hide) "hidden" else "shown"} by $cause")
         hidden = hide
         if (hide) pause() else play()
     }

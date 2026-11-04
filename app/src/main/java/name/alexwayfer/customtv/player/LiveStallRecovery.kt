@@ -14,6 +14,11 @@ internal class LiveStallRecovery(
     // The state of Twitch's player last logged during a recovery, so each change shows once.
     private var recoveryState: String? = null
 
+    fun networkChanged() {
+        watchdog.networkChanged(SystemClock.elapsedRealtime())
+        recoveryState = null
+    }
+
     fun tick(tick: LiveTick) {
         val watch = LiveStallWatchdog.watch(
             live = isLive(),

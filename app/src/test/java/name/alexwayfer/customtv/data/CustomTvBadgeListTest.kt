@@ -1,10 +1,10 @@
 package name.alexwayfer.customtv.data
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 class CustomTvBadgeListTest {
     private val list = parseCustomTvBadges("""{"premium":[42,7],"free":[100,5,42]}""")!!
@@ -66,8 +66,10 @@ class CustomTvBadgeListTest {
     @Test
     fun listLoadsAgainAnHourAfterTheLastLoad() {
         val hour = CUSTOM_TV_BADGES_RELOAD.inWholeMilliseconds
-        assertTrue(customTvBadgesDue(loadedAtMillis = null, nowMillis = 0))
-        assertFalse(customTvBadgesDue(loadedAtMillis = 1_000, nowMillis = 1_000 + hour - 1))
-        assertTrue(customTvBadgesDue(loadedAtMillis = 1_000, nowMillis = 1_000 + hour))
+        assertEquals(Duration.ZERO, customTvBadgesNextLoadIn(loadedAtMillis = null, nowMillis = 0))
+        assertEquals(CUSTOM_TV_BADGES_RELOAD, customTvBadgesNextLoadIn(loadedAtMillis = 1_000, nowMillis = 1_000))
+        assertEquals(1.milliseconds, customTvBadgesNextLoadIn(loadedAtMillis = 1_000, nowMillis = 1_000 + hour - 1))
+        assertEquals(Duration.ZERO, customTvBadgesNextLoadIn(loadedAtMillis = 1_000, nowMillis = 1_000 + hour))
+        assertEquals(Duration.ZERO, customTvBadgesNextLoadIn(loadedAtMillis = 1_000, nowMillis = 1_000 + 2 * hour))
     }
 }

@@ -23,7 +23,7 @@ internal object ChannelProfileParser {
             avatarUrl = user.text("profileImageURL"),
             id = user.text("id"),
             streamTitle = stream?.text("title") ?: broadcastSettings?.text("title"),
-            categoryName = game?.text("name"),
+            categoryName = game?.text("displayName"),
             categoryId = game?.text("id"),
             categoryBoxArtUrl = game?.text("boxArtURL"),
             streamStartedAtMillis = stream?.text("createdAt")
@@ -33,7 +33,10 @@ internal object ChannelProfileParser {
             sharedViewerCount = sharedViewerCount(stream),
             collaborationCount = collaborationCount(user, login),
             collaboratorAvatarUrls = collaboratorAvatarUrls(user, login),
+            lastBroadcastAtMillis = user.optJSONObject("lastBroadcast")?.text("startedAt")
+                ?.takeIf { stream == null }?.let(::instantMillisOrNull),
             isLive = stream != null,
+            streamReadAtMillis = System.currentTimeMillis(),
             highlightColorHex = highlight.backgroundColor ?: user.text("primaryColorHex"),
             primaryColorHex = user.text("primaryColorHex"),
             highlightRewardCost = highlight.cost,
@@ -89,7 +92,7 @@ internal object ChannelProfileParser {
 
     /** The named category of a stream or of the channel's settings; its ID and box art come from the same one. */
     private fun streamGame(obj: JSONObject?): JSONObject? =
-        obj?.optJSONObject("game")?.takeIf { it.text("name") != null }
+        obj?.optJSONObject("game")?.takeIf { it.text("displayName") != null }
 
     private fun streamTags(stream: JSONObject?): List<String> {
         val tags = stream?.optJSONArray("freeformTags") ?: return emptyList()

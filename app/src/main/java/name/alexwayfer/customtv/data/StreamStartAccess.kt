@@ -9,11 +9,15 @@ import name.alexwayfer.customtv.auth.rejectedAuthClearsSession
 import name.alexwayfer.customtv.diagnostics.AppLog
 import java.io.IOException
 
-/** [onRejected] runs when Twitch refuses the saved refresh token, which only a new login fixes. */
+/**
+ * [onRejected] runs when Twitch refuses the saved refresh token, which only a new login fixes. [rejectedAccessToken]
+ * is an access token Twitch has just refused, which is refreshed even before it expires.
+ */
 internal suspend fun streamStartAccess(
     context: Context,
     clientId: String,
     onRejected: () -> Unit = {},
+    rejectedAccessToken: String? = null,
 ): StreamStartSession? {
     return withTwitchSessionRefreshLock {
         val store = TwitchSessionStore(context)
@@ -23,6 +27,7 @@ internal suspend fun streamStartAccess(
             session.account.userId,
             session.expiresAtMillis,
             System.currentTimeMillis(),
+            rejectedAccessToken,
         )
         if (fresh != null) return@withTwitchSessionRefreshLock StreamStartSession(fresh.first, fresh.second)
         try {
@@ -34,6 +39,7 @@ internal suspend fun streamStartAccess(
                 grantedScopes = tokens.grantedScopes ?: session.grantedScopes,
             )
             store.write(updated)
+            AppLog.i(STREAM_START_TAG, "token refreshed")
             val userId = updated.account.userId ?: return@withTwitchSessionRefreshLock null
             StreamStartSession(updated.accessToken, userId)
         } catch (error: TwitchAuthException) {

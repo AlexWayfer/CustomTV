@@ -14,7 +14,6 @@ import name.alexwayfer.customtv.data.ChatterLabelsGist
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.EditableChatterLabel
 import name.alexwayfer.customtv.data.chatterAssignmentUserIds
-import name.alexwayfer.customtv.data.chatterLabelAssignees
 import name.alexwayfer.customtv.data.chatterLabelProblems
 import name.alexwayfer.customtv.data.chatterLabelsErrorText
 import name.alexwayfer.customtv.data.editableChatterLabels
@@ -27,14 +26,16 @@ import org.json.JSONException
 
 /** The page's copy of the labels: what the Gist had when the page read it, and the edits since. */
 internal class ChatterLabelsEditorState {
-    private var gist by mutableStateOf<ChatterLabelsGist?>(null)
+    private var loadedLabelsJson by mutableStateOf<JSONArray?>(null)
+    val assignments = ChatterLabelAssignmentsEditorState()
+    private val gist: ChatterLabelsGist?
+        get() = loadedLabelsJson?.let { ChatterLabelsGist(it, assignments.entries) }
     private var loadedLabels by mutableStateOf<List<EditableChatterLabel>>(emptyList())
     var labels by mutableStateOf<List<EditableChatterLabel>>(emptyList())
         private set
 
     /** The chatters who have each saved label, by label ID. */
-    var assignees by mutableStateOf<Map<String, List<ChatterLabelAssignee>>>(emptyMap())
-        private set
+    val assignees: Map<String, List<ChatterLabelAssignee>> get() = assignments.assignees
 
     /** While the chatters' current names and logins load from Twitch. */
     var namesLoading by mutableStateOf(false)
@@ -54,12 +55,8 @@ internal class ChatterLabelsEditorState {
     var saving by mutableStateOf(false)
         private set
 
-    /** While a chatter's label is being deleted in the Gist. */
-    var unassigning by mutableStateOf(false)
-        private set
-
     /** While the page writes to the Gist, so the labels and their chatters wait. */
-    val busy: Boolean get() = saving || unassigning
+    val busy: Boolean get() = saving || assignments.busy
 
     /** A failed save or image read, shown above Save until the next edit. */
     var error by mutableStateOf<UiText?>(null)
@@ -68,7 +65,7 @@ internal class ChatterLabelsEditorState {
     var showProblems by mutableStateOf(false)
         private set
 
-    val ready: Boolean get() = gist != null
+    val ready: Boolean get() = loadedLabelsJson != null
     val changed: Boolean get() = labels != loadedLabels
     val problems: Map<String, Set<ChatterLabelProblem>> get() = chatterLabelProblems(labels)
 
@@ -117,32 +114,6 @@ internal class ChatterLabelsEditorState {
         }
     }
 
-    /**
-     * Takes the label [labelId] from [assignee] in the Gist at once, as the extension deletes an assignment; the labels
-     * being edited stay as they are, and a failure shows as [error].
-     */
-    suspend fun unassign(assignee: ChatterLabelAssignee, labelId: String) {
-        unassigning = true
-        error = null
-        try {
-            showAssignments(
-                ChatterLabelsRepository.saveAssignments(
-                    userId = assignee.userId,
-                    login = assignee.login,
-                    displayName = assignee.displayName,
-                    shownLabelIds = setOf(labelId),
-                    checkedLabelIds = emptySet(),
-                ),
-            )
-        } catch (failure: IOException) {
-            error = failure.chatterLabelsErrorText(UiText.Resource(R.string.chatter_labels_error_save_failed))
-        } catch (failure: JSONException) {
-            error = failure.chatterLabelsErrorText(UiText.Resource(R.string.chatter_labels_error_save_failed))
-        } finally {
-            unassigning = false
-        }
-    }
-
     fun update(id: String, change: (EditableChatterLabel) -> EditableChatterLabel) {
         labels = labels.map { if (it.id == id) change(it) else it }
         error = null
@@ -165,10 +136,10 @@ internal class ChatterLabelsEditorState {
     }
 
     private fun show(loaded: ChatterLabelsGist) {
-        gist = loaded
+        loadedLabelsJson = loaded.labels
         loadedLabels = editableChatterLabels(loaded.labels)
         labels = loadedLabels
-        assignees = chatterLabelAssignees(loaded.assignments)
+        assignments.show(loaded.assignments)
         showProblems = false
     }
 
@@ -192,9 +163,9 @@ internal class ChatterLabelsEditorState {
         notFound = names.notFound
         val users = names.found
         try {
-            showAssignments(syncChatterAssignmentUsers(loaded.assignments, users) ?: return)
+            assignments.show(syncChatterAssignmentUsers(assignments.entries, users) ?: return)
             ChatterLabelsRepository.syncAssignmentUsers(users)?.let { written ->
-                showAssignments(written)
+                assignments.show(written)
                 AppLog.i(CHATTER_LABELS_TAG, "chatter names synced to the gist")
             }
         } catch (failure: IOException) {
@@ -202,10 +173,5 @@ internal class ChatterLabelsEditorState {
         } catch (failure: JSONException) {
             AppLog.w(CHATTER_LABELS_TAG, "chatter names sync failed: ${failure.javaClass.simpleName}")
         }
-    }
-
-    private fun showAssignments(assignments: JSONArray) {
-        gist = gist?.let { ChatterLabelsGist(it.labels, assignments) }
-        assignees = chatterLabelAssignees(assignments)
     }
 }

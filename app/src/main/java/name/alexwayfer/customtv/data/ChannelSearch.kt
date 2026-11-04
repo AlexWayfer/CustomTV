@@ -21,19 +21,12 @@ data class ChannelSearchHit(
     val isLive: Boolean,
     /** The channel's user ID when the search gave it; a login typed without a match has none. */
     val userId: String? = null,
+    val details: ChannelSearchDetails? = null,
 )
 
 fun channelSearchQuery(raw: String): String? {
     val normalized = normalizeChannelInput(raw)
     return normalized.takeIf { it.length >= MIN_SEARCH_QUERY_LENGTH }
-}
-
-fun channelSearchExtras(
-    historyMatches: List<String>,
-    remote: List<ChannelSearchHit>,
-): List<ChannelSearchHit> {
-    val seen = historyMatches.mapTo(HashSet()) { it.lowercase() }
-    return remote.filter { it.login.lowercase() !in seen }
 }
 
 fun parseChannelSearchSuggestions(body: String): List<ChannelSearchHit> {
@@ -59,6 +52,8 @@ private fun parseSearchSuggestion(node: JSONObject): ChannelSearchHit? {
         avatarUrl = avatarUrl,
         isLive = content.optBoolean("isLive"),
         userId = content.trimmedText("id"),
+        details = content.optJSONObject("user")?.let(::channelSearchUserDetails)
+            ?.takeIf { it.isLive == content.optBoolean("isLive") },
     )
 }
 
@@ -104,6 +99,6 @@ object ChannelSearchRepository {
     private const val SUGGESTIONS_QUERY =
         $$"query($query:String!){searchSuggestions(queryFragment:$query,withOfflineChannelContent:true)" +
             "{edges{node{text content{" +
-            "__typename ... on SearchSuggestionChannel{id login profileImageURL(width:70) isLive}" +
-            "}}}}}"
+            "__typename ... on SearchSuggestionChannel{id login profileImageURL(width:70) isLive " +
+            "user{$SEARCH_USER_FIELDS}}}}}}}"
 }

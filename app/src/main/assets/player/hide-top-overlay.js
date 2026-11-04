@@ -758,6 +758,13 @@
     function bind(v) {
       if (v.__customTvBound) return;
       v.__customTvBound = true;
+      customTvDiagnosticEvent(targetDoc, v, 'bound');
+      ['playing', 'pause', 'seeking', 'seeked', 'emptied', 'ended', 'error'].forEach(function(event) {
+        v.addEventListener(event, function() {
+          customTvDiagnosticEvent(targetDoc, v, event);
+          customTvDiagnosticTick(targetDoc, v, !recordingPage);
+        });
+      });
       notifyPlayerReady();
       // A video that has not started yet fades its sound in as it starts, as after the app's pause.
       if (v.paused) customTvFade(v, 1, function() { customTvFullVolume(targetDoc); });
@@ -825,6 +832,7 @@
     var d = playerDoc();
     var v = d && d.querySelector('video');
     var adBreak = isAdBreak(d);
+    if (v) customTvDiagnosticTick(d, v, !recordingPage && !adBreak);
     notifyLiveTick(d, v, adBreak);
     if (adBreak) {
       notifyPlaybackIfRendered(v);

@@ -73,8 +73,8 @@ internal enum class EventSubSubscribeOutcome {
     Outdated,
 
     /**
-     * Too many sockets with subscriptions on this login. Right after a reconnect Twitch still counts the
-     * sockets that just died, so the subscription goes through once they are gone.
+     * Too many sockets or identical subscriptions on this login. After a reconnect Twitch may still count the
+     * previous sessions, so the subscription is retried once those sessions have had time to disappear.
      */
     TransportLimit,
     Rejected,
@@ -125,9 +125,12 @@ internal fun eventSubMessageSubscriptionType(raw: String, messageType: String): 
         ?.takeIf { it.isNotBlank() }
 }
 
-/** Whether a refused subscription hit the limit of sockets per login, by the message Twitch sends with the 429. */
+/** Session-related limits that may clear after Twitch notices a disconnected socket; cost limits stay rejected. */
 internal fun eventSubTransportLimit(httpCode: Int, message: String): Boolean =
-    httpCode == HTTP_TOO_MANY_REQUESTS && message.contains("websocket transports limit", ignoreCase = true)
+    httpCode == HTTP_TOO_MANY_REQUESTS && (
+        message.contains("websocket transports limit", ignoreCase = true) ||
+            message.contains("maximum subscriptions with type and condition exceeded", ignoreCase = true)
+        )
 
 /** Twitch's `keepalive_timeout_seconds` when the welcome does not name one. */
 private const val TWITCH_DEFAULT_KEEPALIVE_SECONDS = 10L

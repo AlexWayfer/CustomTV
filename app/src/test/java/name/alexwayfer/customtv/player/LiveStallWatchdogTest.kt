@@ -141,6 +141,66 @@ class LiveStallWatchdogTest {
     }
 
     @Test
+    fun aNetworkSwitchGivesAStoppedPlayerTenSecondsBeforeRestarting() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0, watch = LiveStallWatch.Stopped))
+        assertEquals(
+            listOf(15_000L to LiveStallAction.RestartPlayer),
+            play(1, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+        assertEquals(
+            listOf(25_000L to LiveStallAction.ReloadPage),
+            play(10, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+    }
+
+    @Test
+    fun aNetworkSwitchGivesABufferingPlayerTimeEvenWhenItIsFarBehind() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0, latency = 30.0))
+        assertEquals(listOf(15_000L to LiveStallAction.RestartPlayer), play(1, step = 0.0, latency = 30.0))
+    }
+
+    @Test
+    fun aPlayerThatResumesAfterANetworkSwitchNeedsNoRecovery() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(120))
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(30, step = 0.0, watch = LiveStallWatch.Stopped))
+    }
+
+    @Test
+    fun anotherNetworkSwitchStartsTheWaitOver() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        play(9, step = 0.0, watch = LiveStallWatch.Stopped)
+        watchdog.networkChanged(nowMs)
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0, watch = LiveStallWatch.Stopped))
+        assertEquals(
+            listOf(24_000L to LiveStallAction.RestartPlayer),
+            play(1, step = 0.0, watch = LiveStallWatch.Stopped),
+        )
+    }
+
+    @Test
+    fun aViewerPauseCancelsTheWaitAfterANetworkSwitch() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        play(1, step = 0.0, watch = LiveStallWatch.Off)
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(30, step = 0.0, watch = LiveStallWatch.Stopped))
+    }
+
+    @Test
+    fun aNewChannelCancelsTheWaitAfterANetworkSwitch() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        watchdog.reset()
+        assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(30, step = 0.0, watch = LiveStallWatch.Stopped))
+    }
+
+    @Test
     fun aStateTwitchStoppedInAfterARestartStillCountsAsStuck() {
         play(5)
         play(10, step = 0.0)

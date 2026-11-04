@@ -18,6 +18,7 @@ internal class PlayerKeepAlive(
     private val webView: WebView,
     scripts: TwitchPlayerScripts,
     private val isReleased: () -> Boolean,
+    private val onBackgroundChanged: (Boolean) -> Unit,
 ) {
     private var inBackground = false
     private val keepAlive = object : Runnable {
@@ -49,6 +50,7 @@ internal class PlayerKeepAlive(
     }
 
     fun keepAwake(background: Boolean) {
+        onBackgroundChanged(background)
         if (isReleased()) return
         if (background && inBackground) return
         webView.onResume()

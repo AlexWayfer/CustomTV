@@ -48,7 +48,7 @@ private const val HIDDEN_LINE_KEY = "hidden-line"
 // With the list's 4dp spacing on both sides, the offline title stays as far from the last live row as before.
 private val OFFLINE_GAP = 12.dp
 
-private const val STALE_LIST_ALPHA = 0.5f
+internal const val STALE_LIST_ALPHA = 0.5f
 
 @Composable
 internal fun FollowedChannelsSection(

@@ -144,7 +144,7 @@ internal object Diagnostics {
             events = DiagnosticJournal.eventsToSend(context),
             zone = ZoneId.systemDefault(),
             appLog = if (withAppLog) AppLog.fileLines() else emptyList(),
-        )
+        ) + MemoryDiagnostics.report()
 
     /** The message that goes with the report file. */
     fun shareText(context: Context): String =

@@ -61,6 +61,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChatterLabelAssignee
+import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.watch.NoticeExpandArrow
 import name.alexwayfer.customtv.ui.watch.formatChatterLabelAssignedAt
 
@@ -96,6 +97,7 @@ internal fun ChatterLabelAssignees(
     enabled: Boolean,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
     onChatterDelete: (ChatterLabelAssignee) -> Unit,
+    onCommentSave: suspend (ChatterLabelAssignee, String) -> UiText?,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     AnimatedVisibility(
@@ -115,7 +117,7 @@ internal fun ChatterLabelAssignees(
                 exit = shrinkVertically() + fadeOut(),
             ) {
                 // A save under way would stop as the page leaves for the profile.
-                AssigneeList(assignees, enabled, onChatterTap, onChatterDelete)
+                AssigneeList(assignees, enabled, onChatterTap, onChatterDelete, onCommentSave)
             }
         }
     }
@@ -166,6 +168,7 @@ private fun AssigneeList(
     enabled: Boolean,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
     onChatterDelete: (ChatterLabelAssignee) -> Unit,
+    onCommentSave: suspend (ChatterLabelAssignee, String) -> UiText?,
 ) {
     val textStyle = MaterialTheme.typography.bodyMedium
     val maxHeight = with(LocalDensity.current) { (textStyle.fontSize * ASSIGNEES_MAX_HEIGHT_EM).toDp() }
@@ -196,6 +199,7 @@ private fun AssigneeList(
                 enabled = enabled,
                 onTap = { onChatterTap(assignee) },
                 onDelete = { onChatterDelete(assignee) },
+                onCommentSave = { onCommentSave(assignee, it) },
                 modifier = Modifier.animateItem(),
             )
         }
@@ -213,29 +217,33 @@ private fun AssigneeRow(
     enabled: Boolean,
     onTap: () -> Unit,
     onDelete: () -> Unit,
+    onCommentSave: suspend (String) -> UiText?,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val openLabel = stringResource(R.string.chatter_card_open_profile)
     val deleteLabel = stringResource(R.string.chatter_labels_delete)
     Box(modifier = modifier) {
-        AssigneeRowContent(
-            assignee = assignee,
-            textStyle = textStyle,
-            modifier = Modifier
-                .clip(MaterialTheme.shapes.small)
-                .combinedClickable(
-                    enabled = enabled,
-                    onClickLabel = openLabel,
-                    role = Role.Button,
-                    // The long press vibrates by itself.
-                    onLongClick = { menuOpen = true },
-                    onClick = onTap,
-                )
-                .semantics {
-                    if (enabled) customActions = listOf(CustomAccessibilityAction(deleteLabel) { onDelete(); true })
-                },
-        )
+        ChatterLabelAssigneeComment(assignee, enabled, onCommentSave) {
+            AssigneeRowContent(
+                assignee = assignee,
+                textStyle = textStyle,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .combinedClickable(
+                        enabled = enabled,
+                        onClickLabel = openLabel,
+                        role = Role.Button,
+                        // The long press vibrates by itself.
+                        onLongClick = { menuOpen = true },
+                        onClick = onTap,
+                    )
+                    .semantics {
+                        if (enabled) customActions = listOf(CustomAccessibilityAction(deleteLabel) { onDelete(); true })
+                    },
+            )
+        }
         DropdownMenu(expanded = menuOpen && enabled, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
                 text = { Text(deleteLabel) },

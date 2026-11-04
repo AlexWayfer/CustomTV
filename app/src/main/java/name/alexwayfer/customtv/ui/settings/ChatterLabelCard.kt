@@ -45,6 +45,7 @@ import name.alexwayfer.customtv.data.ChatterLabelAssignee
 import name.alexwayfer.customtv.data.ChatterLabelProblem
 import name.alexwayfer.customtv.data.EditableChatterLabel
 import name.alexwayfer.customtv.data.decodeChatterLabelIcon
+import name.alexwayfer.customtv.ui.UiText
 import name.alexwayfer.customtv.ui.components.PaddedOutlinedTextField
 import sh.calvin.reorderable.ReorderableListItemScope
 
@@ -70,6 +71,7 @@ internal fun ReorderableListItemScope.ChatterLabelCard(
     onDelete: () -> Unit,
     onChatterTap: (ChatterLabelAssignee) -> Unit,
     onChatterDelete: (ChatterLabelAssignee) -> Unit,
+    onCommentSave: suspend (ChatterLabelAssignee, String) -> UiText?,
 ) {
     val elevation by animateDpAsState(if (dragging) 6.dp else 0.dp, label = "labelElevation")
     val moveUp = stringResource(R.string.chatter_labels_move_up)
@@ -107,7 +109,7 @@ internal fun ReorderableListItemScope.ChatterLabelCard(
                 }
             }
             ChatterLabelShownInChat(label.enabled, enabled, onEnabledChange)
-            ChatterLabelAssignees(assignees, searching, enabled, onChatterTap, onChatterDelete)
+            ChatterLabelAssignees(assignees, searching, enabled, onChatterTap, onChatterDelete, onCommentSave)
         }
     }
 }

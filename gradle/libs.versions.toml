@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.0"
 coreKtx = "1.19.1"
 splashscreen = "1.2.0"
 junit = "4.13.2"
@@ -24,7 +24,7 @@ glance = "1.2.0"
 markdownRenderer = "0.46.0"
 tracingPerfetto = "1.0.1"
 reorderable = "3.1.0"
-versions = "0.66.0"
+versions = "0.67.0"
 detekt = "2.0.0-alpha.6"
 
 [libraries]

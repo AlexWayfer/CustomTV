@@ -64,6 +64,7 @@ class ChatterLabelCardTouchTest {
                             onDelete = {},
                             onChatterTap = { tapped += it.userId },
                             onChatterDelete = {},
+                            onCommentSave = { _, _ -> null },
                         )
                     }
                 }
@@ -109,6 +110,7 @@ class ChatterLabelCardTouchTest {
                             onDelete = {},
                             onChatterTap = {},
                             onChatterDelete = {},
+                            onCommentSave = { _, _ -> null },
                         )
                     }
                 }

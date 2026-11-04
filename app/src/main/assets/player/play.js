@@ -27,6 +27,7 @@
       } catch (e) {}
     }
     var v = doc.querySelector('video');
+    customTvDiagnosticEvent(doc, v, 'play-request');
     if (v && !v.paused) {
       // A pause that still fades out turns back; Twitch's player has not paused yet.
       if (customTvFadingOut(v)) customTvFade(v, 1, function() { customTvFullVolume(doc); });

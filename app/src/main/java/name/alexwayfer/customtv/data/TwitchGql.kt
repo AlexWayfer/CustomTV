@@ -3,6 +3,7 @@ package name.alexwayfer.customtv.data
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 private const val TWITCH_GQL_URL = "https://gql.twitch.tv/gql"
 private const val TWITCH_WEB_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko"
@@ -49,14 +50,21 @@ internal fun isTransientGqlMessage(message: String): Boolean =
  */
 internal fun gqlErrorsToReport(body: String): List<String> {
     val errors = body.toJsonObjectOrNull()?.optJSONArray("errors") ?: return emptyList()
-    return (0 until errors.length()).mapNotNull { index ->
-        val error = errors.optJSONObject(index) ?: return@mapNotNull null
-        val withheldLinks = error.optJSONObject("extensions")?.optString("code") == "IntegrityCheckFailed" &&
-            error.optJSONArray("path")?.let { it.optString(it.length() - 1) } == "socialMedias"
-        if (withheldLinks) return@mapNotNull null
+    val withheldPaths = errors.objects()
+        .filter(::isWithheldSocialLinks)
+        .mapNotNull { it.optJSONArray("path")?.toString() }
+    return errors.objects().mapNotNull { error ->
+        // Only a server error on the very same withheld links is covered by the integrity failure.
+        val withheldServerError = error.trimmedText("message") == "server error" &&
+            error.optJSONArray("path")?.toString() in withheldPaths
+        if (isWithheldSocialLinks(error) || withheldServerError) return@mapNotNull null
         error.trimmedText("message")
     }.filterNot(::isTransientGqlMessage).distinct()
 }
+
+private fun isWithheldSocialLinks(error: JSONObject): Boolean =
+    error.optJSONObject("extensions")?.optString("code") == "IntegrityCheckFailed" &&
+        error.optJSONArray("path")?.let { it.optString(it.length() - 1) } == "socialMedias"
 
 /**
  * Why a GQL answer could not be read, or left out a field: Twitch's own error messages, such as

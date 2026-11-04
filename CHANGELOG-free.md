@@ -1,5 +1,21 @@
 # CustomTV (free version)
 
+## v1.15.0 (2026-11-04)
+
+*   Add support for Chatter Labels comments
+*   Show stream details in channel search
+*   Show loading progress in channel and category search
+*   Improve search opening and closing animations
+*   Dim recent channels while their stream details are out of date
+*   Make picture-in-picture transitions smoother
+*   Fade player controls in picture-in-picture and the mini player
+*   Improve playback recovery after network changes
+*   Improve chat and live event reconnection after failures
+*   Prevent offline channels from starting playback in the background
+*   Refresh CustomTV badges while the chat stays open
+*   Remove vibration on a long press in the player
+*   Hide unnecessary errors when Twitch withholds social links
+
 ## v1.14.0 (2026-10-28)
 
 *   Show CustomTV badges in the chat

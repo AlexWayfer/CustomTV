@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -101,7 +102,10 @@ internal fun BoxScope.PlayerVideoBox(
             shrunk = scene.progress > 0f,
             fullscreen = scene.fullscreenActive,
             seekbarGap = seekbarOverlay?.gap ?: 0.dp,
-            modifier = Modifier.playerPageLayout(scene, frame, fullWidthPx),
+            modifier = Modifier.playerPageLayout(scene, frame, fullWidthPx)
+                .onSizeChanged { size ->
+                    if (!scene.inPictureInPicture && size.width > 0) scene.ui.fullSize.pageWidthPx = size.width
+                },
         )
         if (seekbarOverlay != null) PlayerSeekbarLayer(scene, seekbarOverlay)
         if (!scene.inPictureInPicture && !scene.compactSettled && scene.progress < MINIMIZE_BUTTON_UNTIL) {
@@ -124,6 +128,8 @@ internal fun BoxScope.PlayerVideoBox(
  */
 private fun Modifier.playerPageLayout(scene: PlayerScene, frame: PlayerFrame, fullWidthPx: Int?): Modifier =
     this then when {
+        scene.inPictureInPicture && scene.ui.fullSize.pageWidthPx != null ->
+            Modifier.playerScaledFromFullWidth(checkNotNull(scene.ui.fullSize.pageWidthPx))
         scene.inPictureInPicture || scene.fullscreenActive || fullWidthPx == null -> Modifier.fillMaxSize()
         // Fits the video to the screen as full screen does, clear of the display cutout at the side and shrunk above
         // the stream info's room, at the page's full screen size.

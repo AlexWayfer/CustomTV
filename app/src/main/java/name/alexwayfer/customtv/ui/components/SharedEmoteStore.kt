@@ -25,6 +25,8 @@ internal object SharedEmoteStore {
     private val aspectRatios = mutableStateMapOf<String, Float>()
     private val handler = Handler(Looper.getMainLooper())
 
+    val retainedCount: Int get() = synchronized(lock) { holders.size }
+
     fun aspectRatio(url: String): Float? = aspectRatios[url]
 
     fun acquire(url: String): Holder = synchronized(lock) {

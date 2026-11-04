@@ -14,7 +14,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import name.alexwayfer.customtv.chat.ChatCosmetics
 import name.alexwayfer.customtv.chat.ChatterCosmetics
 import name.alexwayfer.customtv.chat.SevenTvCosmetics
@@ -33,7 +36,8 @@ internal val LocalChatCosmetics = staticCompositionLocalOf<State<ChatCosmetics>>
 
 /**
  * Gives the rows the badges and paints the [settings] turn on, loading FFZ's, BTTV's, and CustomTV's lists once they
- * are. Before the settings are restored nothing shows, so a turned off switch does not flash its badges in.
+ * are, and CustomTV's again each hour while the chat is on screen. Before the settings are restored nothing shows, so
+ * a turned off switch does not flash its badges in.
  */
 @Composable
 internal fun ProvideChatCosmetics(
@@ -48,7 +52,10 @@ internal fun ProvideChatCosmetics(
     val customTvOn = sources?.customTvBadges == true
     LaunchedEffect(ffzOn) { if (ffzOn) ThirdPartyBadgeLists.loadFfz() }
     LaunchedEffect(bttvOn) { if (bttvOn) ThirdPartyBadgeLists.loadBttv() }
-    LaunchedEffect(customTvOn) { if (customTvOn) CustomTvBadges.load() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(customTvOn, lifecycle) {
+        if (customTvOn) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { CustomTvBadges.keepLoaded() }
+    }
     val ffz by ThirdPartyBadgeLists.ffz.collectAsStateWithLifecycle()
     val bttv by ThirdPartyBadgeLists.bttv.collectAsStateWithLifecycle()
     val customTv by CustomTvBadges.list.collectAsStateWithLifecycle()

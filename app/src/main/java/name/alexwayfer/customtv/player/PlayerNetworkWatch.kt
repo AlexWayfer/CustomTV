@@ -7,12 +7,12 @@ import android.net.NetworkCapabilities
 import android.os.Handler
 import name.alexwayfer.customtv.diagnostics.AppLog
 
-/** Reloads the live player page when another working network becomes the app's default. */
+/** Gives live stall recovery a new wait when another working network becomes the app's default. */
 internal class PlayerNetworkWatch(
     appContext: Context,
     private val handler: Handler,
     private val isLive: () -> Boolean,
-    private val reloadPage: () -> Unit,
+    private val onNetworkChanged: () -> Unit,
 ) {
     private val connectivity = appContext.getSystemService(ConnectivityManager::class.java)
     private var callback: ConnectivityManager.NetworkCallback? = null
@@ -37,9 +37,9 @@ internal class PlayerNetworkWatch(
     }
 
     private fun switched() {
-        if (callback == null || !networkSwitchReloadsPlayer(isLive(), StreamPlayback.userPaused)) return
-        AppLog.i(PLAYER_LOG_TAG, "Network switched, reloading the page")
-        reloadPage()
+        if (callback == null || !networkSwitchWatchesPlayer(isLive(), StreamPlayback.userPaused)) return
+        AppLog.i(PLAYER_LOG_TAG, "Network switched, waiting for playback to recover")
+        onNetworkChanged()
     }
 
     private fun NetworkCapabilities.validated() = hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)

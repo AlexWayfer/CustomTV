@@ -54,6 +54,59 @@ class TwitchGqlTest {
     }
 
     @Test
+    fun aServerErrorOnWithheldSocialLinksDoesNotNeedAReport() {
+        val body = """
+            {"errors":[
+              {"message":"server error","path":["user","channel","socialMedias"]},
+              {"message":"failed integrity check","path":["user","channel","socialMedias"],
+               "extensions":{"code":"IntegrityCheckFailed"}}
+            ]}
+        """.trimIndent()
+
+        assertEquals(emptyList<String>(), gqlErrorsToReport(body))
+    }
+
+    @Test
+    fun withheldLinksDoNotHideServerErrorsElsewhereOrWithoutAPath() {
+        for (path in listOf(
+            "",
+            """, "path":["user","followers"]""",
+            """, "path":["otherUser","channel","socialMedias"]""",
+        )) {
+            val body = """
+                {"errors":[
+                  {"message":"server error"$path},
+                  {"message":"failed integrity check","path":["user","channel","socialMedias"],
+                   "extensions":{"code":"IntegrityCheckFailed"}}
+                ]}
+            """.trimIndent()
+
+            assertEquals(listOf("server error"), gqlErrorsToReport(body))
+        }
+    }
+
+    @Test
+    fun withheldLinksDoNotHideOtherErrorsOnTheSameField() {
+        val body = """
+            {"errors":[
+              {"message":"unknown field","path":["user","channel","socialMedias"]},
+              {"message":"failed integrity check","path":["user","channel","socialMedias"],
+               "extensions":{"code":"IntegrityCheckFailed"}}
+            ]}
+        """.trimIndent()
+
+        assertEquals(listOf("unknown field"), gqlErrorsToReport(body))
+    }
+
+    @Test
+    fun aSocialLinksServerErrorWithoutAnIntegrityFailureStillNeedsAReport() {
+        assertEquals(
+            listOf("server error"),
+            gqlErrorsToReport("""{"errors":[{"message":"server error","path":["user","channel","socialMedias"]}]}"""),
+        )
+    }
+
+    @Test
     fun errorsToReportAreEmptyForDataOrAnUnreadableBody() {
         assertEquals(emptyList<String>(), gqlErrorsToReport("""{"data":{"user":null}}"""))
         assertEquals(emptyList<String>(), gqlErrorsToReport("<html>"))

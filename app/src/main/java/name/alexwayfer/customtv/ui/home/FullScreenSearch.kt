@@ -2,9 +2,13 @@ package name.alexwayfer.customtv.ui.home
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.input.TextFieldState
@@ -31,9 +35,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import name.alexwayfer.customtv.ui.theme.TwitchDivider
@@ -43,6 +52,9 @@ import name.alexwayfer.customtv.ui.theme.TwitchSurfaceAlt
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
 private val SearchErrorColor = Color(0xFFEB0400)
+
+/** Fade over the first half of the width lost, hiding the content before the surface reaches its button. */
+private const val SEARCH_CONTENT_FADE_WIDTH_FRACTION = 0.5f
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,15 +111,41 @@ internal fun FullScreenSearch(
             collapsedShape = collapsedShape,
             colors = searchBarColors(),
         ) {
-            if (error != null) {
-                Text(
-                    text = error,
-                    color = SearchErrorColor,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
-                )
+            Column(Modifier.fillMaxWidth().fadeSearchContent()) {
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = SearchErrorColor,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
+                    )
+                }
+                content()
             }
-            content()
+        }
+    }
+}
+
+/**
+ * Fades only the search's contents, leaving its surface to morph into the entry point. Use the measured width:
+ * Material changes it during predictive back without changing SearchBarState's expansion progress. Drawing the
+ * fade from that same width also restores the content when back is cancelled, without a separate animation.
+ */
+@Composable
+private fun Modifier.fadeSearchContent(): Modifier {
+    val windowInfo = LocalWindowInfo.current
+    val insets = WindowInsets.safeDrawing
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    return graphicsLayer {
+        val fullWidth = windowInfo.containerSize.width -
+            insets.getLeft(density, layoutDirection) - insets.getRight(density, layoutDirection)
+        alpha = if (fullWidth > 0) {
+            val lostWidth = fullWidth - size.width
+            val fadeProgress = (lostWidth / (fullWidth * SEARCH_CONTENT_FADE_WIDTH_FRACTION)).coerceIn(0f, 1f)
+            1f - FastOutSlowInEasing.transform(fadeProgress)
+        } else {
+            0f
         }
     }
 }
@@ -150,6 +188,7 @@ private fun SearchInputField(
         onSearch = { onSubmit() },
         modifier = Modifier
             .fillMaxWidth()
+            .fadeSearchContent()
             // The open search gives its field the height it opened out of, the 48dp button or Home's cropped field,
             // and that cut the text under its own padding. The field keeps its full height, centered, overlapping
             // the search's padding above and below it.
@@ -158,7 +197,14 @@ private fun SearchInputField(
         // Another mode's hint fades in over the last one.
         placeholder = {
             Crossfade(targetState = placeholder, label = "search hint") { hint ->
-                Text(stringResource(hint), color = TwitchHint)
+                // The field shrinks into its entry point; the hint must not reflow as its width changes.
+                Text(
+                    text = stringResource(hint),
+                    color = TwitchHint,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip,
+                )
             }
         },
         trailingIcon = if (showChecking) {

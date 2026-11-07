@@ -14,9 +14,13 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SearchBarColors
@@ -38,12 +42,14 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import name.alexwayfer.customtv.ui.theme.TwitchDivider
 import name.alexwayfer.customtv.ui.theme.TwitchHint
@@ -77,7 +83,8 @@ internal fun searchBarColors(): SearchBarColors = SearchBarDefaults.colors(
 /**
  * The app's full-screen search of [state], closing back into [collapsedShape], with its [content] under the field:
  * the suggestions for the [value] typed. Enter calls [onSubmit]; a spinner shows at the field's end while
- * [checking], and the [error] under it. [onExpandedChange] hears when it opens and closes.
+ * [checking], and the [error] under it. With no [onSubmit], Enter hides the keyboard. [onExpandedChange] hears
+ * when it opens and closes.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,10 +94,11 @@ internal fun FullScreenSearch(
     value: String,
     onValueChange: (String) -> Unit,
     @StringRes placeholder: Int,
-    onSubmit: () -> Unit,
+    onSubmit: (() -> Unit)?,
     onExpandedChange: (Boolean) -> Unit,
     error: String? = null,
     checking: Boolean = false,
+    onClear: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     // The keyboard belongs to the search's own window while it is open; the screen below ignores it.
@@ -107,7 +115,7 @@ internal fun FullScreenSearch(
     CompositionLocalProvider(LocalContentColor provides TwitchText) {
         ExpandedFullScreenSearchBar(
             state = state,
-            inputField = { SearchInputField(text, state, placeholder, onSubmit, error, showChecking) },
+            inputField = { SearchInputField(text, state, placeholder, onSubmit, error, showChecking, onClear) },
             collapsedShape = collapsedShape,
             colors = searchBarColors(),
         ) {
@@ -178,14 +186,16 @@ private fun SearchInputField(
     text: TextFieldState,
     state: SearchBarState,
     @StringRes placeholder: Int,
-    onSubmit: () -> Unit,
+    onSubmit: (() -> Unit)?,
     error: String?,
     showChecking: Boolean,
+    onClear: (() -> Unit)?,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     SearchBarDefaults.InputField(
         textFieldState = text,
         searchBarState = state,
-        onSearch = { onSubmit() },
+        onSearch = { if (onSubmit == null) keyboard?.hide() else onSubmit() },
         modifier = Modifier
             .fillMaxWidth()
             .fadeSearchContent()
@@ -207,18 +217,27 @@ private fun SearchInputField(
                 )
             }
         },
-        trailingIcon = if (showChecking) {
-            {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = TwitchPurple,
-                    trackColor = TwitchDivider,
-                    strokeWidth = 2.dp,
-                )
-            }
+        trailingIcon = if (showChecking || (onClear != null && text.text.isNotEmpty())) {
+            { SearchTrailingIcon(showChecking, onClear) }
         } else {
             null
         },
         colors = searchInputColors(),
     )
+}
+
+@Composable
+private fun SearchTrailingIcon(showChecking: Boolean, onClear: (() -> Unit)?) {
+    if (showChecking) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(22.dp),
+            color = TwitchPurple,
+            trackColor = TwitchDivider,
+            strokeWidth = 2.dp,
+        )
+    } else if (onClear != null) {
+        IconButton(onClick = onClear) {
+            Icon(Icons.Filled.Close, stringResource(R.string.search_clear))
+        }
+    }
 }

@@ -23,7 +23,8 @@ internal class LiveStallRecovery(
         val watch = LiveStallWatchdog.watch(
             live = isLive(),
             playbackConfirmed = isPlaybackConfirmed(),
-            userPaused = StreamPlayback.userPaused,
+            // An assistant holding playback is not a stall, even if Twitch still reports Playing or Buffering.
+            userPaused = !StreamPlayback.canAutomaticallyPlay,
             tick = tick,
         )
         val action = watchdog.tick(SystemClock.elapsedRealtime(), watch, tick.positionSeconds, tick.latencySeconds)

@@ -48,6 +48,10 @@ object StreamPlayback {
     val isBound: Boolean
         get() = commands != null
 
+    /** Automatic repeats must not take audio focus back from a microphone recording. */
+    internal val canAutomaticallyPlay: Boolean
+        get() = !userPaused && !StreamInterruption.microphoneHoldsPlayback
+
     val isBuffering: Boolean
         get() = isBound && !userPaused && awaitingPlayback
 
@@ -57,6 +61,10 @@ object StreamPlayback {
     /** A playing report changes what the app shows: it was paused, waiting, or not confirmed yet. */
     private val playingChangesState: Boolean
         get() = userPaused || awaitingPlayback || !isPlaybackConfirmed || offline
+
+    /** Playback started, and neither the viewer nor the offline channel asked it to stop. */
+    private val expectsPlayback: Boolean
+        get() = isPlaybackConfirmed && !userPaused && !offline
 
     /**
      * A paused report now is not the viewer's pause: it is held off, already known, pending, still loading, or of an
@@ -191,6 +199,10 @@ object StreamPlayback {
             offline = false
             if (changed) syncState()
             return
+        }
+        // Background pauses remain recoverable, but microphone recording must remember this interruption too.
+        if (inferredPause.suppressed && expectsPlayback) {
+            StreamInterruption.report()
         }
         if (pauseReportIgnored) return
         // Twitch's player paused without the app asking, as it may when another app takes the sound.

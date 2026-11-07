@@ -53,8 +53,13 @@ internal object DisplayedChatBadgesRepository {
 }
 
 internal fun parseDisplayedChatBadges(body: String): DisplayedChatBadges? {
-    val array = JSONObject(body).optJSONObject("data")?.optJSONObject("user")?.optJSONArray("displayBadges")
-        ?: return null
+    val user = JSONObject(body).optJSONObject("data")?.optJSONObject("user") ?: return null
+    return parseUserDisplayedChatBadges(user)
+}
+
+/** The same channel badge fields, whether the user came alone or in a batch. */
+internal fun parseUserDisplayedChatBadges(user: JSONObject): DisplayedChatBadges? {
+    val array = user.optJSONArray("displayBadges") ?: return null
     val badges = ArrayList<ChatBadge>(array.length())
     val urls = LinkedHashMap<String, String>()
     for (item in array.objects()) {

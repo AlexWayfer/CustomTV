@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.semantics.Role
+import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import kotlin.math.roundToInt
 
@@ -82,6 +84,17 @@ internal enum class SettingsReselect {
 /** A subpage goes back to the main list, the way Back does; the main list scrolls to its top. */
 internal fun settingsReselect(page: SettingsPage): SettingsReselect =
     if (page == SettingsPage.Main) SettingsReselect.ScrollToTop else SettingsReselect.BackToMain
+
+@Composable
+internal fun settingsReselectAction(page: SettingsPage, onMain: () -> Unit, scroll: ScrollState): () -> Unit {
+    val scope = rememberCoroutineScope()
+    return {
+        when (settingsReselect(page)) {
+            SettingsReselect.BackToMain -> onMain()
+            SettingsReselect.ScrollToTop -> scope.launch { scroll.animateScrollTo(0) }
+        }
+    }
+}
 
 /** Where Back from the settings goes. */
 internal enum class SettingsBack {
@@ -136,7 +149,8 @@ internal fun SettingsPageEntry(icon: Painter, title: String, hint: String, onOpe
         supportingContent = { Text(hint) },
         trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().settingsSearchAnchor(title, hint)
+            .clickable(role = Role.Button, onClick = onOpen),
     )
 }
 

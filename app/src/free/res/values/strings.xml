@@ -52,6 +52,7 @@
     <string name="premium_all_predictions_and_polls">Create and manage predictions and polls</string>
     <string name="premium_all_voting">In-app voting in polls and predictions</string>
     <string name="premium_all_following_buttons">In-app following buttons</string>
+    <string name="premium_all_moderator_presence">Moderator presence in chat</string>
     <string name="premium_all_raider_marks">Raider marks for moderators</string>
     <string name="premium_all_reports">Reporting users</string>
     <string name="premium_upgrade">Upgrade to Premium</string>

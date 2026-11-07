@@ -352,10 +352,10 @@
     }
     return false;
   }
-  // The app reads the offline screen only until playback starts, so the text scan stops then.
-  var offlineCheckDone = false;
+  // An offline screen can appear after hours of playback, and the same page can go live again.
+  var reportedOffline = false;
   function notifyPlayback(playing) {
-    if (playing) offlineCheckDone = true;
+    if (reportedOffline) return;
     try { CustomTvPlayback.onState(playing); } catch (e) {}
   }
   function notifyInterrupted() {
@@ -419,7 +419,7 @@
   }
   function hasRenderedFrame(v) {
     // Sound only has no frames at all; playing sound counts then.
-    var picture = (v && v.videoWidth > 0 && v.videoHeight > 0) || !!window.__customTvVideoQuality;
+    var picture = customTvQualityHasPicture(v && v.videoWidth, v && v.videoHeight, !!window.__customTvAudioOnlyRequested);
     // A video that fades out to the app's pause still plays, but the app already counts it as paused.
     return v && !v.paused && !customTvFadingOut(v) && v.readyState >= 3 && picture && v.currentTime > 0;
   }
@@ -462,7 +462,8 @@
     var button = playerErrorButton();
     if (!button || button.__customTvReloadBound) return;
     button.__customTvReloadBound = true;
-    button.addEventListener('click', function() {
+    button.addEventListener('click', function(event) {
+      customTvDiagnosticErrorEvent(button.ownerDocument, button, event.isTrusted ? 'reload-click-manual' : 'reload-click-auto');
       try { CustomTvPlayback.onPlayerReload(); } catch (e) {}
     });
   }
@@ -485,6 +486,7 @@
     var button = playerErrorButton();
     if (!button || button.__customTvErrorReported) return;
     button.__customTvErrorReported = true;
+    customTvDiagnosticErrorEvent(button.ownerDocument, button, 'shown');
     try { CustomTvPlayback.onPlayerError(); } catch (e) {}
   }
   function isOffline() {
@@ -492,9 +494,10 @@
     for (var d = 0; d < docs.length; d++) {
       var doc = docs[d];
       if (!doc || !doc.querySelector) continue;
-      if (doc.querySelector(
+      var overlay = doc.querySelector(
         '[data-a-target*="offline"], [class*="player-overlay-offline"], [class*="offline-overlay"]'
-      )) {
+      );
+      if (visible(overlay)) {
         return true;
       }
       var nodes = doc.querySelectorAll('h1, h2, h3, p, span, [data-a-target], [aria-label]');
@@ -502,7 +505,7 @@
         var t = ((nodes[i].getAttribute('aria-label') || '') + ' ' + (nodes[i].textContent || ''))
           .toLowerCase().replace(/\s+/g, ' ').trim();
         if (!t || t.length > 64) continue;
-        if (isOfflineLabel(t)) return true;
+        if (isOfflineLabel(t) && visible(nodes[i])) return true;
       }
     }
     return false;
@@ -513,8 +516,11 @@
     return t === 'offline' || t.indexOf('is offline') !== -1 || t.indexOf('не в сети') !== -1;
   }
   function notifyOffline() {
-    if (offlineCheckDone || !isOffline()) return;
-    offlineCheckDone = true;
+    if (recordingPage) return;
+    var offline = isOffline();
+    if (offline === reportedOffline) return;
+    reportedOffline = offline;
+    if (!offline) return;
     try { CustomTvPlayback.onOffline(); } catch (e) {}
   }
   function readControlsVisible() {
@@ -830,6 +836,7 @@
     notifyPlayerError();
     notifyAudienceGate();
     var d = playerDoc();
+    if (d) customTvQualityTick(d);
     var v = d && d.querySelector('video');
     var adBreak = isAdBreak(d);
     if (v) customTvDiagnosticTick(d, v, !recordingPage && !adBreak);

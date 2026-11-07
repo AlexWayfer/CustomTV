@@ -59,6 +59,33 @@
     <string name="chat_input_logged_out">Войдите, чтобы писать в чат</string>
     <string name="chat_rules_title">Правила чата</string>
     <string name="view_chat_rules">Правила чата</string>
+    <string name="chat_moderators">Модераторы</string>
+    <string name="chat_moderators_empty">На этом канале нет модераторов</string>
+    <string name="chat_moderator_in_chat">В чате</string>
+    <string name="chat_moderator_not_in_chat">Не в чате</string>
+    <string name="chat_moderators_public">Список от IVR; данные могут быть из кэша</string>
+    <string name="chat_moderators_presence_failed">Не удалось проверить присутствие в чате. Показан список от IVR.</string>
+    <string name="chat_moderators_failed">Не удалось загрузить модераторов</string>
+    <string name="chat_moderators_loading">Загрузка модераторов</string>
+    <plurals name="chat_moderators_in_chat_count">
+        <item quantity="one">В чате (%1$d)</item>
+        <item quantity="few">В чате (%1$d)</item>
+        <item quantity="many">В чате (%1$d)</item>
+        <item quantity="other">В чате (%1$d)</item>
+    </plurals>
+    <plurals name="chat_moderators_not_in_chat_count">
+        <item quantity="one">Не в чате (%1$d)</item>
+        <item quantity="few">Не в чате (%1$d)</item>
+        <item quantity="many">Не в чате (%1$d)</item>
+        <item quantity="other">Не в чате (%1$d)</item>
+    </plurals>
+    <plurals name="chat_moderators_presence_unknown_count">
+        <item quantity="one">Присутствие неизвестно (%1$d)</item>
+        <item quantity="few">Присутствие неизвестно (%1$d)</item>
+        <item quantity="many">Присутствие неизвестно (%1$d)</item>
+        <item quantity="other">Присутствие неизвестно (%1$d)</item>
+    </plurals>
+    <string name="chat_command_mods_description">Показать модераторов этого канала</string>
     <string name="chat_rules_confirm">Понятно</string>
     <string name="chat_send">Отправить</string>
     <string name="chat_cancel_send">Отменить отправку</string>
@@ -807,4 +834,13 @@
         <item quantity="many">%d стримов скрыты по вашим настройкам</item>
         <item quantity="other">%d стрима скрыты по вашим настройкам</item>
     </plurals>
+    <string name="settings_search">Поиск по настройкам</string>
+    <string name="settings_search_hint">Поиск настройки по названию или описанию</string>
+    <string name="settings_search_empty">Настройки не найдены</string>
+    <string name="settings_search_sound_keywords">аудио громкость</string>
+    <string name="settings_search_emotes_keywords">смайлы смайлики</string>
+    <string name="settings_search_badges_keywords">значки бейджи</string>
+    <string name="settings_search_paints_keywords">краски раскраски цвет ника</string>
+    <string name="gesture_hint_preview_image_zoom">Масштаб изображения можно менять щипком или двойным нажатием.</string>
+    <string name="gesture_hint_preview_image_close">Изображение можно закрыть смахиванием вверх или вниз.</string>
 </resources>

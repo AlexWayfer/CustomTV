@@ -201,7 +201,8 @@ private fun ChatterLabelGistFields(token: TextFieldState, gistId: TextFieldState
     OutlinedSecureTextField(
         state = token,
         label = { Text(stringResource(R.string.chatter_labels_token)) },
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+        modifier = Modifier.fillMaxWidth().settingsSearchAnchor(stringResource(R.string.chatter_labels_token))
+            .padding(top = 12.dp),
         enabled = enabled,
         textObfuscationMode = TextObfuscationMode.Hidden,
     )
@@ -209,7 +210,8 @@ private fun ChatterLabelGistFields(token: TextFieldState, gistId: TextFieldState
     OutlinedTextField(
         state = gistId,
         label = { Text(stringResource(R.string.chatter_labels_gist_id)) },
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = Modifier.fillMaxWidth().settingsSearchAnchor(stringResource(R.string.chatter_labels_gist_id))
+            .padding(top = 8.dp),
         enabled = enabled,
         lineLimits = TextFieldLineLimits.SingleLine,
     )

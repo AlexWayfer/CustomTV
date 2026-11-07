@@ -9,6 +9,7 @@ internal fun WhispersBackground(userId: String?, onOpenRequested: () -> Unit) = 
 
 @Composable
 internal fun WhispersSection(
+    onConversationOpenChange: (Boolean) -> Unit,
     onClosed: () -> Unit,
     onOpenChannel: (ChannelPreview) -> Unit,
     onOpenSettings: () -> Unit,

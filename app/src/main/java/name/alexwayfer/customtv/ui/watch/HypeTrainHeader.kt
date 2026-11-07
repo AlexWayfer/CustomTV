@@ -1,14 +1,16 @@
 package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,12 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
@@ -39,28 +43,46 @@ import name.alexwayfer.customtv.chat.hypeTrainPercent
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
 
 /**
- * The hype train card's top: the train's [color] fills it as the level fills, with the level on the left and the
- * time left and share on the right. A completed level shows over them for a moment; a tap opens the details.
+ * The hype train card's top, with the level on the left and the time left and share on the right.
+ * A completed level shows over them for a moment; a tap opens the details.
  */
 @Composable
 internal fun HypeTrainHeader(
     train: ChannelHypeTrain,
+    completedLevel: Int?,
     color: Color,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    chatTextSize: Int,
+    bottomInset: Dp,
+    fill: () -> Float,
+    fold: () -> Float,
+) {
+    Column(
+        Modifier.fillMaxWidth().drawBehind {
+            val corner = 8.dp * fold().coerceIn(0f, 1f)
+            val outline = RoundedCornerShape(bottomStart = corner, bottomEnd = corner).createOutline(
+                size = Size(size.width * fill().coerceIn(0f, 1f), size.height),
+                layoutDirection = layoutDirection,
+                density = this,
+            )
+            drawOutline(outline, color)
+        },
+    ) {
+        HypeTrainHeaderContent(train, completedLevel, expanded, onExpandedChange, chatTextSize)
+        Spacer(Modifier.height(bottomInset))
+    }
+}
+
+@Composable
+private fun HypeTrainHeaderContent(
+    train: ChannelHypeTrain,
+    completedLevel: Int?,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     chatTextSize: Int,
 ) {
     val titleSize = chatSp(chatTextSize, 14, 16)
-    val completedLevel = rememberCompletedLevel(train)
-    val fill by animateFloatAsState(
-        targetValue = when {
-            completedLevel != null -> 1f
-            train.phase == HypeTrainPhase.Approaching -> 0f
-            else -> hypeTrainPercent(train) / 100f
-        },
-        animationSpec = tween(VOTE_ANIMATION_MS),
-        label = "hype train fill",
-    )
     val timer = if (train.phase == HypeTrainPhase.Ended) null else rememberCountdownLabel(train.endsAtMillis)
     val description = hypeTrainDescription(train, timer)
     val completedText = completedLevel?.let { stringResource(R.string.chat_hype_train_level_completed, it) }
@@ -71,7 +93,6 @@ internal fun HypeTrainHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind { drawRect(color, size = Size(size.width * fill, size.height)) }
             .clickable { onExpandedChange(!expanded) }
             .padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -168,7 +189,7 @@ private fun hypeTrainValue(train: ChannelHypeTrain): String = if (train.phase ==
  * otherwise. The first frame and a new train show no celebration.
  */
 @Composable
-private fun rememberCompletedLevel(train: ChannelHypeTrain): Int? {
+internal fun rememberCompletedLevel(train: ChannelHypeTrain): Int? {
     var shownLevel by remember(train.id) { mutableIntStateOf(train.level) }
     var completed by remember(train.id) { mutableStateOf<Int?>(null) }
     LaunchedEffect(train.id, train.level) {

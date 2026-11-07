@@ -5,12 +5,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.shoutoutSourceName
 import name.alexwayfer.customtv.chat.TwitchPlaqueAction
@@ -90,7 +92,7 @@ private fun ColumnScope.WatchChatPaneContent(scene: WatchScene, layout: Minimiza
         chatSettingsViewModel = scene.chatSettingsViewModel,
         settingsViewModel = scene.settingsViewModel,
         notices = { appearance -> WatchChatNotices(scene, layout, appearance) },
-        listTop = { RecentChatLoadingIndicator(data.recentChatLoadState.value, data.reconnecting.value) },
+        listBottom = { RecentChatLoadingIndicator(data.recentChatLoadState.value, data.reconnecting.value) },
         belowList = { appearance -> WatchThreadPanel(scene, appearance) },
     )
 }
@@ -169,14 +171,26 @@ internal fun WatchInputBar(scene: WatchScene, layout: MinimizablePlayerLayout) {
         label = "chat input bar shown",
     )
     val context = LocalContext.current
-    Box(modifier = Modifier.foldedAway { inputBarShown.value }) {
-        ChatInputBar(
-            channel = scene.inputChannel(layout, rememberChatModeControl(scene.profile.id, scene.ownBadges?.badges)),
-            user = scene.inputUser(),
-            compose = watchCompose(scene),
-            menu = scene.chatMenu(LocalGestureHints.current),
-            bar = scene.inputBarLook(layout, context),
-        )
+    val labels by ChatterLabelsRepository.labelsByUserId.collectAsStateWithLifecycle()
+    ProvideChatCosmetics(
+        settings = scene.settings,
+        sevenTv = { scene.data.sevenTvCosmetics.value },
+        chatterIds = { scene.data.chatterIds.value },
+        loadSources = false,
+    ) {
+        CompositionLocalProvider(LocalChatterLabels provides labels) {
+            Box(modifier = Modifier.foldedAway { inputBarShown.value }) {
+                ChatInputBar(
+                    channel = scene.inputChannel(
+                        layout, rememberChatModeControl(scene.profile.id, scene.ownBadges?.badges),
+                    ),
+                    user = scene.inputUser(),
+                    compose = watchCompose(scene),
+                    menu = scene.chatMenu(LocalGestureHints.current),
+                    bar = scene.inputBarLook(layout, context),
+                )
+            }
+        }
     }
 }
 

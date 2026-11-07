@@ -1,5 +1,16 @@
 # CustomTV (free version)
 
+## v1.16.0 (2026-11-08)
+
+*   Add search across settings
+*   Show channel moderators in the chat menu
+*   Fix old stream audio playing after playback recovery
+*   Improve switching between video quality and audio-only playback
+*   Prevent background playback from interrupting microphone recording
+*   Handle streams going offline and returning during playback
+*   Move chat loading progress to the bottom without shifting messages
+*   Improve the Hype Train progress animation
+
 ## v1.15.0 (2026-11-04)
 
 *   Add support for Chatter Labels comments

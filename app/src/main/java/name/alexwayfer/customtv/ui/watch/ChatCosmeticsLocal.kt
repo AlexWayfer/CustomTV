@@ -44,17 +44,21 @@ internal fun ProvideChatCosmetics(
     settings: AppSettings?,
     sevenTv: () -> SevenTvCosmetics,
     chatterIds: () -> Map<String, String>,
+    /** A second surface can reuse the chat's loaded sources without starting another loader or refresh loop. */
+    loadSources: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val sources = settings?.let(::cosmeticSources)
     val ffzOn = sources?.ffzBadges == true
     val bttvOn = sources?.bttvBadges == true
     val customTvOn = sources?.customTvBadges == true
-    LaunchedEffect(ffzOn) { if (ffzOn) ThirdPartyBadgeLists.loadFfz() }
-    LaunchedEffect(bttvOn) { if (bttvOn) ThirdPartyBadgeLists.loadBttv() }
+    LaunchedEffect(ffzOn, loadSources) { if (loadSources && ffzOn) ThirdPartyBadgeLists.loadFfz() }
+    LaunchedEffect(bttvOn, loadSources) { if (loadSources && bttvOn) ThirdPartyBadgeLists.loadBttv() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(customTvOn, lifecycle) {
-        if (customTvOn) lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { CustomTvBadges.keepLoaded() }
+    LaunchedEffect(customTvOn, lifecycle, loadSources) {
+        if (loadSources && customTvOn) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { CustomTvBadges.keepLoaded() }
+        }
     }
     val ffz by ThirdPartyBadgeLists.ffz.collectAsStateWithLifecycle()
     val bttv by ThirdPartyBadgeLists.bttv.collectAsStateWithLifecycle()

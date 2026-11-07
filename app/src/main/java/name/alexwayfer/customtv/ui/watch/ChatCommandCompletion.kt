@@ -5,6 +5,7 @@ import name.alexwayfer.customtv.chat.NickCompletionEdit
 /** The chat commands the message field handles itself, without sending them. */
 internal enum class ChatCommand(val word: String) {
     User("/user"),
+    Moderators("/mods"),
 
     /** Opens the prediction in the channel points sheet, for the streamer and the channel's moderators. */
     Prediction("/prediction"),
@@ -27,7 +28,7 @@ internal enum class ChatCommand(val word: String) {
 
 /** The commands that change the chat's modes. */
 internal val CHAT_MODE_COMMANDS =
-    ChatCommand.entries - setOf(ChatCommand.User, ChatCommand.Prediction, ChatCommand.Shoutout)
+    ChatCommand.entries - setOf(ChatCommand.User, ChatCommand.Moderators, ChatCommand.Prediction, ChatCommand.Shoutout)
 
 /**
  * The commands this user has: `/prediction` only for the streamer and the channel's moderators, and `/shoutout` and
@@ -36,7 +37,7 @@ internal val CHAT_MODE_COMMANDS =
 internal fun availableChatCommands(predictionOpenable: Boolean, chatModes: Boolean): List<ChatCommand> =
     ChatCommand.entries.filter {
         when (it) {
-            ChatCommand.User -> true
+            ChatCommand.User, ChatCommand.Moderators -> true
             ChatCommand.Prediction -> predictionOpenable
             else -> chatModes
         }

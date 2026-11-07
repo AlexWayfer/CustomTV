@@ -42,7 +42,7 @@ internal fun ChatList(
     feed: ChatFeed,
     settings: ChatListSettings,
     layout: ChatListLayout,
-    listTop: @Composable () -> Unit,
+    listBottom: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = feed.messages()
@@ -88,9 +88,9 @@ internal fun ChatList(
                 // The notices lie over the list's top; the oldest messages scroll out from under them.
                 contentPadding = PaddingValues(start = layout.sideInset, top = layout.topInset, end = layout.sideInset),
             )
-            // Over the list, right below the notices, so it neither moves the messages nor shifts their indices.
-            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = layout.topInset)) {
-                listTop()
+            // Over the list's bottom edge, so it neither moves the messages nor shifts their indices.
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+                listBottom()
             }
             MoreMessagesBelow(
                 visible = moreBelowVisible,

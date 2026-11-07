@@ -147,4 +147,6 @@ internal val GestureHint.text: Int
         GestureHint.FullscreenChatHide -> R.string.gesture_hint_fullscreen_chat_hide
         GestureHint.HideStream -> R.string.gesture_hint_hide_stream
         GestureHint.ModerationSwipe -> R.string.gesture_hint_moderation_swipe
+        GestureHint.PreviewImageZoom -> R.string.gesture_hint_preview_image_zoom
+        GestureHint.PreviewImageClose -> R.string.gesture_hint_preview_image_close
     }

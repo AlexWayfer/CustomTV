@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -53,7 +54,6 @@ import name.alexwayfer.customtv.data.ChatSendRepository
 import name.alexwayfer.customtv.data.ChatSettings
 import name.alexwayfer.customtv.data.chatRulesFingerprint
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
-import name.alexwayfer.customtv.ui.settings.animatedControlValue
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 
 /** The input row's side padding: narrow at the end, where the end button's own padding makes up the rest. */
@@ -101,7 +101,7 @@ internal fun ChatInputBar(
     ChatFieldRequestEffects(input, composer, actions)
     ChatInputBarBody(input, composer, field, panel, actions)
     if (composer.rulesOpen) ChatInputRulesSheet(input, actions, onDismiss = { composer.rulesOpen = false })
-    ChatInputMenuSheet(input, composer, field)
+    key(channel.login) { ChatInputMenuSheet(input, composer, field) }
     OpenWhenPlayerContentShown(menu.recap?.reopen) { composer.recapOpen = true }
     if (composer.recapOpen) ChatInputRecapSheet(input, composer)
 }
@@ -160,6 +160,13 @@ private fun ChatComposerEffects(
 private fun ChatFieldRequestEffects(input: ChatInput, composer: ChatComposerState, actions: ChatInputActions) {
     val warned = input.warned
     val draft = input.compose.draft
+    val menuMention = composer.mentionAfterMenu
+    LaunchedEffect(menuMention) {
+        if (menuMention == null) return@LaunchedEffect
+        composer.mentionAfterMenu = null
+        actions.editor.insertMention(menuMention)
+        actions.askForField()
+    }
     // Runs after the confirmed rules removed the tap cover, so the field's focus requester is attached.
     LaunchedEffect(composer.focusAfterRules) {
         if (!composer.focusAfterRules) return@LaunchedEffect
@@ -233,7 +240,7 @@ private fun ChatInputBarBody(
                 ),
             ) {
                 ChatFieldNotesArea(input, composer.sendError) {
-                    openChatMenu(composer, field, input.sheetKeyboard, atModes = true)
+                    openChatMenu(composer, field, input.sheetKeyboard, ChatMenuStart.Modes)
                 }
                 val look = ChatFieldLook(chatFieldColors(barAlpha), draftEmotes, panel.composerOpen, historyButton)
                 ChatFieldRow(input, composer, field, actions, look)
@@ -386,61 +393,6 @@ private fun ChatInputRulesSheet(input: ChatInput, actions: ChatInputActions, onD
         rules = rules,
         onConfirm = if (input.rulesNeedConfirmation) actions::confirmRules else null,
         onDismiss = onDismiss,
-    )
-}
-
-@Composable
-private fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, field: ChatFieldState) {
-    val menu = input.menu
-    val sheetSettings = animatedControlValue(menu.settings)
-    val channel = input.channel
-    val modesPage = rememberChatModesSubpage(channel.roomModes, channel.modeControl)
-    if (!field.menuOpen || sheetSettings == null) return
-    ChatSettingsSheet(
-        channelLogin = input.channel.login,
-        browserSheetHeightPx = input.channel.browserSheetHeightPx,
-        readableColors = sheetSettings.readableColors,
-        timestamps = sheetSettings.timestamps,
-        textSize = sheetSettings.textSize,
-        smoothChatScroll = sheetSettings.smoothChatScroll,
-        onReadableColorsChange = menu.onReadableColorsChange,
-        onTimestampsChange = menu.onTimestampsChange,
-        onTextSizeChange = menu.onTextSizeChange,
-        onSmoothChatScrollChange = menu.onSmoothChatScrollChange,
-        onRefreshEmotes = menu.onRefreshEmotes,
-        onRefreshLabels = menu.onRefreshLabels,
-        onOpenOwnProfile = menu.onOpenOwnProfile?.let { open ->
-            {
-                field.menuOpen = false
-                open()
-            }
-        },
-        onViewChatRules = menuRulesOpener(input, composer, field),
-        onDismiss = {
-            field.menuOpen = false
-            input.sheetKeyboard.onDismiss()
-        },
-        streamHide = menu.streamHide,
-        initialSubpage = modesPage?.takeIf { field.menuAtModes },
-        firstRow = { openSubpage ->
-            ChannelPanelRows(channel.broadcasterId, channel.browserSheetHeightPx, openSubpage)
-        },
-        modesRow = { openSubpage ->
-            ChatModesRow(channel.roomModes, channel.modeControl, modesPage, openSubpage)
-        },
-        recapRow = { hideThen ->
-            menu.recap?.let { source ->
-                ChatRecapRow(
-                    source = source,
-                    onOpen = {
-                        hideThen {
-                            field.menuOpen = false
-                            composer.recapOpen = true
-                        }
-                    },
-                )
-            }
-        },
     )
 }
 

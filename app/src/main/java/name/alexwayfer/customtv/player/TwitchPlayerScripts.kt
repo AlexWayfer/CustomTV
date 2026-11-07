@@ -3,12 +3,17 @@ package name.alexwayfer.customtv.player
 import android.content.res.AssetManager
 import java.util.concurrent.ConcurrentHashMap
 
+/** The caller of Play, retained in diagnostics across asynchronous Twitch and video operations. */
+internal enum class PlayerPlaySource(val diagnosticName: String) {
+    Command("command"), Repeat("repeat"), LateRepeat("late-repeat"), Background("background"),
+}
+
 /**
  * The scripts the app runs in the Twitch player page. Each one is a file in `assets/player`, read once a process on
  * first use, and runs after `common.js`, which holds the helpers they share.
  */
 internal class TwitchPlayerScripts(private val assets: AssetManager) {
-    val play: String get() = script("play.js")
+    fun play(source: PlayerPlaySource): String = call("play.js", "'${source.diagnosticName}'")
 
     val pause: String get() = script("pause.js")
 
@@ -74,11 +79,16 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
     /** Sets how long the sound fades on play, pause, start, and close; 0 turns the fades off. */
     fun soundFade(fadeMs: Long): String = call("sound-fade.js", fadeMs.toString())
 
-    private fun script(name: String): String = "${load(COMMON)}\n${load(DIAGNOSTICS)}\n${load(name)}"
+    private fun script(name: String): String = "${helpers(name)}\n${load(name)}"
 
     /** A script that is a function expression, called with [argument]. */
     private fun call(name: String, argument: String): String =
-        "${load(COMMON)}\n${load(DIAGNOSTICS)}\n${load(name).trimEnd()}($argument);"
+        "${helpers(name)}\n${load(name).trimEnd()}($argument);"
+
+    private fun helpers(name: String): String {
+        val quality = if (name in QUALITY_SCRIPTS) "\n${load(QUALITY_FLOW)}" else ""
+        return "${load(COMMON)}\n${load(DIAGNOSTICS)}$quality"
+    }
 
     private fun load(name: String): String = loaded.getOrPut(name) {
         assets.open("$DIRECTORY/$name").bufferedReader().use { it.readText() }
@@ -88,6 +98,8 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
         const val DIRECTORY = "player"
         const val COMMON = "common.js"
         const val DIAGNOSTICS = "diagnostics.js"
+        const val QUALITY_FLOW = "quality-flow.js"
+        val QUALITY_SCRIPTS = setOf("quality.js", "sound-only.js", "video-quality.js", "hide-top-overlay.js")
         val loaded = ConcurrentHashMap<String, String>()
     }
 }

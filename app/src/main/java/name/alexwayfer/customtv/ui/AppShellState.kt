@@ -92,6 +92,7 @@ internal class AppShellState(
     var openPlayerFromHome by mutableStateOf(true)
     var sectionBeforeWhispers by mutableStateOf(AppSection.Home)
     var expandPlayerAfterWhispers by mutableStateOf(false)
+    var whisperConversationOpen by mutableStateOf(false)
     var keepNavigationBarWhileImeCloses by mutableStateOf(false)
     var homeSearchOpen by mutableStateOf(false)
     var fullPlayerCovering by mutableStateOf(false)

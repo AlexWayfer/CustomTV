@@ -140,7 +140,7 @@ internal class PlayerPageRecovery(
         handler.removeCallbacks(errorReloadWatchdog)
     }
 
-    /** Whether this playing report is the first since the load, which it then records. */
+    /** Whether this playing report is the first since the load or the channel's last offline screen. */
     fun confirmPlayback(): Boolean {
         if (playbackConfirmed) return false
         playbackConfirmed = true
@@ -176,6 +176,7 @@ internal class PlayerPageRecovery(
 
     /** The page explains the missing video: the channel is offline, or Twitch's audience gate waits for a tap. */
     fun videoWithheld() {
+        playbackConfirmed = false
         withheld = true
         handler.removeCallbacks(startupWatchdog)
     }

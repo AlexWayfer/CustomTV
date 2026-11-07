@@ -54,6 +54,7 @@
     <string name="premium_all_predictions_and_polls">Создание прогнозов и опросов и управление ими</string>
     <string name="premium_all_voting">Голосование в опросах и прогнозах в приложении</string>
     <string name="premium_all_following_buttons">Кнопки «Отслеживать» в приложении</string>
+    <string name="premium_all_moderator_presence">Присутствие модераторов в чате</string>
     <string name="premium_all_raider_marks">Подсветка рейдеров для модераторов</string>
     <string name="premium_all_reports">Жалобы на пользователей</string>
     <string name="premium_upgrade">Перейти на Premium</string>

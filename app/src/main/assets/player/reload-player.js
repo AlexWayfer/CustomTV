@@ -19,9 +19,14 @@
     var buttons = docs[d].querySelectorAll('button, [role="button"]');
     for (var b = 0; b < buttons.length; b++) {
       if (visible(buttons[b]) && isReloadButton(buttons[b])) {
+        customTvDiagnosticErrorEvent(docs[d], buttons[b], 'reload-before');
         try { buttons[b].click(); } catch (e) {}
+        customTvDiagnosticErrorEvent(docs[d], buttons[b], 'reload-after');
         return;
       }
     }
   }
+  docs.forEach(function(doc) {
+    customTvDiagnosticEvent(doc, doc.querySelector('video'), 'error-reload-missing');
+  });
 })();

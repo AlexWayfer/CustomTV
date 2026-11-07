@@ -1,4 +1,4 @@
-(function() {
+(function(source) {
   function isAdBreak(doc) {
     if (!doc || !doc.querySelector) return false;
     if (doc.querySelector('[data-a-target*="ad-notice"], [data-a-target*="video-ad"], ' +
@@ -27,13 +27,18 @@
       } catch (e) {}
     }
     var v = doc.querySelector('video');
-    customTvDiagnosticEvent(doc, v, 'play-request');
+    var diagnostic = customTvDiagnosticCommand(doc, 'play', source);
     if (v && !v.paused) {
+      diagnostic(v, 'already-playing');
       // A pause that still fades out turns back; Twitch's player has not paused yet.
       if (customTvFadingOut(v)) customTvFade(v, 1, function() { customTvFullVolume(doc); });
       return;
     }
-    if (isAdBreak(doc)) return;
+    diagnostic(v, 'request');
+    if (isAdBreak(doc)) {
+      diagnostic(v, 'ad-skipped');
+      return;
+    }
     var btn = doc.querySelector('[data-a-target="player-play-pause-button"]');
     var twitchPaused = true;
     if (btn) {
@@ -49,17 +54,31 @@
     // The sound starts silent and fades in once the video plays.
     if (v) customTvFade(v, 1, function() { customTvFullVolume(doc); });
     if (btn && twitchPaused) {
-      try { btn.click(); } catch (e) {}
+      diagnostic(v, 'button-before');
+      try {
+        btn.click();
+        diagnostic(v, 'button-after');
+      } catch (e) {
+        diagnostic(v, 'button-failed');
+      }
     }
     if (v && v.paused) {
       try {
         v.muted = false;
         v.defaultMuted = false;
         v.playsInline = true;
+        diagnostic(v, 'native-before');
         var p = v.play();
-        if (p && p.catch) p.catch(function() {});
-      } catch (e) {}
+        diagnostic(v, 'native-after');
+        if (p && p.then) p.then(function() {
+          diagnostic(v, 'native-resolved');
+        }, function() {
+          diagnostic(v, 'native-rejected');
+        });
+      } catch (e) {
+        diagnostic(v, 'native-failed');
+      }
     }
   }
   customTvDocs().forEach(go);
-})();
+})

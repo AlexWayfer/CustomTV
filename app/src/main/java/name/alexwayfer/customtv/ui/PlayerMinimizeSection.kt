@@ -15,11 +15,16 @@ internal fun sectionAfterPlayerMinimizes(
 }
 
 /**
- * The mini player would cover the app settings and the whisper conversations, so it steps off
+ * The mini player would cover the app settings and an open whisper conversation, so it steps off
  * screen there. Playback and chat keep running; a full player and picture-in-picture stay on screen.
  */
-internal fun miniPlayerHidden(section: AppSection, minimized: Boolean, inPictureInPicture: Boolean): Boolean =
-    minimized && !inPictureInPicture && (section == AppSection.Settings || section == AppSection.Whispers)
+internal fun miniPlayerHidden(
+    section: AppSection,
+    minimized: Boolean,
+    inPictureInPicture: Boolean,
+    whisperConversationOpen: Boolean = false,
+): Boolean = minimized && !inPictureInPicture &&
+    (section == AppSection.Settings || (section == AppSection.Whispers && whisperConversationOpen))
 
 /**
  * Back on Home with a mini player leaves the app into picture-in-picture, so the player keeps

@@ -68,9 +68,44 @@ class PlayerMinimizeSectionTest {
     }
 
     @Test
-    fun theMiniPlayerHidesOnWhispers() {
-        assertTrue(miniPlayerHidden(AppSection.Whispers, minimized = true, inPictureInPicture = false))
+    fun theMiniPlayerStaysOnTheWhisperList() {
+        assertFalse(miniPlayerHidden(AppSection.Whispers, minimized = true, inPictureInPicture = false))
     }
+
+    @Test
+    fun theMiniPlayerHidesOnlyWhileAWhisperConversationIsOpen() {
+        assertFalse(whisperPlayerHidden(conversationOpen = false))
+        assertTrue(whisperPlayerHidden(conversationOpen = true))
+    }
+
+    @Test
+    fun anOpenWhisperConversationDoesNotHideThePlayerOnAnotherSection() {
+        assertFalse(
+            miniPlayerHidden(
+                AppSection.ChannelProfile,
+                minimized = true,
+                inPictureInPicture = false,
+                whisperConversationOpen = true,
+            ),
+        )
+    }
+
+    @Test
+    fun aWhisperConversationKeepsAFullPlayerAndPictureInPictureVisible() {
+        assertFalse(whisperPlayerHidden(conversationOpen = true, minimized = false))
+        assertFalse(whisperPlayerHidden(conversationOpen = true, inPictureInPicture = true))
+    }
+
+    private fun whisperPlayerHidden(
+        conversationOpen: Boolean,
+        minimized: Boolean = true,
+        inPictureInPicture: Boolean = false,
+    ) = miniPlayerHidden(
+        AppSection.Whispers,
+        minimized = minimized,
+        inPictureInPicture = inPictureInPicture,
+        whisperConversationOpen = conversationOpen,
+    )
 
     @Test
     fun theMiniPlayerStaysOnOtherSections() {

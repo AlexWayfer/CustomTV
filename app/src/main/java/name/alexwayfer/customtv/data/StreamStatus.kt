@@ -17,6 +17,7 @@ fun profileAfterStreamStatus(profile: ChannelProfile, event: StreamStatusEvent):
         )
         is StreamStatusEvent.Offline -> profile.copy(
             isLive = false,
+            streamStartedAtMillis = null,
             viewerCount = null,
             sharedViewerCount = null,
         )

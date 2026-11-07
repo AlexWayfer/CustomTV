@@ -6,7 +6,7 @@ import name.alexwayfer.customtv.ui.LoadingBar
 import name.alexwayfer.customtv.ui.rememberLoadingBarState
 
 /**
- * The bar over the chat's top while the messages from before the open load, and while a lost chat connects again
+ * The bar over the chat's bottom while the messages from before the open load, and while a lost chat connects again
  * and then loads what it missed.
  */
 @Composable

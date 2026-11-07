@@ -178,7 +178,7 @@ internal class ChatInputActions(
             }
             ChatFieldEndTap.Nothing -> Unit
             ChatFieldEndTap.Send -> submit()
-            ChatFieldEndTap.Menu -> openChatMenu(composer, field, input.value.sheetKeyboard, atModes = false)
+            ChatFieldEndTap.Menu -> openChatMenu(composer, field, input.value.sheetKeyboard, ChatMenuStart.Rows)
         }
     }
 
@@ -215,6 +215,11 @@ internal class ChatInputActions(
         val now = input.value
         val compose = now.compose
         val text = compose.draft.text.toString()
+        if (isModeratorsCommand(text)) {
+            compose.draft.clearText()
+            openChatMenu(composer, field, now.sheetKeyboard, ChatMenuStart.Moderators)
+            return true
+        }
         val modeControl = now.channel.modeControl
         val modeCommand = modeControl?.let { chatModeCommand(text) }
         if (modeControl != null && modeCommand != null) {
@@ -282,18 +287,17 @@ internal class ChatInputActions(
 }
 
 /**
- * Opens the chat menu behind the field's end button, or at the chat modes page ([atModes]) when the streamer or a
- * moderator taps the chat mode plaques.
+ * Opens the menu at its rows, the chat modes from their plaques, or the moderators from `/mods`.
  */
 internal fun openChatMenu(
     composer: ChatComposerState,
     field: ChatFieldState,
     sheetKeyboard: SheetKeyboard,
-    atModes: Boolean,
+    page: ChatMenuStart,
 ) {
     if (field.menuOpen) return
     composer.pickerOpen = false
-    field.menuAtModes = atModes
+    field.menuStart = page
     sheetKeyboard.open { field.menuOpen = true }
 }
 

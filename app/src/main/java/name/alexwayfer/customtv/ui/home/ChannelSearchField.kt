@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SearchBar
@@ -34,7 +33,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,16 +67,12 @@ private fun Modifier.channelSearchHeight() =
 @Composable
 internal fun ChannelSearchButton(state: SearchBarState, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
-    IconButton(
-        onClick = { scope.launch { state.animateToExpanded() } },
-        modifier = modifier.onGloballyPositioned { state.collapsedCoords = it },
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Search,
-            contentDescription = stringResource(R.string.channel_search_open),
-            tint = TwitchText,
-        )
-    }
+    FullScreenSearchButton(
+        state = state,
+        description = stringResource(R.string.channel_search_open),
+        onOpen = { scope.launch { state.animateToExpanded() } },
+        modifier = modifier,
+    )
 }
 
 /**

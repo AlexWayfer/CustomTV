@@ -41,7 +41,33 @@ var customTvDiagnosticWrite = function(event, snapshot) {
 };
 
 var customTvDiagnosticEvent = function(doc, v, event) {
-    customTvDiagnosticWrite(event, customTvDiagnosticSnapshot(doc, v));
+    // A video being replaced must not let a failed snapshot interrupt the playback command itself.
+    try { customTvDiagnosticWrite(event, customTvDiagnosticSnapshot(doc, v)); } catch (e) {}
+};
+
+// Play and quality changes share a sequence; a closure retains it across asynchronous playback results.
+var customTvDiagnosticCommand = function(doc, kind, source) {
+    var owner = doc.defaultView || doc;
+    var command = (owner.__customTvDiagnosticCommandId || 0) + 1;
+    owner.__customTvDiagnosticCommandId = command;
+    return function(v, event) {
+        try {
+            var stale = v && doc.querySelector('video') !== v ? '-stale' : '';
+            customTvDiagnosticEvent(doc, v, kind + '-' + event + stale + '/' + source + '/' + command);
+        } catch (e) {}
+    };
+};
+
+// Read only the numeric error code from the existing gate; never persist its text or a button's label.
+var customTvDiagnosticErrorEvent = function(doc, button, phase) {
+    try {
+        var gate = button && button.closest && button.closest('[data-a-target="player-overlay-content-gate"]');
+        var match = gate && /#(\d{1,6})\b/.exec(gate.textContent || '');
+        // Twitch's earlier click listener can remove the gate before ours runs.
+        if (button && match) button.__customTvDiagnosticErrorCode = match[1];
+        var code = button && button.__customTvDiagnosticErrorCode || '0';
+        customTvDiagnosticEvent(doc, doc.querySelector('video'), 'error-' + phase + '/' + code);
+    } catch (e) {}
 };
 
 var customTvDiagnosticTick = function(doc, v, live) {

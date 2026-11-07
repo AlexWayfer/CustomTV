@@ -113,7 +113,7 @@ internal fun ColumnScope.ChatPane(
     chatSettingsViewModel: ChatSettingsViewModel = viewModel(),
     settingsViewModel: SettingsViewModel = viewModel(),
     notices: @Composable (ChatAppearance) -> Unit = {},
-    listTop: @Composable () -> Unit = {},
+    listBottom: @Composable () -> Unit = {},
     belowList: @Composable (ChatAppearance) -> Unit = {},
 ) {
     val storedChatSettings by chatSettingsViewModel.settings.collectAsStateWithLifecycle()
@@ -168,7 +168,7 @@ internal fun ColumnScope.ChatPane(
         ProvideChatRowLocals(channel, channelProfile, nickColors, settings.topChatterBadges) {
             ProvideChatCosmetics(appSettings, sevenTvCosmetics, chatterIds) {
                 ProvideMessageMenuModeration(settings.messageMenuModeration, settings.swipeModeration) {
-                    ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listTop))
+                    ChatPaneBody(feed, listSettings, overlay, ChatPaneSlots(noticesHidden, notices, listBottom))
                     belowList(appearance)
                 }
             }
@@ -259,11 +259,11 @@ private data class ChatOverlay(
     val backgroundAlpha: () -> Float,
 )
 
-/** What the screen puts over the list: the notices, hidden while typing, and a line at the list's top. */
+/** What the screen puts over the list: the notices, hidden while typing, and a line at the list's bottom. */
 private class ChatPaneSlots(
     val noticesHidden: Boolean,
     val notices: @Composable (ChatAppearance) -> Unit,
-    val listTop: @Composable () -> Unit,
+    val listBottom: @Composable () -> Unit,
 )
 
 @Composable
@@ -310,7 +310,7 @@ private fun ColumnScope.ChatPaneBody(
                 feed = feed,
                 settings = settings,
                 layout = layout,
-                listTop = slots.listTop,
+                listBottom = slots.listBottom,
                 modifier = Modifier
                     .fillMaxSize()
                     .drawBehind {

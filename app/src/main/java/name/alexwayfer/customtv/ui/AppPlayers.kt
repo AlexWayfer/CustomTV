@@ -53,7 +53,12 @@ internal fun BoxScope.AppPlayerHost(scene: AppScene) {
                 .wrapContentSize(Alignment.BottomEnd)
                 .padding(end = 12.dp, bottom = scene.layout.miniPlayerBottom)
                 .offscreenWhen(
-                    miniPlayerHidden(shell.section, minimized = true, inPictureInPicture = false),
+                    miniPlayerHidden(
+                        shell.section,
+                        minimized = true,
+                        inPictureInPicture = false,
+                        whisperConversationOpen = shell.whisperConversationOpen,
+                    ),
                     scene.layout.screenWidthPx,
                 )
         }.zIndex(1f),
@@ -264,7 +269,12 @@ internal fun BoxScope.AppRecordingPlayer(scene: AppScene) {
                 .align(Alignment.BottomEnd)
                 .padding(end = 12.dp, bottom = scene.layout.miniPlayerBottom)
                 .offscreenWhen(
-                    miniPlayerHidden(shell.section, minimized = true, inPictureInPicture = false),
+                    miniPlayerHidden(
+                        shell.section,
+                        minimized = true,
+                        inPictureInPicture = false,
+                        whisperConversationOpen = shell.whisperConversationOpen,
+                    ),
                     scene.layout.screenWidthPx,
                 )
                 .zIndex(2f)

@@ -23,7 +23,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 41
+        versionCode = 43
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -39,14 +39,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.15.0"
+            versionName = "1.16.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.14.0"
+                versionName = "1.15.0"
                 buildConfigField("boolean", "PREMIUM", "true")
             }
         }
@@ -164,6 +164,9 @@ dependencies {
     if (premiumSources) {
         // The home screen widget of the live channels.
         "premiumImplementation"(libs.androidx.glance.appwidget)
+        // Fullscreen link preview images with zoom and large-image subsampling.
+        "premiumImplementation"(libs.telephoto.coil)
+        "premiumImplementation"(libs.telephoto.flick)
     }
     implementation(libs.androidx.work.runtime)
     // Drag to reorder the chatter labels in the settings.

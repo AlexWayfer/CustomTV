@@ -19,6 +19,8 @@ internal enum class GestureHint(val key: String, val slowUsesBeforeHint: Int) {
 
     /** Premium: the moderating swipe; a user who turned it off gets no tip about it. */
     ModerationSwipe("moderation_swipe", REPEATED_SLOW_USES),
+    PreviewImageZoom("preview_image_zoom", REPEATED_SLOW_USES),
+    PreviewImageClose("preview_image_close", REPEATED_SLOW_USES),
 }
 
 /** What is stored for one tip: whether its gesture was ever used, the slow uses so far, and whether it was shown. */

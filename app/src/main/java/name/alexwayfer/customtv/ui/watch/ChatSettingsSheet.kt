@@ -56,6 +56,7 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.chat.MAX_CHAT_TEXT_SIZE
 import name.alexwayfer.customtv.chat.MIN_CHAT_TEXT_SIZE
 import name.alexwayfer.customtv.chat.chatTextSizeFromStored
+import name.alexwayfer.customtv.data.ChatModerator
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
 import name.alexwayfer.customtv.ui.settings.SettingsStepSlider
 
@@ -63,6 +64,7 @@ import name.alexwayfer.customtv.ui.settings.SettingsStepSlider
 @Composable
 internal fun ChatSettingsSheet(
     channelLogin: String,
+    channelId: String?,
     /** Null over a recording's or a clip's replayed chat: the site and the experimental login are for the live one. */
     browserSheetHeightPx: (() -> Int)?,
     readableColors: Boolean,
@@ -79,7 +81,11 @@ internal fun ChatSettingsSheet(
     onOpenOwnProfile: (() -> Unit)?,
     /** Null when the channel has no rules to show. */
     onViewChatRules: (() -> Unit)?,
+    /** Null over replayed chat, which has no composer to mention a moderator in. */
+    onMentionModerator: ((ChatModerator) -> Unit)?,
     onDismiss: () -> Unit,
+    /** `/mods` opens the moderators page directly, with Back leading to the menu rows. */
+    atModerators: Boolean = false,
     /** The Hide stream switch over the live stream; none over a replayed chat. */
     streamHide: StreamHideToggle? = null,
     /** The page the menu opens at instead of its rows, such as the chat modes. */
@@ -103,6 +109,7 @@ internal fun ChatSettingsSheet(
             action()
         }
     }
+    val modsPage = rememberChatModeratorsSubpage(channelLogin, channelId, readableColors, hideThen, onMentionModerator)
     val scrollState = rememberScrollState()
     // A drag back up through the settings stops at the top; closing the sheet takes a new drag.
     val overscroll = rememberOverscrollEffect()
@@ -116,7 +123,7 @@ internal fun ChatSettingsSheet(
         contentWindowInsets = { sheetInsets },
     ) {
         NoSheetWindowDim()
-        ChatMenuPages(maxHeight, initialSubpage) { openSubpage ->
+        ChatMenuPages(maxHeight, if (atModerators) modsPage else initialSubpage) { openSubpage ->
             Column(
                 modifier = Modifier
                     .heightIn(max = maxHeight)
@@ -131,7 +138,8 @@ internal fun ChatSettingsSheet(
                     loggedIn = onOpenOwnProfile != null,
                     onExperimentalLogin = { hideThen(onDismiss) },
                 )
-                ChatProfileAndRulesRows(onOpenOwnProfile, onViewChatRules, hideThen)
+                val openModerators = onMentionModerator?.let { { openSubpage(modsPage) } }
+                ChatProfileAndRulesRows(onOpenOwnProfile, onViewChatRules, openModerators, hideThen)
                 modesRow(openSubpage)
                 recapRow(hideThen)
                 streamHide?.let { toggle -> StreamHideRow(toggle) }
@@ -198,11 +206,12 @@ private fun ChatLookToggles(
     )
 }
 
-/** Your profile and the chat rules, each when there is one to show; both close the sheet before they open. */
+/** Your profile, moderators, and the chat rules. Moderators open inside the menu, just above its rules. */
 @Composable
 private fun ChatProfileAndRulesRows(
     onOpenOwnProfile: (() -> Unit)?,
     onViewChatRules: (() -> Unit)?,
+    onOpenModerators: (() -> Unit)?,
     hideThen: (() -> Unit) -> Unit,
 ) {
     onOpenOwnProfile?.let { open ->
@@ -210,6 +219,13 @@ private fun ChatProfileAndRulesRows(
             label = stringResource(R.string.chat_own_profile),
             icon = rememberVectorPainter(Icons.Outlined.Person),
             modifier = Modifier.clickable { hideThen(open) },
+        )
+    }
+    onOpenModerators?.let { open ->
+        ChatSettingsRow(
+            label = stringResource(R.string.chat_moderators),
+            icon = painterResource(R.drawable.ic_groups_outline),
+            modifier = Modifier.clickable(role = Role.Button, onClick = open),
         )
     }
     onViewChatRules?.let { view ->

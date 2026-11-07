@@ -92,6 +92,7 @@ private val ChatCommand.argument: Int?
 private val ChatCommand.description: Int
     get() = when (this) {
         ChatCommand.User -> R.string.chat_command_user_description
+        ChatCommand.Moderators -> R.string.chat_command_mods_description
         ChatCommand.Prediction -> R.string.chat_command_prediction_description
         ChatCommand.Shoutout -> R.string.chat_command_shoutout_description
         ChatCommand.Slow -> R.string.chat_command_slow_description

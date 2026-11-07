@@ -129,7 +129,8 @@ private fun ThirdPartyToggle(
 private fun MeMessageStyle(settings: AppSettings, viewModel: SettingsViewModel) {
     Text(
         text = stringResource(R.string.me_messages),
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+        modifier = Modifier.settingsSearchAnchor(stringResource(R.string.me_messages))
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         style = MaterialTheme.typography.bodyLarge,
     )
     SingleChoiceSegmentedButtonRow(

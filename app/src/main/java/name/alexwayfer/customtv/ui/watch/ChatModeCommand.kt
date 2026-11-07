@@ -28,7 +28,7 @@ internal fun chatModeCommand(text: String): ChatModeCommandInput? {
         ChatCommand.EmoteOnlyOff -> ChatModeChange.EmoteOnly(false)
         ChatCommand.UniqueChat -> ChatModeChange.UniqueChat(true)
         ChatCommand.UniqueChatOff -> ChatModeChange.UniqueChat(false)
-        ChatCommand.User, ChatCommand.Prediction, ChatCommand.Shoutout -> return null
+        ChatCommand.User, ChatCommand.Moderators, ChatCommand.Prediction, ChatCommand.Shoutout -> return null
     }
     return change?.let(ChatModeCommandInput::Change) ?: ChatModeCommandInput.Invalid(command)
 }

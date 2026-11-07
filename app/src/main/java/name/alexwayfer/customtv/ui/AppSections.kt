@@ -190,6 +190,7 @@ private fun AppSectionPage(scene: AppScene, page: AppSection) {
     val shell = scene.shell
     if (page == AppSection.Whispers) {
         WhispersSection(
+            onConversationOpenChange = { shell.whisperConversationOpen = it },
             onClosed = {
                 shell.section = shell.sectionBeforeWhispers
                 if (shell.expandPlayerAfterWhispers) shell.player = shell.player.returnedFromWhispers(scene.watching)

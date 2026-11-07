@@ -50,6 +50,27 @@
     <string name="chat_input_logged_out">Log in to chat</string>
     <string name="chat_rules_title">Chat rules</string>
     <string name="view_chat_rules">View chat rules</string>
+    <string name="chat_moderators">Moderators</string>
+    <string name="chat_moderators_empty">This channel has no moderators</string>
+    <string name="chat_moderator_in_chat">In chat</string>
+    <string name="chat_moderator_not_in_chat">Not in chat</string>
+    <string name="chat_moderators_public">List provided by IVR; it may be cached</string>
+    <string name="chat_moderators_presence_failed">Couldn’t check presence in chat. Showing the list from IVR.</string>
+    <string name="chat_moderators_failed">Couldn’t load moderators</string>
+    <string name="chat_moderators_loading">Loading moderators</string>
+    <plurals name="chat_moderators_in_chat_count">
+        <item quantity="one">In chat (%1$d)</item>
+        <item quantity="other">In chat (%1$d)</item>
+    </plurals>
+    <plurals name="chat_moderators_not_in_chat_count">
+        <item quantity="one">Not in chat (%1$d)</item>
+        <item quantity="other">Not in chat (%1$d)</item>
+    </plurals>
+    <plurals name="chat_moderators_presence_unknown_count">
+        <item quantity="one">Presence unknown (%1$d)</item>
+        <item quantity="other">Presence unknown (%1$d)</item>
+    </plurals>
+    <string name="chat_command_mods_description">Show this channel’s moderators</string>
     <string name="chat_rule_numbered" translatable="false">%1$d. %2$s</string>
     <string name="chat_rules_confirm">OK, got it</string>
     <string name="chat_send">Send</string>
@@ -747,4 +768,13 @@
         <item quantity="one">%d stream hidden by your settings</item>
         <item quantity="other">%d streams hidden by your settings</item>
     </plurals>
+    <string name="settings_search">Search settings</string>
+    <string name="settings_search_hint">Find a setting by its name or description</string>
+    <string name="settings_search_empty">No settings match your search</string>
+    <string name="settings_search_sound_keywords">audio volume</string>
+    <string name="settings_search_emotes_keywords">emoticons smileys</string>
+    <string name="settings_search_badges_keywords">badges icons</string>
+    <string name="settings_search_paints_keywords">paints name color</string>
+    <string name="gesture_hint_preview_image_zoom">Pinch or double-tap the image to change its zoom.</string>
+    <string name="gesture_hint_preview_image_close">Swipe the image up or down to close it.</string>
 </resources>

@@ -47,7 +47,7 @@ private val GestureGroups = listOf(
             Gesture(R.string.gesture_message_hold, R.string.gesture_message_hold_result),
             Gesture(R.string.gesture_thread_swipe, R.string.gesture_thread_swipe_result),
             Gesture(R.string.gesture_chatter_card_hold, R.string.gesture_chatter_card_hold_result),
-        ),
+        ) + EditionImageGestures,
     ),
     GestureGroup(
         R.string.gestures_section_player,

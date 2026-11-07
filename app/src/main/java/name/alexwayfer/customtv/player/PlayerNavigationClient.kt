@@ -25,6 +25,8 @@ internal class PlayerNavigationClient(
     private val isReleased: () -> Boolean,
     private val events: PlayerPageEvents,
 ) : WebViewClient() {
+    private val workerScripts = TwitchWorkerInterceptor()
+
     override fun shouldOverrideUrlLoading(
         view: WebView,
         request: WebResourceRequest,
@@ -34,7 +36,8 @@ internal class PlayerNavigationClient(
     )
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-        if (isReleased()) null else UsherAudioOnly.intercept(request, events.playlistArrival)
+        if (isReleased()) null else workerScripts.intercept(request, view.context.assets)
+            ?: UsherAudioOnly.intercept(request, events.playlistArrival)
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
         if (isReleased() || !isPlayerDocumentUrl(url)) return

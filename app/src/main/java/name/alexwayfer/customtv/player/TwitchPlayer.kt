@@ -45,6 +45,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.currentStateAsState
 import name.alexwayfer.customtv.data.AppSettingsStore
+import name.alexwayfer.customtv.data.ChannelAvatarRepository
+import name.alexwayfer.customtv.data.StreamStatusEvent
 import name.alexwayfer.customtv.diagnostics.AppLog
 import name.alexwayfer.customtv.ui.settings.beforeRestore
 import kotlin.math.roundToInt
@@ -651,15 +653,18 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         if (released) return
         webView.onResume()
         webView.resumeTimers()
-        val js = if (playing) scripts.play else scripts.pause
+        val js = if (playing) scripts.play(PlayerPlaySource.Command) else scripts.pause
         webView.evaluateJavascript(js) { onRun() }
         mainHandler.postDelayed({
-            if (!released) webView.evaluateJavascript(js, null)
+            if (!released && (!playing || StreamPlayback.canAutomaticallyPlay)) {
+                val repeat = if (playing) scripts.play(PlayerPlaySource.Repeat) else scripts.pause
+                webView.evaluateJavascript(repeat, null)
+            }
         }, PLAY_STATE_REPEAT_MS)
         if (playing) {
             mainHandler.postDelayed({
-                if (!released && !StreamPlayback.userPaused) {
-                    webView.evaluateJavascript(scripts.play, null)
+                if (!released && StreamPlayback.canAutomaticallyPlay) {
+                    webView.evaluateJavascript(scripts.play(PlayerPlaySource.LateRepeat), null)
                 }
             }, PLAY_LATE_REPEAT_MS)
         }
@@ -732,11 +737,14 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     }
 
     private fun handleOffline() {
-        if (recovery.playbackConfirmed) return
+        val channel = loadedTarget as? TwitchPlaybackTarget.Channel ?: return
+        if (StreamPlayback.channelOffline) return
         AppLog.i(PLAYER_LOG_TAG, "Offline after ${recovery.sinceLoadMs} ms")
         recovery.videoWithheld()
+        reportedPlaying = false
         revealSurface()
         StreamPlayback.channelOffline = true
+        ChannelAvatarRepository.applyStreamStatus(StreamStatusEvent.Offline(channel.login))
         onOffline?.invoke()
         offlinePage.update(offline = true)
     }

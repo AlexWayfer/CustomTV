@@ -23,6 +23,7 @@ import name.alexwayfer.customtv.data.OwnChannelReads
 import name.alexwayfer.customtv.ui.account.AccountViewModel
 import name.alexwayfer.customtv.ui.home.HomeViewModel
 import name.alexwayfer.customtv.ui.theme.TwitchBg
+import name.alexwayfer.customtv.ui.watch.ChatImageViewerHost
 import name.alexwayfer.customtv.ui.watch.ClearFocusWhenImeDismissed
 import name.alexwayfer.customtv.ui.watch.ImeDismissFocus
 import name.alexwayfer.customtv.ui.watch.LocalImeDismissFocus
@@ -73,7 +74,7 @@ fun CustomTvApp() {
         LocalSnackbarLift provides scene.snackbarLift,
     ) {
         ClearFocusWhenImeDismissed()
-        AppScreens(scene)
+        ChatImageViewerHost { AppScreens(scene) }
     }
 }
 

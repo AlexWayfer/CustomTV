@@ -46,7 +46,19 @@ class ChatCommandCompletionTest {
 
     @Test
     fun aViewerHasNoPredictionOrChatModeCommands() {
-        assertEquals(listOf(ChatCommand.User), availableChatCommands(predictionOpenable = false, chatModes = false))
+        assertEquals(
+            listOf("/user", "/mods"),
+            availableChatCommands(predictionOpenable = false, chatModes = false).map { it.word },
+        )
+    }
+
+    @Test
+    fun moderatorsAreOfferedToEveryoneWithoutAPremiumLock() {
+        val commands = availableChatCommands(predictionOpenable = false, chatModes = false)
+        val matches = matchingChatCommands("/MO", commands)
+
+        assertEquals(listOf("/mods"), matches.map { it.word })
+        assertTrue(matches.none { it in CHAT_MODE_COMMANDS })
     }
 
     @Test

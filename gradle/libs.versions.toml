@@ -1,5 +1,5 @@
 [versions]
-agp = "9.5.0"
+agp = "9.5.1"
 coreKtx = "1.19.1"
 splashscreen = "1.2.0"
 junit = "4.13.2"
@@ -16,6 +16,7 @@ activityCompose = "1.13.0"
 datastore = "1.3.0"
 okhttp = "5.5.1"
 coil = "2.7.0"
+telephoto = "0.19.0"
 media3 = "1.11.1"
 browser = "1.10.0"
 json = "20260814"
@@ -56,6 +57,8 @@ markdown-renderer-m3 = { group = "com.mikepenz", name = "multiplatform-markdown-
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil" }
 coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
+telephoto-coil = { group = "me.saket.telephoto", name = "zoomable-image-coil", version.ref = "telephoto" }
+telephoto-flick = { group = "me.saket.telephoto", name = "flick", version.ref = "telephoto" }
 androidx-media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 json = { group = "org.json", name = "json", version.ref = "json" }

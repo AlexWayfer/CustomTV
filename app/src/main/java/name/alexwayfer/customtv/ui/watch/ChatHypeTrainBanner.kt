@@ -2,6 +2,10 @@ package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -15,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
@@ -30,17 +35,18 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.secondsRoundedUp
 import name.alexwayfer.customtv.chat.ChannelHypeTrain
 import name.alexwayfer.customtv.chat.HypeTrainPhase
+import name.alexwayfer.customtv.chat.hypeTrainPercent
 import name.alexwayfer.customtv.chat.opaqueArgbFromHex
 import name.alexwayfer.customtv.chat.twitchEmoteUrl
+import name.alexwayfer.customtv.ui.components.CardFoldSpring
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
 /**
- * The hype train notice, shaped like Twitch's own: the train's color fills the card as the level
- * fills, with the level on the left and the time left and share on the right. A tap shows the
- * conductors and the level's emote rewards.
+ * The train's color fills the collapsed card, including the carousel footer. Opening the details
+ * retracts the fill into the header and rounds its bottom corners with the same fold.
  */
 @Composable
 internal fun ChatHypeTrainBanner(
@@ -53,6 +59,19 @@ internal fun ChatHypeTrainBanner(
 ) {
     val labelSize = chatSp(chatTextSize, 12, 14)
     val color = hypeTrainColor(train.colorHex) ?: TwitchPurple
+    val completedLevel = rememberCompletedLevel(train)
+    val transition = updateTransition(expanded, label = "hype train expansion")
+    val fold by transition.animateFloat({ CardFoldSpring }, label = "hype train fold") { if (it) 1f else 0f }
+    val headerInset = bottomInset.coerceAtLeast(0.dp) * (1f - fold.coerceIn(0f, 1f))
+    val fill by animateFloatAsState(
+        targetValue = when {
+            completedLevel != null -> 1f
+            train.phase == HypeTrainPhase.Approaching -> 0f
+            else -> hypeTrainPercent(train) / 100f
+        },
+        animationSpec = tween(VOTE_ANIMATION_MS),
+        label = "hype train fill",
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -68,9 +87,19 @@ internal fun ChatHypeTrainBanner(
             }
             .blockChatTouches(),
     ) {
-        HypeTrainHeader(train, color, expanded, onExpandedChange, chatTextSize)
-        AnimatedVisibility(
-            visible = expanded,
+        HypeTrainHeader(
+            train = train,
+            completedLevel = completedLevel,
+            color = color,
+            expanded = expanded,
+            onExpandedChange = onExpandedChange,
+            chatTextSize = chatTextSize,
+            bottomInset = headerInset,
+            fill = { fill },
+            fold = { fold },
+        )
+        transition.AnimatedVisibility(
+            visible = { it },
             enter = expandVertically(),
             exit = shrinkVertically(),
         ) {
@@ -85,7 +114,8 @@ internal fun ChatHypeTrainBanner(
             }
         }
         if (bottomInset > 0.dp) {
-            Spacer(Modifier.height(bottomInset))
+            // Move the dot inset between the colored header and the footer, preserving the card's total inset.
+            Spacer(Modifier.height((bottomInset - headerInset).coerceAtLeast(0.dp)))
         }
     }
 }

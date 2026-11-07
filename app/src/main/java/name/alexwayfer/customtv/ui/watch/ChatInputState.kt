@@ -43,6 +43,8 @@ internal class ChatComposerState {
     var rulesOpen by mutableStateOf(false)
     var rulesTrigger by mutableStateOf(ChatRulesTrigger.MessageField)
     var focusAfterRules by mutableStateOf(false)
+    /** A moderator picked in the menu, inserted once after the sheet has closed. */
+    var mentionAfterMenu by mutableStateOf<String?>(null)
     var recapOpen by mutableStateOf(false)
 
     /** The plaque with the user's own messages is open over the field, at [historyShownId] or at the newest one. */
@@ -105,8 +107,8 @@ internal fun rememberChatFieldState(): ChatFieldState {
 internal class ChatFieldState(val scroll: ScrollState) {
     var menuOpen by mutableStateOf(false)
 
-    /** The menu opens at the chat modes page, as a tap on their plaque asks, instead of at its rows. */
-    var menuAtModes by mutableStateOf(false)
+    /** Where a shortcut opens the menu; every ordinary open resets it to the rows. */
+    var menuStart by mutableStateOf(ChatMenuStart.Rows)
     var focused by mutableStateOf(false)
     val focus = FocusRequester()
     val presses = MutableInteractionSource()

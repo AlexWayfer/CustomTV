@@ -77,6 +77,7 @@ class StreamStatusTest {
         assertEquals(false, next?.isLive)
         assertNull(next?.viewerCount)
         assertNull(next?.sharedViewerCount)
+        assertNull(next?.streamStartedAtMillis)
         assertEquals("Old title", next?.streamTitle)
     }
 

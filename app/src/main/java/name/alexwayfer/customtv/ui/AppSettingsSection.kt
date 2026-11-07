@@ -34,6 +34,7 @@ internal fun SettingsSectionPage(scene: AppScene) {
             signedIn = scene.account != null,
             accountName = scene.account?.displayName,
             reselected = shell.settingsReselected,
+            onSearchOpenChange = { shell.homeSearchOpen = it },
             scrollTo = shell.settingsScrollTarget,
             onScrolled = { shell.settingsScrollTarget = null },
             onBackToPlayer = shell.settingsPlayerReturn?.takeIf { scene.watching }?.let { sheet ->

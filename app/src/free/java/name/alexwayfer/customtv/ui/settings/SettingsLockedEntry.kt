@@ -30,6 +30,7 @@ internal fun SettingsLockedEntry(icon: Painter, title: String, source: String) {
         // The line under the title already says it; TalkBack reads it once.
         trailingContent = { PremiumLockIcon(Modifier.clearAndSetSemantics {}) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { PremiumBannerRequest.send(source) },
+        modifier = Modifier.fillMaxWidth().settingsSearchAnchor(title)
+            .clickable(role = Role.Button) { PremiumBannerRequest.send(source) },
     )
 }

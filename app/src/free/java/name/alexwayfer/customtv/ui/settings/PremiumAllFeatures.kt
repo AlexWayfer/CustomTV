@@ -118,6 +118,7 @@ private val premiumFeatureSections = listOf(
             R.string.premium_all_predictions_and_polls,
             R.string.premium_all_voting,
             R.string.premium_all_following_buttons,
+            R.string.premium_all_moderator_presence,
             R.string.premium_all_raider_marks,
             R.string.premium_all_reports,
         ),

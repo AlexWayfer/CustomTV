@@ -2,11 +2,6 @@ package name.alexwayfer.customtv.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,19 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +49,7 @@ internal fun SettingsScreen(
     signedIn: Boolean,
     accountName: String?,
     reselected: OneShotRequest<Unit>?,
+    onSearchOpenChange: (Boolean) -> Unit,
     viewModel: SettingsViewModel = viewModel(),
     scrollTo: SettingsScrollTarget? = null,
     onScrolled: () -> Unit = {},
@@ -82,18 +71,18 @@ internal fun SettingsScreen(
     val leaveGuard = remember { SettingsLeaveGuard() }
     val backToMain = { leaveGuard.leave { page = SettingsPage.Main } }
     val back = settingsBackAction(page, leaveGuard, backToMain, onClose, onBackToPlayer, onPlayerReturnDropped)
-    LaunchedEffect(reselected) {
-        if (reselected?.take() == null) return@LaunchedEffect
-        when (settingsReselect(page)) {
-            SettingsReselect.BackToMain -> backToMain()
-            SettingsReselect.ScrollToTop -> mainScroll.animateScrollTo(0)
-        }
-    }
     BackHandler(onBack = onClose)
     BackHandler(enabled = page != SettingsPage.Main, onBack = back)
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = { SettingsTopBar(page, onBack = back) },
+    SettingsSearchScaffold(
+        page = page,
+        accountName = accountName,
+        leaveGuard = leaveGuard,
+        onBack = back,
+        onOpenPage = { page = it },
+        reselected = reselected,
+        scrollTo = scrollTo,
+        onSearchOpenChange = onSearchOpenChange,
+        onReselect = settingsReselectAction(page, onMain = { page = SettingsPage.Main }, scroll = mainScroll),
     ) { padding ->
         AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
             // The keyboard's inset already holds the navigation bar the Scaffold padded for; without consuming it
@@ -170,36 +159,6 @@ private fun storedSettingsBody(viewModel: SettingsViewModel): SettingsBody? {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingsTopBar(page: SettingsPage, onBack: () -> Unit) {
-    TopAppBar(
-        title = {
-            AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
-                Text(stringResource(current.titleRes()))
-            }
-        },
-        navigationIcon = {
-            // Grows from no width, so the title slides aside instead of jumping.
-            AnimatedVisibility(
-                visible = page != SettingsPage.Main,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally(),
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.navigate_back),
-                    )
-                }
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-        ),
-    )
-}
-
 /** The list of subpages and the sections that sit on the main page itself. */
 @Composable
 private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: String?, onOpen: (SettingsPage) -> Unit) {
@@ -265,7 +224,7 @@ private fun SettingsSubpage(
 internal fun SettingsSection(title: String, first: Boolean = false) {
     Text(
         text = title,
-        modifier = Modifier.padding(
+        modifier = Modifier.settingsSearchAnchor(title).padding(
             start = 16.dp,
             end = 16.dp,
             top = if (first) 8.dp else 20.dp,
@@ -287,6 +246,7 @@ internal fun SettingsToggle(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .settingsSearchAnchor(label, hint)
             .toggleable(
                 value = checked,
                 enabled = enabled,

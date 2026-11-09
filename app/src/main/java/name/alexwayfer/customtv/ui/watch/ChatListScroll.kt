@@ -56,7 +56,7 @@ internal fun ChatListScrollEffects(
     LaunchedEffect(listState.canScrollBackward) {
         if (!listState.canScrollBackward) scroll.scrollAnchorMessageId = null
     }
-    LaunchedEffect(resumed) { scroll.onResumedChange(resumed, listState, messages) }
+    LaunchedEffect(resumed) { scroll.onResumedChange(resumed, listState) }
     LaunchedEffect(timelineJumpGeneration, messages.lastOrNull()?.id) {
         scroll.jumpAfterTimelineJump(timelineJumpGeneration, listState)
     }
@@ -167,16 +167,17 @@ internal class ChatListScroll(
         scope.launch { finishCatchUp(listState, messages.size) }
     }
 
-    suspend fun onResumedChange(resumed: Boolean, listState: LazyListState, messages: List<ChatMessage>) {
+    suspend fun onResumedChange(resumed: Boolean, listState: LazyListState) {
         if (!resumed) {
             if (stickToBottom.value) missedWhilePaused = true
             return
         }
         if (!skipEntranceAfterPause(missedWhilePaused, becameResumed = true)) return
         missedWhilePaused = false
-        if (!stickToBottom.value || messages.isEmpty()) return
-        startCatchUp(tailAfterReturn(messages), follow = false)
-        finishCatchUp(listState, messages.size)
+        val current = messages.value
+        if (!stickToBottom.value || current.isEmpty()) return
+        startCatchUp(tailAfterReturn(current), follow = false)
+        finishCatchUp(listState, current.size)
     }
 
     suspend fun jumpAfterTimelineJump(generation: Int, listState: LazyListState) {

@@ -107,6 +107,11 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <provider
+            android:name=".diagnostics.HeapCleanupProvider"
+            android:authorities="${applicationId}.heap-cleanup"
+            android:exported="false"
+            android:process=":heap_cleanup" />
+        <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.diagnostics"
             android:exported="false"

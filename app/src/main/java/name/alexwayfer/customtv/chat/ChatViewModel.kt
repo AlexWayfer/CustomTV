@@ -20,6 +20,7 @@ import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChannelCustomRewards
 import name.alexwayfer.customtv.data.ChannelLookup
 import name.alexwayfer.customtv.data.SevenTvRepository
+import name.alexwayfer.customtv.diagnostics.LiveChatMemory
 
 class ChatViewModel(
     private val client: TwitchIrcClient = TwitchIrcClient(),
@@ -109,6 +110,7 @@ class ChatViewModel(
     private var pendingRewardEvents: List<ChatMessage> = emptyList()
 
     init {
+        LiveChatMemory.track(this)
         collectJob = viewModelScope.launch {
             merge(
                 client.messages,

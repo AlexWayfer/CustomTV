@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import name.alexwayfer.customtv.chat.linkPreviewMemoryLine
 import name.alexwayfer.customtv.ui.components.SharedEmoteStore
 
 /** Size counters only. Neither chat contents nor objects from the heap enter this history. */
@@ -30,6 +31,7 @@ internal object MemoryDiagnostics {
         scope.launch {
             val file = AtomicFile(File(application.filesDir, "diagnostics/memory.txt"))
             previousHistory = readPrevious(file)
+            HeapDiagnostics.prepare()
             while (isActive) {
                 sample(application)
                 try {
@@ -42,24 +44,28 @@ internal object MemoryDiagnostics {
         }
     }
 
-    fun report(): String = "\nMemory samples (bytes unless marked KiB):\n" +
+    fun report(): String = MEMORY_SAMPLE_HEADING +
         listOf(previousHistory, crashHistory).filter(String::isNotBlank).joinToString("\n") + "\n"
 
     private fun sample(application: Application) {
         val runtime = Runtime.getRuntime()
         val memory = Debug.MemoryInfo()
         Debug.getMemoryInfo(memory)
+        val heapUsed = runtime.totalMemory() - runtime.freeMemory()
+        val heapLimit = runtime.maxMemory()
         val line = MemorySample(
             System.currentTimeMillis(),
-            runtime.totalMemory() - runtime.freeMemory(),
-            runtime.maxMemory(),
+            heapUsed,
+            heapLimit,
             Debug.getNativeHeapAllocatedSize(),
             replayRows,
             Coil.imageLoader(application).memoryCache?.size?.toLong() ?: 0L,
         ).line()
+        val caches = listOfNotNull(SharedEmoteStore.memoryLine(), linkPreviewMemoryLine).joinToString(" ")
         history.add(
             "$line pssKiB=${memory.totalPss} javaPssKiB=${memory.dalvikPss} " +
-                "nativePssKiB=${memory.nativePss} emoteHolders=${SharedEmoteStore.retainedCount}",
+                "nativePssKiB=${memory.nativePss} $caches " +
+                LiveChatMemory.line(),
         )
         crashHistory = history.snapshot().joinToString("\n")
     }

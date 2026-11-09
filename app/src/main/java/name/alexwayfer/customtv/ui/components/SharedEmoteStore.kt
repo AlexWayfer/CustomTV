@@ -15,6 +15,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import name.alexwayfer.customtv.diagnostics.cacheMemoryLine
 
 internal object SharedEmoteStore {
     private const val MAX_IDLE = 64
@@ -26,6 +27,10 @@ internal object SharedEmoteStore {
     private val handler = Handler(Looper.getMainLooper())
 
     val retainedCount: Int get() = synchronized(lock) { holders.size }
+
+    fun memoryLine(): String = synchronized(lock) {
+        "emoteHolders=$retainedCount emoteIdle=${idle.size} " + cacheMemoryLine("emoteRatios", aspectRatios.keys)
+    }
 
     fun aspectRatio(url: String): Float? = aspectRatios[url]
 
@@ -61,23 +66,30 @@ internal object SharedEmoteStore {
             idle.remove(oldest.key)
             if (oldest.value.refCount == 0) {
                 holders.remove(oldest.key)
+                aspectRatios.remove(oldest.key)
                 oldest.value.dispose()
             }
         }
     }
 
-    private fun dropUnusedEmpty(url: String) {
+    private fun dropUnusedEmpty(url: String, holder: Holder) {
         synchronized(lock) {
-            val holder = holders[url] ?: return
+            if (holders[url] !== holder) return
             if (holder.refCount == 0 && holder.drawable == null) {
                 idle.remove(url)
                 holders.remove(url)
+                aspectRatios.remove(url)
             }
         }
     }
 
     private fun onDecoded(url: String, holder: Holder) {
         synchronized(lock) {
+            if (holders[url] !== holder) {
+                holder.dispose()
+                return
+            }
+            holder.drawable?.let { recordAspectRatio(url, it) }
             if (holder.refCount > 0) {
                 holder.unpark()
             } else {
@@ -111,10 +123,7 @@ internal object SharedEmoteStore {
 
         suspend fun load(context: Context) {
             mutex.withLock {
-                drawable?.let { loaded ->
-                    recordAspectRatio(url, loaded)
-                    return
-                }
+                if (drawable != null) return
                 val result = context.imageLoader.execute(
                     ImageRequest.Builder(context)
                         .data(url)
@@ -125,13 +134,12 @@ internal object SharedEmoteStore {
                         .build(),
                 )
                 if (result !is SuccessResult) {
-                    dropUnusedEmpty(url)
+                    dropUnusedEmpty(url, this)
                     return
                 }
                 val loaded = result.drawable
                 loaded.callback = callback
                 drawable = loaded
-                recordAspectRatio(url, loaded)
                 onDecoded(url, this)
             }
         }

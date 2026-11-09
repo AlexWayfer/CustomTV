@@ -13,7 +13,7 @@ internal fun crashEvent(thread: Thread, error: Throwable, screen: DiagnosticScre
         source = thread.name,
         detail = listOfNotNull(error.javaClass.name, frame?.let { "at $it" }).joinToString(" "),
         message = diagnosticScreenLine(screen) + "\n" + Log.getStackTraceString(error) +
-            "\nMemory samples (bytes unless marked KiB):\n" + MemoryDiagnostics.crashHistory,
+            MEMORY_SAMPLE_HEADING + MemoryDiagnostics.crashHistory,
         firstAtMillis = System.currentTimeMillis(),
     )
 }

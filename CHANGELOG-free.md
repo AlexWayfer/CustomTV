@@ -1,5 +1,11 @@
 # CustomTV (free version)
 
+## v1.16.1 (2026-11-09)
+
+*   Reduce chat memory usage
+*   Improve diagnostic reports for out-of-memory crashes
+*   Fix chat message menu width
+
 ## v1.16.0 (2026-11-08)
 
 *   Add search across settings

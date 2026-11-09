@@ -13,6 +13,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.theme.CustomTvTheme
 import java.io.File
@@ -31,23 +35,28 @@ internal fun diagnosticReportIntent(context: Context, withAppLog: Boolean): Inte
  * this window covers the screen reaches the open one instead of stacking a second dialog under it.
  */
 class DiagnosticReportActivity : ComponentActivity() {
+    private var sharedHeapAt: Long? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         getSystemService(NotificationManager::class.java)?.cancel(DIAGNOSTIC_NOTIFICATION_ID)
-        val send = writeReport()
-        if (send == null) {
-            finish()
-            return
-        }
-        val items = diagnosticPrivateItems(diagnosticAccounts(this))
-        setContent {
-            CustomTvTheme {
-                DiagnosticSendDialog(
-                    items = items,
-                    onEmail = { share(send, emailOnly = true) },
-                    onOther = { share(send, emailOnly = false) },
-                    onDismiss = ::finish,
-                )
+        lifecycleScope.launch {
+            HeapDiagnostics.prepare()
+            val send = withContext(Dispatchers.IO) { writeReport() }
+            if (send == null) {
+                finish()
+                return@launch
+            }
+            val items = diagnosticPrivateItems(diagnosticAccounts(this@DiagnosticReportActivity))
+            setContent {
+                CustomTvTheme {
+                    DiagnosticSendDialog(
+                        items = items,
+                        onEmail = { share(send, emailOnly = true) },
+                        onOther = { share(send, emailOnly = false) },
+                        onDismiss = ::finish,
+                    )
+                }
             }
         }
     }
@@ -56,18 +65,21 @@ class DiagnosticReportActivity : ComponentActivity() {
     private fun writeReport(): Intent? {
         val folder = File(cacheDir, "reports")
         val file = File(folder, diagnosticReportFileName(System.currentTimeMillis()))
-        try {
+        val attachment = try {
             folder.mkdirs()
             // Each report has its own name now; the ones shared before are no longer needed.
             folder.listFiles()?.forEach { it.delete() }
-            file.writeText(Diagnostics.report(this, intent.getBooleanExtra(EXTRA_WITH_APP_LOG, false)))
+            val heap = HeapDiagnostics.forReport()
+            file.writeText(Diagnostics.report(this, intent.getBooleanExtra(EXTRA_WITH_APP_LOG, false)) + heap.detail)
+            sharedHeapAt = heap.capturedAt
+            memoryReportAttachment(file, heap.file)
         } catch (error: IOException) {
             Log.w("Diagnostics", "report write failed ${error.javaClass.simpleName}")
             return null
         }
-        val uri = FileProvider.getUriForFile(this, "$packageName.diagnostics", file)
+        val uri = FileProvider.getUriForFile(this, "$packageName.diagnostics", attachment)
         return Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
+            type = if (attachment.extension == "zip") "application/zip" else "text/plain"
             putExtra(Intent.EXTRA_EMAIL, arrayOf(REPORT_ADDRESS))
             putExtra(Intent.EXTRA_SUBJECT, getString(R.string.diagnostics_subject))
             putExtra(Intent.EXTRA_TEXT, Diagnostics.shareText(this@DiagnosticReportActivity))
@@ -82,7 +94,6 @@ class DiagnosticReportActivity : ComponentActivity() {
      * one. A `mailto:` selector on the send intent found no app on Android 16, so the email apps are looked up here.
      */
     private fun share(send: Intent, emailOnly: Boolean) {
-        DiagnosticJournal.markSent(this)
         val title = getString(R.string.diagnostics_send)
         val chooser = Intent.createChooser(send, title)
         val target = if (emailOnly) reportEmailShare(emailPackages()) else ReportEmailShare.ShareSheet
@@ -102,6 +113,8 @@ class DiagnosticReportActivity : ComponentActivity() {
             // An email app that takes `mailto:` but not an attachment.
             startActivity(chooser)
         }
+        DiagnosticJournal.markSent(this)
+        HeapDiagnostics.markShared(sharedHeapAt)
         finish()
     }
 

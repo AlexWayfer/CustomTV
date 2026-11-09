@@ -35,6 +35,7 @@ internal object Diagnostics {
 
     fun start(application: Application) {
         this.application = application
+        HeapDiagnostics.start(application)
         val screens = DiagnosticScreenTracker()
         application.registerActivityLifecycleCallbacks(screens)
         val previous = Thread.getDefaultUncaughtExceptionHandler()
@@ -45,6 +46,11 @@ internal object Diagnostics {
                 DiagnosticJournal.record(application, crashEvent(thread, error, screen))
             } catch (_: Throwable) {
                 // The crash itself must still reach the system handler.
+            }
+            try {
+                HeapDiagnostics.onCrash(error)
+            } catch (_: Throwable) {
+                // A failed dump must never prevent Android from handling the original crash.
             }
             previous?.uncaughtException(thread, error)
         }

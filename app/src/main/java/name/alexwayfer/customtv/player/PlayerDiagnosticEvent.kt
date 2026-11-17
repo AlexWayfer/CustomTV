@@ -24,4 +24,6 @@ private val PLAYER_DIAGNOSTIC_EVENTS = setOf(
     "playing", "pause", "seeking", "seeked", "emptied", "ended", "error",
     "timeline-reset-before", "timeline-reset-after", "buffer-split-before", "buffer-split-after",
     "buffer-joined-before", "buffer-joined-after", "quality-before", "quality-after",
+    "stylesheet-missing", "stylesheet-restored", "stylesheet-network-error",
+    "stylesheet-timeout", "stylesheet-unapplied",
 )

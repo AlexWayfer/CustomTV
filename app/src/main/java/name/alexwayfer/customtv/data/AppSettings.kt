@@ -45,7 +45,6 @@ data class AppSettings(
     val hiddenPhrases: List<KeywordPhrase> = emptyList(),
     /** Whether [hiddenPhrases] also hide messages in the channels the user moderates. */
     val hidePhrasesWhenModerator: Boolean = false,
-    val backgroundSoundOnly: Boolean = true,
     /** The player's sound fades in as it starts or plays, and out as it pauses or closes. */
     val smoothSound: Boolean = true,
     val streamStartNotifications: Boolean = true,

@@ -66,7 +66,7 @@ internal class ChannelEventsController(
             if (this@ChannelEventsController.channelId != channelId) return@launch
             if (pollGeneration == pollStarted) poll = loaded.poll
             if (predictionGeneration == predictionStarted) prediction = loaded.prediction
-            if (hypeTrainGeneration == hypeTrainStarted) hypeTrain = loaded.hypeTrain
+            if (hypeTrainGeneration == hypeTrainStarted) updateHypeTrain(loaded.hypeTrain)
             publish()
         }
     }
@@ -111,14 +111,22 @@ internal class ChannelEventsController(
 
     fun onHypeTrain(event: HypeTrainEvent) {
         hypeTrainGeneration++
-        hypeTrain = applyHypeTrainEvent(hypeTrain, event)
-        hypeTrain?.let { liveIds += it.id }
+        val updated = applyHypeTrainEvent(hypeTrain, event)
+        updated?.let { liveIds += it.id }
+        updateHypeTrain(updated)
         publish()
-        val current = hypeTrain
-        val after = current?.let { hypeTrainHidesAfter(it, now()) }
-        // Keyed by phase too: the end of a train replaces the timer of its approach.
-        hypeTrainHide.schedule(current?.let { "${it.id}:${it.phase}" }.takeIf { after != null }, after) {
-            if (hypeTrain?.id == current?.id && hypeTrain?.phase == current?.phase) {
+    }
+
+    private fun updateHypeTrain(train: ChannelHypeTrain?) {
+        hypeTrain = train
+        val after = train?.let { hypeTrainHidesAfter(it, now()) }
+        val key = when (train?.phase) {
+            HypeTrainPhase.Approaching -> "approaching:${train.id}:${train.endsAtMillis}"
+            HypeTrainPhase.Ended -> "ended:${train.id}"
+            HypeTrainPhase.Active, null -> null
+        }
+        hypeTrainHide.schedule(key, after) {
+            if (hypeTrain?.id == train?.id && hypeTrain?.phase == train?.phase) {
                 hypeTrain = null
                 publish()
             }

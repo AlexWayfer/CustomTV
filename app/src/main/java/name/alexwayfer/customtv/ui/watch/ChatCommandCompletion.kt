@@ -3,7 +3,7 @@ package name.alexwayfer.customtv.ui.watch
 import name.alexwayfer.customtv.chat.NickCompletionEdit
 
 /** The chat commands the message field handles itself, without sending them. */
-internal enum class ChatCommand(val word: String) {
+internal enum class ChatCommand(val word: String, val announcementColor: String? = null) {
     User("/user"),
     Moderators("/mods"),
 
@@ -12,6 +12,12 @@ internal enum class ChatCommand(val word: String) {
 
     /** Gives a shoutout to a channel, for the streamer and the channel's moderators. */
     Shoutout("/shoutout"),
+
+    Announce("/announce", "primary"),
+    AnnounceBlue("/announceblue", "blue"),
+    AnnounceGreen("/announcegreen", "green"),
+    AnnounceOrange("/announceorange", "orange"),
+    AnnouncePurple("/announcepurple", "purple"),
 
     // The chat modes, for the streamer and the channel's moderators.
     Slow("/slow"),
@@ -27,12 +33,11 @@ internal enum class ChatCommand(val word: String) {
 }
 
 /** The commands that change the chat's modes. */
-internal val CHAT_MODE_COMMANDS =
-    ChatCommand.entries - setOf(ChatCommand.User, ChatCommand.Moderators, ChatCommand.Prediction, ChatCommand.Shoutout)
+internal val CHAT_MODE_COMMANDS = ChatCommand.entries.filter { it.announcementColor == null } -
+    setOf(ChatCommand.User, ChatCommand.Moderators, ChatCommand.Prediction, ChatCommand.Shoutout)
 
 /**
- * The commands this user has: `/prediction` only for the streamer and the channel's moderators, and `/shoutout` and
- * the chat mode commands only for the streamer and the moderators ([chatModes]).
+ * The commands this user has: `/prediction` when it can open, and moderation commands when [chatModes] is available.
  */
 internal fun availableChatCommands(predictionOpenable: Boolean, chatModes: Boolean): List<ChatCommand> =
     ChatCommand.entries.filter {

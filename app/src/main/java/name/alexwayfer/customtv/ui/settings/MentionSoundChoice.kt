@@ -65,7 +65,7 @@ internal fun MentionSoundChoice(
                     AppLog.w(TAG, "ringtone picker unavailable")
                 }
             },
-        headlineContent = { Text(stringResource(R.string.mention_sound_choice)) },
+        content = { Text(stringResource(R.string.mention_sound_choice)) },
         supportingContent = {
             Column {
                 Text(title ?: stringResource(R.string.mention_sound_default))

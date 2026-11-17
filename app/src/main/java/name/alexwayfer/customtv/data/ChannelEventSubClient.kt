@@ -21,7 +21,9 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 private const val TAG = "ChannelEventSub"
 
@@ -166,13 +168,20 @@ class ChannelEventSubClient(
         val id = broadcasterId ?: return
         val user = userId
         scope.launch {
-            val token = eventSubToken(freshToken(), accessToken) ?: return@launch
+            val tokenReadStarted = TimeSource.Monotonic.markNow()
+            val fresh = freshToken()
+            AppLog.i(TAG, "subscribe token read in ${tokenReadStarted.elapsedNow().inWholeMilliseconds}ms")
+            val token = eventSubToken(fresh, accessToken) ?: return@launch
             // The socket may have closed or reconnected while the token was read; its new welcome subscribes again.
             if (sessionId != socket.sessionId) return@launch
             accessToken = token
+            val postStarted = AtomicBoolean(false)
             types.forEach { type ->
                 if (type.condition != EventSubCondition.Broadcaster && user == null) return@forEach
-                launch { subscribeOnce(EventSubRequest(token, id, user, sessionId, type), attempt = 0) }
+                launch {
+                    if (postStarted.compareAndSet(false, true)) AppLog.i(TAG, "starting first Helix subscription POST")
+                    subscribeOnce(EventSubRequest(token, id, user, sessionId, type), attempt = 0)
+                }
             }
         }
     }

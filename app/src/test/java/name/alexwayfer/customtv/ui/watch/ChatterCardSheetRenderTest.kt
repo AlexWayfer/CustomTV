@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.ui.watch
 
 import android.app.Application
+import android.graphics.Insets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,16 +16,25 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.MutableStateFlow
+import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.chat.ChatterHistory
 import name.alexwayfer.customtv.ui.ComposeHost
 import name.alexwayfer.customtv.ui.renderAtEdgeSizes
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowDialog
+import kotlin.math.roundToInt
+import android.view.WindowInsets as AndroidWindowInsets
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
@@ -75,6 +85,54 @@ class ChatterCardSheetRenderTest {
 
         compose.runOnIdle { keyboardHeight = 0.dp }
         assertEquals(600.dp, cardHeight())
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w393dp-h800dp")
+    fun `the labels save button moves above the keyboard and returns after closing`() {
+        val history = MutableStateFlow(ChatterHistory())
+        compose.setContent {
+            ChatterCardSheet(
+                card = ChatterCardRequest(
+                    login = "",
+                    displayName = "Chatter",
+                    userId = "1",
+                    badges = emptyList(),
+                    badgeUrls = emptyMap(),
+                    page = ChatterCardPage.Labels,
+                ),
+                selfLogin = "viewer",
+                chatterHistory = history,
+                renderMessage = {},
+                renderLoggedMessage = {},
+                onDismiss = {},
+                onMention = null,
+            )
+        }
+        val saveText = RuntimeEnvironment.getApplication().getString(R.string.chatter_card_labels_save)
+        val save = compose.onNodeWithText(saveText)
+        val closedBottom = save.getUnclippedBoundsInRoot().bottom
+
+        dispatchKeyboardInset(240.dp)
+        val openBottom = save.getUnclippedBoundsInRoot().bottom
+        assertTrue("Save moved from $closedBottom to $openBottom", openBottom <= closedBottom - 180.dp)
+
+        dispatchKeyboardInset(0.dp)
+        assertEquals(closedBottom, save.getUnclippedBoundsInRoot().bottom)
+    }
+
+    private fun dispatchKeyboardInset(height: Dp) {
+        compose.runOnIdle {
+            val decor = requireNotNull(ShadowDialog.getLatestDialog().window).decorView
+            val ime = AndroidWindowInsets.Type.ime()
+            val bottom = (height.value * decor.resources.displayMetrics.density).roundToInt()
+            decor.dispatchApplyWindowInsets(
+                AndroidWindowInsets.Builder()
+                    .setInsets(ime, Insets.of(0, 0, 0, bottom))
+                    .setVisible(ime, bottom > 0)
+                    .build(),
+            )
+        }
     }
 
     private fun cardHeight(): Dp {

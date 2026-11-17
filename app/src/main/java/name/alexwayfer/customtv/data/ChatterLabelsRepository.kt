@@ -259,7 +259,8 @@ private fun chatterLabelIcon(label: JSONObject): ChatterLabelIcon? {
     val id = label.optString("id")
     val name = label.optString("name")
     val image = decodeChatterLabelIcon(label.optString("icon")) ?: return null
-    return ChatterLabelIcon(id, name, image).takeIf { id.isNotBlank() && name.isNotBlank() }
+    val script = (label.opt("script") as? String)?.takeIf { it.isNotBlank() }
+    return ChatterLabelIcon(id, name, image, script = script).takeIf { id.isNotBlank() && name.isNotBlank() }
 }
 
 /**
@@ -273,7 +274,7 @@ internal fun reuseChatterLabelImages(data: ChatterLabelsData, previous: List<Cha
     }
     fun ChatterLabelIcon.withImage(): ChatterLabelIcon {
         val image = images[id] ?: return this
-        return if (image === this.image) this else ChatterLabelIcon(id, name, image, assignedAtMillis, comment)
+        return if (image === this.image) this else ChatterLabelIcon(id, name, image, assignedAtMillis, comment, script)
     }
     return ChatterLabelsData(
         labels = data.labels.map { it.withImage() },

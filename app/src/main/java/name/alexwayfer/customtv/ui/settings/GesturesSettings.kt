@@ -89,7 +89,7 @@ internal fun GesturesSettingsPage(modifier: Modifier = Modifier) {
             SettingsSection(stringResource(group.title), first = index == 0)
             group.gestures.forEach { gesture ->
                 ListItem(
-                    headlineContent = { Text(stringResource(gesture.title)) },
+                    content = { Text(stringResource(gesture.title)) },
                     supportingContent = { Text(stringResource(gesture.result)) },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier.semantics(mergeDescendants = true) {},

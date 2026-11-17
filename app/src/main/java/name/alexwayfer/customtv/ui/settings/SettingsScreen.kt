@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -95,7 +96,7 @@ internal fun SettingsScreen(
                     modifier = pageModifier,
                     scroll = mainScroll,
                 ) { anchor ->
-                    SettingsMainEntries(anchor, accountName, onOpen = { page = it })
+                    SettingsMainEntries(anchor, accountName, viewModel, onOpen = { page = it })
                 }
                 SettingsPage.HiddenCategories -> HiddenCategoriesSettingsPage(onOpenCategory, pageModifier)
                 SettingsPage.Gestures -> GesturesSettingsPage(pageModifier)
@@ -161,7 +162,12 @@ private fun storedSettingsBody(viewModel: SettingsViewModel): SettingsBody? {
 
 /** The list of subpages and the sections that sit on the main page itself. */
 @Composable
-private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: String?, onOpen: (SettingsPage) -> Unit) {
+private fun SettingsMainEntries(
+    anchor: SettingsScrollAnchor,
+    accountName: String?,
+    viewModel: SettingsViewModel,
+    onOpen: (SettingsPage) -> Unit,
+) {
     SettingsNotificationPrompt()
     SettingsPageEntry(
         icon = painterResource(R.drawable.ic_chat),
@@ -192,6 +198,7 @@ private fun SettingsMainEntries(anchor: SettingsScrollAnchor, accountName: Strin
     PremiumSettings()
     LanguageSettings()
     AppLinksSettings()
+    ActivityStatisticsSettings(viewModel)
     SettingsSection(stringResource(R.string.settings_section_help))
     GesturesSettingsEntry(onOpen = { onOpen(SettingsPage.Gestures) })
     LicensesSettingsEntry(onOpen = { onOpen(SettingsPage.Licenses) })
@@ -227,11 +234,11 @@ internal fun SettingsSection(title: String, first: Boolean = false) {
         modifier = Modifier.settingsSearchAnchor(title).padding(
             start = 16.dp,
             end = 16.dp,
-            top = if (first) 8.dp else 20.dp,
+            top = if (first) 8.dp else 24.dp,
             bottom = 4.dp,
         ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
     )
 }
 
@@ -255,7 +262,6 @@ internal fun SettingsToggle(
             ),
     ) {
         ListItem(
-            headlineContent = { Text(label) },
             supportingContent = hint?.let { { Text(it) } },
             trailingContent = {
                 Switch(
@@ -265,6 +271,8 @@ internal fun SettingsToggle(
                 )
             },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        )
+        ) {
+            Text(label)
+        }
     }
 }

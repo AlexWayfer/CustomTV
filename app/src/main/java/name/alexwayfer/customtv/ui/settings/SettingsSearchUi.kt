@@ -60,7 +60,7 @@ internal fun SettingsSearchResults(
         }
         items(results, key = { it.entry.id }) { result ->
             ListItem(
-                headlineContent = { Text(result.title) },
+                content = { Text(result.title) },
                 supportingContent = {
                     Column {
                         if (result.path != result.title) {

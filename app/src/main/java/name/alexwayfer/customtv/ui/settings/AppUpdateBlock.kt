@@ -13,7 +13,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -78,13 +78,11 @@ internal fun AppUpdateBlock(release: AppRelease, download: AppUpdateDownload, on
 private fun DownloadProgress(target: Float) {
     val fraction by animateFloatAsState(target, label = "appUpdateDownload")
     Column(modifier = Modifier.padding(top = 8.dp).semantics(mergeDescendants = true) {}) {
-        LinearProgressIndicator(
+        LinearWavyProgressIndicator(
             progress = { fraction },
             modifier = Modifier.fillMaxWidth(),
             color = TwitchPurple,
             trackColor = TwitchDivider,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
         )
         GroupStatus(stringResource(R.string.app_update_downloading, (target * 100).roundToInt()))
     }

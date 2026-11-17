@@ -36,14 +36,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
-import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.FullscreenChatMode
 import name.alexwayfer.customtv.data.FullscreenChatSide
 import name.alexwayfer.customtv.data.GestureHint
@@ -404,10 +402,7 @@ private fun BoxScope.MinimizeButton(scene: PlayerScene) {
                     alpha = (1f - scene.progress / MINIMIZE_BUTTON_FADE).coerceIn(0f, 1f)
                 },
         ) {
-            MinimizeChevronIcon(
-                modifier = Modifier.size(26.dp),
-                contentDescription = stringResource(R.string.minimize),
-            )
+            MinimizeChevronIcon()
         }
     }
 }

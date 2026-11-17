@@ -27,6 +27,12 @@ internal fun isPlayerDocumentUrl(url: String): Boolean {
     return isPlayerHost(host)
 }
 
+/** Only the main player's public CSS is relevant to recovery of a cropped, unstyled video. */
+internal fun isPlayerStylesheetUrl(uri: Uri): Boolean = uri.scheme == "https" &&
+    uri.host == "assets.twitch.tv" && PLAYER_STYLESHEET_PATH.matches(uri.encodedPath.orEmpty())
+
+private val PLAYER_STYLESHEET_PATH = Regex("""/assets/player-main-[a-zA-Z0-9-]+\.css""")
+
 internal fun shouldBlockPlayerNavigation(uri: Uri, isMainFrame: Boolean): Boolean {
     val url = uri.toString()
     if (url.startsWith("about:") || url.startsWith("data:") || url.startsWith("javascript:")) {

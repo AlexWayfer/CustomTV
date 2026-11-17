@@ -29,7 +29,7 @@ internal fun ChatterCardReportItem(
 ) {
     val context = LocalContext.current
     ListItem(
-        headlineContent = { Text(stringResource(R.string.report_user)) },
+        content = { Text(stringResource(R.string.report_user)) },
         leadingContent = { Icon(painterResource(R.drawable.ic_report_flag), contentDescription = null) },
         modifier = modifier
             .fillMaxWidth()

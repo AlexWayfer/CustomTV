@@ -29,7 +29,7 @@ import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 @Composable
 internal fun ChatCommandCompletionList(
     commands: List<ChatCommand>,
-    /** The free build: the chat mode commands show a lock. */
+    /** The free build: chat modes and announcement commands show a lock. */
     chatModesLocked: Boolean,
     onPick: (ChatCommand) -> Unit,
     modifier: Modifier = Modifier,
@@ -63,7 +63,7 @@ internal fun ChatCommandCompletionList(
                             modifier = Modifier.padding(start = 6.dp),
                         )
                     }
-                    if (chatModesLocked && command in CHAT_MODE_COMMANDS) {
+                    if (chatModesLocked && (command in CHAT_MODE_COMMANDS || command.announcementColor != null)) {
                         PremiumLockIcon(Modifier.padding(start = 6.dp).size(16.dp))
                     }
                 }
@@ -83,6 +83,8 @@ private val ChatCommand.argument: Int?
     get() = when (this) {
         ChatCommand.User -> R.string.chat_command_user_argument
         ChatCommand.Shoutout -> R.string.chat_command_shoutout_argument
+        ChatCommand.Announce, ChatCommand.AnnounceBlue, ChatCommand.AnnounceGreen,
+        ChatCommand.AnnounceOrange, ChatCommand.AnnouncePurple -> R.string.chat_command_announcement_argument
         ChatCommand.Slow -> R.string.chat_command_slow_argument
         ChatCommand.Followers -> R.string.chat_command_followers_argument
         else -> null
@@ -95,6 +97,8 @@ private val ChatCommand.description: Int
         ChatCommand.Moderators -> R.string.chat_command_mods_description
         ChatCommand.Prediction -> R.string.chat_command_prediction_description
         ChatCommand.Shoutout -> R.string.chat_command_shoutout_description
+        ChatCommand.Announce, ChatCommand.AnnounceBlue, ChatCommand.AnnounceGreen,
+        ChatCommand.AnnounceOrange, ChatCommand.AnnouncePurple -> R.string.chat_command_announcement_description
         ChatCommand.Slow -> R.string.chat_command_slow_description
         ChatCommand.SlowOff -> R.string.chat_command_slow_off_description
         ChatCommand.Followers -> R.string.chat_command_followers_description

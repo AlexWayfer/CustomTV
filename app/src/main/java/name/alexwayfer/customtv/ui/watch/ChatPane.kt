@@ -51,6 +51,7 @@ import name.alexwayfer.customtv.data.ChannelProfile
 import name.alexwayfer.customtv.data.ChatSettings
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.ChatterCardCache
+import name.alexwayfer.customtv.data.ChatterCheckChannel
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.settings.SettingsViewModel
 import name.alexwayfer.customtv.ui.settings.beforeRestore
@@ -236,6 +237,7 @@ private fun ColumnScope.ProvideChatRowLocals(
         LocalChatterCardCache provides chatterCards,
         LocalSuspiciousChatters provides suspiciousChatters,
         LocalChatRaiders provides raiders,
+        LocalChatterCheckChannel provides ChatterCheckChannel(channel, channelProfile.id),
         LocalEmotePreviewChannel provides EmotePreviewChannel(
             twitchUserId = channelProfile.id,
             displayName = channelProfile.displayName.ifBlank { channel },

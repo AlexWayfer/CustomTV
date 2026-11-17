@@ -14,6 +14,86 @@ var customTvDocs = function() {
   return docs;
 };
 
+// A failed main stylesheet can leave a non-null but empty link.sheet. Check the actual layout, then let the
+// browser reload the same public asset independently. The retry link lives in head, outside Twitch's React tree.
+var customTvRestorePlayerStyles = function(doc) {
+  if (!doc || doc.readyState !== 'complete' || !doc.defaultView || !doc.defaultView.getComputedStyle) return;
+  var video = doc.querySelector('video');
+  if (!video) return;
+  function applied() {
+    var currentVideo = doc.querySelector('video');
+    return currentVideo && doc.defaultView.getComputedStyle(currentVideo).position === 'absolute' &&
+      doc.defaultView.getComputedStyle(doc.documentElement).position === 'relative';
+  }
+  var state = doc.__customTvPlayerStyles;
+  if (applied()) {
+    if (state && state.pending) state.cancel();
+    if (state && state.missing) {
+      state.missing = false;
+      customTvDiagnosticEvent(doc, video, 'stylesheet-restored');
+    }
+    return;
+  }
+  var links = doc.querySelectorAll('link[rel="stylesheet"]');
+  var source;
+  for (var i = 0; i < links.length; i++) {
+    if (links[i].id === 'customtv-player-styles') continue;
+    try {
+      var url = new URL(links[i].href);
+      if (url.origin === 'https://assets.twitch.tv' && !url.search && !url.hash &&
+          /^\/assets\/player-main-[a-zA-Z0-9-]+\.css$/.test(url.pathname)) {
+        source = links[i];
+        break;
+      }
+    } catch (e) {}
+  }
+  if (!source) return;
+  if (!state || state.url !== source.href) {
+    if (state && state.pending) state.cancel();
+    if (state && state.loaded) state.loaded.remove();
+    state = doc.__customTvPlayerStyles = { url: source.href, retryAt: 0, pending: null, loaded: null, missing: false };
+  }
+  var now = Date.now();
+  if (state.pending || now < state.retryAt) return;
+  // One request at a time, each with a deadline; a bad cache entry must not be reused on the next attempt.
+  var LOAD_TIMEOUT_MS = 10000;
+  var RETRY_INTERVAL_MS = 30000;
+  state.retryAt = now + RETRY_INTERVAL_MS;
+  if (!state.missing) {
+    state.missing = true;
+    customTvDiagnosticEvent(doc, video, 'stylesheet-missing');
+  }
+  var retry = doc.createElement('link');
+  retry.id = 'customtv-player-styles';
+  retry.rel = 'stylesheet';
+  retry.crossOrigin = source.crossOrigin;
+  retry.referrerPolicy = source.referrerPolicy;
+  var target = new URL(source.href);
+  target.searchParams.set('customtv_styles', String(now));
+  retry.href = target.href;
+  state.pending = retry;
+  function finish(event, keep) {
+    if (state.pending !== retry) return;
+    clearTimeout(timeout);
+    retry.onload = retry.onerror = null;
+    state.pending = null;
+    if (keep) {
+      if (state.loaded) state.loaded.remove();
+      state.loaded = retry;
+    } else retry.remove();
+    if (event === 'stylesheet-restored') state.missing = false;
+    if (event) customTvDiagnosticEvent(doc, doc.querySelector('video'), event);
+  }
+  state.cancel = function() { finish(null, false); };
+  retry.onload = function() {
+    var healthy = applied();
+    finish(healthy ? 'stylesheet-restored' : 'stylesheet-unapplied', healthy);
+  };
+  retry.onerror = function() { finish('stylesheet-network-error', false); };
+  var timeout = setTimeout(function() { finish('stylesheet-timeout', false); }, LOAD_TIMEOUT_MS);
+  (doc.head || doc.documentElement).appendChild(retry);
+};
+
 // Twitch's media player behind the video of [doc], found through the React fiber of the video or a div around it.
 var customTvPlayer = function(doc) {
   var nodes = [doc.querySelector('video')].concat([].slice.call(doc.querySelectorAll('div')));

@@ -68,7 +68,7 @@ internal fun LicensesSettingsPage(modifier: Modifier = Modifier) {
 @Composable
 private fun CreditRow(credit: Credit, onOpen: () -> Unit) {
     ListItem(
-        headlineContent = { Text(credit.name) },
+        content = { Text(credit.name) },
         supportingContent = {
             Column {
                 Text(stringResource(credit.role))

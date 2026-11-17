@@ -264,6 +264,7 @@ class ChatViewModel(
         if (inForeground == foreground) return
         inForeground = foreground
         reconnect.cancel()
+        badges.setForeground(foreground)
         if (!foreground) {
             client.pause()
             pubSub.disconnect()

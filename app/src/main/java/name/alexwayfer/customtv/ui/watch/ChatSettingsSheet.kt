@@ -30,7 +30,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +57,7 @@ import name.alexwayfer.customtv.chat.MIN_CHAT_TEXT_SIZE
 import name.alexwayfer.customtv.chat.chatTextSizeFromStored
 import name.alexwayfer.customtv.data.ChatModerator
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.settings.SettingsStepSlider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +102,7 @@ internal fun ChatSettingsSheet(
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     val hideThen: (() -> Unit) -> Unit = { action ->
         scope.launch {
             sheetState.hide()
@@ -344,7 +344,7 @@ internal fun ChatSettingsRow(
             .then(modifier),
     ) {
         ListItem(
-            headlineContent = { Text(label) },
+            content = { Text(label) },
             leadingContent = { Icon(icon, contentDescription = null) },
             supportingContent = supportingText?.let { text -> { Text(text) } },
             trailingContent = trailing,

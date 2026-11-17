@@ -206,6 +206,7 @@
   function injectInto(doc) {
     // WebView's error page after a failed load has no document element to put the style in.
     if (!doc || !doc.documentElement) return;
+    customTvRestorePlayerStyles(doc);
     var style = doc.getElementById('customtv-hide-top');
     var css = [
         'html, body, #root, .root { background: transparent !important; overflow: hidden !important; }',
@@ -395,8 +396,10 @@
   }
   // A live stream can stall on a gap in its buffer while Twitch's player still reports it as playing, with no error:
   // the app watches the position and the latency every tick.
-  function notifyLiveTick(doc, v, adBreak) {
+  var segmentRetryTimer = null;
+  function notifyLiveTick(doc, v, adBreak, retryDeadline) {
     if (recordingPage || !doc || !v || !isFinite(v.currentTime) || v.currentTime < 0) return;
+    var handoff = doc.defaultView && doc.defaultView.__customTvAudioHandoff;
     // The search walks the page's React tree, so the player found stays on its video.
     var p = v.__customTvPlayer || (v.__customTvPlayer = customTvPlayer(doc));
     var latency = -1;
@@ -412,14 +415,49 @@
         ranges.push('[' + v.buffered.start(i).toFixed(1) + ', ' + v.buffered.end(i).toFixed(1) + ']');
       }
     } catch (e) {}
-    try { CustomTvPlayback.onLiveTick(v.currentTime, latency, state, !!adBreak, ranges.join(' ')); } catch (e) {}
+    // The bridge receives ad break, pending playlist, playback buffer and retry eligibility as flags.
+    var flags = adBreak ? 1 : 0;
+    if (retryDeadline) flags |= 16;
+    var retry = null;
+    try {
+      var bufferedAhead = customTvBufferedAhead(v);
+      if (customTvWaitingForPlaylist(bufferedAhead)) flags |= 2;
+      if (customTvHasPlaybackBuffer(v, state, bufferedAhead)) flags |= 4;
+      retry = (!handoff || !handoff.isParallel()) && customTvSegmentRetry();
+      if (retry && customTvCanWaitForSegmentRetry(bufferedAhead)) {
+        flags |= 8;
+        if (segmentRetryTimer === null) {
+          segmentRetryTimer = setTimeout(function() {
+            segmentRetryTimer = null;
+            var currentDoc = playerDoc();
+            if (currentDoc === doc && currentDoc.querySelector('video') === v) {
+              notifyLiveTick(doc, v, isAdBreak(doc), true);
+            }
+          }, retry.remaining);
+        }
+      }
+    } catch (e) {}
+    var canRetryPlaylist = false;
+    try {
+      var status = retry ? flags + ':' + retry.id : String(flags);
+      canRetryPlaylist = CustomTvPlayback.onLiveTick(v.currentTime, latency, state, ranges.join(' '), status);
+    } catch (e) {}
+    try {
+      if (!retryDeadline && !adBreak && (!handoff || !handoff.isParallel()) && !v.seeking &&
+          (state === 'Playing' || state === 'Buffering') &&
+          p && p.isPaused && !p.isPaused()) {
+        customTvRetrySlowSegment(bufferedAhead);
+        if (v.currentTime > 0) customTvRetrySlowPlaylist(bufferedAhead, canRetryPlaylist);
+      }
+    } catch (e) {}
   }
   function notifyPlayerReady() {
     try { CustomTvPlayback.onPlayerReady(); } catch (e) {}
   }
-  function hasRenderedFrame(v) {
+  function hasRenderedFrame(v, auxiliaryAudio) {
     // Sound only has no frames at all; playing sound counts then.
-    var picture = customTvQualityHasPicture(v && v.videoWidth, v && v.videoHeight, !!window.__customTvAudioOnlyRequested);
+    var picture = customTvQualityHasPicture(v && v.videoWidth, v && v.videoHeight,
+      auxiliaryAudio || !!window.__customTvAudioOnlyRequested);
     // A video that fades out to the app's pause still plays, but the app already counts it as paused.
     return v && !v.paused && !customTvFadingOut(v) && v.readyState >= 3 && picture && v.currentTime > 0;
   }
@@ -431,6 +469,9 @@
     try { return p.isPaused(); } catch (e) { return true; }
   }
   function notifyPlaybackIfRendered(v) {
+    var owner = v && v.ownerDocument && v.ownerDocument.defaultView;
+    var handoff = owner && owner.__customTvAudioHandoff;
+    if (handoff && handoff.output()) return;
     if (hasRenderedFrame(v)) notifyPlayback(true);
   }
   function visible(el) {
@@ -789,6 +830,8 @@
         notifySeek(v);
       });
       v.addEventListener('pause', function() {
+        var handoff = targetDoc.defaultView && targetDoc.defaultView.__customTvAudioHandoff;
+        if (handoff && handoff.output()) return;
         if (isAdBreak(targetDoc)) return;
         // Twitch still means to play: the video buffers, or another app took the sound away.
         if (!pausedByViewer(targetDoc)) {
@@ -836,9 +879,19 @@
     notifyPlayerError();
     notifyAudienceGate();
     var d = playerDoc();
+    if (d) customTvRestorePlayerStyles(d);
     if (d) customTvQualityTick(d);
     var v = d && d.querySelector('video');
     var adBreak = isAdBreak(d);
+    var handoff = d && d.defaultView && d.defaultView.__customTvAudioHandoff;
+    if (handoff) handoff.tick(adBreak);
+    var output = handoff && handoff.output();
+    if (output) {
+      notifyLiveTick(d, output.media, false);
+      if (hasRenderedFrame(output.media, true)) notifyPlayback(true);
+      else if (output.player.isPaused()) notifyPlayback(false);
+      return;
+    }
     if (v) customTvDiagnosticTick(d, v, !recordingPage && !adBreak);
     notifyLiveTick(d, v, adBreak);
     if (adBreak) {

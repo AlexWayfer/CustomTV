@@ -7,3 +7,6 @@ internal fun experimentalLoginOffer(): ExperimentalLoginOffer = ExperimentalLogi
 
 @Composable
 internal fun ExperimentalLoginChatRow(onClick: () -> Unit) = Unit
+
+@Composable
+internal fun ChatterCheckLogInButton() = Unit

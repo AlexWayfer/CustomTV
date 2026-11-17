@@ -16,12 +16,17 @@ class LiveStallWatchdogTest {
         step: Double = 1.0,
         latency: Double = 3.0,
         watch: LiveStallWatch = LiveStallWatch.Playing,
+        waitingForPlaylistWithLowBuffer: Boolean = false,
     ): List<Pair<Long, LiveStallAction>> {
         val actions = mutableListOf<Pair<Long, LiveStallAction>>()
         repeat(seconds) {
             nowMs += 1_000
             position += step
-            val action = watchdog.tick(nowMs, watch, position, latency)
+            val report = tick(
+                latency = latency,
+                waitingForPlaylistWithLowBuffer = waitingForPlaylistWithLowBuffer,
+            )
+            val action = watchdog.tick(nowMs, watch, report)
             if (action != LiveStallAction.None) actions += nowMs to action
         }
         return actions
@@ -39,9 +44,123 @@ class LiveStallWatchdogTest {
     }
 
     @Test
+    fun onlyTheFirstSegmentRetryCanDeferRestartDuringAStall() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(LiveStallAction.None, tickWithRetry(15_000L, "first"))
+        assertEquals(LiveStallAction.None, tickWithRetry(16_000L, "first"))
+        assertEquals(LiveStallAction.RestartPlayer, tickWithRetry(16_950L, "second", deadline = true))
+    }
+
+    @Test
+    fun playbackCanResumeDuringTheSegmentRetryWindow() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(LiveStallAction.None, tickWithRetry(15_000L, "first"))
+        nowMs = 15_000L
+        assertEquals(LiveStallAction.None, tickWithBuffer(step = 0.7659))
+        assertEquals(LiveStallAction.None, tickWithRetry(16_950L, null, deadline = true))
+    }
+
+    @Test
+    fun aRetryDeadlineWithoutADeferredRestartDoesNotChangeTheStallTiming() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(LiveStallAction.None, tickWithRetry(15_000L, null, deadline = true))
+        assertEquals(listOf(15_000L to LiveStallAction.RestartPlayer), play(1, step = 0.0))
+    }
+
+    private fun tickWithRetry(atMs: Long, retryId: String?, deadline: Boolean = false): LiveStallAction =
+        watchdog.tick(
+            atMs,
+            LiveStallWatch.Playing,
+            tick().copy(segmentRetry = LiveSegmentRetry(retryId, canWait = retryId != null, deadline = deadline)),
+        )
+
+    @Test
     fun aVideoStuckForNineSecondsIsLeftAlone() {
         play(5)
         assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0))
+    }
+
+    @Test
+    fun playbackResumingWithBufferBeforeTheDeadlineStartsTheStallTimerOver() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(LiveStallAction.None, tickWithBuffer(step = 0.7659))
+        assertTrue(play(9, step = 0.0).isEmpty())
+        assertEquals(listOf(25_000L to LiveStallAction.RestartPlayer), play(1, step = 0.0))
+    }
+
+    @Test
+    fun aSmallNudgeWithBufferDoesNotRestartTheStallTimer() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(LiveStallAction.RestartPlayer, tickWithBuffer(step = 0.1))
+    }
+
+    @Test
+    fun fillingTheBufferWithoutPositionProgressDoesNotRestartTheStallTimer() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(LiveStallAction.RestartPlayer, tickWithBuffer(step = 0.0))
+    }
+
+    @Test
+    fun subsecondMovementWithoutBufferDoesNotRestartTheStallTimer() {
+        play(5)
+        play(9, step = 0.0)
+        assertEquals(listOf(15_000L to LiveStallAction.RestartPlayer), play(1, step = 0.7659))
+    }
+
+    private fun tickWithBuffer(step: Double): LiveStallAction {
+        nowMs += 1_000
+        position += step
+        return watchdog.tick(nowMs, LiveStallWatch.Playing, tick(latency = 12.82, hasPlaybackBuffer = true))
+    }
+
+    @Test
+    fun aStallWithAnUnansweredPlaylistAndLowBufferUsesTheFirstOfTwoPageReloads() {
+        play(5)
+        assertTrue(play(9, step = 0.0, waitingForPlaylistWithLowBuffer = true).isEmpty())
+        assertEquals(
+            listOf(
+                15_000L to LiveStallAction.ReloadPage,
+                25_000L to LiveStallAction.ReloadPage,
+                35_000L to LiveStallAction.GiveUp,
+            ),
+            play(21, step = 0.0, waitingForPlaylistWithLowBuffer = true),
+        )
+    }
+
+    @Test
+    fun aNetworkSwitchKeepsTheNormalFirstStepEvenWhenThePlaylistHasNotAnswered() {
+        play(5)
+        watchdog.networkChanged(nowMs)
+        val actions = play(10, step = 0.0, waitingForPlaylistWithLowBuffer = true)
+        assertEquals(listOf(15_000L to LiveStallAction.RestartPlayer), actions)
+    }
+
+    @Test
+    fun playlistRetryWaitsOutTheExistingNetworkGrace() {
+        assertTrue(watchdog.networkGraceElapsed(nowMs))
+        watchdog.networkChanged(5_000L)
+        assertFalse(watchdog.networkGraceElapsed(14_999L))
+        assertTrue(watchdog.networkGraceElapsed(15_000L))
+    }
+
+    @Test
+    fun aSlowPlaylistDoesNotTurnALatencyRecoveryIntoAPageReload() {
+        play(5)
+        val actions = play(1, latency = 21.0, waitingForPlaylistWithLowBuffer = true)
+        assertEquals(listOf(6_000L to LiveStallAction.RestartPlayer), actions)
+    }
+
+    @Test
+    fun aViewerPauseOrAdBreakCannotUseAnUnansweredPlaylistToReload() {
+        play(5)
+        val actions = play(20, step = 0.0, watch = LiveStallWatch.Off, waitingForPlaylistWithLowBuffer = true)
+        assertTrue(actions.isEmpty())
     }
 
     @Test
@@ -51,7 +170,7 @@ class LiveStallWatchdogTest {
         repeat(10) { second ->
             nowMs += 1_000
             if (second % 6 == 5) position += 0.1
-            actions += watchdog.tick(nowMs, LiveStallWatch.Playing, position, 3.0)
+            actions += watchdog.tick(nowMs, LiveStallWatch.Playing, tick())
         }
         assertEquals(LiveStallAction.RestartPlayer, actions.last())
     }
@@ -250,7 +369,7 @@ class LiveStallWatchdogTest {
     fun aGapBetweenReportsSaysNothingAboutTheVideo() {
         play(5)
         nowMs += 60_000
-        assertEquals(LiveStallAction.None, watchdog.tick(nowMs, LiveStallWatch.Playing, position, 3.0))
+        assertEquals(LiveStallAction.None, watchdog.tick(nowMs, LiveStallWatch.Playing, tick()))
         assertEquals(emptyList<Pair<Long, LiveStallAction>>(), play(9, step = 0.0))
     }
 
@@ -311,11 +430,19 @@ class LiveStallWatchdogTest {
         userPaused: Boolean = false,
     ) = LiveStallWatchdog.watch(live, playbackConfirmed, userPaused, tick)
 
-    private fun tick(state: String = "Playing", adBreak: Boolean = false) = LiveTick(
-        positionSeconds = 100.0,
-        latencySeconds = 3.0,
+    private fun tick(
+        state: String = "Playing",
+        adBreak: Boolean = false,
+        latency: Double = 3.0,
+        waitingForPlaylistWithLowBuffer: Boolean = false,
+        hasPlaybackBuffer: Boolean = false,
+    ) = LiveTick(
+        positionSeconds = position,
+        latencySeconds = latency,
         state = state,
         adBreak = adBreak,
         buffered = "[90.0, 110.0]",
+        waitingForPlaylistWithLowBuffer = waitingForPlaylistWithLowBuffer,
+        hasPlaybackBuffer = hasPlaybackBuffer,
     )
 }

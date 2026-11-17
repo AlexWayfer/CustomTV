@@ -24,6 +24,7 @@ internal class PlayerNavigationClient(
     private val handler: Handler,
     private val isReleased: () -> Boolean,
     private val events: PlayerPageEvents,
+    private val mediaNetworkPage: () -> String,
 ) : WebViewClient() {
     private val workerScripts = TwitchWorkerInterceptor()
 
@@ -36,7 +37,7 @@ internal class PlayerNavigationClient(
     )
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-        if (isReleased()) null else workerScripts.intercept(request, view.context.assets)
+        if (isReleased()) null else workerScripts.intercept(request, view.context.assets, mediaNetworkPage())
             ?: UsherAudioOnly.intercept(request, events.playlistArrival)
 
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
@@ -55,7 +56,11 @@ internal class PlayerNavigationClient(
         request: WebResourceRequest,
         error: WebResourceError,
     ) {
-        if (isReleased() || !request.isForMainFrame) return
+        if (isReleased()) return
+        if (isPlayerStylesheetUrl(request.url)) {
+            AppLog.w(PLAYER_LOG_TAG, "Player stylesheet failed, error ${error.errorCode}")
+        }
+        if (!request.isForMainFrame) return
         events.onPlayerPageFailed("error ${error.errorCode}")
     }
 
@@ -64,8 +69,12 @@ internal class PlayerNavigationClient(
         request: WebResourceRequest,
         errorResponse: WebResourceResponse,
     ) {
-        if (isReleased() || !request.isForMainFrame) return
+        if (isReleased()) return
         val code = errorResponse.statusCode
+        if (isPlayerStylesheetUrl(request.url)) {
+            AppLog.w(PLAYER_LOG_TAG, "Player stylesheet failed, HTTP $code")
+        }
+        if (!request.isForMainFrame) return
         if (code >= HTTP_SERVER_ERROR.first) {
             events.onPlayerPageFailed("HTTP $code")
         } else {

@@ -10,8 +10,6 @@ internal fun settingsSearchEntries(accountName: String?, sdkInt: Int): List<Sett
     addAll(mentionSearchEntries())
     add(SettingsSearchEntry(SettingsPage.Playback, R.string.settings_section_playback,
         R.string.settings_page_playback_hint))
-    add(SettingsSearchEntry(SettingsPage.Playback, R.string.background_sound_only, R.string.background_sound_only_hint,
-        R.string.settings_search_sound_keywords))
     add(SettingsSearchEntry(SettingsPage.Playback, R.string.smooth_sound, R.string.smooth_sound_hint,
         R.string.settings_search_sound_keywords))
     add(SettingsSearchEntry(SettingsPage.ChatterLabels, R.string.chatter_labels, R.string.chatter_labels_hint))
@@ -32,6 +30,8 @@ internal fun settingsSearchEntries(accountName: String?, sdkInt: Int): List<Sett
             anchorTitle = R.string.settings_section_app_links))
     }
     add(SettingsSearchEntry(SettingsPage.Gestures, R.string.gestures, R.string.gestures_hint))
+    add(SettingsSearchEntry(SettingsPage.Main, R.string.settings_section_privacy))
+    add(SettingsSearchEntry(SettingsPage.Main, R.string.activity_statistics, R.string.activity_statistics_hint))
     add(SettingsSearchEntry(SettingsPage.Licenses, R.string.settings_licenses, R.string.settings_licenses_hint))
     add(SettingsSearchEntry(SettingsPage.Main, R.string.diagnostics_channel))
     add(SettingsSearchEntry(SettingsPage.Main, R.string.diagnostics_send, anchorTitle = R.string.diagnostics_channel))

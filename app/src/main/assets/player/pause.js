@@ -11,7 +11,10 @@
   function go(doc) {
     if (!doc) return;
     var w = doc.defaultView;
-    if (w) w.__customTvUserPaused = true;
+    if (w) {
+      w.__customTvUserPaused = true;
+      if (w.__customTvAudioHandoff && w.__customTvAudioHandoff.command(false)) return;
+    }
     var v = doc.querySelector('video');
     customTvDiagnosticEvent(doc, v, 'pause-request');
     if (v && v.paused) {

@@ -44,7 +44,7 @@ internal fun LanguageSettings() {
             }
         },
         leadingContent = { Icon(painterResource(R.drawable.ic_language), contentDescription = null) },
-        headlineContent = { Text(language) },
+        content = { Text(language) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )
 }

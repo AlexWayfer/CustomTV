@@ -26,6 +26,7 @@ internal fun ChatterLabelAssignments(
     enabled: Boolean,
     onCheckedChange: (String, Boolean) -> Unit,
     onCommentChange: (String, String) -> Unit,
+    check: @Composable (ChatterLabelIcon) -> Unit,
 ) {
     labels.forEach { label ->
         key(label.id) {
@@ -38,6 +39,7 @@ internal fun ChatterLabelAssignments(
                 onCheckedChange = { onCheckedChange(label.id, it) },
                 onCommentChange = { onCommentChange(label.id, it) },
             )
+            check(label)
         }
     }
 }

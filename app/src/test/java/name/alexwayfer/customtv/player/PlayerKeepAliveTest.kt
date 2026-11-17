@@ -3,6 +3,7 @@ package name.alexwayfer.customtv.player
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaRecorder
 import android.os.Handler
@@ -33,14 +34,14 @@ class PlayerKeepAliveTest {
         appContext = context,
         handler = Handler(Looper.getMainLooper()),
         webView = webView,
-        scripts = TwitchPlayerScripts(context.assets),
+        scripts = TwitchPlayerScripts(context.assets) { "page" },
         isReleased = { false },
         onBackgroundChanged = {},
     )
 
     @Before
     fun startPlayback() {
-        StreamPlayback.bind(commands)
+        StreamPlayback.bind(commands, context)
         StreamPlayback.reportActualState(playing = true)
         keepAlive.register()
         keepAlive.keepAwake(background = true)
@@ -68,6 +69,28 @@ class PlayerKeepAliveTest {
         looper.idleFor(Duration.ofSeconds(6))
 
         assertEquals(3, webView.scripts.size)
+    }
+
+    @Test
+    fun interruptedPlaybackWaitsForOtherMediaToStopBeforePlayingAgain() {
+        StreamInterruption.report()
+        audio.setActivePlaybackConfigurationsFor(listOf(mediaAudio))
+        looper.idleFor(Duration.ofSeconds(6))
+
+        assertEquals(0, webView.scripts.size)
+
+        audio.setActivePlaybackConfigurationsFor(emptyList())
+        looper.idleFor(Duration.ofSeconds(2))
+
+        assertEquals(1, webView.scripts.size)
+    }
+
+    @Test
+    fun activeAudioWithoutAnInterruptionKeepsBackgroundPlayback() {
+        audio.setActivePlaybackConfigurationsFor(listOf(mediaAudio))
+        looper.idleFor(Duration.ofSeconds(2))
+
+        assertEquals(1, webView.scripts.size)
     }
 
     @Test
@@ -249,6 +272,8 @@ class PlayerKeepAliveTest {
         )
         looper.idle()
     }
+
+    private val mediaAudio = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build()
 
     private class ScriptWebView(context: Context) : WebView(context) {
         val scripts = mutableListOf<String>()

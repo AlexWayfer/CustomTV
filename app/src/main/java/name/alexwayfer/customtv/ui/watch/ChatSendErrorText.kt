@@ -24,4 +24,8 @@ internal fun chatSendErrorText(error: ChatSendError): String = when (error) {
     ChatSendError.ShoutoutOwnChannel -> stringResource(R.string.chat_shoutout_own_channel)
     ChatSendError.ShoutoutFailed -> stringResource(R.string.chat_shoutout_failed)
     ChatSendError.ShoutoutPremium -> stringResource(R.string.chat_shoutout_premium_hint)
+    ChatSendError.AnnouncementUsage -> stringResource(R.string.chat_announcement_usage)
+    ChatSendError.AnnouncementNotAllowed -> stringResource(R.string.chat_announcement_not_allowed)
+    ChatSendError.AnnouncementLogIn -> stringResource(R.string.chat_announcement_log_in)
+    ChatSendError.AnnouncementPremium -> stringResource(R.string.chat_announcement_premium_hint)
 }

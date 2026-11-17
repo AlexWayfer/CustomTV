@@ -1,6 +1,9 @@
 package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -18,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -114,12 +118,23 @@ internal fun chatModeFollowAfterChange(followersOnly: Boolean, following: Boolea
 
 /** The heart's touch target, which a place kept for it matches. */
 internal val FollowButtonSize = 40.dp
+private const val FOLLOW_HEART_START_SCALE = 0.8f
+
+private val FollowHeartSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioLowBouncy,
+    stiffness = Spring.StiffnessMedium,
+)
 
 /** The heart beside a channel's or a category's name: outlined while not followed, filled while followed. */
 @Composable
 internal fun FollowButton(knownFollowing: Boolean, action: FollowAction) {
     // A follow or an unfollow shows from the tap on, while it is sent.
     val following = action.shownFollowing(knownFollowing)
+    val heartScale by animateFloatAsState(
+        targetValue = if (following) 1f else FOLLOW_HEART_START_SCALE,
+        animationSpec = FollowHeartSpring,
+        label = "channelFollowHeartScale",
+    )
     val stateText = stringResource(if (following) R.string.channel_following else R.string.channel_not_following)
     IconButton(
         onClick = action::tap,
@@ -133,6 +148,11 @@ internal fun FollowButton(knownFollowing: Boolean, action: FollowAction) {
                 imageVector = if (shownFollowing) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 contentDescription = stringResource(R.string.channel_follow),
                 tint = if (shownFollowing) TwitchPurple else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.graphicsLayer {
+                    val scale = if (shownFollowing) heartScale else 1f
+                    scaleX = scale
+                    scaleY = scale
+                },
             )
         }
     }

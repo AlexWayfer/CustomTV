@@ -11,6 +11,7 @@ import okhttp3.Response
 import org.json.JSONException
 import java.io.IOException
 import kotlin.coroutines.resume
+import kotlin.math.pow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -95,8 +96,7 @@ internal object EmoteHttp {
     }
 
     fun backoff(attempt: Int): Duration {
-        return (FIRST_BACKOFF.inWholeMilliseconds * (1L shl (attempt - 1).coerceAtLeast(0)))
-            .coerceAtMost(MAX_BACKOFF.inWholeMilliseconds).milliseconds
+        return (FIRST_BACKOFF * 2.0.pow(attempt.coerceAtLeast(1) - 1)).coerceAtMost(MAX_BACKOFF)
     }
 
     fun classify(response: Response): EmoteHttpBody {

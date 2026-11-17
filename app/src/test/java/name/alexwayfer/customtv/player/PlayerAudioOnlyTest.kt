@@ -9,59 +9,27 @@ import org.junit.Test
 class PlayerAudioOnlyTest {
     @Test
     fun backgroundWithoutPictureInPicturePlaysSoundOnly() {
-        assertTrue(
-            playerAudioOnly(enabled = true, background = true, inPictureInPicture = false, screenUnlocked = true),
-        )
-    }
-
-    @Test
-    fun turnedOffSettingKeepsTheVideoInTheBackground() {
-        assertFalse(
-            playerAudioOnly(enabled = false, background = true, inPictureInPicture = false, screenUnlocked = true),
-        )
+        assertTrue(playerAudioOnly(background = true, inPictureInPicture = false, screenUnlocked = true))
     }
 
     @Test
     fun pictureInPictureKeepsTheVideo() {
-        assertFalse(
-            playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = true),
-        )
+        assertFalse(playerAudioOnly(background = true, inPictureInPicture = true, screenUnlocked = true))
     }
 
     @Test
     fun lockedScreenHidesPictureInPictureAndPlaysSoundOnly() {
-        assertTrue(
-            playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = false),
-        )
+        assertTrue(playerAudioOnly(background = true, inPictureInPicture = true, screenUnlocked = false))
     }
 
     @Test
     fun lockedScreenPlaysSoundOnlyBeforeTheActivityStops() {
-        assertTrue(
-            playerAudioOnly(enabled = true, background = false, inPictureInPicture = true, screenUnlocked = false),
-        )
-    }
-
-    @Test
-    fun litLockScreenKeepsPictureInPictureOnSoundOnly() {
-        // Picking the phone up lights the lock screen; the picture-in-picture window stays hidden behind it.
-        assertTrue(
-            playerAudioOnly(enabled = true, background = true, inPictureInPicture = true, screenUnlocked = false),
-        )
-    }
-
-    @Test
-    fun turnedOffSettingKeepsTheVideoWithTheScreenOff() {
-        assertFalse(
-            playerAudioOnly(enabled = false, background = true, inPictureInPicture = true, screenUnlocked = false),
-        )
+        assertTrue(playerAudioOnly(background = false, inPictureInPicture = false, screenUnlocked = false))
     }
 
     @Test
     fun foregroundKeepsTheVideo() {
-        assertFalse(
-            playerAudioOnly(enabled = true, background = false, inPictureInPicture = false, screenUnlocked = true),
-        )
+        assertFalse(playerAudioOnly(background = false, inPictureInPicture = false, screenUnlocked = true))
     }
 
     @Test

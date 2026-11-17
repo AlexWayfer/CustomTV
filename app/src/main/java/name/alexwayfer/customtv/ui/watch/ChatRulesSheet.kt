@@ -12,7 +12,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +34,7 @@ import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChatRulesStore
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 
 /**
  * The channel's rules come before the user's first message: only when the user can send, the
@@ -109,7 +109,7 @@ internal fun ChatRulesSheet(
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,

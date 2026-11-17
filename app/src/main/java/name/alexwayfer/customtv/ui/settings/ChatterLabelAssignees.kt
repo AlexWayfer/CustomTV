@@ -72,7 +72,7 @@ private const val ASSIGNEES_MAX_HEIGHT_EM = 18
 @Composable
 internal fun ChatterLabelShownInChat(shown: Boolean, enabled: Boolean, onShownChange: (Boolean) -> Unit) {
     ListItem(
-        headlineContent = { Text(stringResource(R.string.chatter_labels_show_in_chat)) },
+        content = { Text(stringResource(R.string.chatter_labels_show_in_chat)) },
         trailingContent = { Switch(checked = shown, onCheckedChange = null, enabled = enabled) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.toggleable(
@@ -130,7 +130,7 @@ internal fun ChatterLabelAssignees(
 @Composable
 private fun AssigneesCount(count: Int, expanded: Boolean, onToggle: (() -> Unit)?) {
     ListItem(
-        headlineContent = {
+        content = {
             Text(
                 text = if (onToggle != null) {
                     pluralStringResource(R.plurals.chatter_labels_chatters, count, count)

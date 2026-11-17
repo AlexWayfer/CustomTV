@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -37,7 +35,7 @@ import kotlinx.coroutines.delay
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.ui.components.TextButton
-import name.alexwayfer.customtv.ui.theme.TwitchPurple
+import name.alexwayfer.customtv.ui.theme.TwitchPurpleText
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -54,7 +52,7 @@ internal fun BoxScope.PlayerSleepTimerButton(visible: Boolean, fullscreen: Boole
         label = "sleep timer button top",
     )
     val tint by animateColorAsState(
-        targetValue = if (running) TwitchPurple else Color.White,
+        targetValue = if (running) TwitchPurpleText else Color.White,
         label = "sleep timer button tint",
     )
     val onState = stringResource(R.string.sleep_timer_on)
@@ -72,8 +70,7 @@ internal fun BoxScope.PlayerSleepTimerButton(visible: Boolean, fullscreen: Boole
                 .size(44.dp)
                 .semantics { if (running) stateDescription = onState },
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_sleep_timer),
+            SleepTimerIcon(
                 contentDescription = stringResource(R.string.sleep_timer),
                 tint = tint,
             )

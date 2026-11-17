@@ -76,6 +76,11 @@ internal sealed interface ChatSendError {
 
     /** The free build: `/shoutout` waits for Premium; a tap on the line shows the Premium banner. */
     data object ShoutoutPremium : ChatSendError
+
+    data object AnnouncementUsage : ChatSendError
+    data object AnnouncementNotAllowed : ChatSendError
+    data object AnnouncementLogIn : ChatSendError
+    data object AnnouncementPremium : ChatSendError
 }
 
 /**

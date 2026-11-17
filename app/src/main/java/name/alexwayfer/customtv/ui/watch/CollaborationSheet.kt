@@ -20,7 +20,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,6 +49,7 @@ import name.alexwayfer.customtv.data.collaborationRowOpensChannel
 import name.alexwayfer.customtv.ui.components.ChannelAvatar
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.theme.TwitchLive
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
@@ -78,7 +78,7 @@ internal fun CollaborationSheet(
     onOpenChannel: (ChannelPreview) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -201,7 +201,7 @@ private fun CollaborationChannelRow(
                 size = 40.dp,
             )
         },
-        headlineContent = {
+        content = {
             Text(channel.displayName, color = TwitchText, fontWeight = FontWeight.Medium)
         },
         supportingContent = if (suffix == null) {

@@ -260,7 +260,7 @@ private fun ChatterCardCountItem(title: String, @DrawableRes icon: Int, enabled:
         label = "chatter card count item",
     )
     ListItem(
-        headlineContent = { Text(title) },
+        content = { Text(title) },
         leadingContent = {
             Icon(painterResource(icon), contentDescription = null)
         },

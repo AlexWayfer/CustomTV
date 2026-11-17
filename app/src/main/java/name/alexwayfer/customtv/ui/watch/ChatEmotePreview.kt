@@ -12,7 +12,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -48,6 +47,7 @@ import name.alexwayfer.customtv.data.SevenTvRepository
 import name.alexwayfer.customtv.data.TwitchEmoteDetails
 import name.alexwayfer.customtv.data.TwitchEmoteDetailsRepository
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 
 internal val LocalEmotePreviewChannel = compositionLocalOf { EmotePreviewChannel(null, "") }
@@ -59,7 +59,7 @@ internal fun ChatEmotePreview(
     onDismiss: () -> Unit,
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     val scope = rememberCoroutineScope()
     var dismissing by remember { mutableStateOf(false) }
     val windowHeight = with(LocalDensity.current) {

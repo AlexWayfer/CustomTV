@@ -23,6 +23,7 @@ import name.alexwayfer.customtv.links.linkHandlerPackage
 import name.alexwayfer.customtv.links.openInBrowser
 import name.alexwayfer.customtv.links.outsideLinkRoute
 import name.alexwayfer.customtv.links.twitchLinkTarget
+import name.alexwayfer.customtv.ui.ActivityStatistics
 import name.alexwayfer.customtv.ui.CustomTvApp
 import name.alexwayfer.customtv.ui.PLAYER_NAV_LOG_TAG
 import name.alexwayfer.customtv.ui.PremiumAccessGate
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             CustomTvTheme {
                 PremiumAccessGate {
+                    ActivityStatistics()
                     CustomTvApp()
                 }
             }

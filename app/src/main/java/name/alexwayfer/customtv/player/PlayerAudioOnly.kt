@@ -3,14 +3,13 @@ package name.alexwayfer.customtv.player
 /**
  * Whether the stream plays sound only: in the background without a picture-in-picture window, or with the screen off
  * or locked, where that window hides, nobody sees the video, so downloading and decoding it only spends data and
- * battery. The setting [enabled] trades that for no pause when the screen locks or the app comes back.
+ * battery.
  */
 internal fun playerAudioOnly(
-    enabled: Boolean,
     background: Boolean,
     inPictureInPicture: Boolean,
     screenUnlocked: Boolean,
-): Boolean = enabled && (!screenUnlocked || background && !inPictureInPicture)
+): Boolean = !screenUnlocked || background && !inPictureInPicture
 
 private const val USHER_HOST = "usher.ttvnw.net"
 private const val AUDIO_ONLY_PARAM = "allow_audio_only"

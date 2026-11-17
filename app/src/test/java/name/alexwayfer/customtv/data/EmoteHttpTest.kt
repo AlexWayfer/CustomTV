@@ -30,6 +30,8 @@ class EmoteHttpTest {
         assertEquals(2.seconds, EmoteHttp.backoff(3))
         assertEquals(4.seconds, EmoteHttp.backoff(4))
         assertEquals(4.seconds, EmoteHttp.backoff(8))
+        assertEquals(4.seconds, EmoteHttp.backoff(64))
+        assertEquals(4.seconds, EmoteHttp.backoff(Int.MAX_VALUE))
     }
 
     @Test

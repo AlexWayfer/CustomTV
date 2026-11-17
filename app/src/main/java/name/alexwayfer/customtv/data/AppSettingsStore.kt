@@ -65,7 +65,6 @@ class AppSettingsStore(context: Context) {
             sentMessageHistory = prefs[SENT_MESSAGE_HISTORY] ?: defaults.sentMessageHistory,
             hiddenPhrases = decodeKeywordPhrases(prefs[HIDDEN_PHRASES]),
             hidePhrasesWhenModerator = prefs[HIDE_PHRASES_WHEN_MODERATOR] ?: defaults.hidePhrasesWhenModerator,
-            backgroundSoundOnly = prefs[BACKGROUND_SOUND_ONLY] ?: defaults.backgroundSoundOnly,
             smoothSound = prefs[SMOOTH_SOUND] ?: defaults.smoothSound,
             streamStartNotifications = prefs[STREAM_START_NOTIFICATIONS]
                 ?: defaults.streamStartNotifications,
@@ -81,10 +80,6 @@ class AppSettingsStore(context: Context) {
             portraitModel = storedPortraitModelKind(prefs[PORTRAIT_MODEL]),
             sleepTimerMinutes = prefs[SLEEP_TIMER_MINUTES] ?: defaults.sleepTimerMinutes,
         )
-    }
-
-    suspend fun setBackgroundSoundOnly(enabled: Boolean) {
-        dataStore.edit { prefs -> prefs[BACKGROUND_SOUND_ONLY] = enabled }
     }
 
     suspend fun setSmoothSound(enabled: Boolean) {

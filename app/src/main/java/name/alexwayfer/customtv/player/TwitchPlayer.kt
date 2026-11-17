@@ -44,6 +44,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.currentStateAsState
+import java.util.UUID
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.StreamStatusEvent
@@ -242,7 +243,6 @@ private fun PlayerHostEffects(
     val appSettings by AppSettingsStore.restored.collectAsStateWithLifecycle()
     val screenUnlocked by rememberScreenUnlocked(lifecycleState)
     val soundOnly = playerAudioOnly(
-        enabled = appSettings.beforeRestore().backgroundSoundOnly,
         // Not RESUMED: entering or leaving picture-in-picture pauses first and reports the mode after, which would
         // switch to sound only and back on the way. A visible activity stays STARTED.
         background = lifecycleState < Lifecycle.State.STARTED,
@@ -291,7 +291,8 @@ private fun TwitchWebViewHost.bind(events: PlayerEvents, gestures: PlayerGesture
 @SuppressLint("SetJavaScriptEnabled")
 private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
     private val appContext = context.applicationContext
-    private val scripts = TwitchPlayerScripts(appContext.assets)
+    @Volatile private var mediaNetworkPage = UUID.randomUUID().toString()
+    private val scripts = TwitchPlayerScripts(appContext.assets) { mediaNetworkPage }
     val webView = PlayerWebView(context)
     var onTap: ((playerControlsVisible: Boolean, reachedPage: Boolean) -> Unit)? = null
     var onControlsVisible: ((Boolean) -> Unit)? = null
@@ -460,6 +461,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
                 ),
                 isReleased = { released || offlinePage.suspended },
                 isCurrentPage = { recovery.pageLoad.current },
+                playlistRetryAllowed = liveStall::canRetryPlaylist,
             ),
             "CustomTvPlayback",
         )
@@ -495,7 +497,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
             ),
             "CustomTvControls",
         )
-        StreamPlayback.bind(playbackCommands)
+        StreamPlayback.bind(playbackCommands, appContext)
         val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
         gestureHandler = PlayerGestureHandler(
             view = webView,
@@ -555,6 +557,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         webView.webViewClient = PlayerNavigationClient(
             handler = mainHandler,
             isReleased = { released || offlinePage.suspended },
+            mediaNetworkPage = { mediaNetworkPage },
             events = PlayerPageEvents(
                 hideTopOverlay = ::injectHideTopOverlay,
                 onPlayerPageStarted = recovery::pageResponded,
@@ -582,6 +585,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         if (released) return
         if (loadedTarget?.key == target.key) return
         loadedTarget = target
+        mediaNetworkPage = UUID.randomUUID().toString()
         positionSeconds = 0.0
         tapSeek.cancel()
         zoom.reset()

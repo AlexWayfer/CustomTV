@@ -7,15 +7,16 @@ class ChatterLabelIcon(
     val image: ByteArray,
     val assignedAtMillis: Long? = null,
     val comment: String = "",
+    internal val script: String? = null,
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ChatterLabelIcon) return false
         return id == other.id && name == other.name && image.contentEquals(other.image) &&
-            assignedAtMillis == other.assignedAtMillis && comment == other.comment
+            assignedAtMillis == other.assignedAtMillis && comment == other.comment && script == other.script
     }
 
     override fun hashCode(): Int =
-        (((31 * id.hashCode() + name.hashCode()) * 31 + image.contentHashCode()) * 31 +
-            assignedAtMillis.hashCode()) * 31 + comment.hashCode()
+        ((((31 * id.hashCode() + name.hashCode()) * 31 + image.contentHashCode()) * 31 +
+            assignedAtMillis.hashCode()) * 31 + comment.hashCode()) * 31 + script.hashCode()
 }

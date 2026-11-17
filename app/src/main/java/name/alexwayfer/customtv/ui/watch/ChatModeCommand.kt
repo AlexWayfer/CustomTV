@@ -28,7 +28,7 @@ internal fun chatModeCommand(text: String): ChatModeCommandInput? {
         ChatCommand.EmoteOnlyOff -> ChatModeChange.EmoteOnly(false)
         ChatCommand.UniqueChat -> ChatModeChange.UniqueChat(true)
         ChatCommand.UniqueChatOff -> ChatModeChange.UniqueChat(false)
-        ChatCommand.User, ChatCommand.Moderators, ChatCommand.Prediction, ChatCommand.Shoutout -> return null
+        else -> return null
     }
     return change?.let(ChatModeCommandInput::Change) ?: ChatModeCommandInput.Invalid(command)
 }
@@ -88,10 +88,10 @@ internal fun chatModeCommandRun(command: ChatModeCommandInput, locked: Boolean):
 }
 
 /**
- * A tap on the send error shows the Premium banner for a chat mode command or a `/shoutout` the free build holds;
- * null otherwise.
+ * A tap on the send error shows the Premium banner for a locked moderation command.
  */
 internal fun sendErrorTap(error: ChatSendError?, control: ChatModeControl?): (() -> Unit)? =
     (control as? ChatModeControl.Locked)?.showPremium?.takeIf {
-        error == ChatSendError.ChatModesPremium || error == ChatSendError.ShoutoutPremium
+        error == ChatSendError.ChatModesPremium || error == ChatSendError.ShoutoutPremium ||
+            error == ChatSendError.AnnouncementPremium
     }

@@ -25,7 +25,7 @@ internal fun ProblemReportSettings() {
             context.startActivity(diagnosticReportIntent(context, withAppLog = true))
         },
         leadingContent = { Icon(painterResource(R.drawable.ic_bug_report), contentDescription = null) },
-        headlineContent = { Text(stringResource(R.string.diagnostics_send)) },
+        content = { Text(stringResource(R.string.diagnostics_send)) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
     )
 }

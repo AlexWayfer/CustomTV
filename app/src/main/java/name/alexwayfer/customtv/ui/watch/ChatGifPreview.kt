@@ -8,7 +8,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.chat.ChatPart
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
 import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 
@@ -30,7 +30,7 @@ import name.alexwayfer.customtv.ui.components.resolvedEmoteAspectRatio
 @Composable
 internal fun ChatGifPreview(gif: ChatPart.Gif, onDismiss: () -> Unit) {
     DismissWhenPlayerContentHidden(onDismiss)
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     val scope = rememberCoroutineScope()
     var dismissing by remember { mutableStateOf(false) }
 

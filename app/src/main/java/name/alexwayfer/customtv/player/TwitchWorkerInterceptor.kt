@@ -10,19 +10,20 @@ import name.alexwayfer.customtv.diagnostics.AppLog
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-/** Applies the buffer cleanup correction before the player worker executes. */
+/** Adds request diagnostics and applies the buffer cleanup correction before the player worker executes. */
 internal class TwitchWorkerInterceptor(private val http: OkHttpClient = sharedHttpClient) {
     // A worker asset is content-addressed. Keep its corrected body across page reloads in this player.
     private var cached: WorkerScriptResponse? = null
 
-    fun intercept(request: WebResourceRequest, assets: AssetManager): WebResourceResponse? {
+    fun intercept(request: WebResourceRequest, assets: AssetManager, mediaNetworkPage: String): WebResourceResponse? {
         val url = request.url.toString()
         if (request.method != "GET" || !isTwitchWorkerScript(url)) return null
         val script = synchronized(this) {
             cached?.takeIf { it.url == url } ?: download(request, assets)?.also { cached = it }
         } ?: return null
+        val body = script.diagnostics?.let { "$it('$mediaNetworkPage');\n${script.body}" } ?: script.body
         return WebResourceResponse(
-            "application/javascript", "utf-8", HTTP_OK, "OK", script.headers, script.body.inputStream(),
+            "application/javascript", "utf-8", HTTP_OK, "OK", script.headers, body.byteInputStream(),
         )
     }
 
@@ -46,16 +47,18 @@ internal class TwitchWorkerInterceptor(private val http: OkHttpClient = sharedHt
             val source = bytes.toString(charset)
             val cleanup = assets.open("player/worker-buffer-cleanup.js").bufferedReader().use { it.readText() }
             val patched = patchTwitchWorkerScript(source, cleanup)
-            if (patched == null) {
+            val diagnostics = if (patched == null) {
                 AppLog.w(PLAYER_LOG_TAG, "Worker buffer cleanup not applied: SDK removal function not recognized")
+                null
             } else {
                 AppLog.i(PLAYER_LOG_TAG, "Worker buffer cleanup applied")
+                assets.open("player/worker-media-network.js").bufferedReader().use { it.readText().trimEnd() }
             }
             val headers = response.headers.toMultimap()
                 .filterKeys { it.lowercase() !in DROPPED_RESPONSE_HEADERS }
                 .mapValues { (_, values) -> values.joinToString(", ") } + ("Cache-Control" to "no-store")
             WorkerScriptResponse(
-                request.url.toString(), (patched ?: source).toByteArray(Charsets.UTF_8), headers,
+                request.url.toString(), patched ?: source, headers, diagnostics,
             )
         }
     } catch (error: IOException) {
@@ -63,7 +66,12 @@ internal class TwitchWorkerInterceptor(private val http: OkHttpClient = sharedHt
         null
     }
 
-    private class WorkerScriptResponse(val url: String, val body: ByteArray, val headers: Map<String, String>)
+    private class WorkerScriptResponse(
+        val url: String,
+        val body: String,
+        val headers: Map<String, String>,
+        val diagnostics: String?,
+    )
 
     private companion object {
         const val MAX_WORKER_SCRIPT_BYTES = 1024 * 1024L

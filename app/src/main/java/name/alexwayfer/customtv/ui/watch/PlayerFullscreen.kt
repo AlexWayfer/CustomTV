@@ -61,6 +61,7 @@ internal enum class FullscreenToggle(val logName: String) {
     Button("button"),
     Drag("drag"),
     Back("Back"),
+    ChatterCard("chatter card"),
 }
 
 /** Whether the player fills the screen in landscape, from the full screen button, a drag up, or turning the device. */

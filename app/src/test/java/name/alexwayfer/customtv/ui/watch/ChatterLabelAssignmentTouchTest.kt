@@ -5,12 +5,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.test.core.app.ApplicationProvider
+import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.data.ChatterLabelIcon
+import name.alexwayfer.customtv.data.LabeledChatter
 import name.alexwayfer.customtv.ui.ComposeHost
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -66,6 +70,52 @@ class ChatterLabelAssignmentTouchTest {
 
         compose.onNodeWithText("Friend").assertIsNotEnabled()
         compose.onNodeWithText(FIELD).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `browser login checks show a disabled button and explain why`() {
+        compose.setContent {
+            ChatterLabelCheck(
+                script = "return document.cookie",
+                user = LabeledChatter("123", "chatter", "Chatter"),
+                channel = null,
+                enabled = true,
+            )
+        }
+
+        compose.onNodeWithText("Check").assertIsNotEnabled()
+        compose.onNodeWithText("This check is only available in the Chatter Labels browser extension.").assertExists()
+    }
+
+    @Test
+    fun `Twitch helper shows the edition specific explanation without experimental login`() {
+        compose.setContent {
+            ChatterLabelCheck(
+                script = "return await twitch.gql(query)",
+                user = LabeledChatter("123", "chatter", "Chatter"),
+                channel = null,
+                enabled = true,
+            )
+        }
+
+        val message = ApplicationProvider.getApplicationContext<Application>()
+            .getString(R.string.chatter_check_twitch_session_required)
+        compose.onNodeWithText("Check").assertIsNotEnabled()
+        compose.onNodeWithText(message).assertExists()
+    }
+
+    @Test
+    fun `archive check can be started without Twitch web login`() {
+        compose.setContent {
+            ChatterLabelCheck(
+                script = "return await bestLogs.countMessages(['twitch'])",
+                user = LabeledChatter("123", "chatter", "Chatter"),
+                channel = null,
+                enabled = true,
+            )
+        }
+
+        compose.onNodeWithText("Check").assertIsEnabled()
     }
 
     private companion object {

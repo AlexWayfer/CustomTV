@@ -22,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.components.TextButton
 import name.alexwayfer.customtv.ui.GlowCorners
 import name.alexwayfer.customtv.ui.PremiumGlowEdgeStyle
@@ -102,6 +102,7 @@ private val premiumFeatureSections = listOf(
             R.string.premium_all_swipe_moderation,
             R.string.premium_all_chat_modes,
             R.string.premium_all_shoutouts,
+            R.string.premium_all_announcements,
             R.string.premium_all_automod,
             R.string.premium_all_mod_logs,
             R.string.premium_all_suspicious_users,
@@ -145,7 +146,7 @@ internal fun PremiumAllFeaturesLink(onClick: () -> Unit, style: TextStyle = Mate
 @Composable
 internal fun PremiumAllFeaturesSheet(onUpgrade: () -> Unit, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     // Short of the whole screen, so what the sheet opened over stays in sight above it.
     val maxHeight = with(LocalDensity.current) {
         (LocalWindowInfo.current.containerSize.height * PREMIUM_ALL_FEATURES_HEIGHT_SHARE).toDp()
@@ -168,7 +169,7 @@ internal fun PremiumAllFeaturesSheet(onUpgrade: () -> Unit, onDismiss: () -> Uni
                 .fillMaxWidth()
                 .premiumBannerBackground(strength = SHEET_BACKGROUND_STRENGTH)
                 .premiumGlow(edgeCorners, SheetEdgeStyle, angle = { edgeAngle })
-                .windowInsetsPadding(BottomSheetDefaults.windowInsets),
+                .windowInsetsPadding(BottomSheetDefaults.modalWindowInsets),
         ) {
             BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
             PremiumAllFeaturesBody(

@@ -1,5 +1,6 @@
 import dev.detekt.gradle.Detekt
 import java.util.Properties
+import org.gradle.api.tasks.compile.JavaCompile
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
@@ -23,7 +24,7 @@ android {
         targetSdk = 37
         // One counter for both editions: they share the application ID and install over each other, and
         // Android refuses a lower code. Every release of either edition raises it; each edition names its own version.
-        versionCode = 45
+        versionCode = 47
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val twitchClientId = Properties().apply {
@@ -39,14 +40,14 @@ android {
     productFlavors {
         create("free") {
             dimension = "tier"
-            versionName = "1.16.1"
+            versionName = "1.17.0"
             buildConfigField("boolean", "PREMIUM", "false")
         }
         if (premiumSources) {
             create("premium") {
                 dimension = "tier"
                 isDefault = true
-                versionName = "1.16.0"
+                versionName = "1.16.1"
                 buildConfigField("boolean", "PREMIUM", "true")
             }
         }
@@ -161,6 +162,8 @@ dependencies {
     implementation(libs.markdown.renderer.m3)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.javascriptengine)
+    implementation(libs.androidx.concurrent.futures.ktx)
     if (premiumSources) {
         // The home screen widget of the live channels.
         "premiumImplementation"(libs.androidx.glance.appwidget)
@@ -202,21 +205,25 @@ val detektFiles = providers.gradleProperty("detektFilesList")
     ?.filter { it.isNotBlank() }
     ?.map { file(it.trim()) }
     ?.toSet()
-if (detektFiles != null) {
-    // An exclude, not a new source: the plugin adds the variant's sources after this action runs.
-    tasks.withType<Detekt>().configureEach {
+tasks.withType<Detekt>().configureEach {
+    if (detektFiles != null) {
+        // An exclude, not a new source: the plugin adds the variant's sources after this action runs.
         // A local copy: the configuration cache cannot store a reference to the build script.
         val analyzed = detektFiles
         exclude { !it.isDirectory && it.file !in analyzed }
-        // The plugin's classpath lacks the variant's own classes with AGP's built-in Kotlin; a test variant gets
-        // the tested classes from its libraries. An explicit value replaces the plugin's, so each names both. The
-        // classes are friends, as the code is mostly internal.
-        val compileName = name.replaceFirst("detekt", "compile") + "Kotlin"
-        if (compileName in tasks.names) {
-            val compile = tasks.named<KotlinJvmCompile>(compileName)
-            val classes = compile.flatMap { it.destinationDirectory }
-            classpath.from(compile.map { it.libraries }, classes)
-            friendPaths.from(compile.map { it.friendPaths }, classes)
-        }
+    }
+    // AGP's built-in Kotlin needs explicit compiled outputs for type resolution, in full analysis too.
+    // The tested classes come from the Kotlin task's libraries and friends; Java outputs provide BuildConfig.
+    val compileName = name.replaceFirst("detekt", "compile") + "Kotlin"
+    if (compileName in tasks.names) {
+        val compile = tasks.named<KotlinJvmCompile>(compileName)
+        val classes = compile.flatMap { it.destinationDirectory }
+        classpath.from(compile.map { it.libraries }, classes)
+        friendPaths.from(compile.map { it.friendPaths }, classes)
+    }
+    val javaCompileName = name.replaceFirst("detekt", "compile") + "JavaWithJavac"
+    if (javaCompileName in tasks.names) {
+        val compileJava = tasks.named<JavaCompile>(javaCompileName)
+        classpath.from(compileJava.flatMap { it.destinationDirectory })
     }
 }

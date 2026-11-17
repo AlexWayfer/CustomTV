@@ -91,6 +91,7 @@ private fun rememberMinimizablePlayerLayout(
                 playerBounds.y + streamRoomHeightPx(playerBounds.height, streamHiding?.roomClosed ?: 0f)
             },
             fullscreen = fullscreenActive,
+            onLeaveFullscreen = { fullscreen.exit(FullscreenToggle.ChatterCard) },
             onComposerPanelPx = { ui.composerPanelPx = it },
             chatOverVideo = { chatOverVideo },
             overlayChat = overlayChat,

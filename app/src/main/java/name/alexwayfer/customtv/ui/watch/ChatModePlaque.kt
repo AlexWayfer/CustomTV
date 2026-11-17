@@ -20,7 +20,6 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +46,7 @@ import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.chatModeButton
 import name.alexwayfer.customtv.chat.chatModeCountdown
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.theme.TwitchText
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
 
@@ -123,7 +123,7 @@ private fun ChatModeDetailsSheet(
     onDismiss: () -> Unit,
 ) {
     DismissWhenPlayerContentHidden(onDismiss)
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -149,7 +149,7 @@ private fun ChatModeDetailsSheet(
                     null -> null
                 }
                 ListItem(
-                    headlineContent = { Text(stringResource(plaque.titleRes())) },
+                    content = { Text(stringResource(plaque.titleRes())) },
                     supportingContent = { Text(plaque.detail(), color = TwitchTextSecondary) },
                     trailingContent = actionLabel?.let { label ->
                         {

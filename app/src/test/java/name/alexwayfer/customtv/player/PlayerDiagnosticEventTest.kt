@@ -13,6 +13,14 @@ class PlayerDiagnosticEventTest {
     }
 
     @Test
+    fun stylesheetRecoveryReportsOnlyFixedPhases() {
+        for (phase in listOf("missing", "restored", "network-error", "timeout", "unapplied")) {
+            assertTrue(isPlayerDiagnosticEvent("stylesheet-$phase"))
+        }
+        assertFalse(isPlayerDiagnosticEvent("stylesheet-https://example.com/private"))
+    }
+
+    @Test
     fun playActionsCarryAFixedOriginAndACommandNumber() {
         for (origin in listOf("command", "repeat", "late-repeat", "background")) {
             for (action in listOf(

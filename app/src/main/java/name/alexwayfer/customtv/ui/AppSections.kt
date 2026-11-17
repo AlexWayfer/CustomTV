@@ -201,6 +201,7 @@ private fun AppSectionPage(scene: AppScene, page: AppSection) {
                 shell.profileOpenedFrom = AppSection.Whispers
                 shell.section = AppSection.ChannelProfile
             },
+            onOpenChatterCard = scene.openWhisperChatterCard(),
             // As the navigation's Settings does, at the whispers' block.
             onOpenSettings = {
                 shell.settingsScrollTarget = SettingsScrollTarget.Whispers

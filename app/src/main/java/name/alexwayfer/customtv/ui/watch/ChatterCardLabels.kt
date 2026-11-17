@@ -48,6 +48,7 @@ import java.time.format.FormatStyle
 import java.util.Locale
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.data.ChatterCheckChannel
 import name.alexwayfer.customtv.data.ChatterLabelIcon
 import name.alexwayfer.customtv.data.ChatterLabelsRepository
 import name.alexwayfer.customtv.data.LabeledChatter
@@ -95,19 +96,18 @@ internal fun ChatterCardLabels(userId: String?, onManage: () -> Unit) {
  */
 @Composable
 internal fun ChatterCardLabelsPage(
-    userId: String,
-    login: String,
-    displayName: String,
+    chatter: LabeledChatter,
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    channel: ChatterCheckChannel? = null,
 ) {
     val labels by ChatterLabelsRepository.labels.collectAsStateWithLifecycle()
     val labelsByUserId by ChatterLabelsRepository.labelsByUserId.collectAsStateWithLifecycle()
-    val assigned = labelsByUserId[userId].orEmpty()
+    val assigned = labelsByUserId[chatter.userId].orEmpty()
     val assignedIds = remember(assigned) { assigned.mapTo(mutableSetOf()) { it.id } }
     // A save that succeeded changes what the chatter has, and the checks start from it again.
     var checked by remember(assignedIds) { mutableStateOf<Set<String>>(assignedIds) }
-    var editedComments by remember(userId) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var editedComments by remember(chatter.userId) { mutableStateOf<Map<String, String>>(emptyMap()) }
     val changedComments = changedChatterComments(assigned, checked, editedComments)
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<UiText?>(null) }
@@ -131,7 +131,9 @@ internal fun ChatterCardLabelsPage(
                 enabled = !saving,
                 onCheckedChange = { id, on -> checked = if (on) checked + id else checked - id },
                 onCommentChange = { id, comment -> editedComments = editedComments + (id to comment) },
-            )
+            ) { label ->
+                label.script?.let { ChatterLabelCheck(it, chatter, channel, enabled = !saving) }
+            }
         }
         LabelsSaveError(error)
         Button(
@@ -144,7 +146,7 @@ internal fun ChatterCardLabelsPage(
                 scope.launch {
                     try {
                         error = saveLabelAssignments(
-                            LabeledChatter(userId, login, displayName), shownIds, toSave, commentsToSave,
+                            chatter, shownIds, toSave, commentsToSave,
                         )
                         if (error == null) editedComments = emptyMap()
                     } finally {

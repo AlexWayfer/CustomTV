@@ -14,6 +14,8 @@ internal class LiveStallRecovery(
     // The state of Twitch's player last logged during a recovery, so each change shows once.
     private var recoveryState: String? = null
 
+    fun canRetryPlaylist(): Boolean = watchdog.networkGraceElapsed(SystemClock.elapsedRealtime())
+
     fun networkChanged() {
         watchdog.networkChanged(SystemClock.elapsedRealtime())
         recoveryState = null
@@ -27,7 +29,7 @@ internal class LiveStallRecovery(
             userPaused = !StreamPlayback.canAutomaticallyPlay,
             tick = tick,
         )
-        val action = watchdog.tick(SystemClock.elapsedRealtime(), watch, tick.positionSeconds, tick.latencySeconds)
+        val action = watchdog.tick(SystemClock.elapsedRealtime(), watch, tick)
         logRecoveryState(tick)
         if (action == LiveStallAction.None) return
         val step = when (action) {
@@ -38,7 +40,8 @@ internal class LiveStallRecovery(
         AppLog.w(
             PLAYER_LOG_TAG,
             "Live stuck at ${tick.positionSeconds} s, ${tick.latencySeconds} s behind, ${tick.state}, " +
-                "buffered ${tick.buffered}: $step",
+                "buffered ${tick.buffered}, waiting for playlist with low buffer " +
+                "${tick.waitingForPlaylistWithLowBuffer}: $step",
         )
         when (action) {
             LiveStallAction.RestartPlayer -> restartPlayer()

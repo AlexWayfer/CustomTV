@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +44,7 @@ import name.alexwayfer.customtv.data.FullscreenChatSide
 import name.alexwayfer.customtv.data.GestureHint
 import name.alexwayfer.customtv.ui.LocalGestureHints
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 
 /** The gear in the full screen player's top corner; opens the full screen chat settings. */
 @Composable
@@ -87,7 +87,7 @@ private fun FullscreenChatSettingsSheet(onDismiss: () -> Unit) {
     val stopAtTop = rememberStopAtScrollTop(scrollState, overscroll)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = rememberModalSheetState(),
     ) {
         NoSheetWindowDim()
         Column(
@@ -153,7 +153,7 @@ private fun OptionGroup(title: String, options: @Composable () -> Unit) {
 @Composable
 private fun OptionRow(label: String, selected: Boolean, onSelect: () -> Unit) {
     ListItem(
-        headlineContent = { Text(label) },
+        content = { Text(label) },
         trailingContent = { RadioButton(selected = selected, onClick = null) },
         modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),

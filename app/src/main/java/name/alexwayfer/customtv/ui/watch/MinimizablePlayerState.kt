@@ -180,6 +180,8 @@ internal data class MinimizablePlayerLayout(
     val playerBottomPx: () -> Int,
     /** The content is the chat beside or over a full screen player; the stream info stays hidden. */
     val fullscreen: Boolean,
+    /** Leaves full screen to show a chatter card when the chat is hidden. */
+    val onLeaveFullscreen: () -> Unit,
     /** Reports the emote picker's height, so the full screen chat widens for it as for the keyboard. */
     val onComposerPanelPx: (Int) -> Unit,
     /** The full screen chat lies over the video on a see-through background. */

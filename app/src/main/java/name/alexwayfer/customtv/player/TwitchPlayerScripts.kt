@@ -12,7 +12,10 @@ internal enum class PlayerPlaySource(val diagnosticName: String) {
  * The scripts the app runs in the Twitch player page. Each one is a file in `assets/player`, read once a process on
  * first use, and runs after `common.js`, which holds the helpers they share.
  */
-internal class TwitchPlayerScripts(private val assets: AssetManager) {
+internal class TwitchPlayerScripts(
+    private val assets: AssetManager,
+    private val mediaNetworkPage: () -> String,
+) {
     fun play(source: PlayerPlaySource): String = call("play.js", "'${source.diagnosticName}'")
 
     val pause: String get() = script("pause.js")
@@ -35,7 +38,7 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
     /** Pauses a live stream in Twitch's player and plays it again, which resumes it away from where it stood. */
     val restartLive: String get() = script("restart-live.js")
 
-    val hideTopOverlay: String get() = script("hide-top-overlay.js")
+    val hideTopOverlay: String get() = script(HIDE_TOP_OVERLAY)
 
     /** What the video and Twitch's player show, as an object the WebView hands back as JSON. */
     val playerState: String get() = script("player-state.js")
@@ -87,7 +90,18 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
 
     private fun helpers(name: String): String {
         val quality = if (name in QUALITY_SCRIPTS) "\n${load(QUALITY_FLOW)}" else ""
-        return "${load(COMMON)}\n${load(DIAGNOSTICS)}$quality"
+        val audioHandoff = if (name == "sound-only.js") {
+            "\n${load("audio-handoff-graph.js")}\n${load("audio-handoff.js")}"
+        } else {
+            ""
+        }
+        val mediaNetwork = if (name in MEDIA_NETWORK_SCRIPTS) "\n${load(MEDIA_NETWORK)}" else ""
+        val startMediaNetwork = if (name == HIDE_TOP_OVERLAY) {
+            "\ncustomTvStartMediaNetwork('${mediaNetworkPage()}');"
+        } else {
+            ""
+        }
+        return "${load(COMMON)}\n${load(DIAGNOSTICS)}$quality$audioHandoff$mediaNetwork$startMediaNetwork"
     }
 
     private fun load(name: String): String = loaded.getOrPut(name) {
@@ -99,7 +113,10 @@ internal class TwitchPlayerScripts(private val assets: AssetManager) {
         const val COMMON = "common.js"
         const val DIAGNOSTICS = "diagnostics.js"
         const val QUALITY_FLOW = "quality-flow.js"
+        const val MEDIA_NETWORK = "media-network.js"
+        const val HIDE_TOP_OVERLAY = "hide-top-overlay.js"
         val QUALITY_SCRIPTS = setOf("quality.js", "sound-only.js", "video-quality.js", "hide-top-overlay.js")
+        val MEDIA_NETWORK_SCRIPTS = setOf("hide-top-overlay.js", "restart-live.js")
         val loaded = ConcurrentHashMap<String, String>()
     }
 }

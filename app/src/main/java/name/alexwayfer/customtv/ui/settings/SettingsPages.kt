@@ -145,7 +145,7 @@ internal fun AnimatedContentTransitionScope<SettingsPage>.settingsPageTransition
 internal fun SettingsPageEntry(icon: Painter, title: String, hint: String, onOpen: () -> Unit) {
     ListItem(
         leadingContent = { Icon(icon, contentDescription = null) },
-        headlineContent = { Text(title) },
+        content = { Text(title) },
         supportingContent = { Text(hint) },
         trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),

@@ -25,7 +25,7 @@ import name.alexwayfer.customtv.ui.PremiumLockIcon
 internal fun SettingsLockedEntry(icon: Painter, title: String, source: String) {
     ListItem(
         leadingContent = { Icon(icon, contentDescription = null) },
-        headlineContent = { Text(title) },
+        content = { Text(title) },
         supportingContent = { Text(stringResource(R.string.premium_locked)) },
         // The line under the title already says it; TalkBack reads it once.
         trailingContent = { PremiumLockIcon(Modifier.clearAndSetSemantics {}) },

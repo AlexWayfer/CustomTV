@@ -10,9 +10,14 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -20,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
@@ -65,8 +69,10 @@ import name.alexwayfer.customtv.chat.chatterFactCopyText
 import name.alexwayfer.customtv.chat.chatterSubscription
 import name.alexwayfer.customtv.chat.shownUnits
 import name.alexwayfer.customtv.data.ChatterCardCache
+import name.alexwayfer.customtv.data.LabeledChatter
 import name.alexwayfer.customtv.ui.components.ChannelPreview
 import name.alexwayfer.customtv.ui.components.NoSheetWindowDim
+import name.alexwayfer.customtv.ui.components.rememberModalSheetState
 import name.alexwayfer.customtv.ui.components.lateralTransform
 import java.time.Instant
 import java.time.ZoneId
@@ -169,7 +175,7 @@ internal fun ChatterCardSheet(
     val nav = remember(card.login) { ChatterCardNavigation(card.page) }
     val load = rememberChatterCardLoad(card.login, card.userId)
     val chatter = chatterCardChatter(card, selfLogin, load.profile, userMessages, userMentions)
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalSheetState()
     val scroll = rememberChatterCardScroll()
     FollowChatterMessagesEnd(nav.page, scroll)
     val dismissSheet = rememberHideThenDismiss(sheetState, onDismiss)
@@ -180,7 +186,7 @@ internal fun ChatterCardSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        contentWindowInsets = { sheetInsets },
+        contentWindowInsets = { sheetInsets.union(WindowInsets.ime.only(WindowInsetsSides.Bottom)) },
     ) {
         NoSheetWindowDim()
         BackHandler {
@@ -296,10 +302,9 @@ private fun ChatterCardPageContent(
             )
             ChatterCardPage.Labels -> chatter.userId?.let { id ->
                 ChatterCardLabelsPage(
-                    userId = id,
-                    login = chatter.login,
-                    displayName = chatter.name,
+                    chatter = LabeledChatter(id, chatter.login, chatter.name),
                     onBack = nav::back,
+                    channel = LocalChatterCheckChannel.current,
                 )
             }
             ChatterCardPage.Portrait -> ChatterPortraitPageFor(card, chatter, load, onDismiss, onBack = nav::back)

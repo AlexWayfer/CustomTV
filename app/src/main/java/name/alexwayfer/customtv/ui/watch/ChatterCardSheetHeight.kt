@@ -29,8 +29,8 @@ internal fun chatterCardSheetMaxHeightPx(
 }
 
 /**
- * Keep the activity's system bars while a browser covers the card, but leave keyboard padding to the sheet's own
- * window. Its IME animation must not compete with an activity inset also subtracted from the content height limit.
+ * Keep the activity's system bars while a browser covers the card. The caller adds keyboard insets inside the sheet
+ * so both its padding and the animated height limit use the sheet window's IME animation.
  */
 @Composable
 internal fun chatterCardSheetInsets(): WindowInsets =
@@ -65,8 +65,8 @@ internal fun chatterCardImeContentMaxHeightPx(contentMaxHeightPx: Int, imeBottom
     (contentMaxHeightPx - (imeBottomPx - systemBottomPx).coerceAtLeast(0)).coerceAtLeast(0)
 
 /**
- * Read the sheet window's keyboard inset during measure, just as Material's outer imePadding does. A composition
- * read would trail that padding by a frame and briefly let the card fill the smaller window up to its top edge.
+ * Read the sheet window's keyboard inset during measure, in step with Material's content inset padding. A composition
+ * read would trail that padding by a frame and briefly move the top of the card.
  */
 @Composable
 internal fun Modifier.chatterCardHeight(

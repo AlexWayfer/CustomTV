@@ -35,7 +35,11 @@ internal fun SettingsTopBar(
         title = {
             AnimatedContent(targetState = page, transitionSpec = { settingsPageTransition() }) { current ->
                 val title = stringResource(current.titleRes())
-                Text(title, modifier = Modifier.settingsSearchAnchor(title))
+                Text(
+                    text = title,
+                    modifier = Modifier.settingsSearchAnchor(title),
+                    style = MaterialTheme.typography.headlineMedium,
+                )
             }
         },
         navigationIcon = {

@@ -27,6 +27,15 @@ class ChatCommandCompletionTest {
     }
 
     @Test
+    fun aModeratorGetsAllAnnouncementColors() {
+        val commands = availableChatCommands(predictionOpenable = false, chatModes = true)
+        assertEquals(
+            listOf("/announce", "/announceblue", "/announcegreen", "/announceorange", "/announcepurple"),
+            matchingChatCommands("/AN", commands).map { it.word },
+        )
+    }
+
+    @Test
     fun aTypedPrefixInAnyCaseOffersTheCommand() {
         assertEquals(listOf(ChatCommand.User), matchingChatCommands("/US", ChatCommand.entries))
     }

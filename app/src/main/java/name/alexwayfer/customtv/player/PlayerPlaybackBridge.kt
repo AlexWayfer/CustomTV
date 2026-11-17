@@ -3,6 +3,13 @@ package name.alexwayfer.customtv.player
 import android.os.Handler
 import android.webkit.JavascriptInterface
 
+private const val LIVE_TICK_AD_BREAK = 1
+private const val LIVE_TICK_WAITING_FOR_PLAYLIST_WITH_LOW_BUFFER = 2
+private const val LIVE_TICK_HAS_PLAYBACK_BUFFER = 4
+private const val LIVE_TICK_CAN_WAIT_FOR_SEGMENT_RETRY = 8
+private const val LIVE_TICK_SEGMENT_RETRY_DEADLINE = 16
+private const val MAX_MEDIA_REQUEST_ID_LENGTH = 32
+
 /**
  * What the player page reports: playback, a stop Twitch did not ask for, position and seeks, readiness, the
  * channel going offline, Twitch's audience gate waiting for a tap, and errors.
@@ -30,6 +37,7 @@ internal class PlayerPlaybackBridge(
     private val events: PlayerPlaybackEvents,
     private val isReleased: () -> Boolean,
     private val isCurrentPage: () -> Boolean,
+    private val playlistRetryAllowed: () -> Boolean,
 ) {
     private fun post(event: () -> Unit) {
         handler.post { if (!isReleased() && isCurrentPage()) event() }
@@ -99,17 +107,29 @@ internal class PlayerPlaybackBridge(
         positionSeconds: Double,
         latencySeconds: Double,
         state: String?,
-        adBreak: Boolean,
         buffered: String?,
-    ) {
-        if (!positionSeconds.isFinite() || positionSeconds < 0.0) return
+        status: String?,
+    ): Boolean {
+        if (!positionSeconds.isFinite() || positionSeconds < 0.0) return false
+        // Keep the optional request ID with the flags from the same sample.
+        val flags = status?.substringBefore(':')?.toIntOrNull() ?: return false
+        val retryId = status.substringAfter(':', "")
+            .takeIf { it.isNotEmpty() && it.length <= MAX_MEDIA_REQUEST_ID_LENGTH }
         val tick = LiveTick(
             positionSeconds = positionSeconds,
             latencySeconds = latencySeconds.takeIf { it.isFinite() && it >= 0.0 } ?: Double.NaN,
             state = state.orEmpty(),
-            adBreak = adBreak,
+            adBreak = flags and LIVE_TICK_AD_BREAK != 0,
             buffered = buffered.orEmpty(),
+            waitingForPlaylistWithLowBuffer = flags and LIVE_TICK_WAITING_FOR_PLAYLIST_WITH_LOW_BUFFER != 0,
+            hasPlaybackBuffer = flags and LIVE_TICK_HAS_PLAYBACK_BUFFER != 0,
+            segmentRetry = LiveSegmentRetry(
+                id = retryId,
+                canWait = flags and LIVE_TICK_CAN_WAIT_FOR_SEGMENT_RETRY != 0,
+                deadline = flags and LIVE_TICK_SEGMENT_RETRY_DEADLINE != 0,
+            ),
         )
         post { events.onLiveTick(tick) }
+        return playlistRetryAllowed()
     }
 }

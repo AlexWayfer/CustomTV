@@ -79,7 +79,7 @@ private fun ModeratorRow(
         stringResource(if (it) R.string.chat_moderator_in_chat else R.string.chat_moderator_not_in_chat)
     }
     ListItem(
-        headlineContent = {
+        content = {
             ChatNameWithBadges(
                 displayName = moderator.displayName,
                 color = chatNickColor(appearance?.color, readableColors),

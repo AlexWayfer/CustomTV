@@ -78,6 +78,18 @@ class EventSubSubscriptionsTest {
     }
 
     @Test
+    fun twitchCanRejectAClosedSessionBeforeTheSocketReceivesTheClose() {
+        val disconnected = "websocket transport session does not exist or has already disconnected"
+        for (condition in EventSubCondition.entries) {
+            assertEquals(EventSubSubscribeOutcome.Outdated, outcome(400, condition, message = disconnected))
+        }
+        assertEquals(
+            EventSubSubscribeOutcome.Rejected,
+            outcome(400, EventSubCondition.Broadcaster, message = "invalid transport method"),
+        )
+    }
+
+    @Test
     fun serverErrorFailsWithoutRejecting() {
         assertEquals(EventSubSubscribeOutcome.Failed, outcome(503, EventSubCondition.Moderator))
         assertEquals(EventSubSubscribeOutcome.Subscribed, outcome(202, EventSubCondition.Moderator))

@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import name.alexwayfer.customtv.data.ActivityStatisticsPreferences
 import name.alexwayfer.customtv.data.AppSettings
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.data.ChatPageSettingsStore
@@ -15,6 +16,9 @@ import name.alexwayfer.customtv.data.PortraitModelKind
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val store = AppSettingsStore(application)
+    internal val activityStatistics = ActivityStatisticsSettingsActions(
+        viewModelScope, ActivityStatisticsPreferences(application),
+    )
 
     val settings: StateFlow<AppSettings?> = AppSettingsStore.restored
     val chat = ChatPageSettingsActions(viewModelScope, ChatPageSettingsStore(application))
@@ -31,10 +35,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     internal fun chatterLabelsEditor(opening: String): ChatterLabelsEditorState {
         labelsEditor?.let { (key, editor) -> if (key == opening) return editor }
         return ChatterLabelsEditorState().also { labelsEditor = opening to it }
-    }
-
-    fun setBackgroundSoundOnly(enabled: Boolean) {
-        viewModelScope.launch { store.setBackgroundSoundOnly(enabled) }
     }
 
     fun setSmoothSound(enabled: Boolean) {

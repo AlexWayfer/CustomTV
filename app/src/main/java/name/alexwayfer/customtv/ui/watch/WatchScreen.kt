@@ -99,7 +99,6 @@ internal fun WatchScreen(
     )
     WatchChannelEffects(scene)
     ReplySessionEffects(chat, data.messages)
-    PlayerSheetReopenEffect(navigation.sheetReopen, chat)
     CompositionLocalProvider(
         LocalSheetKeyboard provides scene.sheetKeyboard,
         LocalOpenSettings provides rememberOpenSettings(scene),
@@ -205,6 +204,7 @@ private fun WatchPlayer(scene: WatchScene) {
         fullscreenInfo = { WatchChannelHeader(scene, expanded = true, fullscreen = true) },
         overlays = { compactSettled -> WatchOverlays(scene, compactSettled) },
     ) { layout ->
+        if (!scene.placement.minimized) PlayerSheetReopenEffect(scene.navigation.sheetReopen, scene.chat, layout)
         WatchChatColumn(scene, layout)
         WatchInputBar(scene, layout)
     }

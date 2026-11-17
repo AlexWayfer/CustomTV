@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
 class TwitchPlayerScriptsTest {
     @Test
     fun qualityAssetsReceiveTheirControllerBeforeUsingIt() {
-        val scripts = TwitchPlayerScripts(RuntimeEnvironment.getApplication().assets)
+        val scripts = TwitchPlayerScripts(RuntimeEnvironment.getApplication().assets) { "page" }
         val qualityScripts = listOf(
             scripts.quality("user"), scripts.soundOnly, scripts.videoQuality, scripts.hideTopOverlay,
         )

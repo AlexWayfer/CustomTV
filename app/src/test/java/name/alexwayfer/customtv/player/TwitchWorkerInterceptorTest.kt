@@ -36,7 +36,7 @@ class TwitchWorkerInterceptorTest {
         }.build()
         val interceptor = TwitchWorkerInterceptor(http)
         val headers = mapOf("If-None-Match" to "old", "Range" to "bytes=10-20")
-        val answer = interceptor.intercept(request(headers = headers), assets)!!
+        val answer = interceptor.intercept(request(headers = headers), assets, "first-page")!!
         assertEquals(200, answer.statusCode)
         assertEquals("application/javascript", answer.mimeType)
         assertEquals("utf-8", answer.encoding)
@@ -50,9 +50,10 @@ class TwitchWorkerInterceptorTest {
         assertFalse(answer.responseHeaders.keys.any { it.equals("Transfer-Encoding", ignoreCase = true) })
         val script = answer.data.bufferedReader().use { it.readText() }
         val cleanup = assets.open("player/worker-buffer-cleanup.js").bufferedReader().use { it.readText().trim() }
-        assertEquals(cleanup, script)
-        val again = interceptor.intercept(request(), assets)!!
-        assertEquals(script, again.data.bufferedReader().use { it.readText() })
+        val diagnostics = assets.open("player/worker-media-network.js").bufferedReader().use { it.readText().trimEnd() }
+        assertEquals("$diagnostics('first-page');\n$cleanup", script)
+        val again = interceptor.intercept(request(), assets, "next-page")!!
+        assertEquals("$diagnostics('next-page');\n$cleanup", again.data.bufferedReader().use { it.readText() })
         assertEquals(1, downloads)
         assertTrue(AppLog.snapshot().any { it.contains("Worker buffer cleanup applied") })
     }
@@ -65,8 +66,8 @@ class TwitchWorkerInterceptorTest {
             response(chain.request(), "unused")
         }.build()
         val interceptor = TwitchWorkerInterceptor(http)
-        assertNull(interceptor.intercept(request(url = "https://example.com/player.js"), assets))
-        assertNull(interceptor.intercept(request(method = "POST"), assets))
+        assertNull(interceptor.intercept(request(url = "https://example.com/player.js"), assets, "page"))
+        assertNull(interceptor.intercept(request(method = "POST"), assets, "page"))
         assertEquals(0, downloads)
     }
 
@@ -74,7 +75,7 @@ class TwitchWorkerInterceptorTest {
     fun servesAnUnknownSdkUnchangedAndReportsThatTheFixIsMissing() {
         val original = "new SDK format"
         val http = OkHttpClient.Builder().addInterceptor { chain -> response(chain.request(), original) }.build()
-        val answer = TwitchWorkerInterceptor(http).intercept(request(), assets)!!
+        val answer = TwitchWorkerInterceptor(http).intercept(request(), assets, "page")!!
         assertEquals(original, answer.data.bufferedReader().use { it.readText() })
         assertTrue(AppLog.snapshot().any { it.contains("Worker buffer cleanup not applied") })
     }
@@ -82,12 +83,12 @@ class TwitchWorkerInterceptorTest {
     @Test
     fun fallsBackToTheWebViewAfterNetworkOrUnusableHttpAnswers() {
         val failed = OkHttpClient.Builder().addInterceptor { throw IOException("offline") }.build()
-        assertNull(TwitchWorkerInterceptor(failed).intercept(request(), assets))
+        assertNull(TwitchWorkerInterceptor(failed).intercept(request(), assets, "page"))
         for (status in listOf(304, 404, 500)) {
             val http = OkHttpClient.Builder().addInterceptor { chain ->
                 response(chain.request(), "unusable", status)
             }.build()
-            assertNull(TwitchWorkerInterceptor(http).intercept(request(), assets))
+            assertNull(TwitchWorkerInterceptor(http).intercept(request(), assets, "page"))
         }
     }
 
@@ -96,7 +97,7 @@ class TwitchWorkerInterceptorTest {
         val http = OkHttpClient.Builder().addInterceptor { chain ->
             response(chain.request(), "x".repeat(2 * 1024 * 1024))
         }.build()
-        assertNull(TwitchWorkerInterceptor(http).intercept(request(), assets))
+        assertNull(TwitchWorkerInterceptor(http).intercept(request(), assets, "page"))
     }
 
     private fun request(

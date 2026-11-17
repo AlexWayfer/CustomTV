@@ -183,7 +183,7 @@ internal class ChatInputActions(
     }
 
     fun submit() {
-        // The commands post nothing, so neither the rules nor slow mode hold them.
+        // Commands have their own validation and sending paths.
         if (runFieldCommand()) return
         val now = input.value
         val sharing = now.compose.shareOffer?.takeIf { it.composing }
@@ -207,9 +207,7 @@ internal class ChatInputActions(
     }
 
     /**
-     * Opens the card `/user` names, or the prediction for `/prediction` with the keyboard going down first, or changes
-     * a chat mode, or gives a shoutout; true when the text was one of them, valid or not. A user without
-     * `/prediction`, `/shoutout`, or the chat mode commands sends them to chat as typed.
+     * Handles commands in the draft. Returns true when a command consumed the Send action.
      */
     private fun runFieldCommand(): Boolean {
         val now = input.value
@@ -221,6 +219,11 @@ internal class ChatInputActions(
             return true
         }
         val modeControl = now.channel.modeControl
+        val announcementCommand = chatAnnouncementCommand(text)
+        if (announcementCommand != null) {
+            composer.runAnnouncementCommand(announcementCommand, modeControl, text, compose.draft, scope)
+            return true
+        }
         val modeCommand = modeControl?.let { chatModeCommand(text) }
         if (modeControl != null && modeCommand != null) {
             composer.runChatModeCommand(modeCommand, modeControl, text, compose.draft, scope)

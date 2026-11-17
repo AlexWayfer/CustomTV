@@ -6,8 +6,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import name.alexwayfer.customtv.chat.ChatPart
 import name.alexwayfer.customtv.chat.NamePaint
 import name.alexwayfer.customtv.chat.PaintFunction
+import name.alexwayfer.customtv.chat.testChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +30,31 @@ class ChatTextFormattingTest {
             keepUrlPathTogether("https://ibb.co/SwSs2ZhJ"),
         )
         assertEquals("ibb.co", keepUrlPathTogether("ibb.co"))
+    }
+
+    @Test
+    fun dropsTheInvisibleTailThatCanWrapOntoAnEmptyLine() {
+        assertEquals("message", messageBody(ChatPart.Text("message  \u034F")))
+    }
+
+    @Test
+    fun dropsAnInvisibleTailAcrossTextPartsBeforeAGif() {
+        assertEquals(
+            "message",
+            messageBody(
+                ChatPart.Text("message "),
+                ChatPart.Text(" \u034F "),
+                ChatPart.Gif("gif", "https://example.com/gif"),
+            ),
+        )
+    }
+
+    @Test
+    fun keepsSpacingAndCombiningJoinersBeforeVisibleContent() {
+        assertEquals(
+            "a\u034Fb  Kappa",
+            messageBody(ChatPart.Text("a\u034Fb  "), ChatPart.Emote("Kappa", "https://example.com/emote")),
+        )
     }
 
     @Test
@@ -105,6 +132,14 @@ class ChatTextFormattingTest {
     private fun formatted(linksClickable: Boolean) = buildAnnotatedString {
         appendChatTextWithLinks(LINK_TEXT, BODY_STYLE, LINK_STYLE, look(linksClickable), onClick = {})
     }
+
+    private fun messageBody(vararg parts: ChatPart): String = chatMessageText(
+        message = testChatMessage(parts = parts.toList()),
+        look = look(linksClickable = false),
+        deletedNote = null,
+        inlineContent = mutableMapOf(),
+        actions = ChatMessageTextActions({}, {}, {}, {}, {}, {}),
+    ).text
 
     private fun look(linksClickable: Boolean) = ChatMessageLook(
         nickColor = Color.White,

@@ -103,6 +103,9 @@ internal fun eventSubSubscribeOutcome(
     else -> EventSubSubscribeOutcome.Failed
 }
 
+private const val EVENTSUB_SESSION_DISCONNECTED =
+    "websocket transport session does not exist or has already disconnected"
+
 /** Another refusal: one that outlived its session, the socket limit, or a plain refusal. */
 private fun eventSubRefusalOutcome(
     httpCode: Int,
@@ -111,6 +114,9 @@ private fun eventSubRefusalOutcome(
     message: String,
 ): EventSubSubscribeOutcome = when {
     eventSubAnswerOutdated(requestedSession, currentSession) -> EventSubSubscribeOutcome.Outdated
+    // Helix can report the dead session before the WebSocket receives the close and schedules its reconnect.
+    httpCode == HTTP_BAD_REQUEST && message.equals(EVENTSUB_SESSION_DISCONNECTED, ignoreCase = true) ->
+        EventSubSubscribeOutcome.Outdated
     eventSubTransportLimit(httpCode, message) -> EventSubSubscribeOutcome.TransportLimit
     else -> EventSubSubscribeOutcome.Rejected
 }

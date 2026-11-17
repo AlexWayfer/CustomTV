@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.chat
 
 import java.time.Instant
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -226,6 +227,47 @@ class ChannelEventsTest {
         controller.onPrediction(prediction)
 
         assertEquals(setOf(prediction.id), controller.events.value.liveIds)
+    }
+
+    @Test
+    fun anApproachingHypeTrainFromTheInitialLoadHidesWhenItsTimeRunsOut() {
+        val timeout = CompletableDeferred<Unit>()
+        val train = applyHypeTrainEvent(null, HypeTrainEvent.Approaching(1, NOW + 30_000L, emptyList()))
+        val controller = ChannelEventsController(
+            scope = CoroutineScope(Dispatchers.Unconfined),
+            fetch = { ChannelEvents(hypeTrain = train) },
+            wait = {
+                assertEquals(30.seconds, it)
+                timeout.await()
+            },
+            now = { NOW },
+        )
+
+        controller.load("117474239")
+        assertEquals(train, controller.events.value.hypeTrain)
+
+        timeout.complete(Unit)
+        assertNull(controller.events.value.hypeTrain)
+    }
+
+    @Test
+    fun anApproachingHypeTrainWithANewDeadlineReplacesItsTimer() {
+        val waits = mutableListOf<CompletableDeferred<Unit>>()
+        val controller = ChannelEventsController(
+            scope = CoroutineScope(Dispatchers.Unconfined),
+            fetch = { null },
+            wait = { CompletableDeferred<Unit>().also(waits::add).await() },
+            now = { NOW },
+        )
+        val approach = HypeTrainEvent.Approaching(1, NOW + 30_000L, emptyList())
+        controller.onHypeTrain(approach)
+        controller.onHypeTrain(approach.copy(endsAtMillis = NOW + 60_000L))
+
+        waits.first().complete(Unit)
+        assertEquals(NOW + 60_000L, controller.events.value.hypeTrain?.endsAtMillis)
+
+        waits.last().complete(Unit)
+        assertNull(controller.events.value.hypeTrain)
     }
 
     @Test

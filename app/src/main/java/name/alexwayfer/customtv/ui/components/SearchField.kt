@@ -28,7 +28,7 @@ internal fun SearchField(
     onQueryChange: (String) -> Unit,
     @StringRes placeholder: Int,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = OutlinedTextFieldDefaults.contentPadding(),
+    contentPadding: PaddingValues = OutlinedTextFieldDefaults.contentPaddingWithoutLabel(),
 ) {
     PaddedOutlinedTextField(
         value = query,

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="refresh_emotes_and_labels">Refresh emotes</string>
+    <string name="chatter_check_twitch_session_required">This check is available in Premium with the experimental Twitch login.</string>
     <string name="premium_experimental">Experimental:</string>
     <string name="premium_feature_past_broadcasts">Past broadcasts and clips</string>
     <string name="premium_feature_notifications">Customizable notifications</string>
@@ -41,6 +42,7 @@
     <string name="premium_all_swipe_moderation">Moderation by swiping right</string>
     <string name="premium_all_chat_modes">Change chat modes</string>
     <string name="premium_all_shoutouts">Shoutouts (/shoutout)</string>
+    <string name="premium_all_announcements">Chat announcements (/announce and its color variants)</string>
     <string name="premium_all_automod">Allow or deny messages held by AutoMod</string>
     <string name="premium_all_mod_logs">Chatter’s mod logs: messages, actions, comments</string>
     <string name="premium_all_suspicious_users">Highlighting suspicious users</string>

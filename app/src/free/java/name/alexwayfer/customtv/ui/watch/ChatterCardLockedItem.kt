@@ -21,7 +21,7 @@ import name.alexwayfer.customtv.ui.PremiumLockIcon
 @Composable
 internal fun ChatterCardLockedItem(icon: Painter, title: String, source: String, modifier: Modifier = Modifier) {
     ListItem(
-        headlineContent = { Text(title) },
+        content = { Text(title) },
         leadingContent = { Icon(icon, contentDescription = null) },
         trailingContent = { PremiumLockIcon() },
         modifier = modifier

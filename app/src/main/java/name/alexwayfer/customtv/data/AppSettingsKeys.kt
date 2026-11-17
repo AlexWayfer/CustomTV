@@ -38,7 +38,6 @@ internal val SCROLL_TO_LATEST_AFTER_SEND = booleanPreferencesKey("scroll_to_late
 internal val SENT_MESSAGE_HISTORY = booleanPreferencesKey("sent_message_history")
 internal val HIDDEN_PHRASES = stringPreferencesKey("hidden_phrases")
 internal val HIDE_PHRASES_WHEN_MODERATOR = booleanPreferencesKey("hide_phrases_when_moderator")
-internal val BACKGROUND_SOUND_ONLY = booleanPreferencesKey("background_sound_only")
 internal val SMOOTH_SOUND = booleanPreferencesKey("smooth_sound")
 internal val STREAM_START_NOTIFICATIONS = booleanPreferencesKey("stream_start_notifications")
 internal val STREAM_CHANGE_NOTIFICATIONS = booleanPreferencesKey("stream_change_notifications")

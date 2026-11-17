@@ -13,9 +13,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +55,8 @@ internal fun SettingsStepSlider(
     var pending by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(value) { pending = null }
     val shown = stepSliderShownValue(dragging, pending, value, resolve)
+    val sliderState = remember(steps, valueRange) { SliderState(shown.toFloat(), steps, trackRange = valueRange) }
+    SideEffect { sliderState.value = shown.toFloat() }
     val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
@@ -72,7 +76,7 @@ internal fun SettingsStepSlider(
         )
     }
     Slider(
-        value = shown.toFloat(),
+        state = sliderState,
         onValueChange = { dragging = it },
         onValueChangeFinished = {
             val chosen = dragging?.roundToInt()?.let(resolve) ?: return@Slider
@@ -83,8 +87,6 @@ internal fun SettingsStepSlider(
             }
             onPreview(chosen)
         },
-        valueRange = valueRange,
-        steps = steps,
         interactionSource = interactionSource,
         thumb = {
             SliderDefaults.Thumb(
@@ -92,13 +94,13 @@ internal fun SettingsStepSlider(
                 thumbSize = DpSize(6.dp, 28.dp),
             )
         },
-        track = { sliderState ->
+        track = { state ->
             Canvas(
                 Modifier
                     .fillMaxWidth()
                     .height(16.dp),
             ) {
-                drawStepTrack(sliderState.coercedValueAsFraction, sliderState.steps)
+                drawStepTrack(state.coercedValueAsFraction, state.steps)
             }
         },
         modifier = Modifier

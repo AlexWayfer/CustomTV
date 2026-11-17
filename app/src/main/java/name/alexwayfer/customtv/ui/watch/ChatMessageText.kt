@@ -243,10 +243,11 @@ private fun AnnotatedString.Builder.appendChatBody(
             TextDecoration.Underline
         },
     )
-    message.parts.forEachIndexed { index, part ->
+    val parts = chatPartsForTextLayout(message.parts)
+    parts.forEachIndexed { index, part ->
         when (part) {
-            is ChatPart.Text -> if (isWhitespaceBetweenEmotes(message.parts, index)) {
-                val nextEmote = message.parts[index + 1] as ChatPart.Emote
+            is ChatPart.Text -> if (isWhitespaceBetweenEmotes(parts, index)) {
+                val nextEmote = parts[index + 1] as ChatPart.Emote
                 val gapKey = "emote_gap_$index"
                 appendInlineContent(gapKey, " ")
                 inlineContent[gapKey] = InlineTextContent(

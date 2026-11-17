@@ -170,7 +170,8 @@ private fun RowScope.LabelNameField(
 }
 
 /** The padding of the label page's fields, which makes them 48dp high instead of Material's 56dp. */
-internal val ChatterLabelFieldPadding = OutlinedTextFieldDefaults.contentPadding(top = 12.dp, bottom = 12.dp)
+internal val ChatterLabelFieldPadding =
+    OutlinedTextFieldDefaults.contentPaddingWithoutLabel(top = 12.dp, bottom = 12.dp)
 
 /** The label's image, or a plus while it has none; a tap picks a new one. */
 @Composable

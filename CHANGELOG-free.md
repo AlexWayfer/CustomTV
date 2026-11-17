@@ -1,5 +1,21 @@
 # CustomTV (free version)
 
+## v1.17.0 (2026-11-17)
+
+*   Switch seamlessly to audio-only playback in the background
+*   Recover stalled live streams more reliably
+*   Keep Twitch playback from interrupting audio from other apps
+*   Restore the player layout when Twitch styles fail to load
+*   Restore missing Twitch chat badges without reopening chat
+*   Fix blank lines after chat messages
+*   Fix a Hype Train countdown that could get stuck on screen
+*   Run Chatter Labels checks from chatter cards, including BestLogs searches
+*   Keep the Chatter Labels editor and Save button above the keyboard
+*   Add daily usage statistics with an opt-out in privacy settings
+*   Make settings headings easier to scan
+*   Refine the player icons and animate the follow heart
+*   Show a wavy progress indicator while downloading updates
+
 ## v1.16.1 (2026-11-09)
 
 *   Reduce chat memory usage

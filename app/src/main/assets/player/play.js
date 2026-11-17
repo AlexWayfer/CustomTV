@@ -25,6 +25,7 @@
           w.navigator.mediaSession.playbackState = 'playing';
         }
       } catch (e) {}
+      if (w.__customTvAudioHandoff && w.__customTvAudioHandoff.command(true)) return;
     }
     var v = doc.querySelector('video');
     var diagnostic = customTvDiagnosticCommand(doc, 'play', source);

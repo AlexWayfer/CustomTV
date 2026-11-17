@@ -34,7 +34,7 @@ internal fun AppLinksSettings() {
             .clickable(role = Role.Button) { openAppLinkSettings(context) }
             .animateContentSize(),
         leadingContent = { Icon(painterResource(R.drawable.ic_profile_link), contentDescription = null) },
-        headlineContent = { Text(stringResource(R.string.app_links_setting)) },
+        content = { Text(stringResource(R.string.app_links_setting)) },
         supportingContent = {
             Text(stringResource(if (enabled) R.string.app_links_setting_on else R.string.app_links_setting_off))
         },

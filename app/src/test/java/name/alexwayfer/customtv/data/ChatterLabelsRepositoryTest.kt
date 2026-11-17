@@ -9,6 +9,7 @@ import name.alexwayfer.customtv.ui.UiText
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -83,6 +84,20 @@ class ChatterLabelsRepositoryTest {
 
         assertEquals(listOf("b", "a"), result.map { it.id })
         assertTrue(result.all { it.assignedAtMillis == null })
+    }
+
+    @Test
+    fun changingOnlyTheScriptRefreshesTheLabel() {
+        val labels = JSONArray(
+            """[{"id":"a","name":"A","icon":"data:image/png;base64,AQID","script":"return 1"}]""",
+        )
+        val first = parseChatterLabels(labels, JSONArray())
+        labels.getJSONObject(0).put("script", "return 2")
+
+        val updated = reuseChatterLabelImages(parseChatterLabels(labels, JSONArray()), first.labels)
+
+        assertNotEquals(first.labels, updated.labels)
+        assertSame(first.labels.single().image, updated.labels.single().image)
     }
 
     @Test

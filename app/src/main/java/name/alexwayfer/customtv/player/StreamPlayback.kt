@@ -1,5 +1,7 @@
 package name.alexwayfer.customtv.player
 
+import android.content.Context
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -31,6 +33,7 @@ object StreamPlayback {
     private val pauseConfirmation = PauseConfirmation()
 
     private var commands: Commands? = null
+    private var audioManager: AudioManager? = null
 
     private val mutablePlayback = MutableStateFlow(PlayerPlayback.Starting)
 
@@ -48,9 +51,13 @@ object StreamPlayback {
     val isBound: Boolean
         get() = commands != null
 
-    /** Automatic repeats must not take audio focus back from a microphone recording. */
+    /** Automatic repeats and stall recovery must give an audio interruption time to finish. */
     internal val canAutomaticallyPlay: Boolean
-        get() = !userPaused && !StreamInterruption.microphoneHoldsPlayback
+        get() = !userPaused && !StreamInterruption.microphoneHoldsPlayback && !interruptedDuringPlayback
+
+    // Android's list includes the stream's own audio. Check it only after the page reports an interruption.
+    private val interruptedDuringPlayback: Boolean
+        get() = StreamInterruption.interrupted.value && audioManager?.activePlaybackConfigurations?.isNotEmpty() == true
 
     val isBuffering: Boolean
         get() = isBound && !userPaused && awaitingPlayback
@@ -74,8 +81,9 @@ object StreamPlayback {
         get() = offline || inferredPause.suppressed || userPaused || inferredPause.isPending ||
             awaitingPlayback && SystemClock.elapsedRealtime() - playRequestedAt < LOAD_GRACE_MS
 
-    fun bind(commands: Commands) {
+    fun bind(commands: Commands, context: Context) {
         this.commands = commands
+        audioManager = context.getSystemService(AudioManager::class.java)
         pauseConfirmation.clear()
         StreamInterruption.clear()
         userPaused = false
@@ -136,6 +144,7 @@ object StreamPlayback {
     fun unbind(commands: Commands) {
         if (this.commands === commands) {
             this.commands = null
+            audioManager = null
             inferredPause.cancel()
         }
     }

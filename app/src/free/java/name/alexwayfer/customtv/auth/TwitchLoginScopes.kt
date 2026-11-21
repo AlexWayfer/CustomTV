@@ -1,3 +1,3 @@
 package name.alexwayfer.customtv.auth
 
-internal fun twitchLoginScopes(): String = TWITCH_LOGIN_SCOPES
+internal fun twitchLoginScopes(): String = "$TWITCH_LOGIN_SCOPES chat:read chat:edit"

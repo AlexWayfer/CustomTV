@@ -101,16 +101,16 @@ class PlayerPageReloadsTest {
 
     @Test
     fun hiddenVideoAfterTheErrorReloadReloadsThePage() {
-        assertTrue(PlayerPageReloads.reloadsAfterErrorReload(videoShown = false, userPaused = false))
+        assertTrue(PlayerPageReloads.reloadsAfterErrorReload(videoShown = false, explicitlyPaused = false))
     }
 
     @Test
     fun videoThatCameBackIsNotReloaded() {
-        assertFalse(PlayerPageReloads.reloadsAfterErrorReload(videoShown = true, userPaused = false))
+        assertFalse(PlayerPageReloads.reloadsAfterErrorReload(videoShown = true, explicitlyPaused = false))
     }
 
     @Test
     fun aPausedPlayerIsNotReloaded() {
-        assertFalse(PlayerPageReloads.reloadsAfterErrorReload(videoShown = false, userPaused = true))
+        assertFalse(PlayerPageReloads.reloadsAfterErrorReload(videoShown = false, explicitlyPaused = true))
     }
 }

@@ -3,6 +3,9 @@ package name.alexwayfer.customtv.ui.watch
 import name.alexwayfer.customtv.data.ChatterLabelIcon
 import name.alexwayfer.customtv.data.singleLineChatterComment
 
+/** Blank comments take up no space in the chatter's profile. */
+internal fun chatterLabelSummaryComment(comment: String): String? = comment.trim().takeIf(String::isNotEmpty)
+
 /** Only toggled assignments are replaced, so a comment-only save leaves the current selection in the Gist alone. */
 internal fun changedChatterAssignmentIds(assigned: Set<String>, checked: Set<String>): Set<String> =
     (assigned - checked) + (checked - assigned)

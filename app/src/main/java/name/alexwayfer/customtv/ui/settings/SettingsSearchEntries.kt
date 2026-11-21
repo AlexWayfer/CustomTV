@@ -5,13 +5,21 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.links.appLinksNeedSetup
 
 /** Only controls available on this device and in this edition are offered. */
-internal fun settingsSearchEntries(accountName: String?, sdkInt: Int): List<SettingsSearchEntry> = buildList {
+internal fun settingsSearchEntries(
+    accountName: String?,
+    sdkInt: Int,
+    proximityScreenOffSupported: Boolean = false,
+): List<SettingsSearchEntry> = buildList {
     addAll(chatSearchEntries())
     addAll(mentionSearchEntries())
     add(SettingsSearchEntry(SettingsPage.Playback, R.string.settings_section_playback,
         R.string.settings_page_playback_hint))
     add(SettingsSearchEntry(SettingsPage.Playback, R.string.smooth_sound, R.string.smooth_sound_hint,
         R.string.settings_search_sound_keywords))
+    if (proximityScreenOffSupported) {
+        add(SettingsSearchEntry(SettingsPage.Playback, R.string.blank_screen_on_proximity,
+            R.string.blank_screen_on_proximity_hint))
+    }
     add(SettingsSearchEntry(SettingsPage.ChatterLabels, R.string.chatter_labels, R.string.chatter_labels_hint))
     add(SettingsSearchEntry(SettingsPage.ChatterLabels, R.string.chatter_labels_token,
         R.string.chatter_labels_create_token))

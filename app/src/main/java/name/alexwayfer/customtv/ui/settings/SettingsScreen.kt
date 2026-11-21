@@ -62,6 +62,7 @@ internal fun SettingsScreen(
     // The main list keeps its place while a subpage is open; a subpage opens at its top.
     val mainScroll = rememberScrollState()
     var page by rememberSaveable { mutableStateOf(scrollTo?.let(::settingsPageFor) ?: SettingsPage.Main) }
+    var showUpdateNotes by remember { mutableStateOf<OneShotRequest<Unit>?>(null) }
     LaunchedEffect(scrollTo) {
         if (scrollTo == null) return@LaunchedEffect
         page = settingsPageFor(scrollTo)
@@ -92,11 +93,14 @@ internal fun SettingsScreen(
             when (current) {
                 SettingsPage.Main -> SettingsPageColumn(
                     scrollTo = scrollTo?.takeIf { settingsPageFor(it) == SettingsPage.Main },
-                    onScrolled = onScrolled,
+                    onScrolled = {
+                        if (scrollTo == SettingsScrollTarget.Updates) showUpdateNotes = OneShotRequest(Unit)
+                        onScrolled()
+                    },
                     modifier = pageModifier,
                     scroll = mainScroll,
                 ) { anchor ->
-                    SettingsMainEntries(anchor, accountName, viewModel, onOpen = { page = it })
+                    SettingsMainEntries(anchor, accountName, viewModel, showUpdateNotes, onOpen = { page = it })
                 }
                 SettingsPage.HiddenCategories -> HiddenCategoriesSettingsPage(onOpenCategory, pageModifier)
                 SettingsPage.Gestures -> GesturesSettingsPage(pageModifier)
@@ -166,6 +170,7 @@ private fun SettingsMainEntries(
     anchor: SettingsScrollAnchor,
     accountName: String?,
     viewModel: SettingsViewModel,
+    showUpdateNotes: OneShotRequest<Unit>?,
     onOpen: (SettingsPage) -> Unit,
 ) {
     SettingsNotificationPrompt()
@@ -193,7 +198,7 @@ private fun SettingsMainEntries(
     ChatterLabelsSettingsEntry(onOpen = { onOpen(SettingsPage.ChatterLabels) })
     ExperimentalSettingsEntry(accountName, onOpen = { onOpen(SettingsPage.Experimental) })
     Column(modifier = Modifier.settingsScrollAnchor(anchor)) {
-        UpdateSettings()
+        UpdateSettings(showUpdateNotes)
     }
     PremiumSettings()
     LanguageSettings()

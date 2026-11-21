@@ -1,4 +1,6 @@
 (function() {
+  var OFFLINE_EMBED = '.offline-embeds';
+
   function playerDoc() {
     var docs = customTvDocs();
     for (var i = 0; i < docs.length; i++) {
@@ -24,6 +26,8 @@
   function isProtected(el) {
     if (!el || !el.closest) return true;
     if (isDisclosure(el)) return true;
+    // The channel name in the offline heading links to Twitch, like the links we hide in live overlays.
+    if (el.closest(OFFLINE_EMBED)) return true;
     if (el.closest('.player-controls')) return true;
     if (el.closest('[data-a-target="player-controls"]')) return true;
     if (el.closest('[data-a-target="player-twitch-logo-button"]')) return true;
@@ -535,6 +539,7 @@
     for (var d = 0; d < docs.length; d++) {
       var doc = docs[d];
       if (!doc || !doc.querySelector) continue;
+      if (visible(doc.querySelector(OFFLINE_EMBED))) return true;
       var overlay = doc.querySelector(
         '[data-a-target*="offline"], [class*="player-overlay-offline"], [class*="offline-overlay"]'
       );

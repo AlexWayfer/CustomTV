@@ -19,18 +19,21 @@ internal data class GitHubApk(
     val size: Long,
     /** The file's SHA-256 in lowercase hex, as GitHub reports it; null for an asset it has no digest for. */
     val sha256: String?,
+    val notes: AppReleaseNotes? = null,
 )
 
 /** The first finished APK asset of the latest release that names a version; null when there is none. */
 internal fun githubLatestApk(json: String): GitHubApk? {
-    val assets = try {
-        JSONObject(json).optJSONArray("assets")
+    val release = try {
+        JSONObject(json)
     } catch (_: JSONException) {
-        null
-    } ?: return null
+        return null
+    }
+    val assets = release.optJSONArray("assets") ?: return null
     return (0 until assets.length()).asSequence()
         .mapNotNull { assets.optJSONObject(it) }
         .firstNotNullOfOrNull(::githubApk)
+        ?.copy(notes = parseAppReleaseNotes(release.optString("body")))
 }
 
 private fun githubApk(asset: JSONObject): GitHubApk? {

@@ -159,6 +159,8 @@ object IrcMessageParser {
             deletedBy = deletedByFromTags(parsed.tags),
             timeoutSeconds = timeoutSeconds,
             banned = timeoutSeconds == null,
+            userId = parsed.tag("target-user-id"),
+            sourceRoomId = parsed.foreignSourceRoomId(),
         )
     }
 

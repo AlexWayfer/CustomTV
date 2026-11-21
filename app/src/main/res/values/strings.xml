@@ -112,6 +112,10 @@
     <string name="chat_send_failed">Couldn’t send that message</string>
     <string name="chat_send_log_in">Log in again to chat</string>
     <string name="chat_send_not_allowed">You can’t chat in this channel</string>
+    <string name="chat_timeout_title">Timeout</string>
+    <string name="chat_timeout_send_refused">Your message wasn’t sent because you were already timed out.</string>
+    <string name="chat_timeout_retry_hint">You can retry when the timeout ends.</string>
+    <string name="chat_send_timeout_countdown">You can chat again in %1$s</string>
     <string name="chat_send_too_long">This message is too long for Twitch</string>
     <string name="chat_send_too_fast">You’re sending messages too fast. Wait a moment and try again.</string>
     <string name="chat_mode_followers">Followers-only chat</string>
@@ -319,6 +323,11 @@
     <string name="chat_raid_notice">Raid</string>
     <string name="chat_notice_show_raid">Show raid</string>
     <string name="chat_notice_show_pinned">Show pinned message</string>
+    <string name="chat_notice_show_drops">Show Drops</string>
+    <string name="chat_notice_show_drops_claim">Show claimable Drops</string>
+    <string name="chat_notice_show_drops_received">Show received Drops</string>
+    <string name="chat_menu_drops_claim_ready">Chat menu, Drop ready to claim</string>
+    <string name="chat_menu_drops_received">Chat menu, new Drop received</string>
     <string name="chat_notice_show_community_gift">Show community gift</string>
     <string name="chat_notice_show_poll">Show poll</string>
     <string name="chat_notice_show_hype_train">Show hype train</string>
@@ -519,6 +528,9 @@
     <string name="app_update_channel">App updates</string>
     <string name="app_update_available">Version %1$s is available</string>
     <string name="app_update_notification_text">Open Settings to download it</string>
+    <string name="app_update_notes">What’s new</string>
+    <string name="app_update_notes_expanded">Expanded</string>
+    <string name="app_update_notes_collapsed">Collapsed</string>
     <string name="app_update_download">Download %1$s</string>
     <string name="app_update_downloading">Downloading… %1$d%%</string>
     <string name="app_update_install">Install %1$s</string>

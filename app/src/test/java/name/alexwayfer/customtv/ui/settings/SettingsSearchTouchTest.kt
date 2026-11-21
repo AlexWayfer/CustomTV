@@ -71,7 +71,8 @@ class SettingsSearchTouchTest {
         compose.onNodeWithContentDescription(text(R.string.settings_search)).performClick()
         compose.runOnIdle { assertEquals(true, searchOpen) }
         compose.onNode(hasSetTextAction()).performTextInput("smooth")
-        val result = hasText(text(R.string.smooth_sound)) and hasAnyAncestor(isDialog())
+        val result = hasText(text(R.string.smooth_sound)) and
+            hasText(text(R.string.smooth_sound_hint)) and hasAnyAncestor(isDialog())
         compose.onNode(result).performClick()
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)).assertIsOff()
         compose.runOnIdle {

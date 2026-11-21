@@ -18,6 +18,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -29,10 +34,12 @@ import name.alexwayfer.customtv.ui.asString
 import name.alexwayfer.customtv.ui.rememberHeldWhileLoading
 import name.alexwayfer.customtv.ui.theme.TwitchBg
 import name.alexwayfer.customtv.ui.theme.TwitchTextSecondary
+import name.alexwayfer.customtv.ui.watch.OneShotRequest
 import name.alexwayfer.customtv.update.AppRelease
 import name.alexwayfer.customtv.update.AppUpdateDownload
 import name.alexwayfer.customtv.update.AppUpdateStatus
 import name.alexwayfer.customtv.update.appNoUpdateText
+import name.alexwayfer.customtv.update.toggleAppReleaseNotes
 
 /** The public topic of the free releases: the free build's group, and Premium's way back to free. */
 internal const val FREE_RELEASES_TELEGRAM_URL = "https://t.me/customtv_app/3"
@@ -47,13 +54,21 @@ internal fun AppUpdateSection(
     download: AppUpdateDownload,
     onCheck: () -> Unit,
     onDownload: (AppRelease) -> Unit,
+    showNotes: OneShotRequest<Unit>?,
     links: @Composable () -> Unit,
 ) {
     // A quick check keeps its progress for the minimum, so the status and the button do not blink.
     val shown = rememberHeldWhileLoading(status, loading = status is AppUpdateStatus.Checking)
+    var expandedReleaseId by rememberSaveable { mutableStateOf<Long?>(null) }
+    LaunchedEffect(showNotes, shown) {
+        if (shown is AppUpdateStatus.Checking || showNotes?.take() == null) return@LaunchedEffect
+        expandedReleaseId = (shown as? AppUpdateStatus.Read)?.update?.id
+    }
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        GroupStatus(stringResource(R.string.app_update_current_version, BuildConfig.VERSION_NAME))
-        AppUpdateStatusLine(shown, download, onDownload)
+        UpdateVersionLine(stringResource(R.string.app_update_current_version, BuildConfig.VERSION_NAME))
+        AppUpdateStatusLine(shown, download, onDownload, expandedReleaseId) { id ->
+            expandedReleaseId = toggleAppReleaseNotes(expandedReleaseId, id)
+        }
         SmallButton(
             text = stringResource(R.string.app_update_check),
             onClick = onCheck,
@@ -77,6 +92,8 @@ private fun AppUpdateStatusLine(
     shown: AppUpdateStatus,
     download: AppUpdateDownload,
     onDownload: (AppRelease) -> Unit,
+    expandedReleaseId: Long?,
+    onToggleNotes: (Long) -> Unit,
 ) {
     // The check fades into its result, and back into progress on the next check.
     AnimatedContent(
@@ -96,7 +113,13 @@ private fun AppUpdateStatusLine(
                 if (update == null) {
                     GroupStatus(appNoUpdateText(status.latest).asString())
                 } else {
-                    AppUpdateBlock(update, download, onDownload = { onDownload(update) })
+                    AppUpdateBlock(
+                        release = update,
+                        download = download,
+                        notesExpanded = expandedReleaseId == update.id,
+                        onToggleNotes = { onToggleNotes(update.id) },
+                        onDownload = { onDownload(update) },
+                    )
                 }
             }
         }
@@ -126,6 +149,16 @@ internal fun SmallButton(
     ) {
         Text(text = text, style = MaterialTheme.typography.labelMedium)
     }
+}
+
+@Composable
+internal fun UpdateVersionLine(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(top = 4.dp),
+        color = MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.bodyLarge,
+    )
 }
 
 @Composable

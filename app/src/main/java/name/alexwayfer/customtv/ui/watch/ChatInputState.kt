@@ -29,9 +29,9 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.chat.emotePanelHeightPx
 import name.alexwayfer.customtv.chat.emotePickerHeightPx
+import name.alexwayfer.customtv.chat.ChatTimeoutCheck
 import name.alexwayfer.customtv.data.CHAT_MESSAGE_MAX_LENGTH
 import name.alexwayfer.customtv.data.ChatSendError
-import name.alexwayfer.customtv.data.ChatSendRepository
 
 /** What the bar keeps for the open channel: the picker, the rules sheet, and the message being sent. */
 @Stable
@@ -60,6 +60,8 @@ internal class ChatComposerState {
     var sendCancelable by mutableStateOf(false)
         private set
     var sendError by mutableStateOf<ChatSendError?>(null)
+    var timeoutUnresolved by mutableStateOf(false)
+    var timeoutSendRefused by mutableStateOf(false)
     private var sendJob: Job? = null
 
     /** Runs [send] in [scope] as the send under way, which the end button can cancel once it takes a while. */
@@ -179,11 +181,17 @@ internal data class ChatInput(
     val warningGate: ChatWarningGate,
     /** A warning to acknowledge takes the field's place. */
     val warned: Boolean,
+    val timeoutSeconds: Long,
+    val timeoutAccess: ChatTimeoutAccess,
+    val timeoutLookup: (suspend () -> ChatTimeoutCheck?)?,
     val imeOpen: Boolean,
     val keyboard: SoftwareKeyboardController?,
     val focusManager: FocusManager,
     val sheetKeyboard: SheetKeyboard,
     val imeDismissFocus: ImeDismissFocus,
     val keyboardHeight: RememberedKeyboardHeight,
-    val repository: ChatSendRepository,
-)
+    val sendMessage: ChatMessageSender,
+) {
+    val timedOut: Boolean get() = timeoutAccess != ChatTimeoutAccess.Editable
+    val canEdit: Boolean get() = user.canSend && !timedOut
+}

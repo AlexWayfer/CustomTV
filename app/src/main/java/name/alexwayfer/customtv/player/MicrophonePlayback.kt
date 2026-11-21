@@ -16,10 +16,7 @@ internal class MicrophonePlayback {
     private var playbackInterrupted = false
 
     val holdsAutomaticPlayback: Boolean
-        get() {
-            if (recognizingVoice || interruptedForVoice) return true
-            return recording && playbackInterrupted
-        }
+        get() = recognizingVoice || interruptedForVoice || (recording && playbackInterrupted)
 
     fun recordingChanged(active: Boolean, recognizesSpeech: Boolean, interrupted: Boolean) {
         recording = active

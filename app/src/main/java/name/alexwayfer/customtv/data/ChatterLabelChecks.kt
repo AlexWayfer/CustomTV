@@ -88,6 +88,8 @@ private suspend fun openCheckSandbox(context: Context): JavaScriptSandbox = susp
     val connection = JavaScriptSandbox.createConnectedInstanceAsync(context)
     connection.addListener({
         try {
+            // The completion listener runs only after the future is done.
+            @Suppress("BlockingMethodInNonBlockingContext")
             waiter.resume(connection.get()) { _, sandbox, _ -> sandbox.close() }
         } catch (error: ExecutionException) {
             waiter.resumeWithException(IOException("Could not connect to the JavaScript sandbox", error.cause))
@@ -101,11 +103,14 @@ private suspend fun runChatterCheck(
     logs: ChatterBestLogs,
 ): ChatterCheckResult = coroutineScope {
     val requests = Channel<String>(Channel.BUFFERED)
-    isolate.createMessageChannel(CHECK_PORT, Runnable::run) { message ->
+    // evaluateChatterCheck verifies message port support before creating this isolate.
+    @Suppress("RequiresFeature")
+    val channel = isolate.createMessageChannel(CHECK_PORT, Runnable::run) { message ->
         if (message.type == Message.TYPE_STRING && requests.trySend(message.string).isFailure) {
             requests.close(IOException("Too many pending label check requests"))
         }
-    }.use { port ->
+    }
+    channel.use { port ->
         val worker = launch {
             for (request in requests) {
                 val query = request.toJsonObjectOrNull() ?: continue

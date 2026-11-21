@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -37,7 +36,6 @@ import kotlin.math.roundToInt
 import name.alexwayfer.customtv.ui.theme.TwitchDivider
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsStepSlider(
     title: String,

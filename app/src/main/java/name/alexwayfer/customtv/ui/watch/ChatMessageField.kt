@@ -112,7 +112,7 @@ internal fun chatFieldColors(barAlpha: Float): TextFieldColors = TextFieldDefaul
     cursorColor = TwitchPurple,
 )
 
-/** The message field with its emote picker button, under a cover that opens Log in or the rules first. */
+/** The message field and its tap cover, or the timeout status while chat is restricted. */
 @Composable
 internal fun RowScope.ChatMessageField(
     input: ChatInput,
@@ -121,14 +121,18 @@ internal fun RowScope.ChatMessageField(
     actions: ChatInputActions,
     look: ChatFieldLook,
 ) {
-    val cover = chatFieldCover(input.user.canSend, field.focused, input.rulesNeedConfirmation)
     Box(
         modifier = Modifier
             .weight(1f)
             .onGloballyPositioned { field.rightPx = it.boundsInWindow().right },
     ) {
-        ChatTextField(input, composer, field, actions, look)
-        ChatFieldCoverTarget(cover, input, field, actions)
+        if (input.timedOut) {
+            ChatTimeoutPlaque(input.timeoutSeconds, sendRefused = composer.timeoutSendRefused)
+        } else {
+            val cover = chatFieldCover(input.user.canSend, field.focused, input.rulesNeedConfirmation)
+            ChatTextField(input, composer, field, actions, look, covered = cover != ChatFieldCover.None)
+            ChatFieldCoverTarget(cover, input, field, actions)
+        }
     }
 }
 
@@ -139,9 +143,8 @@ private fun ChatTextField(
     field: ChatFieldState,
     actions: ChatInputActions,
     look: ChatFieldLook,
+    covered: Boolean,
 ) {
-    val canSend = input.user.canSend
-    val covered = chatFieldCover(canSend, field.focused, input.rulesNeedConfirmation) != ChatFieldCover.None
     val materialDecorator = chatFieldDecorator(input, composer, field, actions, look)
     val draft = input.compose.draft
     val output = look.emotes.output
@@ -158,7 +161,7 @@ private fun ChatTextField(
     CompositionLocalProvider(LocalTextSelectionColors provides look.colors.textSelectionColors) {
         BasicTextField(
             state = draft,
-            enabled = canSend,
+            enabled = input.canEdit,
             inputTransformation = inputTransformation,
             outputTransformation = output,
             lineLimits = TextFieldLineLimits.SingleLine,
@@ -215,17 +218,16 @@ private fun chatFieldDecorator(
     actions: ChatInputActions,
     look: ChatFieldLook,
 ): TextFieldDecorator {
-    val canSend = input.user.canSend
-    val historySlot = canSend && input.compose.historyEnabled
+    val historySlot = input.canEdit && input.compose.historyEnabled
     return TextFieldDefaults.decorator(
         state = input.compose.draft,
-        enabled = canSend,
+        enabled = input.canEdit,
         lineLimits = TextFieldLineLimits.SingleLine,
         outputTransformation = look.emotes.output,
         interactionSource = field.presses,
         placeholder = {
             Text(
-                stringResource(if (canSend) R.string.chat_input_hint else R.string.chat_input_logged_out),
+                stringResource(if (input.user.canSend) R.string.chat_input_hint else R.string.chat_input_logged_out),
                 color = TwitchHint,
             )
         },
@@ -235,7 +237,7 @@ private fun chatFieldDecorator(
         } else {
             null
         },
-        trailingIcon = if (canSend) {
+        trailingIcon = if (input.canEdit) {
             { EmotePickerButton(composer.pickerOpen, field, onClick = actions::togglePicker) }
         } else {
             null
@@ -256,7 +258,7 @@ private fun chatFieldDecorator(
         },
         container = {
             TextFieldDefaults.Container(
-                enabled = canSend,
+                enabled = input.canEdit,
                 isError = false,
                 interactionSource = field.presses,
                 colors = look.colors,

@@ -59,5 +59,6 @@ internal object PlayerPageReloads {
     fun onceMoreDelayMs(attemptsMade: Int): Long = delayMs(attemptsMade + 1)
 
     /** Whether a wait that ran out after the error screen's reload reloads the page. */
-    fun reloadsAfterErrorReload(videoShown: Boolean, userPaused: Boolean): Boolean = !videoShown && !userPaused
+    fun reloadsAfterErrorReload(videoShown: Boolean, explicitlyPaused: Boolean): Boolean =
+        !videoShown && !explicitlyPaused
 }

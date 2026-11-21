@@ -66,6 +66,7 @@ class AppSettingsStore(context: Context) {
             hiddenPhrases = decodeKeywordPhrases(prefs[HIDDEN_PHRASES]),
             hidePhrasesWhenModerator = prefs[HIDE_PHRASES_WHEN_MODERATOR] ?: defaults.hidePhrasesWhenModerator,
             smoothSound = prefs[SMOOTH_SOUND] ?: defaults.smoothSound,
+            blankScreenOnProximity = prefs[BLANK_SCREEN_ON_PROXIMITY] ?: defaults.blankScreenOnProximity,
             streamStartNotifications = prefs[STREAM_START_NOTIFICATIONS]
                 ?: defaults.streamStartNotifications,
             streamChangeNotifications = prefs[STREAM_CHANGE_NOTIFICATIONS]
@@ -84,6 +85,10 @@ class AppSettingsStore(context: Context) {
 
     suspend fun setSmoothSound(enabled: Boolean) {
         dataStore.edit { prefs -> prefs[SMOOTH_SOUND] = enabled }
+    }
+
+    suspend fun setBlankScreenOnProximity(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[BLANK_SCREEN_ON_PROXIMITY] = enabled }
     }
 
     suspend fun setStreamStartNotifications(enabled: Boolean) {

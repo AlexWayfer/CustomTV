@@ -35,7 +35,12 @@ import name.alexwayfer.customtv.R
 import name.alexwayfer.customtv.ui.components.lateralTransform
 
 /** A page the chat menu opens in place of its rows, such as the donation panels; Back returns to the rows. */
-internal class ChatMenuSubpage(@param:StringRes val title: Int, val content: @Composable () -> Unit)
+internal class ChatMenuSubpage(
+    @param:StringRes val title: Int,
+    /** A page can keep a header above its own scroll area. */
+    val scrollContent: Boolean = true,
+    val content: @Composable () -> Unit,
+)
 
 /**
  * The chat menu's [rows], or the page one of them opened in their place. A page comes in from the end and goes back
@@ -67,9 +72,6 @@ internal fun ChatMenuPages(
 /** The [page] under its title and a back arrow; its content scrolls, and a drag back up stops at its top. */
 @Composable
 internal fun ChatMenuSubpageContent(page: ChatMenuSubpage, maxHeight: Dp, onBack: () -> Unit) {
-    val scrollState = rememberScrollState()
-    val overscroll = rememberOverscrollEffect()
-    val stopAtTop = rememberStopAtScrollTop(scrollState, overscroll)
     Column(modifier = Modifier.heightIn(max = maxHeight)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
@@ -88,15 +90,26 @@ internal fun ChatMenuSubpageContent(page: ChatMenuSubpage, maxHeight: Dp, onBack
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        Column(
-            // Only the height under the title, so the end of the content stays reachable.
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .nestedScroll(stopAtTop)
-                .verticalScroll(scrollState, overscrollEffect = overscroll)
-                .padding(bottom = 12.dp),
-        ) {
+        if (page.scrollContent) {
+            ChatMenuPageScroll(Modifier.weight(1f, fill = false), page.content)
+        } else {
             page.content()
         }
+    }
+}
+
+/** Scrolls only the area the page gives it, and stops at the top before a new drag can dismiss the sheet. */
+@Composable
+internal fun ChatMenuPageScroll(modifier: Modifier, content: @Composable () -> Unit) {
+    val scrollState = rememberScrollState()
+    val overscroll = rememberOverscrollEffect()
+    val stopAtTop = rememberStopAtScrollTop(scrollState, overscroll)
+    Column(
+        modifier = modifier
+            .nestedScroll(stopAtTop)
+            .verticalScroll(scrollState, overscrollEffect = overscroll)
+            .padding(bottom = 12.dp),
+    ) {
+        content()
     }
 }

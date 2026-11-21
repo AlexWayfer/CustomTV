@@ -13,7 +13,11 @@ internal fun chatMessageToSend(raw: String): String? {
 internal sealed interface ChatSendResult {
     data object Sent : ChatSendResult
     /** Twitch took the request but did not post the message; [message] is its reason, written for the user. */
-    data class Dropped(val code: String, val message: String) : ChatSendResult
+    data class Dropped(
+        val code: String,
+        val message: String,
+        val timeoutEndsAtMillis: Long? = null,
+    ) : ChatSendResult
     /** Twitch refused the request; [message] is its error text. */
     data class Rejected(val httpCode: Int, val message: String) : ChatSendResult
     data object Unavailable : ChatSendResult

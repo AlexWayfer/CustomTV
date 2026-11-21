@@ -2,15 +2,104 @@ package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatNoticePagesTest {
+    @Test
+    fun theMenuDotShowsUnreadReceiptsAndRewardsThatStillNeedClaiming() {
+        val claim = ChatDropsNotice("claim") { _, _, _, _ -> }
+        val received = ChatDropsNotices(hasUnreadReceipt = true)
+        val both = received.copy(claim = claim)
+        assertFalse(ChatDropsNotices().showsMenuDot)
+        assertTrue(received.showsMenuDot)
+        assertTrue(both.copy(hasUnreadReceipt = false).showsMenuDot)
+    }
+
+    @Test
+    fun dropsJoinTheCarouselBehindAnActivePoll() {
+        val notices = mapOf(ChatNoticePage.Poll to ChatNoticeItem("live poll", live = true))
+        val items = notices.withDropsNotices(campaignId = "campaign", claimId = null)
+        val arrivals = nextChatNoticeArrivals(ChatNoticeArrivals(), items)
+
+        assertEquals(
+            listOf(ChatNoticePage.Poll, ChatNoticePage.Drops),
+            orderedChatNoticePages(chatNoticePages(items.keys), arrivals),
+        )
+    }
+
+    @Test
+    fun aReadyDropTakesTheFirstPageWhileTheCampaignRemainsAvailable() {
+        val poll = mapOf(ChatNoticePage.Poll to ChatNoticeItem("live poll", live = true))
+        val before = nextChatNoticeArrivals(ChatNoticeArrivals(), poll)
+        val items = poll.withDropsNotices(campaignId = "campaign", claimId = "reward")
+        val arrivals = nextChatNoticeArrivals(before, items)
+
+        assertEquals(
+            listOf(ChatNoticePage.DropsClaim, ChatNoticePage.Poll, ChatNoticePage.Drops),
+            orderedChatNoticePages(chatNoticePages(items.keys), arrivals),
+        )
+        assertEquals(arrivals, nextChatNoticeArrivals(arrivals, items))
+    }
+
+    @Test
+    fun aReceivedDropIsATemporaryCarouselPageAlongsideClaimableDrops() {
+        val base = mapOf(ChatNoticePage.Pinned to ChatNoticeItem("pin", live = true))
+            .withDropsNotices(campaignId = "campaign", claimId = "claim")
+        val before = nextChatNoticeArrivals(ChatNoticeArrivals(), base)
+        val withReceipt = base.withDropsNotices(campaignId = "campaign", claimId = "claim", receivedId = "received")
+        val after = nextChatNoticeArrivals(before, withReceipt)
+
+        assertEquals(
+            listOf(
+                ChatNoticePage.DropsReceived,
+                ChatNoticePage.DropsClaim,
+                ChatNoticePage.Drops,
+                ChatNoticePage.Pinned,
+            ),
+            orderedChatNoticePages(chatNoticePages(withReceipt.keys), after),
+        )
+        assertEquals(
+            listOf(ChatNoticePage.DropsClaim, ChatNoticePage.Drops, ChatNoticePage.Pinned),
+            orderedChatNoticePages(chatNoticePages(base.keys), nextChatNoticeArrivals(after, base)),
+        )
+    }
+
     @Test
     fun aPinAndARaidAreSeparatePagesWithTheRaidFirst() {
         assertEquals(
             listOf(ChatNoticePage.Raid, ChatNoticePage.Pinned),
             chatNoticePages(setOf(ChatNoticePage.Pinned, ChatNoticePage.Raid)),
         )
+    }
+
+    @Test
+    fun dropsPagesPrecedeThePinInTheDefaultOrder() {
+        val present = setOf(ChatNoticePage.Pinned, ChatNoticePage.Drops, ChatNoticePage.DropsClaim)
+        assertEquals(
+            listOf(ChatNoticePage.Drops, ChatNoticePage.DropsClaim, ChatNoticePage.Pinned),
+            chatNoticePages(present),
+        )
+    }
+
+    @Test
+    fun aNewPinStaysBehindBothDropsPages() {
+        val poll = ChatNoticePage.Poll to ChatNoticeItem("poll", live = true)
+        val before = nextChatNoticeArrivals(
+            ChatNoticeArrivals(),
+            mapOf(poll).withDropsNotices(campaignId = "campaign", claimId = "reward"),
+        )
+        val items = mapOf(poll, ChatNoticePage.Pinned to ChatNoticeItem("pin", live = true))
+            .withDropsNotices(campaignId = "campaign", claimId = "reward")
+        val arrivals = nextChatNoticeArrivals(before, items)
+
+        assertEquals(
+            listOf(ChatNoticePage.DropsClaim, ChatNoticePage.Poll, ChatNoticePage.Drops, ChatNoticePage.Pinned),
+            orderedChatNoticePages(chatNoticePages(items.keys), arrivals),
+        )
+        val withoutDrops = chatNoticePages(setOf(ChatNoticePage.Poll, ChatNoticePage.Pinned))
+        assertEquals(listOf(ChatNoticePage.Pinned, ChatNoticePage.Poll), orderedChatNoticePages(withoutDrops, arrivals))
     }
 
     @Test

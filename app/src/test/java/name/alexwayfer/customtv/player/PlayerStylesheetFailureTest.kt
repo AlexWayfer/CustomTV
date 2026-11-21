@@ -23,7 +23,7 @@ class PlayerStylesheetFailureTest {
     @Test
     fun stylesheetHttpFailureLogsItsCodeWithoutTheRequestQuery() {
         val response = WebResourceResponse("text/css", "UTF-8", 503, "Unavailable", emptyMap(), null)
-        client().onReceivedHttpError(view(), request(STYLESHEET + "?private=secret"), response)
+        client().onReceivedHttpError(view(), request("$STYLESHEET?private=secret"), response)
         assertEquals("Player stylesheet failed, HTTP 503", ShadowLog.getLogsForTag(PLAYER_LOG_TAG).lastOrNull()?.msg)
     }
 

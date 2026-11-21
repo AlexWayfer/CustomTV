@@ -148,6 +148,9 @@ private fun ChatNoticeDot(page: ChatNoticePage, selected: Boolean, onClick: () -
             ChatNoticePage.Shoutout -> R.string.chat_notice_show_shoutout
             ChatNoticePage.CommunityGift -> R.string.chat_notice_show_community_gift
             ChatNoticePage.Pinned -> R.string.chat_notice_show_pinned
+            ChatNoticePage.Drops -> R.string.chat_notice_show_drops
+            ChatNoticePage.DropsClaim -> R.string.chat_notice_show_drops_claim
+            ChatNoticePage.DropsReceived -> R.string.chat_notice_show_drops_received
         },
     )
     val dotColor by animateColorAsState(

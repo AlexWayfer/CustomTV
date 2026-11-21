@@ -133,11 +133,12 @@ private fun WatchChatNotices(scene: WatchScene, layout: MinimizablePlayerLayout,
         },
         onHideEvent = chatViewModel::hideChannelEvent,
         onOpenChatterCard = scene::openChatterCard,
+        drops = LocalChatDropsNotices.current,
     )
 }
 
 /** A browser sheet opened from the chat stops at the player's bottom edge. */
-private fun MinimizablePlayerLayout.browserSheetHeightPx(): Int = chatBrowserSheetHeightPx(
+internal fun MinimizablePlayerLayout.browserSheetHeightPx(): Int = chatBrowserSheetHeightPx(
     containerHeightPx = containerHeightPx,
     playerBottomPx = playerBottomPx(),
 )
@@ -203,6 +204,7 @@ private fun WatchScene.inputChannel(layout: MinimizablePlayerLayout, modeControl
     browserSheetHeightPx = { layout.browserSheetHeightPx() },
     roomModes = mode.roomModes,
     modeControl = modeControl,
+    timeouts = chatViewModel.timeouts,
 )
 
 private fun WatchScene.inputUser() = ChatInputUser(

@@ -265,6 +265,7 @@ internal fun linkLastLineStart(linkStart: Int, lastLineStart: Int): Int = maxOf(
 
 internal fun Context.copyChatText(text: String) {
     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    @Suppress("UsePropertyAccessSyntax") // The nullable getter and non-null setter have different types.
     clipboard.setPrimaryClip(ClipData.newPlainText("chat", text))
     CopiedNotices.copied()
 }

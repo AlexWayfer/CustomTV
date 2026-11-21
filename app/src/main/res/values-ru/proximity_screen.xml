@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blank_screen_on_proximity">Гасить экран при приближении</string>
+    <string name="blank_screen_on_proximity_hint">Экран гаснет, если датчик закрыт несколько секунд. Воспроизведение продолжается.</string>
+</resources>

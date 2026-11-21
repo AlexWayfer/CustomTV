@@ -11,6 +11,7 @@ internal data class AppRelease(
     val version: AppVersion,
     /** Set when the whole file is already on this device. */
     val downloadedPath: String?,
+    val notes: AppReleaseNotes? = null,
 )
 
 /** A posted file counts as a release only when it is an APK and its file name names a version. */

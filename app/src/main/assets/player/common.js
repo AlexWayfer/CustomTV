@@ -14,6 +14,8 @@ var customTvDocs = function() {
   return docs;
 };
 
+var customTvDisclosureSelector = '.disclosure-tool, [class*="disclosure-tool"], .dt-attach-top-right';
+
 // A failed main stylesheet can leave a non-null but empty link.sheet. Check the actual layout, then let the
 // browser reload the same public asset independently. The retry link lives in head, outside Twitch's React tree.
 var customTvRestorePlayerStyles = function(doc) {

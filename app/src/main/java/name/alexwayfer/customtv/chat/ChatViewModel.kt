@@ -40,6 +40,7 @@ class ChatViewModel(
     internal val liveIrcMessages: SharedFlow<ChatMessage> = client.messages
     val connectionState: StateFlow<ChatConnectionState> = client.state
     internal val roomModes: StateFlow<ChatRoomModes> = client.roomModes
+    internal val timeouts: ChatTimeouts = client.timeouts
 
     /** Shows the modes Twitch answered a moderator's change with, ahead of the ROOMSTATE that follows it. */
     internal val setRoomModes: (ChatRoomModes) -> Unit = client::setRoomModes
@@ -57,8 +58,11 @@ class ChatViewModel(
     internal val sevenTvCosmetics: StateFlow<SevenTvCosmetics> = sevenTvEvents.cosmetics
     private val ownPresence = OwnEmotePresence(viewModelScope, bttvEvents)
 
-    /** Takes the signed-in user's Twitch ID, whose personal emotes 7TV and BTTV show; null when logged out. */
-    internal val setSignedInUser: (String?) -> Unit = ownPresence::setUser
+    /** Takes the signed-in user's Twitch ID for personal emotes and chat timeouts; null when logged out. */
+    internal val setSignedInUser: (String?) -> Unit = { userId ->
+        ownPresence.setUser(userId)
+        timeouts.setUser(userId)
+    }
 
     private val cheermotes = ChannelCheermotes(viewModelScope)
 
@@ -82,7 +86,7 @@ class ChatViewModel(
         viewModelScope,
         _messages,
         trim,
-        ChatterTracking(_sessionChatters, chatterRecency, _chatterHistory),
+        ChatterTracking(_sessionChatters, chatterRecency, _chatterHistory, timeouts),
         currentChannel = { currentChannel },
         mentionSelf = { mentionSelf },
     )

@@ -102,7 +102,6 @@ internal class PlayerPlaybackBridge(
 
     /** A live page's tick: the video's position and buffer, and the latency and state of Twitch's player. */
     @JavascriptInterface
-    @Suppress("unused")
     fun onLiveTick(
         positionSeconds: Double,
         latencySeconds: Double,

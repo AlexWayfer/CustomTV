@@ -82,7 +82,10 @@ internal fun ChatterCardLabels(userId: String?, onManage: () -> Unit) {
         )
     }
     assigned.forEach { label ->
-        ChatterLabelRow(label = label, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+        ChatterLabelRow(
+            label = label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp).semantics(mergeDescendants = true) {},
+        )
     }
     // The text lines up with the rows above; the button's own padding stays its touch target.
     TextButton(onClick = onManage, enabled = userId != null, modifier = Modifier.padding(start = 4.dp)) {
@@ -142,11 +145,10 @@ internal fun ChatterCardLabelsPage(
                 error = null
                 val shownIds = changedChatterAssignmentIds(assignedIds, checked)
                 val toSave = checked
-                val commentsToSave = changedComments
                 scope.launch {
                     try {
                         error = saveLabelAssignments(
-                            chatter, shownIds, toSave, commentsToSave,
+                            chatter, shownIds, toSave, changedComments,
                         )
                         if (error == null) editedComments = emptyMap()
                     } finally {
@@ -221,9 +223,9 @@ private fun LabelsPageHeader(onBack: (() -> Unit)?) {
     }
 }
 
-/** A label's icon and name, with the time it was given to the chatter below when it was. */
+/** A label's icon and name, its comment on the profile, and its assignment time when known. */
 @Composable
-internal fun ChatterLabelRow(label: ChatterLabelIcon, modifier: Modifier = Modifier) {
+internal fun ChatterLabelRow(label: ChatterLabelIcon, modifier: Modifier = Modifier, showComment: Boolean = true) {
     val locale = LocalConfiguration.current.locales[0]
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -238,6 +240,10 @@ internal fun ChatterLabelRow(label: ChatterLabelIcon, modifier: Modifier = Modif
         )
         Column {
             Text(text = label.name, style = MaterialTheme.typography.bodyLarge)
+            val comment = if (showComment) chatterLabelSummaryComment(label.comment) else null
+            comment?.let {
+                Text(text = it, style = MaterialTheme.typography.bodyMedium)
+            }
             // A save gives a newly checked label its time and takes it from an unchecked one.
             val assignedAt = label.assignedAtMillis
             val shownAssignedAt = rememberLastNonNull(assignedAt)

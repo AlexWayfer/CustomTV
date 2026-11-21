@@ -47,10 +47,17 @@ import name.alexwayfer.customtv.update.showsHintAfterSettings
 
 /** A newer release: download it from the edition's releases with progress, then install it. */
 @Composable
-internal fun AppUpdateBlock(release: AppRelease, download: AppUpdateDownload, onDownload: () -> Unit) {
+internal fun AppUpdateBlock(
+    release: AppRelease,
+    download: AppUpdateDownload,
+    notesExpanded: Boolean,
+    onToggleNotes: () -> Unit,
+    onDownload: () -> Unit,
+) {
     val version = release.version.toString()
     Column {
-        GroupStatus(stringResource(R.string.app_update_available, version))
+        UpdateVersionLine(stringResource(R.string.app_update_available, version))
+        release.notes?.let { AppUpdateNotes(it, notesExpanded, onToggleNotes) }
         // Download fades into progress, and progress into Install.
         AnimatedContent(
             targetState = appUpdateAction(release, download),

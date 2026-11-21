@@ -44,6 +44,23 @@ class ChatComposerPartsTest {
         assertEquals(ChatFieldEndIcon.Menu, chatFieldEndIcon(sending = false, hasMessage = false))
 
     @Test
+    fun aChatTimeoutShowsSecondsEvenForLongTimeouts() {
+        assertEquals("6:22", formatChatTimeoutCountdown(382))
+        assertEquals("24:00:01", formatChatTimeoutCountdown(86_401))
+    }
+
+    @Test
+    fun aConfirmedTimeoutWithoutADeadlineOnlyAllowsAnExplicitSendRetry() {
+        val unresolved = chatTimeoutAccess(seconds = 0, unresolved = true)
+        assertEquals(ChatTimeoutAccess.Retry, unresolved)
+        assertFalse(unresolved.canSubmit(explicitRetry = false))
+        assertTrue(unresolved.canSubmit(explicitRetry = true))
+
+        assertFalse(chatTimeoutAccess(seconds = 1, unresolved = true).canSubmit(explicitRetry = true))
+        assertTrue(chatTimeoutAccess(seconds = 0, unresolved = false).canSubmit(explicitRetry = false))
+    }
+
+    @Test
     fun aTapOnAJustStartedSendDoesNothing() = assertEquals(
         ChatFieldEndTap.Nothing,
         chatFieldEndTap(sending = true, cancelable = false, hasMessage = true),

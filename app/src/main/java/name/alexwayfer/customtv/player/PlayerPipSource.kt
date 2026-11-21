@@ -12,7 +12,7 @@ import name.alexwayfer.customtv.pipVideoBounds
 
 /** Follows the actual player's window bounds, including mini-player movement and fullscreen letterboxing. */
 @Composable
-internal fun rememberPlayerPipSource(): Modifier {
+internal fun Modifier.playerPipSource(): Modifier {
     val activity = LocalActivity.current as? MainActivity
     val source = remember { PipVideoSource() }
     DisposableEffect(activity, source) {
@@ -21,7 +21,7 @@ internal fun rememberPlayerPipSource(): Modifier {
             activity?.pipVideoSources?.clear(source)
         }
     }
-    return Modifier.onLayoutRectChanged(throttleMillis = 0, debounceMillis = 0) { coordinates ->
+    return onLayoutRectChanged(throttleMillis = 0, debounceMillis = 0) { coordinates ->
         source.bounds = pipVideoBounds(coordinates.boundsInWindow)
         activity?.pipVideoSources?.update(source)
     }

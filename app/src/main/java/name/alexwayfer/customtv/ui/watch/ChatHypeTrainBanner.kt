@@ -1,27 +1,16 @@
 package name.alexwayfer.customtv.ui.watch
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.updateTransition
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -38,10 +27,8 @@ import name.alexwayfer.customtv.chat.HypeTrainPhase
 import name.alexwayfer.customtv.chat.hypeTrainPercent
 import name.alexwayfer.customtv.chat.opaqueArgbFromHex
 import name.alexwayfer.customtv.chat.twitchEmoteUrl
-import name.alexwayfer.customtv.ui.components.CardFoldSpring
 import name.alexwayfer.customtv.ui.components.SharedEmoteImage
 import name.alexwayfer.customtv.ui.theme.TwitchPurple
-import name.alexwayfer.customtv.ui.theme.TwitchSurface
 import name.alexwayfer.customtv.ui.theme.TwitchText
 
 /**
@@ -60,9 +47,6 @@ internal fun ChatHypeTrainBanner(
     val labelSize = chatSp(chatTextSize, 12, 14)
     val color = hypeTrainColor(train.colorHex) ?: TwitchPurple
     val completedLevel = rememberCompletedLevel(train)
-    val transition = updateTransition(expanded, label = "hype train expansion")
-    val fold by transition.animateFloat({ CardFoldSpring }, label = "hype train fold") { if (it) 1f else 0f }
-    val headerInset = bottomInset.coerceAtLeast(0.dp) * (1f - fold.coerceIn(0f, 1f))
     val fill by animateFloatAsState(
         targetValue = when {
             completedLevel != null -> 1f
@@ -72,51 +56,39 @@ internal fun ChatHypeTrainBanner(
         animationSpec = tween(VOTE_ANIMATION_MS),
         label = "hype train fill",
     )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = ChatNoticeCardOuterPadding)
-            .clip(RoundedCornerShape(8.dp))
-            .background(TwitchSurface)
-            .drawWithContent {
-                drawContent()
-                // An approach has no fill yet; Twitch marks it with a stripe of the creator color instead.
-                if (train.phase == HypeTrainPhase.Approaching) {
-                    drawRect(color, size = Size(APPROACH_STRIPE_WIDTH.toPx(), size.height))
-                }
+    ChatNoticeCard(
+        expanded = expanded,
+        bottomInset = bottomInset,
+        insetInCollapsedSummary = true,
+        // New conductors and rewards resize the open details.
+        detailsModifier = Modifier.animateContentSize(),
+        modifier = Modifier.drawWithContent {
+            drawContent()
+            // An approach has no fill yet; Twitch marks it with a stripe of the creator color instead.
+            if (train.phase == HypeTrainPhase.Approaching) {
+                drawRect(color, size = Size(APPROACH_STRIPE_WIDTH.toPx(), size.height))
             }
-            .blockChatTouches(),
+        },
+        summary = { _, fold, headerInset ->
+            HypeTrainHeader(
+                train = train,
+                completedLevel = completedLevel,
+                color = color,
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
+                chatTextSize = chatTextSize,
+                bottomInset = headerInset,
+                fill = { fill },
+                fold = fold,
+            )
+        },
     ) {
-        HypeTrainHeader(
-            train = train,
-            completedLevel = completedLevel,
-            color = color,
-            expanded = expanded,
-            onExpandedChange = onExpandedChange,
-            chatTextSize = chatTextSize,
-            bottomInset = headerInset,
-            fill = { fill },
-            fold = { fold },
+        HypeTrainDetails(train, chatTextSize)
+        ChatNoticeHideButton(
+            onClick = onHide,
+            textSize = labelSize,
+            modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
         )
-        transition.AnimatedVisibility(
-            visible = { it },
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            // New conductors and rewards open the details up while they are shown.
-            Column(Modifier.animateContentSize()) {
-                HypeTrainDetails(train, chatTextSize)
-                ChatNoticeHideButton(
-                    onClick = onHide,
-                    textSize = labelSize,
-                    modifier = Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
-                )
-            }
-        }
-        if (bottomInset > 0.dp) {
-            // Move the dot inset between the colored header and the footer, preserving the card's total inset.
-            Spacer(Modifier.height((bottomInset - headerInset).coerceAtLeast(0.dp)))
-        }
     }
 }
 

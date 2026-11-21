@@ -1,5 +1,25 @@
 # CustomTV (free version)
 
+## v1.18.0 (2026-11-21)
+
+*   Turn off the screen during playback when the proximity sensor stays covered
+*   Disable chat input when a timeout is detected and show a countdown in its place
+*   Show release notes in the app when an update is available
+*   Show label comments on chatter cards
+*   Fix streams getting stuck after a network interruption
+*   Fix endless loading when opening an offline channel
+*   Hide Twitch’s “certain audiences” warning in picture-in-picture
+
+### Russian
+
+*   Гасить экран во время просмотра, если датчик приближения остаётся закрытым
+*   Отключать поле ввода в чате при обнаружении таймаута и показывать вместо него обратный отсчёт
+*   Показывать список изменений прямо в приложении, когда доступно обновление
+*   Показывать комментарии к меткам в карточках участников чата
+*   Исправить зависание трансляций после обрыва сети
+*   Исправить бесконечную загрузку при открытии канала, который не в эфире
+*   Скрывать предупреждение Twitch о контенте для определённой аудитории в режиме «Картинка в картинке»
+
 ## v1.17.0 (2026-11-17)
 
 *   Switch seamlessly to audio-only playback in the background

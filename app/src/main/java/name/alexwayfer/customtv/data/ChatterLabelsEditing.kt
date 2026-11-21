@@ -129,6 +129,7 @@ internal fun chatterLabelsUpdate(gist: ChatterLabelsGist, edited: List<EditableC
         if (id.isNotBlank()) originals.putIfAbsent(id, label)
     }
     val labels = JSONArray()
+    @Suppress("DestructuringDeclaration")
     for (label in edited) {
         val entry = originals[label.id]?.let { JSONObject(it.toString()) } ?: JSONObject()
         labels.put(

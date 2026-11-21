@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,7 +22,6 @@ import name.alexwayfer.customtv.R
  * Home logged out with no recents: the channel search on top, where searching is the only thing to do, and the
  * offer to log in for the followed channels right below it, until it is put away.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeEmptyStart(
     searchState: SearchBarState,

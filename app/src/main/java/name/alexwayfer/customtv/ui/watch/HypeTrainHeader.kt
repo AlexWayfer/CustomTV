@@ -1,7 +1,6 @@
 package name.alexwayfer.customtv.ui.watch
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -90,16 +88,17 @@ private fun HypeTrainHeaderContent(
     // The completed level fades in over the level and timer, and they fade back once it is over.
     val celebration by animateFloatAsState(if (completedText != null) 1f else 0f, label = "hype train celebration")
     val shownCompletedText = rememberLastNonNull(completedText)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onExpandedChange(!expanded) }
-            .padding(start = 10.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    ChatNoticeHeader(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        chatTextSize = chatTextSize,
+        expandLabel = expandLabel,
+        arrowTint = Color.White,
     ) {
         Box(
             modifier = Modifier
                 .weight(1f)
+                .padding(end = 6.dp)
                 .clearAndSetSemantics { contentDescription = completedText ?: description },
             contentAlignment = Alignment.Center,
         ) {
@@ -117,12 +116,6 @@ private fun HypeTrainHeaderContent(
                 }
             }
         }
-        NoticeExpandArrow(
-            expanded = expanded,
-            contentDescription = expandLabel,
-            tint = Color.White,
-            modifier = Modifier.padding(start = 6.dp).size(chatDp(chatTextSize, normal = 20, large = 22)),
-        )
     }
 }
 

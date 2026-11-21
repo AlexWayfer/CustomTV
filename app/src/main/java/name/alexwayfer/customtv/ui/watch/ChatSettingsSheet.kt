@@ -88,6 +88,8 @@ internal fun ChatSettingsSheet(
     atModerators: Boolean = false,
     /** The Hide stream switch over the live stream; none over a replayed chat. */
     streamHide: StreamHideToggle? = null,
+    /** The viewer whose Twitch chat identity can be edited, in live chat. */
+    identityUserId: String? = null,
     /** The page the menu opens at instead of its rows, such as the chat modes. */
     initialSubpage: ChatMenuSubpage? = null,
     /**
@@ -97,6 +99,8 @@ internal fun ChatSettingsSheet(
     firstRow: @Composable (openSubpage: (ChatMenuSubpage) -> Unit) -> Unit = {},
     /** The chat modes' row under the chat rules, for the streamer and moderators; none over a replayed chat. */
     modesRow: @Composable (openSubpage: (ChatMenuSubpage) -> Unit) -> Unit = {},
+    /** The current channel's Drops campaigns, given a way to close the menu before opening their sheet. */
+    dropsRow: @Composable (hideThen: (() -> Unit) -> Unit) -> Unit = {},
     /** The chat recap's row, given a way to close the sheet before its action; none over a replayed chat. */
     recapRow: @Composable (hideThen: (() -> Unit) -> Unit) -> Unit = {},
 ) {
@@ -110,6 +114,7 @@ internal fun ChatSettingsSheet(
         }
     }
     val modsPage = rememberChatModeratorsSubpage(channelLogin, channelId, readableColors, hideThen, onMentionModerator)
+    val identityPage = rememberChatIdentityPage(identityUserId, channelId, readableColors)
     val scrollState = rememberScrollState()
     // A drag back up through the settings stops at the top; closing the sheet takes a new drag.
     val overscroll = rememberOverscrollEffect()
@@ -131,6 +136,7 @@ internal fun ChatSettingsSheet(
                     .verticalScroll(scrollState, overscrollEffect = overscroll)
                     .padding(bottom = 12.dp),
             ) {
+                dropsRow(hideThen)
                 firstRow(openSubpage)
                 ChatBrowserRows(
                     channelLogin = channelLogin,
@@ -139,7 +145,8 @@ internal fun ChatSettingsSheet(
                     onExperimentalLogin = { hideThen(onDismiss) },
                 )
                 val openModerators = onMentionModerator?.let { { openSubpage(modsPage) } }
-                ChatProfileAndRulesRows(onOpenOwnProfile, onViewChatRules, openModerators, hideThen)
+                val openIdentity = identityPage?.let { page -> { openSubpage(page()) } }
+                ChatProfileAndRulesRows(onOpenOwnProfile, openIdentity, onViewChatRules, openModerators, hideThen)
                 modesRow(openSubpage)
                 recapRow(hideThen)
                 streamHide?.let { toggle -> StreamHideRow(toggle) }
@@ -206,10 +213,11 @@ private fun ChatLookToggles(
     )
 }
 
-/** Your profile, moderators, and the chat rules. Moderators open inside the menu, just above its rules. */
+/** Your profile and chat identity, followed by the moderators and the chat rules. */
 @Composable
 private fun ChatProfileAndRulesRows(
     onOpenOwnProfile: (() -> Unit)?,
+    onOpenChatIdentity: (() -> Unit)?,
     onViewChatRules: (() -> Unit)?,
     onOpenModerators: (() -> Unit)?,
     hideThen: (() -> Unit) -> Unit,
@@ -221,6 +229,7 @@ private fun ChatProfileAndRulesRows(
             modifier = Modifier.clickable { hideThen(open) },
         )
     }
+    ChatIdentityRow(onOpenChatIdentity)
     onOpenModerators?.let { open ->
         ChatSettingsRow(
             label = stringResource(R.string.chat_moderators),
@@ -336,6 +345,7 @@ internal fun ChatSettingsRow(
     icon: Painter,
     modifier: Modifier,
     supportingText: String? = null,
+    showIconDot: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     Box(
@@ -345,7 +355,12 @@ internal fun ChatSettingsRow(
     ) {
         ListItem(
             content = { Text(label) },
-            leadingContent = { Icon(icon, contentDescription = null) },
+            leadingContent = {
+                Box {
+                    Icon(icon, contentDescription = null)
+                    ChatMenuIconDot(showIconDot)
+                }
+            },
             supportingContent = supportingText?.let { text -> { Text(text) } },
             trailingContent = trailing,
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),

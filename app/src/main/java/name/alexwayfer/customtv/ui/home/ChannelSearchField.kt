@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -63,7 +62,6 @@ private fun Modifier.channelSearchHeight() =
     height(ChannelSearchHeight).wrapContentHeight(unbounded = true)
 
 /** The search button beside the title: the full-screen search opens out of it. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChannelSearchButton(state: SearchBarState, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
@@ -79,7 +77,6 @@ internal fun ChannelSearchButton(state: SearchBarState, modifier: Modifier = Mod
  * The field on the empty Home. It only opens the search: read-only, it takes focus without asking for the
  * keyboard, so the keyboard opens once, for the full-screen search's field.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChannelSearchCollapsedField(state: SearchBarState, value: String, modifier: Modifier = Modifier) {
     val text = rememberTextFieldState(value)

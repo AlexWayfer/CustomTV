@@ -53,18 +53,36 @@ internal enum class ChatNoticePage {
     Prediction,
     Shoutout,
     CommunityGift,
+    Drops,
+    DropsClaim,
+    DropsReceived,
     Pinned,
 }
 
 /**
  * The [present] pages in the default order. Timed notices come first: a raid, a hype train, a poll and a prediction,
- * then a shoutout, gifts, and the pin.
+ * then a shoutout, gifts, Drops, and the pin.
  */
 internal fun chatNoticePages(present: Set<ChatNoticePage>): List<ChatNoticePage> =
     ChatNoticePage.entries.filter { it in present }
 
 /** What a page shows now: [key] names the item, and [live] says it arrived while chat was open. */
 internal data class ChatNoticeItem(val key: String, val live: Boolean)
+
+/** Ready and received rewards are live notices. Campaigns from the catalog keep their usual place. */
+internal fun Map<ChatNoticePage, ChatNoticeItem>.withDropsNotices(
+    campaignId: String?,
+    claimId: String?,
+    receivedId: String? = null,
+): Map<ChatNoticePage, ChatNoticeItem> {
+    if (campaignId == null && claimId == null && receivedId == null) return this
+    return buildMap {
+        putAll(this@withDropsNotices)
+        campaignId?.let { put(ChatNoticePage.Drops, ChatNoticeItem(it, live = false)) }
+        claimId?.let { put(ChatNoticePage.DropsClaim, ChatNoticeItem(it, live = true)) }
+        receivedId?.let { put(ChatNoticePage.DropsReceived, ChatNoticeItem(it, live = true)) }
+    }
+}
 
 /** When a page's item arrived: 0 for one already running when chat opened. */
 internal data class ChatNoticeArrival(val key: String, val order: Long)
@@ -95,13 +113,25 @@ internal fun nextChatNoticeArrivals(
     return ChatNoticeArrivals(byPage, counter)
 }
 
-/** The newest arrival first; items already running when chat opened keep the default order. */
+/** The newest arrival first, with default order for ties and Drops ahead of the pin. */
 internal fun orderedChatNoticePages(
     pages: List<ChatNoticePage>,
     arrivals: ChatNoticeArrivals,
-): List<ChatNoticePage> = pages.sortedWith(
-    compareByDescending<ChatNoticePage> { arrivals.byPage[it]?.order ?: 0L }.thenBy { it.ordinal },
-)
+): List<ChatNoticePage> {
+    val ordered = pages.sortedWith(
+        compareByDescending<ChatNoticePage> { arrivals.byPage[it]?.order ?: 0L }.thenBy { it.ordinal },
+    )
+    val pinIndex = ordered.indexOf(ChatNoticePage.Pinned)
+    val lastDropsIndex = ordered.indexOfLast {
+        it == ChatNoticePage.Drops || it == ChatNoticePage.DropsClaim || it == ChatNoticePage.DropsReceived
+    }
+    if (pinIndex !in 0..<lastDropsIndex) return ordered
+
+    return ordered.toMutableList().apply {
+        removeAt(pinIndex)
+        add(lastDropsIndex, ChatNoticePage.Pinned)
+    }
+}
 
 /** While a notice is expanded, the pages keep their places and a new page joins at the end. */
 internal fun frozenChatNoticePages(

@@ -6,23 +6,27 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.VisualTransformation
 
 /**
- * A one-line outlined field as Material draws it, with [contentPadding] around its text, which Material's own field
- * for a String does not take: a smaller padding makes the field lower than the standard 56dp.
+ * A one-line outlined field with [contentPadding] around its text and no standard 56dp minimum height.
  */
 @Composable
 internal fun PaddedOutlinedTextField(
@@ -38,6 +42,7 @@ internal fun PaddedOutlinedTextField(
     trailingIcon: (@Composable () -> Unit)? = null,
     supportingText: (@Composable () -> Unit)? = null,
 ) {
+    val state = rememberPaddedFieldState(value, onValueChange)
     val colors = OutlinedTextFieldDefaults.colors()
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -55,42 +60,46 @@ internal fun PaddedOutlinedTextField(
     }
     CompositionLocalProvider(LocalTextSelectionColors provides colors.textSelectionColors) {
         BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
+            state = state,
             modifier = modifier
                 .then(if (labelRoom != null) Modifier.padding(top = labelRoom) else Modifier)
                 .defaultMinSize(minWidth = OutlinedTextFieldDefaults.MinWidth),
             enabled = enabled,
             textStyle = LocalTextStyle.current.merge(TextStyle(color = textColor)),
-            singleLine = true,
+            lineLimits = TextFieldLineLimits.SingleLine,
             interactionSource = interactionSource,
             cursorBrush = SolidColor(if (isError) colors.errorCursorColor else colors.cursorColor),
-            decorationBox = { innerTextField ->
-                OutlinedTextFieldDefaults.DecorationBox(
-                    value = value,
-                    innerTextField = innerTextField,
-                    enabled = enabled,
-                    singleLine = true,
-                    visualTransformation = VisualTransformation.None,
-                    interactionSource = interactionSource,
-                    isError = isError,
-                    label = label,
-                    placeholder = placeholder,
-                    leadingIcon = leadingIcon,
-                    trailingIcon = trailingIcon,
-                    supportingText = supportingText,
-                    colors = colors,
-                    contentPadding = contentPadding,
-                    container = {
-                        OutlinedTextFieldDefaults.Container(
-                            enabled = enabled,
-                            isError = isError,
-                            interactionSource = interactionSource,
-                            colors = colors,
-                        )
-                    },
-                )
-            },
+            decorator = OutlinedTextFieldDefaults.decorator(
+                state = state,
+                enabled = enabled,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                outputTransformation = null,
+                interactionSource = interactionSource,
+                isError = isError,
+                label = label?.let { content -> { content() } },
+                placeholder = placeholder,
+                leadingIcon = leadingIcon,
+                trailingIcon = trailingIcon,
+                supportingText = supportingText,
+                colors = colors,
+                contentPadding = contentPadding,
+            ),
         )
     }
+}
+
+@Composable
+private fun rememberPaddedFieldState(value: String, onValueChange: (String) -> Unit): TextFieldState {
+    val state = remember { TextFieldState(initialText = value) }
+    val currentValue by rememberUpdatedState(value)
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    LaunchedEffect(value) {
+        if (state.text.toString() != value) state.setTextAndPlaceCursorAtEnd(value)
+    }
+    LaunchedEffect(state) {
+        snapshotFlow { state.text.toString() }.collect { text ->
+            if (text != currentValue) currentOnValueChange(text)
+        }
+    }
+    return state
 }

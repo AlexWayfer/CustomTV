@@ -20,16 +20,39 @@ internal fun ChatNoticeHideButton(
     textSize: TextUnit,
     modifier: Modifier = Modifier,
 ) {
-    FilledTonalButton(
+    ChatNoticeButton(
+        text = stringResource(R.string.chat_pinned_hide),
         onClick = onClick,
+        textSize = textSize,
         modifier = modifier.fillMaxWidth(),
-        colors = ButtonDefaults.filledTonalButtonColors(
+    )
+}
+
+@Composable
+internal fun ChatNoticeButton(
+    text: String,
+    onClick: () -> Unit,
+    textSize: TextUnit,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+    enabled: Boolean = true,
+) {
+    val colors = if (primary) {
+        ButtonDefaults.buttonColors()
+    } else {
+        ButtonDefaults.filledTonalButtonColors(
             containerColor = TwitchDivider,
             contentColor = TwitchText,
-        ),
+        )
+    }
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = colors,
     ) {
         Text(
-            text = stringResource(R.string.chat_pinned_hide),
+            text = text,
             fontSize = textSize,
             fontWeight = FontWeight.Medium,
         )

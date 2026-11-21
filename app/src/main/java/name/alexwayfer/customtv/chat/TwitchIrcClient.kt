@@ -6,12 +6,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import name.alexwayfer.customtv.diagnostics.AppLog
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 /** The log tag of the chat connection. */
@@ -27,11 +24,7 @@ private val CHAT_LINE_PARSERS: Map<String, (String) -> ChatMessage?> = mapOf(
 )
 
 class TwitchIrcClient(
-    private val client: WebSocket.Factory = OkHttpClient.Builder()
-        .pingInterval(SOCKET_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        // Bounds the TLS handshake and the upgrade answer; the open socket is watched by the ping.
-        .readTimeout(SOCKET_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .build(),
+    private val client: WebSocket.Factory = twitchIrcSocketFactory,
 ) {
     private val _messages = MutableSharedFlow<ChatMessage>(
         extraBufferCapacity = 256,
@@ -44,6 +37,7 @@ class TwitchIrcClient(
 
     private val _roomModes = MutableStateFlow(ChatRoomModes())
     internal val roomModes: StateFlow<ChatRoomModes> = _roomModes
+    internal val timeouts = ChatTimeouts()
 
     private var webSocket: WebSocket? = null
     private var socketListener: SocketListener? = null
@@ -88,13 +82,10 @@ class TwitchIrcClient(
     }
 
     private fun openSocket() {
-        val request = Request.Builder()
-            .url(IRC_URL)
-            .build()
         val listener = SocketListener()
         // A fast DNS failure can arrive before newWebSocket returns its socket.
         socketListener = listener
-        val opened = client.newWebSocket(request, listener)
+        val opened = client.newWebSocket(twitchIrcSocketRequest, listener)
         if (socketListener === listener) webSocket = opened else opened.cancel()
     }
 
@@ -110,7 +101,7 @@ class TwitchIrcClient(
             withCurrent {
                 AppLog.i(CHAT_IRC_TAG, "socket open")
                 val nick = "justinfan${Random.nextInt(10_000, 99_999)}"
-                webSocket.send("CAP REQ :twitch.tv/tags twitch.tv/commands")
+                webSocket.send(TWITCH_IRC_CAPABILITIES)
                 webSocket.send("PASS SCHMOOPIIE")
                 webSocket.send("NICK $nick")
             }
@@ -151,15 +142,13 @@ class TwitchIrcClient(
     }
 
     private fun handleLine(webSocket: WebSocket, line: String) {
-        if (line.startsWith("PING")) {
-            val payload = line.substringAfter("PING").trim()
-            webSocket.send(if (payload.isEmpty()) "PONG" else "PONG $payload")
+        ircPong(line)?.let {
+            webSocket.send(it)
             return
         }
         val parsed = IrcLineParser.parse(line) ?: return
         when (parsed.command) {
-            "001" -> {
-                val current = channel ?: return
+            "001" -> channel?.let { current ->
                 AppLog.i(CHAT_IRC_TAG, "registered, joining #$current")
                 webSocket.send("JOIN #$current")
                 _state.value = ChatConnectionState.Connected
@@ -171,7 +160,13 @@ class TwitchIrcClient(
                 AppLog.i(CHAT_IRC_TAG, "server requested reconnect")
                 _state.value = ChatConnectionState.Reconnecting
             }
-            else -> CHAT_LINE_PARSERS[parsed.command]?.invoke(line)?.let { _messages.tryEmit(it) }
+            else -> CHAT_LINE_PARSERS[parsed.command]?.invoke(line)?.let { message ->
+                val current = channel
+                if (current != null && parsed.params.firstOrNull() == "#$current") {
+                    timeouts.onMessage(current, message)
+                }
+                _messages.tryEmit(message)
+            }
         }
     }
 
@@ -190,10 +185,5 @@ class TwitchIrcClient(
             AppLog.i(CHAT_IRC_TAG, "disconnected")
             _state.value = ChatConnectionState.Disconnected
         }
-    }
-
-    private companion object {
-        const val SOCKET_TIMEOUT_SECONDS = 10L
-        const val IRC_URL = "wss://irc-ws.chat.twitch.tv:443"
     }
 }

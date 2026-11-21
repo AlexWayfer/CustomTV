@@ -68,7 +68,7 @@ internal fun ChatterLabelAssignmentRow(
                 enabled = enabled,
                 modifier = Modifier.padding(12.dp),
             )
-            ChatterLabelRow(label = label, modifier = Modifier.padding(vertical = 6.dp))
+            ChatterLabelRow(label = label, modifier = Modifier.padding(vertical = 6.dp), showComment = false)
         }
         AnimatedVisibility(visible = checked) {
             ChatterAssignmentCommentField(

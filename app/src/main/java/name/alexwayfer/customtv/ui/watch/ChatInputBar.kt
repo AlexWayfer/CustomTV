@@ -45,12 +45,11 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.drop
-import name.alexwayfer.customtv.BuildConfig
 import name.alexwayfer.customtv.chat.sectionsWithFrequentlyUsed
 import name.alexwayfer.customtv.chat.EmoteUse
 import name.alexwayfer.customtv.data.ChatSendError
-import name.alexwayfer.customtv.data.ChatSendRepository
 import name.alexwayfer.customtv.data.ChatSettings
 import name.alexwayfer.customtv.data.chatRulesFingerprint
 import name.alexwayfer.customtv.ui.components.rememberLastNonNull
@@ -67,8 +66,9 @@ internal fun ChatInputBar(
     compose: ChatCompose,
     menu: ChatMenu,
     bar: ChatInputBarLook,
+    sendMessage: ChatMessageSender = rememberChatMessageSender(channel, user),
 ) {
-    val composer = remember(channel.login) { ChatComposerState() }
+    val composer = remember(channel.login, user.userId) { ChatComposerState() }
     val field = rememberChatFieldState()
     val scope = rememberCoroutineScope()
     val keyboardHeight = rememberKeyboardHeight()
@@ -76,6 +76,11 @@ internal fun ChatInputBar(
     val rulesGate = rememberChatRulesGate(channel.broadcasterId)
     val rulesFingerprint = remember(channel.rules) { channel.rules?.let(::chatRulesFingerprint) }
     val warningGate = rememberChatWarningGate(channel.broadcasterId, user.userId)
+    val timeouts by channel.timeouts.state.collectAsStateWithLifecycle()
+    val timeoutSeconds = rememberChatTimeoutSeconds(
+        timeouts.deadline(channel.login, user.userId),
+        channel.timeouts.nowMillis,
+    )
     val input = ChatInput(
         channel = channel,
         user = user,
@@ -87,17 +92,22 @@ internal fun ChatInputBar(
         rulesNeedConfirmation = rulesGate.needsConfirmation(user.canSend, channel.rules, rulesFingerprint),
         warningGate = warningGate,
         warned = warningGate.warning != null,
+        timeoutSeconds = timeoutSeconds,
+        timeoutAccess = chatTimeoutAccess(timeoutSeconds, composer.timeoutUnresolved),
+        timeoutLookup = rememberChatTimeoutLookup(channel.broadcasterId, user.userId.takeIf { user.canSend }),
         imeOpen = panel.imeOpen,
         keyboard = LocalSoftwareKeyboardController.current,
         focusManager = LocalFocusManager.current,
         sheetKeyboard = LocalSheetKeyboard.current,
         imeDismissFocus = LocalImeDismissFocus.current,
         keyboardHeight = keyboardHeight,
-        repository = remember { ChatSendRepository(BuildConfig.TWITCH_CLIENT_ID) },
+        sendMessage = sendMessage,
     )
     val current = rememberUpdatedState(input)
     val actions = remember(composer) { ChatInputActions(composer, field, ChatDraftEditor(current), scope, current) }
+    CheckChatTimeoutOnOpen(input)
     ChatComposerEffects(input, composer, field, panel)
+    ChatComposerRestrictionEffect(input, composer)
     ChatFieldRequestEffects(input, composer, actions)
     ChatInputBarBody(input, composer, field, panel, actions)
     if (composer.rulesOpen) ChatInputRulesSheet(input, actions, onDismiss = { composer.rulesOpen = false })
@@ -142,24 +152,35 @@ private fun ChatComposerEffects(
         // The history plaque goes with the keyboard and the picker.
         if (!panel.composerOpen) composer.historyOpen = false
     }
-    val warned = input.warned
-    // The plaque takes the field's place, so the keyboard and the picker go with the field.
-    LaunchedEffect(warned) {
-        if (!warned) return@LaunchedEffect
-        composer.pickerOpen = false
-        focusManager.clearFocus(force = true)
-    }
     val draft = input.compose.draft
     LaunchedEffect(draft) {
         snapshotFlow { draft.text.toString() to draft.selection }.drop(1).collect { composer.sendError = null }
     }
 }
 
+@Composable
+private fun ChatComposerRestrictionEffect(input: ChatInput, composer: ChatComposerState) {
+    val blocked = input.warned || input.timedOut
+    LaunchedEffect(blocked) {
+        if (!blocked) return@LaunchedEffect
+        composer.pickerOpen = false
+        composer.keyboardReturning = false
+        input.focusManager.clearFocus(force = true)
+    }
+    LaunchedEffect(input.timeoutAccess) {
+        when (input.timeoutAccess) {
+            ChatTimeoutAccess.Editable -> composer.timeoutSendRefused = false
+            ChatTimeoutAccess.Countdown -> composer.timeoutUnresolved = false
+            ChatTimeoutAccess.Retry -> Unit
+        }
+    }
+}
+
 /** What asks for the field once: confirmed rules, a shared text, and Reply or Share. */
 @Composable
 private fun ChatFieldRequestEffects(input: ChatInput, composer: ChatComposerState, actions: ChatInputActions) {
-    val warned = input.warned
     val draft = input.compose.draft
+    val timedOut by rememberUpdatedState(input.timedOut)
     val menuMention = composer.mentionAfterMenu
     LaunchedEffect(menuMention) {
         if (menuMention == null) return@LaunchedEffect
@@ -170,15 +191,14 @@ private fun ChatFieldRequestEffects(input: ChatInput, composer: ChatComposerStat
     // Runs after the confirmed rules removed the tap cover, so the field's focus requester is attached.
     LaunchedEffect(composer.focusAfterRules) {
         if (!composer.focusAfterRules) return@LaunchedEffect
-        // A warning that came meanwhile took the field away, and its focus requester with it.
-        if (!warned) actions.focusField()
+        actions.focusField()
         composer.focusAfterRules = false
     }
     val shareOffer = input.compose.shareOffer
     // An offer's text, such as an unlocked emote, goes in the field once, before the field asks for the keyboard.
     LaunchedEffect(shareOffer?.prefill) {
         val shared = shareOffer?.prefill?.take() ?: return@LaunchedEffect
-        draft.setTextAndPlaceCursorAtEnd(draftWithShared(draft.text.toString(), shared))
+        if (!timedOut) draft.setTextAndPlaceCursorAtEnd(draftWithShared(draft.text.toString(), shared))
     }
     // Choosing Reply asks for the field once per choice, not again when the bar returns from picture-in-picture.
     // Choosing Share asks for the field once, like Reply.
@@ -213,7 +233,7 @@ private fun ChatInputBarBody(
     val completion = rememberChatCompletion(input, composer.pickerOpen, draftEmotes)
     val historyButton = chatHistoryButtonShown(
         enabled = input.compose.historyEnabled,
-        canSend = input.user.canSend,
+        canSend = input.canEdit,
         composerOpen = panel.composerOpen,
         hasHistory = input.compose.sentHistory.isNotEmpty(),
     )
@@ -239,7 +259,7 @@ private fun ChatInputBarBody(
                     bottom = 8.dp,
                 ),
             ) {
-                ChatFieldNotesArea(input, composer.sendError) {
+                ChatFieldNotesArea(input, composer.sendError.takeUnless { input.timedOut }) {
                     openChatMenu(composer, field, input.sheetKeyboard, ChatMenuStart.Modes)
                 }
                 val look = ChatFieldLook(chatFieldColors(barAlpha), draftEmotes, panel.composerOpen, historyButton)
@@ -303,7 +323,7 @@ private fun ColumnScope.ChatFieldRow(
     look: ChatFieldLook,
 ) {
     val sharing = input.compose.shareOffer?.takeIf { it.composing }
-    val hasMessage = chatTextToSubmit(
+    val hasMessage = input.timeoutAccess != ChatTimeoutAccess.Countdown && chatTextToSubmit(
         input.compose.draft.text.toString(),
         emptyAllowed = sharing?.emptyAllowed == true,
     ) != null
@@ -325,7 +345,7 @@ private fun ColumnScope.ChatFieldRow(
                 if (input.user.canSend) input.bar.channelPoints(sideButtons.start)
                 ChatMessageField(input, composer, field, actions, look)
                 ChatFieldEnd(
-                    visible = sideButtons.endButton,
+                    visible = sideButtons.endButton || input.timedOut,
                     icon = chatFieldEndIcon(composer.sending, hasMessage = hasMessage),
                     cancelable = composer.sendCancelable,
                     onClick = { actions.tapEndButton(hasMessage) },

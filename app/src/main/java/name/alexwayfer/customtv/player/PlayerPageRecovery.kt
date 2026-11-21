@@ -25,7 +25,7 @@ internal data class PlayerPageActions(
 internal class PlayerPageRecovery(
     private val handler: Handler,
     private val isReleased: () -> Boolean,
-    isSurfaceRevealed: () -> Boolean,
+    private val isSurfaceRevealed: () -> Boolean,
     private val actions: PlayerPageActions,
 ) {
     val pageLoad = PlayerPageLoad()
@@ -43,6 +43,8 @@ internal class PlayerPageRecovery(
     private var automaticReloadAttempts = 0
     private var playerReloadPending = false
     private var startupReloadAttempts = 0
+    private var networkAvailable = true
+    private var errorReload: ErrorReload? = null
     private val playerReload = Runnable {
         playerReloadPending = false
         if (isReleased() || StreamPlayback.isExplicitlyPaused) return@Runnable
@@ -94,17 +96,34 @@ internal class PlayerPageRecovery(
         )
         reloadStuckPage()
     }
-    private val errorReloadWatchdog = Runnable {
-        if (isReleased()) return@Runnable
-        if (!PlayerPageReloads.reloadsAfterErrorReload(isSurfaceRevealed(), StreamPlayback.userPaused)) {
-            return@Runnable
+    private inner class ErrorReload : Runnable {
+        var waitingForNetwork = false
+            private set
+
+        override fun run() {
+            if (!canReload()) return
+            actions.logPlayerState {
+                // Playback, a newer attempt, or another network loss can arrive while WebView answers.
+                if (canReload()) {
+                    errorReload = null
+                    startupReloadAttempts += 1
+                    AppLog.w(
+                        PLAYER_LOG_TAG,
+                        "No video after the error screen's reload, reloading the page (attempt $startupReloadAttempts)",
+                    )
+                    actions.reloadPage()
+                }
+            }
         }
-        startupReloadAttempts += 1
-        AppLog.w(
-            PLAYER_LOG_TAG,
-            "No video after the error screen's reload, reloading the page (attempt $startupReloadAttempts)",
-        )
-        reloadStuckPage()
+
+        private fun canReload(): Boolean {
+            if (errorReload !== this || isReleased()) return false
+            if (!PlayerPageReloads.reloadsAfterErrorReload(isSurfaceRevealed(), StreamPlayback.isExplicitlyPaused)) {
+                return false
+            }
+            waitingForNetwork = !networkAvailable
+            return networkAvailable
+        }
     }
 
     /** A page starts loading; a reload of the same target keeps counting its startup attempts. */
@@ -119,7 +138,6 @@ internal class PlayerPageRecovery(
         loadStartedAt = SystemClock.elapsedRealtime()
         resetAutomaticReloads()
         handler.removeCallbacks(startupWatchdog)
-        handler.removeCallbacks(errorReloadWatchdog)
         handler.removeCallbacks(failedReload)
         pageLoad.start()
         handler.removeCallbacks(pageResponseWatchdog)
@@ -133,11 +151,14 @@ internal class PlayerPageRecovery(
         automaticReloadAttempts = 0
         playerReloadPending = false
         handler.removeCallbacks(playerReload)
+        errorReload?.let(handler::removeCallbacks)
+        errorReload = null
     }
 
-    /** The video shows, so the error screen's reload worked. */
-    fun cancelErrorReload() {
-        handler.removeCallbacks(errorReloadWatchdog)
+    /** A fallback whose wait ran out offline can run once the default network is usable again. */
+    fun networkAvailabilityChanged(available: Boolean) {
+        networkAvailable = available
+        if (available) errorReload?.takeIf { it.waitingForNetwork }?.run()
     }
 
     /** Whether this playing report is the first since the load or the channel's last offline screen. */
@@ -179,6 +200,7 @@ internal class PlayerPageRecovery(
         playbackConfirmed = false
         withheld = true
         handler.removeCallbacks(startupWatchdog)
+        resetAutomaticReloads()
     }
 
     fun pageFailed(reason: String) {
@@ -218,7 +240,9 @@ internal class PlayerPageRecovery(
         startupReloadAttempts = 0
         // The wait after this reload takes over from the wait for the first playback.
         handler.removeCallbacks(startupWatchdog)
-        handler.removeCallbacks(errorReloadWatchdog)
-        handler.postDelayed(errorReloadWatchdog, PlayerPageReloads.delayMs(startupReloadAttempts))
+        errorReload?.let(handler::removeCallbacks)
+        val reload = ErrorReload()
+        errorReload = reload
+        handler.postDelayed(reload, PlayerPageReloads.delayMs(startupReloadAttempts))
     }
 }

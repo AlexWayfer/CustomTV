@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import name.alexwayfer.customtv.MainActivity
+import name.alexwayfer.customtv.player.ProximityScreenOff
 import name.alexwayfer.customtv.player.TwitchPlaybackTarget
 import name.alexwayfer.customtv.ui.LiftSnackbar
 import name.alexwayfer.customtv.ui.LocalGestureHints
@@ -71,6 +72,7 @@ internal fun MinimizablePlayer(
 ) {
     val activity = LocalActivity.current as MainActivity
     KeepScreenAwake(activity)
+    ProximityScreenOff(inPictureInPicture)
     val ui = remember { PlayerSceneState() }
     val chatSwipeScope = rememberCoroutineScope()
     val chatSwipe = remember { FullscreenChatSwipeState(chatSwipeScope) }

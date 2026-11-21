@@ -42,6 +42,34 @@ class DefaultNetworkTrackerTest {
     }
 
     @Test
+    fun theSameNetworkCanReturnAfterLosingValidation() {
+        val tracker = DefaultNetworkTracker(initial = 1L)
+
+        assertFalse(tracker.report(1L, validated = false))
+        assertFalse(tracker.available)
+        assertTrue(tracker.report(1L, validated = true))
+        assertTrue(tracker.available)
+    }
+
+    @Test
+    fun theSameNetworkCanReturnAfterBeingLost() {
+        val tracker = DefaultNetworkTracker(initial = 1L)
+
+        assertTrue(tracker.lost(1L))
+        assertFalse(tracker.available)
+        assertTrue(tracker.report(1L, validated = true))
+    }
+
+    @Test
+    fun aLateLossDoesNotClearTheNewDefault() {
+        val tracker = DefaultNetworkTracker(initial = 1L)
+        assertTrue(tracker.report(2L, validated = true))
+
+        assertFalse(tracker.lost(1L))
+        assertTrue(tracker.available)
+    }
+
+    @Test
     fun aSwitchWatchesALiveStreamForRecovery() {
         assertTrue(networkSwitchWatchesPlayer(live = true, userPaused = false))
     }

@@ -8,9 +8,13 @@ import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.ChatModePlaque
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.ChatRoomModes
+import name.alexwayfer.customtv.chat.ChatTimeouts
 import name.alexwayfer.customtv.chat.OwnEmotes
 import name.alexwayfer.customtv.chat.SevenTvEmote
+import name.alexwayfer.customtv.data.ChatSendResult
 import name.alexwayfer.customtv.data.ChatSettings
+
+internal typealias ChatMessageSender = suspend (message: String, replyParentId: String?) -> ChatSendResult
 
 /** The channel whose chat the bar writes to. */
 internal data class ChatInputChannel(
@@ -24,6 +28,7 @@ internal data class ChatInputChannel(
     val roomModes: ChatRoomModes,
     /** The chat modes the user can change, as the streamer or a moderator; null for a viewer. */
     val modeControl: ChatModeControl?,
+    val timeouts: ChatTimeouts = ChatTimeouts(),
 )
 
 /** Who writes: the signed-in user; without one, [canSend] is false and the field offers Log in. */

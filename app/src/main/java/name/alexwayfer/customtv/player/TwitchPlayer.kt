@@ -111,7 +111,7 @@ internal fun TwitchPlayer(
     var zoom by remember { mutableStateOf(PlayerZoomTransform()) }
     val showWebView = rememberPlayerWebViewStarts()
     PlayerHostEffects(host, inPictureInPicture, shrunk, fullscreen, seekbarGap, serviceOwner)
-    Box(modifier.then(rememberPlayerPipSource()).background(ComposeColor.Black)) {
+    Box(modifier.playerPipSource().background(ComposeColor.Black)) {
         if (showWebView) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -379,6 +379,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         handler = mainHandler,
         isLive = { loadedTarget is TwitchPlaybackTarget.Channel },
         onNetworkChanged = liveStall::networkChanged,
+        onNetworkAvailabilityChanged = recovery::networkAvailabilityChanged,
     )
     val keepAlive = PlayerKeepAlive(
         appContext,
@@ -473,6 +474,10 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
             ),
             "CustomTvDiagnostics",
         )
+        installWatchMinuteBridge(webView, mainHandler) { page ->
+            page == mediaNetworkPage && !released && !offlinePage.suspended && recovery.pageLoad.current &&
+                loadedTarget is TwitchPlaybackTarget.Channel
+        }
         webView.addJavascriptInterface(
             PlayerControlsBridge(
                 handler = mainHandler,
@@ -678,8 +683,8 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         if (released) return
         smoothSound.pageLoaded()
         webView.evaluateJavascript(scripts.hideTopOverlay, null)
-        // A page that loaded again in picture-in-picture or the corner starts with the control bar.
-        if (controlsCovered) webView.evaluateJavascript(scripts.pictureInPicture(true), null)
+        // A page that loaded again needs the same overlay visibility as the previous page.
+        if (controlsCovered) webView.evaluateJavascript(scripts.pictureInPicture(true, pictureInPicture), null)
         seekbarGap.pageLoaded()
     }
 
@@ -692,7 +697,7 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         if (pictureInPicture && !this.pictureInPicture) zoom.reset()
         this.pictureInPicture = pictureInPicture
         this.shrunk = shrunk
-        webView.evaluateJavascript(scripts.pictureInPicture(controlsCovered), null)
+        webView.evaluateJavascript(scripts.pictureInPicture(controlsCovered, pictureInPicture), null)
     }
 
     private val controlsCovered: Boolean
@@ -702,7 +707,6 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         if (released || surfaceRevealed) return
         surfaceRevealed = true
         webView.alpha = 1f
-        recovery.cancelErrorReload()
         onVideoHidden?.invoke(false)
     }
 

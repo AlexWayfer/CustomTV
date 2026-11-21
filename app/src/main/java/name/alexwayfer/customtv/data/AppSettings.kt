@@ -47,6 +47,7 @@ data class AppSettings(
     val hidePhrasesWhenModerator: Boolean = false,
     /** The player's sound fades in as it starts or plays, and out as it pauses or closes. */
     val smoothSound: Boolean = true,
+    val blankScreenOnProximity: Boolean = true,
     val streamStartNotifications: Boolean = true,
     val streamChangeNotifications: Boolean = false,
     val watchStreakNotifications: Boolean = true,

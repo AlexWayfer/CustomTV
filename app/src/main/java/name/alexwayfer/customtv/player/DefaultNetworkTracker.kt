@@ -1,16 +1,28 @@
 package name.alexwayfer.customtv.player
 
 /**
- * Follows the app's default network, a VPN included, and tells when a working one replaces the last, so recovery
- * can give Twitch's player time to reconnect before restarting it.
+ * Follows the app's default network, a VPN included, and tells when a validated network becomes available.
  */
 internal class DefaultNetworkTracker(initial: Long?) {
     private var last = initial
+    val available: Boolean
+        get() = last != null
 
-    /** The default network [network] is reported; whether it is a validated one other than the last. */
+    /** Whether the default network just became usable or replaced another usable network. */
     fun report(network: Long, validated: Boolean): Boolean {
-        if (!validated || network == last) return false
+        if (!validated) {
+            last = null
+            return false
+        }
+        if (network == last) return false
         last = network
+        return true
+    }
+
+    /** A late loss of the old default does not take the new one offline. */
+    fun lost(network: Long): Boolean {
+        if (last != network) return false
+        last = null
         return true
     }
 }

@@ -73,6 +73,7 @@ internal object IrcEmoteParser {
         val codePoints = message.codePoints().toArray()
         val parts = mutableListOf<ChatPart>()
         var cursor = 0
+        @Suppress("DestructuringDeclaration")
         for (range in ranges) {
             val (start, endInclusive) = range
             // The cursor is never below zero, so this also skips a negative start.

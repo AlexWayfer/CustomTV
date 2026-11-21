@@ -97,13 +97,15 @@ internal fun WatchScreen(
         chatSettingsViewModel = chatSettingsViewModel,
         settingsViewModel = settingsViewModel,
     )
-    WatchChannelEffects(scene)
-    ReplySessionEffects(chat, data.messages)
-    CompositionLocalProvider(
-        LocalSheetKeyboard provides scene.sheetKeyboard,
-        LocalOpenSettings provides rememberOpenSettings(scene),
-    ) {
-        WatchPlayer(scene)
+    WatchDropsSession(scene) {
+        WatchChannelEffects(scene)
+        ReplySessionEffects(chat, data.messages)
+        CompositionLocalProvider(
+            LocalSheetKeyboard provides scene.sheetKeyboard,
+            LocalOpenSettings provides rememberOpenSettings(scene),
+        ) {
+            WatchPlayer(scene)
+        }
     }
 }
 
@@ -205,8 +207,10 @@ private fun WatchPlayer(scene: WatchScene) {
         overlays = { compactSettled -> WatchOverlays(scene, compactSettled) },
     ) { layout ->
         if (!scene.placement.minimized) PlayerSheetReopenEffect(scene.navigation.sheetReopen, scene.chat, layout)
-        WatchChatColumn(scene, layout)
-        WatchInputBar(scene, layout)
+        WatchDrops(scene, browserSheetHeightPx = layout::browserSheetHeightPx) {
+            WatchChatColumn(scene, layout)
+            WatchInputBar(scene, layout)
+        }
     }
 }
 

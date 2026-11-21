@@ -1,6 +1,7 @@
 package name.alexwayfer.customtv.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -56,7 +57,7 @@ class FfzRepositoryTest {
             """{"room": {"moderator_badge": null, "mod_urls": null, "vip_badge": null}}""",
         )
 
-        assertEquals(emptyMap<String, String>(), badges)
+        assertTrue(badges.isEmpty())
     }
 
     /** FFZ's global sets: a hidden emote, one with two scales, a hidden modifier, and one outside the defaults. */

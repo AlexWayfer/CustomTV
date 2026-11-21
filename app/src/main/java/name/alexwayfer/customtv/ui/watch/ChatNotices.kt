@@ -49,6 +49,7 @@ internal fun ChatNotices(
     onOpenTwitchChat: () -> Unit,
     onHideEvent: (String) -> Unit,
     onOpenChatterCard: (login: String) -> Unit,
+    drops: ChatDropsNotices = ChatDropsNotices(),
 ) {
     var hiddenCommunityGiftId by remember { mutableStateOf<String?>(null) }
     val communityGiftMessage = rememberVisibleCommunityGift(messages, hiddenCommunityGiftId)
@@ -56,24 +57,16 @@ internal fun ChatNotices(
     val visibleShoutout = rememberVisibleShoutout(shoutout, hiddenShoutoutId)
     val cardEvents = chatCardEvents(events)
     val items = chatNoticeItems(raid, cardEvents, visibleShoutout, communityGiftMessage, pin)
-    val expandKeys = chatNoticeExpandKeys(cardEvents, pin)
+        .withDropsNotices(drops.campaign?.key, drops.claim?.key, drops.received?.key)
+    val expandKeys = chatNoticeExpandKeys(cardEvents, pin, drops)
     var expandedKey by remember { mutableStateOf<String?>(null) }
     val anyExpanded = expandedKey != null && expandedKey in expandKeys.values
-    val committed = remember { CommittedNoticeOrder() }
-    val arrivals = nextChatNoticeArrivals(committed.arrivals, items)
-    val present = chatNoticePagesOf(pin, raid, visibleShoutout, communityGiftMessage, cardEvents)
-    val ordered = orderedChatNoticePages(present, arrivals)
-    // An expanded notice stays where it is: pages move and switch only while every notice is collapsed.
-    val pages = if (anyExpanded) frozenChatNoticePages(committed.pages, ordered) else ordered
-    SideEffect {
-        committed.arrivals = arrivals
-        committed.pages = pages
-    }
+    val (pages, firstArrivalOrder) = rememberNoticeOrder(items, anyExpanded)
     // The block slides down from the top as its first notice arrives and back up after its last one
     // leaves, still showing that last notice on the way out.
     val snapshot = rememberLastNonNull(
         pages.takeIf { it.isNotEmpty() }?.let {
-            ChatNoticeSnapshot(it, pin, raid, visibleShoutout, cardEvents, communityGiftMessage)
+            ChatNoticeSnapshot(it, pin, raid, visibleShoutout, cardEvents, communityGiftMessage, drops)
         },
     )
     AnimatedVisibility(
@@ -84,7 +77,7 @@ internal fun ChatNotices(
         val shown = snapshot ?: return@AnimatedVisibility
         ChatNoticeCarousel(
             pages = shown.pages,
-            firstArrivalOrder = arrivals.byPage[shown.pages.first()]?.order,
+            firstArrivalOrder = firstArrivalOrder,
             anyExpanded = anyExpanded,
         ) { page, dotInset ->
             ChatNoticePageContent(
@@ -95,6 +88,7 @@ internal fun ChatNotices(
                 events = shown.events,
                 pointsIconUrl = pointsIconUrl,
                 communityGiftMessage = shown.communityGiftMessage,
+                drops = shown.drops,
                 channelId = channelId,
                 channelLogin = channelLogin,
                 selfLogin = selfLogin,
@@ -150,25 +144,6 @@ private fun rememberVisibleShoutout(latest: ChannelShoutout?, hiddenId: String?)
     return visibleShoutout(latest, hiddenId, clockMillis)
 }
 
-/** The pages there is something for, before they are put in order. */
-private fun chatNoticePagesOf(
-    pin: PinnedChat?,
-    raid: OutgoingRaid?,
-    shoutout: ChannelShoutout?,
-    communityGiftMessage: ChatMessage?,
-    events: ChannelEvents,
-): List<ChatNoticePage> = chatNoticePages(
-    buildSet {
-        if (pin != null) add(ChatNoticePage.Pinned)
-        if (raid != null) add(ChatNoticePage.Raid)
-        if (shoutout != null) add(ChatNoticePage.Shoutout)
-        if (communityGiftMessage != null) add(ChatNoticePage.CommunityGift)
-        if (events.poll != null) add(ChatNoticePage.Poll)
-        if (events.prediction != null) add(ChatNoticePage.Prediction)
-        if (events.hypeTrain != null) add(ChatNoticePage.HypeTrain)
-    },
-)
-
 /** What each page shows, so the order knows what is new: a hype train's next level counts as new. */
 private fun chatNoticeItems(
     raid: OutgoingRaid?,
@@ -189,11 +164,18 @@ private fun chatNoticeItems(
 }
 
 /** Which item is expanded, by page and id; a new poll or pin on the same page starts collapsed. */
-private fun chatNoticeExpandKeys(events: ChannelEvents, pin: PinnedChat?): Map<ChatNoticePage, String> = buildMap {
+private fun chatNoticeExpandKeys(
+    events: ChannelEvents,
+    pin: PinnedChat?,
+    drops: ChatDropsNotices,
+): Map<ChatNoticePage, String> = buildMap {
     events.hypeTrain?.let { put(ChatNoticePage.HypeTrain, "hype:${it.id}") }
     events.poll?.let { put(ChatNoticePage.Poll, "poll:${it.id}") }
     events.prediction?.let { put(ChatNoticePage.Prediction, "prediction:${it.id}") }
     pin?.let { put(ChatNoticePage.Pinned, "pin:${it.pinId}") }
+    drops.campaign?.let { put(ChatNoticePage.Drops, "drops:${it.key}") }
+    drops.claim?.let { put(ChatNoticePage.DropsClaim, "drops-claim:${it.key}") }
+    drops.received?.let { put(ChatNoticePage.DropsReceived, "drops-received:${it.key}") }
 }
 
 /** What the notices showed last, so the block can slide away with it after it is gone. */
@@ -204,6 +186,7 @@ private data class ChatNoticeSnapshot(
     val shoutout: ChannelShoutout?,
     val events: ChannelEvents,
     val communityGiftMessage: ChatMessage?,
+    val drops: ChatDropsNotices,
 )
 
 /** A shoutout page's plaque with who gave it and the heart of its channel. */
@@ -236,6 +219,23 @@ private class CommittedNoticeOrder {
 }
 
 @Composable
+private fun rememberNoticeOrder(
+    items: Map<ChatNoticePage, ChatNoticeItem>,
+    anyExpanded: Boolean,
+): Pair<List<ChatNoticePage>, Long?> {
+    val committed = remember { CommittedNoticeOrder() }
+    val arrivals = nextChatNoticeArrivals(committed.arrivals, items)
+    val ordered = orderedChatNoticePages(chatNoticePages(items.keys), arrivals)
+    // An expanded notice stays where it is: pages move and switch only while every notice is collapsed.
+    val pages = if (anyExpanded) frozenChatNoticePages(committed.pages, ordered) else ordered
+    SideEffect {
+        committed.arrivals = arrivals
+        committed.pages = pages
+    }
+    return pages to pages.firstOrNull()?.let { arrivals.byPage[it]?.order }
+}
+
+@Composable
 private fun ChatNoticePageContent(
     page: ChatNoticePage,
     pin: PinnedChat?,
@@ -244,6 +244,7 @@ private fun ChatNoticePageContent(
     events: ChannelEvents,
     pointsIconUrl: String?,
     communityGiftMessage: ChatMessage?,
+    drops: ChatDropsNotices,
     channelId: String?,
     channelLogin: String,
     selfLogin: String?,
@@ -308,11 +309,12 @@ private fun ChatNoticePageContent(
             )
         }
         ChatNoticePage.Raid -> raid?.let { ChatRaidNotice(it, chatTextSize = appearance.textSize, dotInset = dotInset) }
-        ChatNoticePage.Shoutout -> shoutout?.let {
-            ShoutoutPage(it, appearance, onOpenChatterCard, onHideShoutout, dotInset)
-        }
+        ChatNoticePage.Shoutout ->
+            shoutout?.let { ShoutoutPage(it, appearance, onOpenChatterCard, onHideShoutout, dotInset) }
         ChatNoticePage.CommunityGift -> communityGiftMessage?.let {
             ChatCommunityGiftBanner(it, appearance.textSize, onHide = onHideCommunityGift, bottomInset = dotInset)
         }
+        ChatNoticePage.Drops, ChatNoticePage.DropsClaim, ChatNoticePage.DropsReceived ->
+            drops[page]?.content?.invoke(expanded, onExpandedChange, appearance.textSize, dotInset)
     }
 }

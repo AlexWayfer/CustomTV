@@ -6,12 +6,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.ui.watch.OneShotRequest
 import name.alexwayfer.customtv.update.AppUpdates
 import name.alexwayfer.customtv.update.GITHUB_RELEASES_PAGE_URL
 
 /** The free build's updates come from its public GitHub releases, so the section needs no account. */
 @Composable
-internal fun UpdateSettings() {
+internal fun UpdateSettings(showNotes: OneShotRequest<Unit>?) {
     SettingsSection(stringResource(R.string.settings_section_updates))
     val status by AppUpdates.status.collectAsStateWithLifecycle()
     val download by AppUpdates.download.collectAsStateWithLifecycle()
@@ -21,6 +22,7 @@ internal fun UpdateSettings() {
         download = download,
         onCheck = AppUpdates::checkAgain,
         onDownload = AppUpdates::download,
+        showNotes = showNotes,
     ) {
         SmallButton(
             text = stringResource(R.string.app_update_open_group),

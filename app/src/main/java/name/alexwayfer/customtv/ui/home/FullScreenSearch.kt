@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExpandedFullScreenSearchBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -62,7 +61,6 @@ private val SearchErrorColor = Color(0xFFEB0400)
 /** Fade over the first half of the width lost, hiding the content before the surface reaches its button. */
 private const val SEARCH_CONTENT_FADE_WIDTH_FRACTION = 0.5f
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun searchInputColors(): TextFieldColors = SearchBarDefaults.inputFieldColors(
     focusedTextColor = TwitchText,
@@ -72,7 +70,6 @@ internal fun searchInputColors(): TextFieldColors = SearchBarDefaults.inputField
     unfocusedContainerColor = Color.Transparent,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun searchBarColors(): SearchBarColors = SearchBarDefaults.colors(
     containerColor = TwitchSurfaceAlt,
@@ -86,7 +83,6 @@ internal fun searchBarColors(): SearchBarColors = SearchBarDefaults.colors(
  * [checking], and the [error] under it. With no [onSubmit], Enter hides the keyboard. [onExpandedChange] hears
  * when it opens and closes.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FullScreenSearch(
     state: SearchBarState,
@@ -180,7 +176,6 @@ private fun rememberSearchText(value: String, onValueChange: (String) -> Unit): 
 }
 
 /** The full-screen search's field, with a spinner at its end while something typed is checked. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchInputField(
     text: TextFieldState,

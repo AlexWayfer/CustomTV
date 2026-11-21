@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBarState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -50,7 +49,6 @@ internal val SECTION_GAP = 16.dp
 /** Material's icon button, the search button beside the title. */
 private val SEARCH_BUTTON_SIZE = 48.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeScreen(
     viewModel: HomeViewModel,
@@ -139,7 +137,6 @@ private fun homeChannelOpener(
 }
 
 /** The app's title, with the search button beside it while [searchShown]. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeTitleRow(searchState: SearchBarState, searchShown: Boolean) {
     // As tall as the search button, whether it shows or not, so the title stays put.
@@ -199,7 +196,6 @@ private fun ColumnScope.HomeFollowedChannels(
 }
 
 /** The search field and the log-in card of a Home without recents, fading in once it is [shown]. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ColumnScope.HomeEmptyStartFading(
     shown: Boolean,

@@ -7,6 +7,7 @@ import androidx.compose.ui.text.TextRange
 import kotlinx.coroutines.CoroutineScope
 import name.alexwayfer.customtv.chat.ChatNick
 import name.alexwayfer.customtv.chat.PickerEmote
+import name.alexwayfer.customtv.chat.chatSendTimedOut
 import name.alexwayfer.customtv.chat.chatSendWarned
 import name.alexwayfer.customtv.chat.textWithCompletedEmote
 import name.alexwayfer.customtv.chat.textWithCompletedNick
@@ -26,6 +27,7 @@ internal class ChatDraftEditor(private val input: State<ChatInput>) {
     private val draft get() = input.value.compose.draft
 
     fun replace(text: String, cursor: Int) {
+        if (input.value.timedOut) return
         draft.edit {
             replace(0, length, text)
             selection = TextRange(cursor)
@@ -107,8 +109,10 @@ internal class ChatInputActions(
     val history = ChatHistoryActions(composer, editor, input)
 
     fun focusField() {
+        val now = input.value
+        if (!now.canEdit || now.warned) return
         field.focus.requestFocus()
-        input.value.keyboard?.show()
+        now.keyboard?.show()
     }
 
     fun openRules(trigger: ChatRulesTrigger) {
@@ -119,7 +123,7 @@ internal class ChatInputActions(
 
     fun togglePicker() {
         val now = input.value
-        if (!now.user.canSend) return
+        if (!now.canEdit) return
         if (!composer.pickerOpen && now.rulesNeedConfirmation) {
             openRules(ChatRulesTrigger.EmotePicker)
             return
@@ -148,6 +152,7 @@ internal class ChatInputActions(
     /** Reply or Share asked for the field: the keyboard comes up, or the rules first. */
     fun askForField() {
         val now = input.value
+        if (now.timedOut) return
         when (chatReplyComposer(now.user.canSend, now.warned, now.rulesNeedConfirmation)) {
             ChatReplyComposer.Keyboard -> focusField()
             ChatReplyComposer.Rules -> openRules(ChatRulesTrigger.MessageField)
@@ -159,6 +164,7 @@ internal class ChatInputActions(
         val now = input.value
         composer.rulesOpen = false
         now.rulesGate.acknowledge(scope, now.rulesFingerprint)
+        if (now.timedOut) return
         when (chatRulesFollowUp(composer.rulesTrigger)) {
             ChatRulesFollowUp.EmotePicker -> {
                 now.keyboardHeight.useCurrentKeyboard()
@@ -171,22 +177,24 @@ internal class ChatInputActions(
 
     /** The end button sends the draft, cancels a slow send, or opens the chat menu when there is nothing to send. */
     fun tapEndButton(hasMessage: Boolean) {
-        when (chatFieldEndTap(composer.sending, composer.sendCancelable, hasMessage)) {
+        val countdown = input.value.timeoutAccess == ChatTimeoutAccess.Countdown
+        when (chatFieldEndTap(composer.sending, composer.sendCancelable, hasMessage && !countdown)) {
             ChatFieldEndTap.CancelSend -> {
                 composer.cancelSend()
                 if (chatCancelFocusesField(field.focused, composer.pickerOpen)) focusField()
             }
             ChatFieldEndTap.Nothing -> Unit
-            ChatFieldEndTap.Send -> submit()
+            ChatFieldEndTap.Send -> submit(explicitRetry = true)
             ChatFieldEndTap.Menu -> openChatMenu(composer, field, input.value.sheetKeyboard, ChatMenuStart.Rows)
         }
     }
 
-    fun submit() {
-        // Commands have their own validation and sending paths.
-        if (runFieldCommand()) return
+    fun submit(explicitRetry: Boolean = false) {
         val now = input.value
-        val sharing = now.compose.shareOffer?.takeIf { it.composing }
+        if (!now.timeoutAccess.canSubmit(explicitRetry)) return
+        // Commands have their own validation and sending paths.
+        if (!now.timedOut && runFieldCommand()) return
+        val sharing = now.compose.shareOffer?.takeIf { it.composing && !now.timedOut }
         val message = chatTextToSubmit(now.compose.draft.text.toString(), emptyAllowed = sharing?.emptyAllowed == true)
         val held = now.compose.slowSendBlocked || !now.user.canSend || composer.sending
         if (message == null || held) return
@@ -265,15 +273,10 @@ internal class ChatInputActions(
     /** Sends [message] as of [sent], the bar when Send was tapped: its channel, user, reply, and draft. */
     private suspend fun send(message: String, sent: ChatInput) {
         val compose = sent.compose
-        val token = sent.user.accessToken()?.takeIf { it.isNotBlank() }
-        val channelId = sent.channel.broadcasterId?.takeIf { it.isNotBlank() }
-        val userId = sent.user.userId?.takeIf { it.isNotBlank() }
-        val result = if (token == null || userId == null) {
-            ChatSendResult.Rejected(401, "")
-        } else if (channelId == null) {
-            ChatSendResult.Unavailable
-        } else {
-            sent.repository.send(token, channelId, userId, message, compose.replyParentMessageId)
+        val result = sent.sendMessage(message, compose.replyParentMessageId)
+        if (result == ChatSendResult.Sent || (result is ChatSendResult.Dropped && !chatSendTimedOut(result))) {
+            composer.timeoutUnresolved = false
+            composer.timeoutSendRefused = false
         }
         val draftMatches = chatMessageToSend(compose.draft.text.toString()) == message
         if (chatSendCompleted(result, draftMatches)) {
@@ -283,6 +286,8 @@ internal class ChatInputActions(
         } else if (chatSendWarned(result)) {
             // The plaque says it, and the draft stays for after the warning is acknowledged.
             sent.warningGate.sendRefused()
+        } else if (chatSendTimedOut(result)) {
+            recoverChatInputTimeout(sent, composer, (result as? ChatSendResult.Dropped)?.timeoutEndsAtMillis)
         } else {
             composer.sendError = chatSendError(result)
         }

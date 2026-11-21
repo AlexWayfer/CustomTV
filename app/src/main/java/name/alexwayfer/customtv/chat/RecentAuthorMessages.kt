@@ -24,22 +24,6 @@ internal fun rememberRecentAuthorMessages(
     return result
 }
 
-/** Appends [added] in order, for a chat that only grows, without diffing a visible window. */
-internal fun appendRecentAuthorMessages(
-    history: Map<String, List<ChatMessage>>,
-    added: List<ChatMessage>,
-    transform: (ChatMessage) -> ChatMessage,
-): Map<String, List<ChatMessage>> {
-    if (added.none { it.isAuthorHistoryMessage() }) return history
-    val result = history.toMutableMap()
-    added.forEach { message ->
-        if (!message.isAuthorHistoryMessage()) return@forEach
-        val login = message.userLogin.lowercase()
-        result[login] = (result[login].orEmpty() + transform(message)).takeLast(MAX_RECENT_AUTHOR_MESSAGES)
-    }
-    return result
-}
-
 /**
  * Puts chat history loaded on joining ahead of what each author wrote live, keeping the newest
  * [MAX_RECENT_AUTHOR_MESSAGES]. Live messages of [movedFirstLogins] drop their first mark, which moved

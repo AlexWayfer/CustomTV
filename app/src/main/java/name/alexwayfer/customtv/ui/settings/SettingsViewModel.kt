@@ -41,6 +41,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { store.setSmoothSound(enabled) }
     }
 
+    fun setBlankScreenOnProximity(enabled: Boolean) {
+        viewModelScope.launch { store.setBlankScreenOnProximity(enabled) }
+    }
+
     fun setAutoClaimBonus(enabled: Boolean) {
         viewModelScope.launch {
             store.setAutoClaimBonus(enabled)

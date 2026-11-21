@@ -19,7 +19,7 @@ import java.util.Locale
 class SettingsSearchCatalogueTest {
     @Test
     fun catalogueHasUniqueIdsAndCompleteEnglishAndRussianResources() {
-        val entries = settingsSearchEntries("viewer", sdkInt = 36)
+        val entries = settingsSearchEntries("viewer", sdkInt = 36, proximityScreenOffSupported = true)
         assertEquals(entries.size, entries.map { it.id }.toSet().size)
         val application = RuntimeEnvironment.getApplication()
         listOf("en", "ru").forEach { language ->
@@ -47,6 +47,16 @@ class SettingsSearchCatalogueTest {
         assertTrue(links.any { it.title == R.string.app_links_setting })
         assertFalse(links.any { it.title == R.string.settings_section_language })
         assertTrue(language.any { it.title == R.string.settings_section_language })
+    }
+
+    @Test
+    fun proximityScreenOffAppearsInPlaybackSearchOnlyWithDeviceSupport() {
+        val supported = settingsSearchEntries(null, sdkInt = 36, proximityScreenOffSupported = true)
+        val unsupported = settingsSearchEntries(null, sdkInt = 36)
+        assertEquals(
+            SettingsPage.Playback, supported.single { it.title == R.string.blank_screen_on_proximity }.page,
+        )
+        assertFalse(unsupported.any { it.title == R.string.blank_screen_on_proximity })
     }
 
     @Test

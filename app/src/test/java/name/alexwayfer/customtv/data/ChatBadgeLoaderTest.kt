@@ -94,7 +94,7 @@ class ChatBadgeLoaderTest {
             channelAnswer = CHANNEL
         }
 
-        assertEquals(listOf(emptySet<String>(), setOf("subscriber/1")), updates)
+        assertEquals(listOf(emptySet(), setOf("subscriber/1")), updates)
         assertEquals(1, globalRequests)
         assertEquals(2, channelRequests)
     }
@@ -139,6 +139,8 @@ class ChatBadgeLoaderTest {
             val payload = Buffer().also { chain.request().body!!.writeTo(it) }.readUtf8()
             if (!payload.contains("broadcastBadges")) {
                 entered.complete(Unit)
+                // This synchronous interceptor holds the HTTP thread until the test releases it.
+                @Suppress("RunBlocking")
                 runBlocking { release.await() }
             }
             chain.proceed(chain.request())
@@ -161,6 +163,8 @@ class ChatBadgeLoaderTest {
             val payload = Buffer().also { chain.request().body!!.writeTo(it) }.readUtf8()
             if (!payload.contains("broadcastBadges")) {
                 entered.complete(Unit)
+                // This synchronous interceptor holds the HTTP thread until the test releases it.
+                @Suppress("RunBlocking")
                 runBlocking { release.await() }
             }
             chain.proceed(chain.request())

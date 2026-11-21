@@ -11,7 +11,7 @@ internal fun playerAudioOnly(
     screenUnlocked: Boolean,
 ): Boolean = !screenUnlocked || background && !inPictureInPicture
 
-private const val USHER_HOST = "usher.ttvnw.net"
+internal const val USHER_HOST = "usher.ttvnw.net"
 private const val AUDIO_ONLY_PARAM = "allow_audio_only"
 
 /**

@@ -43,6 +43,7 @@ internal fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, f
         },
         atModerators = field.menuStart == ChatMenuStart.Moderators,
         streamHide = menu.streamHide,
+        identityUserId = input.user.userId,
         initialSubpage = modesPage?.takeIf { field.menuStart == ChatMenuStart.Modes },
         firstRow = { openSubpage ->
             ChannelPanelRows(channel.broadcasterId, channel.browserSheetHeightPx, openSubpage)
@@ -50,18 +51,27 @@ internal fun ChatInputMenuSheet(input: ChatInput, composer: ChatComposerState, f
         modesRow = { openSubpage ->
             ChatModesRow(channel.roomModes, channel.modeControl, modesPage, openSubpage)
         },
+        dropsRow = { hideThen ->
+            WatchDropsMenuRow { open -> openAfterChatMenuCloses(field, hideThen, open) }
+        },
         recapRow = { hideThen ->
             menu.recap?.let { source ->
                 ChatRecapRow(
                     source = source,
-                    onOpen = {
-                        hideThen {
-                            field.menuOpen = false
-                            composer.recapOpen = true
-                        }
-                    },
+                    onOpen = { openAfterChatMenuCloses(field, hideThen) { composer.recapOpen = true } },
                 )
             }
         },
     )
+}
+
+private fun openAfterChatMenuCloses(
+    field: ChatFieldState,
+    hideThen: (() -> Unit) -> Unit,
+    open: () -> Unit,
+) {
+    hideThen {
+        field.menuOpen = false
+        open()
+    }
 }

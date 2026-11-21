@@ -1,5 +1,6 @@
 package name.alexwayfer.customtv.update
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -39,6 +40,14 @@ class GitHubReleaseTest {
     @Test
     fun theApkAssetGivesItsVersionUrlSizeAndDigest() {
         assertEquals(apk, githubLatestApk(release(asset())))
+    }
+
+    @Test
+    fun theReleaseBodyGivesTheApksNotes() {
+        val json = JSONObject(release(asset()))
+            .put("body", "* Fix playback\n\n### Russian\n* Исправлено воспроизведение")
+
+        assertEquals(listOf("Исправлено воспроизведение"), githubLatestApk(json.toString())?.notes?.forLanguage("ru"))
     }
 
     @Test

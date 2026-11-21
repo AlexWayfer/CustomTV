@@ -15,6 +15,7 @@ internal data class ChatterTracking(
     val sessionChatters: MutableStateFlow<Map<String, String>>,
     val recency: ChatterRecency,
     val history: MutableStateFlow<ChatterHistory>,
+    val timeouts: ChatTimeouts,
 )
 
 /**
@@ -80,6 +81,7 @@ internal class RecentChatLoad(
     private suspend fun putBackGap(channel: String, disconnectId: String) {
         val result = loadRecentChatMessages(channel, MAX_CHAT_MESSAGES)
         if (currentChannel() != channel) return
+        chatters.timeouts.onHistory(channel, result)
         var previous = emptyList<ChatMessage>()
         var merge: ReconnectGapMerge? = null
         messages.update { current ->
@@ -112,6 +114,7 @@ internal class RecentChatLoad(
             try {
                 val result = loadRecentChatMessages(channel)
                 if (currentChannel() == channel) {
+                    chatters.timeouts.onHistory(channel, result)
                     val failure = recentChatNotice(result)?.let { notice ->
                         chatNoticeMessage(notice, "recent-chat-failed-${System.nanoTime()}")
                     }

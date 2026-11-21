@@ -281,8 +281,25 @@ internal fun ChatFieldEndIconContent(icon: ChatFieldEndIcon, cancelable: Boolean
                 stringResource(R.string.chat_send),
                 tint = TwitchPurple,
             )
-            ChatFieldEndIcon.Menu ->
-                Icon(Icons.Filled.MoreVert, stringResource(R.string.chat_menu), tint = TwitchTextSecondary)
+            ChatFieldEndIcon.Menu -> ChatFieldMenuIcon()
         }
+    }
+}
+
+@Composable
+private fun ChatFieldMenuIcon() {
+    val notices = LocalChatDropsNotices.current
+    val label = when {
+        notices.claim != null -> R.string.chat_menu_drops_claim_ready
+        notices.hasUnreadReceipt -> R.string.chat_menu_drops_received
+        else -> R.string.chat_menu
+    }
+    Box {
+        Icon(
+            Icons.Filled.MoreVert,
+            stringResource(label),
+            tint = TwitchTextSecondary,
+        )
+        ChatMenuIconDot(notices.showsMenuDot)
     }
 }

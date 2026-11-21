@@ -5,7 +5,6 @@ import android.graphics.drawable.ColorDrawable
 import coil.Coil
 import coil.ImageLoader
 import coil.decode.DataSource
-import coil.intercept.Interceptor
 import coil.request.SuccessResult
 import coil.request.ErrorResult
 import java.util.UUID
@@ -43,7 +42,7 @@ class SharedEmoteRetentionTest {
     fun imagesWithoutNetwork() {
         previousLoader = Coil.imageLoader(app)
         loader = ImageLoader.Builder(app).components {
-            add(Interceptor { chain ->
+            add { chain ->
                 if (chain.request.data == delayedUrl) {
                     decoding.complete(Unit)
                     finishDecode.await()
@@ -57,7 +56,7 @@ class SharedEmoteRetentionTest {
                     }
                     SuccessResult(drawable, chain.request, DataSource.MEMORY)
                 }
-            })
+            }
         }.build()
         Coil.setImageLoader(loader)
     }

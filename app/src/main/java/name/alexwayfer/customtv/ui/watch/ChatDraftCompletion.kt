@@ -94,11 +94,11 @@ internal fun rememberDraftEmotes(input: ChatInput, sections: List<EmotePickerSec
     return ChatDraftEmotes(completable, usage, output)
 }
 
-/** The commands, nicks, or emotes that complete the word at the cursor; none while a warning holds the field. */
+/** The commands, nicks, or emotes that complete the word at the cursor while the field is available. */
 @Composable
 internal fun rememberChatCompletion(input: ChatInput, pickerOpen: Boolean, emotes: ChatDraftEmotes): ChatCompletion? {
     val draft = input.compose.draft
-    val canSend = input.user.canSend
+    val canSend = input.canEdit
     val draftText = draft.text.toString()
     val commandMatches = chatCommandQueryAtCursor(draftText, draft.selection.end)
         ?.takeIf { canSend }

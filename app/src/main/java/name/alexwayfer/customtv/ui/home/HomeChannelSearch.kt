@@ -2,7 +2,6 @@ package name.alexwayfer.customtv.ui.home
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,7 +33,6 @@ import name.alexwayfer.customtv.ui.watch.OneShotRequest
  * first; otherwise the search stays open with the reason. A picked category goes to [onOpenCategory], under the
  * search when it [categoryShowsUnderSearch].
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HomeChannelSearch(
     viewModel: HomeViewModel,
@@ -181,7 +179,6 @@ internal fun SearchLoadingList(loading: Boolean, content: @Composable () -> Unit
  * Opens a typed channel once Twitch knows it, with the search closed first, or reports through [onError] why it
  * cannot; nothing while a channel is still being checked.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun homeChannelSubmit(
     viewModel: HomeViewModel,

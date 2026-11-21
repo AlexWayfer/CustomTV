@@ -126,6 +126,10 @@
     <string name="chat_send_failed">Не удалось отправить сообщение</string>
     <string name="chat_send_log_in">Войдите снова, чтобы писать в чат</string>
     <string name="chat_send_not_allowed">Вы не можете писать в чат этого канала</string>
+    <string name="chat_timeout_title">Таймаут</string>
+    <string name="chat_timeout_send_refused">Сообщение не отправлено из-за уже действующего таймаута.</string>
+    <string name="chat_timeout_retry_hint">После таймаута можно повторить отправку.</string>
+    <string name="chat_send_timeout_countdown">Вы снова сможете писать в чат через %1$s</string>
     <string name="chat_send_too_long">Сообщение слишком длинное для Twitch</string>
     <string name="chat_send_too_fast">Вы отправляете сообщения слишком часто. Подождите немного и попробуйте снова.</string>
     <string name="chat_mode_followers">Чат только для фолловеров</string>
@@ -359,6 +363,11 @@
     <string name="chat_raid_notice">Рейд</string>
     <string name="chat_notice_show_raid">Показать рейд</string>
     <string name="chat_notice_show_pinned">Показать закреплённое сообщение</string>
+    <string name="chat_notice_show_drops">Показать Drops</string>
+    <string name="chat_notice_show_drops_claim">Показать награды, которые можно забрать</string>
+    <string name="chat_notice_show_drops_received">Показать полученные награды</string>
+    <string name="chat_menu_drops_claim_ready">Меню чата, награду можно забрать</string>
+    <string name="chat_menu_drops_received">Меню чата, получена новая награда</string>
     <string name="chat_notice_show_community_gift">Показать подарок сообществу</string>
     <string name="chat_notice_show_poll">Показать опрос</string>
     <string name="chat_notice_show_hype_train">Показать хайп-трейн</string>
@@ -581,6 +590,9 @@
     <string name="app_update_channel">Обновления приложения</string>
     <string name="app_update_available">Доступна версия %1$s</string>
     <string name="app_update_notification_text">Откройте настройки, чтобы скачать её</string>
+    <string name="app_update_notes">Что нового</string>
+    <string name="app_update_notes_expanded">Развёрнуто</string>
+    <string name="app_update_notes_collapsed">Свёрнуто</string>
     <string name="app_update_download">Скачать %1$s</string>
     <string name="app_update_downloading">Скачивание… %1$d%%</string>
     <string name="app_update_install">Установить %1$s</string>

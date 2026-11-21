@@ -54,17 +54,6 @@ internal fun rememberChatterHistory(
     return ChatterHistory(messages, withMentions(history.mentions, changed, messages.keys, self))
 }
 
-/** Appends [added] in order, for a chat that only grows, without diffing a visible window. */
-internal fun appendChatterHistory(
-    history: ChatterHistory,
-    added: List<ChatMessage>,
-    self: ChatMentionSelf,
-    transform: (ChatMessage) -> ChatMessage,
-): ChatterHistory {
-    val messages = appendRecentAuthorMessages(history.messages, added, transform)
-    return ChatterHistory(messages, withMentions(history.mentions, added, messages.keys, self, transform))
-}
-
 /**
  * Puts chat history loaded on joining ahead of what was written live, for each author and each mentioned
  * chatter, keeping the newest. Live messages of [movedFirstLogins] drop their first mark, which moved to the history.
@@ -119,7 +108,6 @@ private fun withMentions(
     messages: List<ChatMessage>,
     knownLogins: Set<String>,
     self: ChatMentionSelf,
-    transform: (ChatMessage) -> ChatMessage = { it },
 ): Map<String, List<ChatMessage>> {
     val mentioning = messages.mapNotNull { message ->
         mentionedLogins(message, knownLogins, self).takeIf { it.isNotEmpty() }?.let { logins -> message to logins }
@@ -127,14 +115,13 @@ private fun withMentions(
     if (mentioning.isEmpty()) return mentions
     val result = mentions.toMutableMap()
     mentioning.forEach { (message, logins) ->
-        val shown = transform(message)
         logins.forEach { login ->
             val current = result[login].orEmpty()
-            val index = current.indexOfFirst { it.id == shown.id }
+            val index = current.indexOfFirst { it.id == message.id }
             result[login] = if (index >= 0) {
-                current.toMutableList().apply { this[index] = shown }
+                current.toMutableList().apply { this[index] = message }
             } else {
-                (current + shown).takeLast(MAX_RECENT_MENTIONS)
+                (current + message).takeLast(MAX_RECENT_MENTIONS)
             }
         }
     }

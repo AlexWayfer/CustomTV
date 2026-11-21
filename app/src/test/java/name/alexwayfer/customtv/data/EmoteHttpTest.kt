@@ -24,6 +24,7 @@ class EmoteHttpTest {
     }
 
     @Test
+    @Suppress("KotlinMisorderedAssertEqualsArguments")
     fun backoffGrowsAndCaps() {
         assertEquals(500.milliseconds, EmoteHttp.backoff(1))
         assertEquals(1.seconds, EmoteHttp.backoff(2))

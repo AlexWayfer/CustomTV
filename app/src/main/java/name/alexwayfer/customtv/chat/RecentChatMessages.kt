@@ -52,7 +52,7 @@ private class RecentChatAttempt(val result: RecentChatLoadResult, val retryable:
 private fun fetchRecentChat(request: Request, attempt: Int, count: Int): RecentChatAttempt = try {
     recentChatHttp.newCall(request).execute().use { response ->
         if (response.isSuccessful) {
-            RecentChatAttempt(RecentChatLoadResult(parseRecentChat(response.body.string(), count)))
+            RecentChatAttempt(parseRecentChat(response.body.string(), count))
         } else {
             AppLog.w(RECENT_CHAT_TAG, "recent messages failed status=${response.code} (attempt $attempt)")
             RecentChatAttempt(
@@ -75,14 +75,23 @@ private fun failedRecentChat(failure: Exception, attempt: Int): RecentChatAttemp
     )
 }
 
-/** The latest messages of the answer, oldest first; none when it has no list. */
-private fun parseRecentChat(body: String, count: Int): List<ChatMessage> {
-    val raw = JSONObject(body).optJSONArray("messages") ?: return emptyList()
-    return buildList {
-        for (index in 0 until raw.length()) {
-            raw.optString(index).takeIf { it.isNotBlank() }
-                ?.let(IrcMessageParser::parsePrivMsg)
-                ?.let(::add)
+/** The latest [count] chat rows and the moderation events from the same response. */
+internal fun parseRecentChat(body: String, count: Int): RecentChatLoadResult {
+    val raw = JSONObject(body).optJSONArray("messages") ?: return RecentChatLoadResult()
+    val messages = mutableListOf<ChatMessage>()
+    val moderation = mutableListOf<ChatMessage>()
+    for (index in 0 until raw.length()) {
+        val line = raw.optString(index)
+        if (line.isBlank()) continue
+        val message = IrcMessageParser.parsePrivMsg(line)
+        if (message != null) {
+            messages.add(message)
+        } else {
+            IrcMessageParser.parseClearChat(line)?.let(moderation::add)
         }
-    }.sortedBy { it.timestampMillis }.takeLast(count)
+    }
+    return RecentChatLoadResult(
+        messages = messages.sortedBy { it.timestampMillis }.takeLast(count),
+        moderation = moderation,
+    )
 }

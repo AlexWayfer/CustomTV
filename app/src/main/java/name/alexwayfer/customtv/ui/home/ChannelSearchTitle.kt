@@ -1,6 +1,5 @@
 package name.alexwayfer.customtv.ui.home
 
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -15,7 +14,6 @@ import name.alexwayfer.customtv.ui.components.ChannelPreview
  * Home's title row with its search button, for another section at the top of the app: the same search with the
  * recents opens from it, in the mode it [opensIn]. Leaving the section closes the search's hold on the navigation bar.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ChannelSearchTitle(
     viewModel: HomeViewModel,

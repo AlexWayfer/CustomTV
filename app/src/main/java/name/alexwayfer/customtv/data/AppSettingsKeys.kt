@@ -39,6 +39,7 @@ internal val SENT_MESSAGE_HISTORY = booleanPreferencesKey("sent_message_history"
 internal val HIDDEN_PHRASES = stringPreferencesKey("hidden_phrases")
 internal val HIDE_PHRASES_WHEN_MODERATOR = booleanPreferencesKey("hide_phrases_when_moderator")
 internal val SMOOTH_SOUND = booleanPreferencesKey("smooth_sound")
+internal val BLANK_SCREEN_ON_PROXIMITY = booleanPreferencesKey("blank_screen_on_proximity")
 internal val STREAM_START_NOTIFICATIONS = booleanPreferencesKey("stream_start_notifications")
 internal val STREAM_CHANGE_NOTIFICATIONS = booleanPreferencesKey("stream_change_notifications")
 internal val WATCH_STREAK_NOTIFICATIONS = booleanPreferencesKey("watch_streak_notifications")

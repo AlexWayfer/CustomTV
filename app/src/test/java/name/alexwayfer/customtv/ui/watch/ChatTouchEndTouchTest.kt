@@ -35,6 +35,7 @@ private class FieldFocus : FocusManager {
         cleared++
     }
 
+    @Suppress("SameReturnValue")
     override fun moveFocus(focusDirection: FocusDirection): Boolean = false
 }
 

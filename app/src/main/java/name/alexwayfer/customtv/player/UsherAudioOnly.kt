@@ -20,8 +20,12 @@ internal object UsherAudioOnly {
      */
     fun intercept(request: WebResourceRequest, arrival: () -> () -> Unit): WebResourceResponse? {
         if (request.method != "GET") return null
-        val url = usherUrlWithAudioOnly(request.url.toString()) ?: return null
+        val originalUrl = request.url.toString()
+        val audioOnlyUrl = usherUrlWithAudioOnly(originalUrl)
+        if (audioOnlyUrl == null && !originalUrl.startsWith("https://$USHER_HOST", ignoreCase = true)) return null
         val arrived = arrival()
+        val signedUrl = signedLivePlaylistUrl(audioOnlyUrl ?: originalUrl)
+        val url = signedUrl ?: audioOnlyUrl ?: return null
         return try {
             val builder = Request.Builder().url(url)
             request.requestHeaders.forEach { (name, value) ->
@@ -34,7 +38,12 @@ internal object UsherAudioOnly {
                 response.close()
                 return null
             }
-            AppLog.i(PLAYER_LOG_TAG, "Playlist with sound only allowed, HTTP ${response.code}")
+            val source = if (signedUrl == null) {
+                "Playlist with sound only allowed"
+            } else {
+                "Playlist with signed viewer access"
+            }
+            AppLog.i(PLAYER_LOG_TAG, "$source, HTTP ${response.code}")
             if (PlayerPageReloads.playlistAnswerCounts(response.code)) arrived()
             Diagnostics.reportHttp(
                 "UsherAudioOnly",

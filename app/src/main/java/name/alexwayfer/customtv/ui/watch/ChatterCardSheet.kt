@@ -44,6 +44,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -441,8 +442,9 @@ internal fun ChatterCardLoadingFact(icon: ImageVector, description: String, modi
 }
 
 @Composable
-internal fun calendarAgeText(age: CalendarAge): String =
-    age.shownUnits().map { (unit, count) ->
+internal fun calendarAgeText(age: CalendarAge): String {
+    val resources = LocalResources.current
+    return age.shownUnits().joinToString(" ") { (unit, count) ->
         val plural = when (unit) {
             AgeUnit.Years -> R.plurals.chatter_card_age_years
             AgeUnit.Months -> R.plurals.chatter_card_age_months
@@ -450,8 +452,9 @@ internal fun calendarAgeText(age: CalendarAge): String =
             AgeUnit.Hours -> R.plurals.chatter_card_age_hours
             AgeUnit.Minutes -> R.plurals.chatter_card_age_minutes
         }
-        pluralStringResource(plural, count.toInt(), count.toInt())
-    }.joinToString(" ")
+        resources.getQuantityString(plural, count.toInt(), count.toInt())
+    }
+}
 
 internal fun formatChatterCreatedDate(millis: Long): String =
     DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)

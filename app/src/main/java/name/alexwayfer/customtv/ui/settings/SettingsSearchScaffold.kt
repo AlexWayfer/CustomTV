@@ -5,7 +5,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarState
@@ -22,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.R
+import name.alexwayfer.customtv.player.rememberProximityScreenOffSupported
 import name.alexwayfer.customtv.ui.home.ChannelSearchButtonShape
 import name.alexwayfer.customtv.ui.home.FullScreenSearch
 import name.alexwayfer.customtv.ui.watch.OneShotRequest
@@ -32,7 +32,6 @@ private val SearchStateSaver = listSaver<SettingsSearchState, Any>(
 )
 
 /** The settings keep their original surface and transitions underneath the shared full-screen search. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsSearchScaffold(
     page: SettingsPage,
@@ -51,7 +50,7 @@ internal fun SettingsSearchScaffold(
     var needsScroll by rememberSaveable { mutableStateOf(false) }
     var pendingResultOpen by rememberSaveable { mutableStateOf(false) }
     val searchBar = rememberSearchBarState()
-    val entries = remember(accountName) { settingsSearchEntries(accountName, Build.VERSION.SDK_INT) }
+    val entries = rememberSettingsSearchEntries(accountName)
     val documents = settingsSearchDocuments(entries)
     val selected = entries.find { it.id == search.selectedId }
     val scrollRequest = remember(selected?.id, needsScroll) { if (needsScroll) OneShotRequest(Unit) else null }
@@ -104,7 +103,14 @@ internal fun SettingsSearchScaffold(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun rememberSettingsSearchEntries(accountName: String?): List<SettingsSearchEntry> {
+    val proximityScreenOffSupported = rememberProximityScreenOffSupported()
+    return remember(accountName, proximityScreenOffSupported) {
+        settingsSearchEntries(accountName, Build.VERSION.SDK_INT, proximityScreenOffSupported)
+    }
+}
+
 @Composable
 private fun SettingsSearchSurface(
     page: SettingsPage,
@@ -126,7 +132,6 @@ private fun SettingsSearchSurface(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsSearchWindow(
     searchBar: SearchBarState,
@@ -156,7 +161,6 @@ private fun SettingsSearchWindow(
 }
 
 /** A pending selection survives recreation; it opens once the search has finished closing. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsSearchSelection(
     searchBar: SearchBarState,

@@ -174,7 +174,7 @@ internal object AppUpdates {
             }
             newer?.let { File(dir, githubApkFileName(it)) }?.takeIf { it.isFile }?.path
         }
-        val update = newer?.let { AppRelease(it.id, it.version, downloaded) }
+        val update = newer?.let { AppRelease(it.id, it.version, downloaded, it.notes) }
         AppLog.i(GITHUB_TAG, "check finished, latest ${apk?.version}, installed $installed")
         synchronized(lock) { readAt = SystemClock.elapsedRealtime() }
         val context = appContext

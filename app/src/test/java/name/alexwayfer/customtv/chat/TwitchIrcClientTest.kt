@@ -7,6 +7,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.UnknownHostException
@@ -96,6 +97,22 @@ class TwitchIrcClientTest {
         secondListener.onFailure(second, UnknownHostException(), null)
         assertEquals(ChatConnectionState.Disconnected, client.state.value)
         assertTrue(second.cancelled)
+    }
+
+    @Test
+    fun onlyTheCurrentRoomsTimeoutCanReachTheComposer() {
+        client.timeouts.setUser("456")
+        client.connect("target")
+        val (socket, listener) = opened.single()
+        val tags = "@ban-duration=60;target-user-id=456;tmi-sent-ts=1000"
+
+        listener.onMessage(socket, "$tags :tmi.twitch.tv CLEARCHAT #other :viewer\r\n")
+        assertNull(client.timeouts.state.value.deadline("target", "456"))
+
+        listener.onMessage(socket, "$tags :tmi.twitch.tv CLEARCHAT #target :viewer\r\n")
+        client.pause()
+        client.connect("target")
+        assertEquals(61_000L, client.timeouts.state.value.deadline("target", "456"))
     }
 
     private fun response(socket: WebSocket): Response = Response.Builder()

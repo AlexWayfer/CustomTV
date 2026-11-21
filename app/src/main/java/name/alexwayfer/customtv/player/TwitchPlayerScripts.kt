@@ -74,10 +74,11 @@ internal class TwitchPlayerScripts(
     fun seek(seconds: Double): String = call("seek.js", seconds.toString())
 
     /**
-     * Hides the player's control bar in picture-in-picture, where the system draws its own controls over the small
-     * window, or shows it again. The bar keeps its layout, so the reported control bar height stays.
+     * Hides the control bar in the mini player and picture-in-picture. The bar keeps its layout for height
+     * reporting. Only picture-in-picture also hides the audience plaque.
      */
-    fun pictureInPicture(enabled: Boolean): String = call("picture-in-picture.js", enabled.toString())
+    fun pictureInPicture(hideControls: Boolean, inPictureInPicture: Boolean): String =
+        call("picture-in-picture.js", "$hideControls, $inPictureInPicture")
 
     /** Sets how long the sound fades on play, pause, start, and close; 0 turns the fades off. */
     fun soundFade(fadeMs: Long): String = call("sound-fade.js", fadeMs.toString())
@@ -97,7 +98,9 @@ internal class TwitchPlayerScripts(
         }
         val mediaNetwork = if (name in MEDIA_NETWORK_SCRIPTS) "\n${load(MEDIA_NETWORK)}" else ""
         val startMediaNetwork = if (name == HIDE_TOP_OVERLAY) {
-            "\ncustomTvStartMediaNetwork('${mediaNetworkPage()}');"
+            val page = mediaNetworkPage()
+            val minutes = watchMinuteScript(assets, "watch-minutes")?.let { "\n$it('$page');" }.orEmpty()
+            "\ncustomTvStartMediaNetwork('$page');$minutes"
         } else {
             ""
         }

@@ -61,9 +61,9 @@ internal data class GlowCorners(
  */
 internal class PremiumGlowStyle(
     val line: Dp,
-    val lineAlpha: Float,
+    @Suppress("SameParameterValue") val lineAlpha: Float,
     val glow: Dp,
-    val outward: Boolean,
+    @Suppress("SameParameterValue") val outward: Boolean,
 )
 
 /**

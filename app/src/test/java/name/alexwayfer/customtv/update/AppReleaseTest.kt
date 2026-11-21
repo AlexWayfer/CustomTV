@@ -23,12 +23,14 @@ class AppReleaseTest {
     }
 
     @Test
+    @Suppress("KotlinMisorderedAssertEqualsArguments")
     fun buildVersionNameReadsTheFirstNumber() {
         assertEquals(version("1.0"), AppVersion.parse("1.0-debug"))
         assertNull(AppVersion.parse("debug"))
     }
 
     @Test
+    @Suppress("KotlinMisorderedAssertEqualsArguments")
     fun fileNameNamesTheVersion() {
         assertEquals(version("1.1"), AppVersion.ofRelease("CustomTV-1.1.apk"))
         assertEquals(version("1.1.1"), AppVersion.ofRelease("CustomTV-premium-1.1.1.apk"))

@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 
 class IrcMessageParserTest {
     @Test
+    @Suppress("KotlinMisorderedAssertEqualsArguments")
     fun minHashNickGetsTheFirstPaletteColor() {
         assertEquals(Int.MIN_VALUE, "polygenelubricants".hashCode())
         assertEquals(0, nameColorIndex(Int.MIN_VALUE, 15))
@@ -257,6 +258,7 @@ class IrcMessageParserTest {
     }
 
     @Test
+    @Suppress("KotlinMisorderedAssertEqualsArguments")
     fun announcementColorsMatchTwitchCommands() {
         assertEquals(Color(0xFF00D6D6), IrcUserNotice.announcementColor("BLUE"))
         assertEquals(Color(0xFF00DB84), IrcUserNotice.announcementColor("GREEN"))
@@ -440,6 +442,7 @@ class IrcMessageParserTest {
         val message = IrcMessageParser.parseClearChat(raw)
         assertNotNull(message)
         assertEquals("ronni", message!!.userLogin)
+        assertEquals("456", message.userId)
         assertEquals(ChatEventKind.UserMessagesDeleted, message.eventKind)
         assertTrue(message.deleted)
         assertEquals(600L, message.timeoutSeconds)

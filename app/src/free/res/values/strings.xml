@@ -8,6 +8,7 @@
     <string name="premium_feature_moderation">Moderation tools</string>
     <string name="premium_feature_chat">Link previews in chat</string>
     <string name="premium_feature_ai">AI chatter portraits and chat recaps</string>
+    <string name="premium_feature_channel_points">Channel points and Drops</string>
     <plurals name="premium_all_features">
         <item quantity="one">See all %1$d feature</item>
         <item quantity="other">See all %1$d features</item>
@@ -21,9 +22,11 @@
     <string name="premium_all_past_broadcasts">Past broadcasts (chat replay when available)</string>
     <string name="premium_all_clips">Clips</string>
     <string name="premium_all_chat_activity">Chat activity over a recording’s seek bar</string>
+    <string name="premium_all_drops">Twitch Drops campaigns and reward progress</string>
     <string name="premium_all_explore">“Explore” tab with recommended streams and categories</string>
     <string name="premium_all_hidden_categories">Hide categories in “Following”, “Explore” and notifications</string>
     <string name="premium_all_link_previews">Link previews</string>
+    <string name="premium_all_chat_identity">Change chat badges and name color</string>
     <string name="premium_all_word_alerts">Alerts for chosen words</string>
     <string name="premium_all_hidden_words">Hide messages by chosen words</string>
     <string name="premium_all_highlight_pins">Temporarily pin highlighted messages</string>

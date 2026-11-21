@@ -8,6 +8,7 @@
     <string name="premium_feature_moderation">Инструменты модерации</string>
     <string name="premium_feature_chat">Превью ссылок в чате</string>
     <string name="premium_feature_ai">ИИ-портреты чаттеров и пересказ чата</string>
+    <string name="premium_feature_channel_points">Баллы канала и Drops</string>
     <plurals name="premium_all_features">
         <item quantity="one">Все %1$d функция</item>
         <item quantity="few">Все %1$d функции</item>
@@ -23,9 +24,11 @@
     <string name="premium_all_past_broadcasts">Записи трансляций (с повтором чата, если он есть)</string>
     <string name="premium_all_clips">Клипы</string>
     <string name="premium_all_chat_activity">Активность чата над шкалой перемотки записи</string>
+    <string name="premium_all_drops">Кампании Twitch Drops и прогресс наград</string>
     <string name="premium_all_explore">Вкладка «Обзор» с рекомендуемыми трансляциями и категориями</string>
     <string name="premium_all_hidden_categories">Скрытие категорий в отслеживаемых, «Обзоре» и уведомлениях</string>
     <string name="premium_all_link_previews">Превью ссылок</string>
+    <string name="premium_all_chat_identity">Изменение бейджей и цвета ника в чате</string>
     <string name="premium_all_word_alerts">Оповещения о выбранных словах</string>
     <string name="premium_all_hidden_words">Скрытие сообщений по выбранным словам</string>
     <string name="premium_all_highlight_pins">Временное закрепление выделенных сообщений</string>

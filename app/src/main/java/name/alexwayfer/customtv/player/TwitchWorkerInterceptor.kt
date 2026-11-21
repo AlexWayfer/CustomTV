@@ -21,7 +21,11 @@ internal class TwitchWorkerInterceptor(private val http: OkHttpClient = sharedHt
         val script = synchronized(this) {
             cached?.takeIf { it.url == url } ?: download(request, assets)?.also { cached = it }
         } ?: return null
-        val body = script.diagnostics?.let { "$it('$mediaNetworkPage');\n${script.body}" } ?: script.body
+        val body = buildString {
+            script.watchMinutes?.let { appendLine("$it('$mediaNetworkPage');") }
+            script.diagnostics?.let { appendLine("$it('$mediaNetworkPage');") }
+            append(script.body)
+        }
         return WebResourceResponse(
             "application/javascript", "utf-8", HTTP_OK, "OK", script.headers, body.byteInputStream(),
         )
@@ -58,7 +62,11 @@ internal class TwitchWorkerInterceptor(private val http: OkHttpClient = sharedHt
                 .filterKeys { it.lowercase() !in DROPPED_RESPONSE_HEADERS }
                 .mapValues { (_, values) -> values.joinToString(", ") } + ("Cache-Control" to "no-store")
             WorkerScriptResponse(
-                request.url.toString(), patched ?: source, headers, diagnostics,
+                request.url.toString(),
+                patched ?: source,
+                headers,
+                diagnostics,
+                watchMinuteScript(assets, "worker-watch-minutes"),
             )
         }
     } catch (error: IOException) {
@@ -71,6 +79,7 @@ internal class TwitchWorkerInterceptor(private val http: OkHttpClient = sharedHt
         val body: String,
         val headers: Map<String, String>,
         val diagnostics: String?,
+        val watchMinutes: String?,
     )
 
     private companion object {

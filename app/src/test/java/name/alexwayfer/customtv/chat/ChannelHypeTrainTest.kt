@@ -178,6 +178,17 @@ class ChannelHypeTrainTest {
         )
         .toString()
 
+    @Test
+    fun convertingToASharedTrainKeepsTheCampaignForTheSameIdOnly() {
+        val shown = started(START).copy(theme = HypeTrainTheme.Heist)
+        val shared = JSONObject(START).put("sharedHypeTrainDetails", JSONObject())
+        for (type in listOf("hype-train-shared-conversion", "hype-train-shared-merge-trains")) {
+            val event = HypeTrainParser.parseFrame(frame(type, """{"hypeTrain":$shared}"""), NOW)!!
+            assertEquals(HypeTrainTheme.SharedHeist, applyHypeTrainEvent(shown, event)?.theme)
+            assertNull(applyHypeTrainEvent(shown.copy(id = "old"), event)?.theme)
+        }
+    }
+
     private fun started(data: String): ChannelHypeTrain =
         (HypeTrainParser.parseFrame(frame("hype-train-start", data), NOW) as HypeTrainEvent.Execution).train
 

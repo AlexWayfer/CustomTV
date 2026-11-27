@@ -22,22 +22,20 @@ import name.alexwayfer.customtv.ui.components.ChannelPreview
 
 /** Mentions of the user in the live chat vibrate or sound, as the settings ask, and gather on their own card. */
 @Composable
-internal fun LiveMentionFeedback(
-    chatViewModel: ChatViewModel,
-    channel: String,
-    account: WatchAccount,
-    settings: AppSettings,
-    moderates: Boolean,
-) {
+internal fun LiveMentionFeedback(scene: WatchScene, moderates: Boolean) {
+    val chatViewModel = scene.chatViewModel
+    val account = scene.account
+    val settings = scene.settings
     val self = ChatMentionSelf(account.login.orEmpty(), account.displayName.orEmpty(), settings.keywordPhrases)
     LaunchedEffect(chatViewModel, self) { chatViewModel.setMentionSelf(self) }
     MentionFeedback(
         messages = chatViewModel.messages,
-        channel = channel,
+        channel = scene.channel,
         selfLogin = account.login,
         selfDisplayName = account.displayName,
         settings = settings,
         moderates = moderates,
+        highlightPins = scene.highlightPins,
     )
 }
 

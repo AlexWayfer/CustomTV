@@ -72,6 +72,7 @@ internal class PlayerFullscreen(
     private val displayLandscape: State<Boolean>,
     private val chatSettings: State<ChatSettings?>,
     private val store: ChatSettingsStore,
+    private val streamOutOfSight: () -> Boolean = { false },
 ) {
     /** Set through [hold], which logs it. */
     var lock by mutableStateOf(FullscreenLock.None)
@@ -135,6 +136,10 @@ internal class PlayerFullscreen(
     private var settleJob: Job? = null
 
     val active: Boolean
+        get() = fullscreenQuality && !streamOutOfSight()
+
+    /** Sliding the stream away changes the layout but keeps the expanded landscape player's quality. */
+    val fullscreenQuality: Boolean
         get() = playerFullscreen(expanded.value, displayLandscape.value)
 
     fun enter(cause: FullscreenToggle) {
@@ -149,7 +154,7 @@ internal class PlayerFullscreen(
 
     /** What decides whether the player is in full screen, for the log. */
     val activeCause: String
-        get() = "expanded ${expanded.value}, landscape ${displayLandscape.value}, lock $lock"
+        get() = "expanded ${expanded.value && !streamOutOfSight()}, landscape ${displayLandscape.value}, lock $lock"
 
     /**
      * Follows a vertical drag on the player. True when the drag belongs to full screen: any drag while it is on,
@@ -215,9 +220,8 @@ internal fun rememberPlayerFullscreen(
 ): PlayerFullscreen {
     val activity = checkNotNull(LocalActivity.current)
     val scope = rememberCoroutineScope()
-    // With some of the stream hidden, landscape shows the chat with the stream info over it, and the video sliding
-    // over them, instead of the full screen player; full screen comes back once the video is all in sight.
-    val expanded = rememberUpdatedState(!minimized && !inPictureInPicture && !streamOutOfSight)
+    val expanded = rememberUpdatedState(!minimized && !inPictureInPicture)
+    val streamHidden = rememberUpdatedState(streamOutOfSight)
     // The configuration, not the window size: on some devices the size Compose reads at a rotation is the old one
     // and stays until the next rotation, which left full screen on in portrait.
     val displayLandscape = rememberUpdatedState(
@@ -225,7 +229,9 @@ internal fun rememberPlayerFullscreen(
     )
     val chatSettings = ChatSettingsStore.restored.collectAsStateWithLifecycle()
     val fullscreen = remember {
-        PlayerFullscreen(scope, expanded, displayLandscape, chatSettings, ChatSettingsStore(activity))
+        PlayerFullscreen(scope, expanded, displayLandscape, chatSettings, ChatSettingsStore(activity)) {
+            streamHidden.value
+        }
     }
     LaunchedEffect(chatSettings.value) {
         fullscreen.settingsRead(chatSettings.value)

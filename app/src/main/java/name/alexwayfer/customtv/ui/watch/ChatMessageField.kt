@@ -179,6 +179,11 @@ private fun ChatTextField(
                     minHeight = ChatFieldMinHeight,
                 )
                 .onPreviewKeyEvent { recallHistoryOnKey(it, actions) }
+                .chatImagePaste(
+                    composer,
+                    input.compose,
+                    enabled = !covered && input.canAttachImage && !composer.sending,
+                )
                 .then(
                     if (covered) {
                         Modifier.clearAndSetSemantics {}
@@ -238,7 +243,16 @@ private fun chatFieldDecorator(
             null
         },
         trailingIcon = if (input.canEdit) {
-            { EmotePickerButton(composer.pickerOpen, field, onClick = actions::togglePicker) }
+            {
+                ChatComposerPickers(
+                    composer,
+                    input.compose,
+                    showAttachment = input.compose.shareOffer?.composing != true,
+                    attachmentEnabled = input.canAttachImage && !composer.sending,
+                ) {
+                    EmotePickerButton(composer.pickerOpen, field, onClick = actions::togglePicker)
+                }
+            }
         } else {
             null
         },

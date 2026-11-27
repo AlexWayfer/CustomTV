@@ -2,6 +2,7 @@ package name.alexwayfer.customtv.ui.settings
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import name.alexwayfer.customtv.data.ChatImageRetention
 import name.alexwayfer.customtv.data.ChatPageSettingsStore
 import name.alexwayfer.customtv.data.ChatSendOption
 import name.alexwayfer.customtv.data.LinkPreviewMode
@@ -59,5 +60,9 @@ class ChatPageSettingsActions(private val scope: CoroutineScope, private val sto
         scope.launch {
             store.setLinkPreviewMode(mode)
         }
+    }
+
+    fun setChatImageRetention(retention: ChatImageRetention) {
+        scope.launch { store.setChatImageRetention(retention) }
     }
 }

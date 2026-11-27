@@ -46,6 +46,7 @@ internal val WATCH_STREAK_NOTIFICATIONS = booleanPreferencesKey("watch_streak_no
 internal val WHISPER_UNREAD_GLOW = booleanPreferencesKey("whisper_unread_glow")
 internal val LIVE_WIDGET_ENDED = booleanPreferencesKey("live_widget_ended")
 internal val LINK_PREVIEW_MODE = stringPreferencesKey("link_preview_mode")
+internal val CHAT_IMAGE_RETENTION = stringPreferencesKey("chat_image_retention")
 internal val AUTO_CLAIM_BONUS = booleanPreferencesKey("auto_claim_bonus")
 internal val PORTRAIT_LANGUAGE = stringPreferencesKey("portrait_language")
 internal val PORTRAIT_MODEL = stringPreferencesKey("portrait_model")

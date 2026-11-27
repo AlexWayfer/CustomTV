@@ -30,7 +30,7 @@ class PremiumAllFeaturesTouchTest {
         var opened = 0
         compose.setContent { PremiumAllFeaturesLink(onClick = { opened++ }) }
 
-        compose.onNodeWithText("See all 41 features").performClick()
+        compose.onNodeWithText("See all 43 features").performClick()
 
         assertEquals(1, opened)
     }
@@ -40,6 +40,7 @@ class PremiumAllFeaturesTouchTest {
         compose.setContent { PremiumAllFeaturesBody(onUpgrade = {}) }
 
         compose.onAllNodes(isHeading()).assertCountEquals(6)
+        compose.onNodeWithText("Send images in chat").assertExists()
     }
 
     @Test

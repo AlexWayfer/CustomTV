@@ -51,9 +51,12 @@ object StreamPlayback {
     val isBound: Boolean
         get() = commands != null
 
-    /** Automatic repeats and stall recovery must give an audio interruption time to finish. */
+    /** Automatic playback respects viewer pauses and audio interruptions. */
     internal val canAutomaticallyPlay: Boolean
-        get() = !userPaused && !StreamInterruption.microphoneHoldsPlayback && !interruptedDuringPlayback
+        get() = canAutomaticallyPlayIgnoringUnattributedAudio && !interruptedDuringPlayback
+
+    internal val canAutomaticallyPlayIgnoringUnattributedAudio: Boolean
+        get() = !userPaused && !StreamInterruption.microphoneHoldsPlayback
 
     // Android's list includes the stream's own audio. Check it only after the page reports an interruption.
     private val interruptedDuringPlayback: Boolean
@@ -161,9 +164,9 @@ object StreamPlayback {
         syncState()
     }
 
-    fun pause() {
+    fun pause(holdUntilPlay: Boolean = false) {
         inferredPause.cancel()
-        pauseConfirmation.sent(loading = !isPlaybackConfirmed)
+        pauseConfirmation.sent(loading = !isPlaybackConfirmed, holdUntilPlay = holdUntilPlay)
         StreamInterruption.clear()
         userPaused = true
         isExplicitlyPaused = true
@@ -189,38 +192,36 @@ object StreamPlayback {
             if (playing) commands?.pause?.invoke {}
             return
         }
-        // A frame the page reported before it ran the app's pause does not undo the pause.
-        if (pauseConfirmation.stale(playing)) return
-        // Twitch started the stream the viewer paused while it loaded: it stays paused.
-        if (pauseConfirmation.startedOnItsOwn(playing)) {
-            pauseConfirmation.sent(loading = false)
-            commands?.pause?.invoke(pauseConfirmation::ran)
-            return
-        }
-        if (playing) {
-            inferredPause.cancel()
-            StreamInterruption.clear()
-            val changed = playingChangesState
-            userPaused = false
-            isExplicitlyPaused = false
-            awaitingPlayback = false
-            isPlaybackConfirmed = true
-            offline = false
-            if (changed) syncState()
-            return
-        }
-        // Background pauses remain recoverable, but microphone recording must remember this interruption too.
-        if (inferredPause.suppressed && expectsPlayback) {
-            StreamInterruption.report()
-        }
-        if (pauseReportIgnored) return
-        // Twitch's player paused without the app asking, as it may when another app takes the sound.
-        StreamInterruption.report()
-        inferredPause.schedule(REBUFFER_GRACE_MS) {
-            if (inferredPause.suppressed || userPaused || commands == null) return@schedule
-            userPaused = true
-            awaitingPlayback = false
-            syncState()
+        val report = pauseConfirmation.report(playing)
+        when {
+            report == PauseReport.Retry -> commands?.pause?.invoke(pauseConfirmation::ran)
+            report == PauseReport.Ignore -> Unit
+            playing -> {
+                inferredPause.cancel()
+                StreamInterruption.clear()
+                val changed = playingChangesState
+                userPaused = false
+                isExplicitlyPaused = false
+                awaitingPlayback = false
+                isPlaybackConfirmed = true
+                offline = false
+                if (changed) syncState()
+            }
+            else -> {
+                // Background pauses remain recoverable, but microphone recording must remember this interruption too.
+                if (inferredPause.suppressed && expectsPlayback) {
+                    StreamInterruption.report()
+                }
+                if (pauseReportIgnored) return
+                // Twitch may pause without the app asking, such as when another app takes the sound.
+                StreamInterruption.report()
+                inferredPause.schedule(REBUFFER_GRACE_MS) {
+                    if (inferredPause.suppressed || userPaused || commands == null) return@schedule
+                    userPaused = true
+                    awaitingPlayback = false
+                    syncState()
+                }
+            }
         }
     }
 

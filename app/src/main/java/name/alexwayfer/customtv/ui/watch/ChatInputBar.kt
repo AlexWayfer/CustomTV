@@ -262,6 +262,9 @@ private fun ChatInputBarBody(
                 ChatFieldNotesArea(input, composer.sendError.takeUnless { input.timedOut }) {
                     openChatMenu(composer, field, input.sheetKeyboard, ChatMenuStart.Modes)
                 }
+                if (!input.warned && !input.timedOut && input.compose.shareOffer?.composing != true) {
+                    ChatImageUploadFeedback(composer.imageUpload, input.compose.draft)
+                }
                 val look = ChatFieldLook(chatFieldColors(barAlpha), draftEmotes, panel.composerOpen, historyButton)
                 ChatFieldRow(input, composer, field, actions, look)
             }

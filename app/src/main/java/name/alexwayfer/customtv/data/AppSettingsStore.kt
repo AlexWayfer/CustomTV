@@ -76,6 +76,7 @@ class AppSettingsStore(context: Context) {
             whisperUnreadGlow = prefs[WHISPER_UNREAD_GLOW] ?: defaults.whisperUnreadGlow,
             liveWidgetEnded = prefs[LIVE_WIDGET_ENDED] ?: defaults.liveWidgetEnded,
             linkPreviewMode = storedLinkPreviewMode(prefs[LINK_PREVIEW_MODE]),
+            chatImageRetention = storedChatImageRetention(prefs[CHAT_IMAGE_RETENTION]),
             autoClaimBonus = prefs[AUTO_CLAIM_BONUS] ?: defaults.autoClaimBonus,
             portraitLanguage = storedPortraitLanguage(prefs[PORTRAIT_LANGUAGE]),
             portraitModel = storedPortraitModelKind(prefs[PORTRAIT_MODEL]),

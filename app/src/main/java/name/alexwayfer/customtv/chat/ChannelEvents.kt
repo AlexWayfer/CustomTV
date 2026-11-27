@@ -52,11 +52,13 @@ internal fun visibleChannelEvents(
  * The poll, prediction, and hype train already running when chat opens, from one public GQL
  * answer. Null when the answer could not be read; a hidden poll or prediction counts as none.
  */
-internal fun parseChannelEventsGql(body: String, nowMillis: Long): ChannelEvents? {
-    val user = body.toJsonObjectOrNull()
-        ?.optJSONObject("data")
-        ?.optJSONObject("user")
-        ?: return null
+internal fun parseChannelEventsGql(
+    body: String,
+    nowMillis: Long,
+    campaignFlags: () -> HeistTrainFlags? = { null },
+): ChannelEvents? {
+    val data = body.toJsonObjectOrNull()?.optJSONObject("data") ?: return null
+    val user = data.optJSONObject("user") ?: return null
     val poll = ChannelPollParser.parseGql(user.optJSONObject("viewablePoll"), nowMillis)
         ?.takeIf { it.status != ChannelPollStatus.Hidden }
     val channel = user.optJSONObject("channel")
@@ -72,5 +74,8 @@ internal fun parseChannelEventsGql(body: String, nowMillis: Long): ChannelEvents
     val hypeTrain = HypeTrainParser.execution(trains?.optJSONObject("execution"), nowMillis)
         ?.takeIf { it.phase == HypeTrainPhase.Active }
         ?: HypeTrainParser.gqlApproaching(trains?.optJSONObject("approaching"), nowMillis)
-    return ChannelEvents(poll, prediction, hypeTrain)
+    val themed = hypeTrain?.let {
+        it.copy(theme = hypeTrainTheme(user, it.phase, data.optJSONObject("sharedChatSession"), campaignFlags))
+    }
+    return ChannelEvents(poll, prediction, themed)
 }

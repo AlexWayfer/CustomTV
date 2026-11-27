@@ -319,6 +319,41 @@ class ChannelEventsTest {
         .put("data", JSONObject().put("topic", topic).put("message", message))
         .toString()
 
+    @Test
+    fun aLiveTrainTakesOnlyItsThemeFromTheLoadAndKeepsItAcrossUpdates() {
+        val answer = CompletableDeferred<ChannelEvents?>()
+        var calls = 0
+        val controller = ChannelEventsController(CoroutineScope(Dispatchers.Unconfined), fetch = {
+            calls++
+            answer.await()
+        })
+        val train = ChannelHypeTrain("t1", HypeTrainPhase.Active, 1, 25, 100, NOW, null, emptyList(), emptyList())
+        controller.load("123")
+        controller.onHypeTrain(HypeTrainEvent.Execution(train))
+        answer.complete(ChannelEvents(hypeTrain = train.copy(progress = 5, theme = HypeTrainTheme.Heist)))
+        assertEquals(train.copy(theme = HypeTrainTheme.Heist), controller.events.value.hypeTrain)
+        controller.onHypeTrain(HypeTrainEvent.Execution(train.copy(level = 2)))
+        assertEquals(HypeTrainTheme.Heist, controller.events.value.hypeTrain?.theme)
+        assertEquals(1, calls)
+    }
+
+    @Test
+    fun aTrainStartingAfterChatOpensLooksUpItsOwnThemeOnce() {
+        val train = ChannelHypeTrain("t1", HypeTrainPhase.Active, 1, 25, 100, NOW, null, emptyList(), emptyList())
+        val answer = CompletableDeferred<ChannelEvents?>()
+        var calls = 0
+        val controller = ChannelEventsController(CoroutineScope(Dispatchers.Unconfined), fetch = {
+            if (++calls == 1) ChannelEvents() else answer.await()
+        })
+        controller.load("123")
+        controller.onHypeTrain(HypeTrainEvent.Execution(train))
+        controller.onHypeTrain(HypeTrainEvent.Execution(train.copy(level = 2)))
+        answer.complete(ChannelEvents(hypeTrain = train.copy(theme = HypeTrainTheme.SharedHeist)))
+        assertEquals(2, calls)
+        assertEquals(2, controller.events.value.hypeTrain?.level)
+        assertEquals(HypeTrainTheme.SharedHeist, controller.events.value.hypeTrain?.theme)
+    }
+
     private companion object {
         const val NOW = 1_000_000L
     }

@@ -29,7 +29,16 @@ class PlayerKeepAliveTest {
     private val audio = shadowOf(context.getSystemService(AudioManager::class.java))
     private val looper = shadowOf(Looper.getMainLooper())
     private val webView = ScriptWebView(context)
-    private val commands = StreamPlayback.Commands(play = {}, pause = { it() }, seek = {}, close = {})
+    private var pauseRequests = 0
+    private val commands = StreamPlayback.Commands(
+        play = {},
+        pause = { onRun ->
+            pauseRequests++
+            onRun()
+        },
+        seek = {},
+        close = {},
+    )
     private val keepAlive = PlayerKeepAlive(
         appContext = context,
         handler = Handler(Looper.getMainLooper()),
@@ -91,6 +100,41 @@ class PlayerKeepAliveTest {
         looper.idleFor(Duration.ofSeconds(2))
 
         assertEquals(1, webView.scripts.size)
+    }
+
+    @Test
+    fun aNetworkStallRecoversWhileTheStreamAudioTrackIsStillActive() {
+        val steps = mutableListOf<LiveStallAction>()
+        val recovery = liveRecovery(steps)
+        val stalled = LiveTick(100.0, 11.0, "Buffering", false, "[70.0, 100.0]")
+        recovery.tick(stalled.copy(state = "Playing", hasPlaybackBuffer = true))
+        recovery.networkChanged()
+        audio.setActivePlaybackConfigurationsFor(listOf(mediaAudio))
+        StreamInterruption.report()
+
+        reportLiveTicks(recovery, stalled, seconds = 9)
+        assertTrue(steps.isEmpty())
+        reportLiveTicks(recovery, stalled, seconds = 1)
+        assertEquals(listOf(LiveStallAction.RestartPlayer), steps)
+        reportLiveTicks(recovery, stalled, seconds = 10)
+        assertEquals(listOf(LiveStallAction.RestartPlayer, LiveStallAction.ReloadPage), steps)
+    }
+
+    @Test
+    fun aLaterStallStillWaitsForOtherMediaAfterTheStreamRecoversFromANetworkSwitch() {
+        val steps = mutableListOf<LiveStallAction>()
+        val recovery = liveRecovery(steps)
+        val playing = LiveTick(100.0, 11.0, "Playing", false, "[70.0, 103.0]", hasPlaybackBuffer = true)
+        recovery.tick(playing)
+        recovery.networkChanged()
+        reportLiveTicks(recovery, playing.copy(positionSeconds = 101.0), seconds = 1)
+
+        audio.setActivePlaybackConfigurationsFor(listOf(mediaAudio))
+        StreamInterruption.report()
+        val stalled = playing.copy(positionSeconds = 101.0, state = "Buffering", hasPlaybackBuffer = false)
+        reportLiveTicks(recovery, stalled, seconds = 15)
+
+        assertTrue(steps.isEmpty())
     }
 
     @Test
@@ -167,6 +211,28 @@ class PlayerKeepAliveTest {
     }
 
     @Test
+    fun chatOnlyStaysPausedWhenTwitchResumesAfterThePauseCommand() {
+        StreamPlayback.pause(holdUntilPlay = true)
+        StreamPlayback.reportActualState(playing = false)
+        repeat(2) { StreamPlayback.reportActualState(playing = true) }
+
+        assertEquals(PlayerPlayback.Paused, StreamPlayback.playback.value)
+        assertEquals(2, pauseRequests)
+
+        StreamPlayback.reportActualState(playing = false)
+        StreamPlayback.reportActualState(playing = true)
+
+        assertEquals(PlayerPlayback.Paused, StreamPlayback.playback.value)
+        assertEquals(3, pauseRequests)
+
+        StreamPlayback.play()
+        StreamPlayback.reportActualState(playing = true)
+
+        assertEquals(PlayerPlayback.Playing, StreamPlayback.playback.value)
+        assertEquals(3, pauseRequests)
+    }
+
+    @Test
     fun interruptedMicrophoneRecordingHoldsBackgroundRecovery() {
         recording(MediaRecorder.AudioSource.MIC)
         StreamInterruption.report()
@@ -237,31 +303,38 @@ class PlayerKeepAliveTest {
     }
 
     @Test
-    fun microphoneRecordingDoesNotCountAsALiveStreamStall() {
+    fun microphoneRecordingDoesNotCountAsALiveStreamStallAfterANetworkSwitch() {
         val sources = listOf(
             MediaRecorder.AudioSource.VOICE_RECOGNITION,
             MediaRecorder.AudioSource.MIC,
             MediaRecorder.AudioSource.VOICE_COMMUNICATION,
         )
         for (source in sources) {
-            var restarts = 0
-            val recovery = LiveStallRecovery(
-                isLive = { true },
-                isPlaybackConfirmed = { true },
-                restartPlayer = { restarts++ },
-                reloadPage = { restarts++ },
-            )
+            val steps = mutableListOf<LiveStallAction>()
+            val recovery = liveRecovery(steps)
+            recovery.networkChanged()
             recording(source)
             StreamInterruption.report()
 
-            repeat(15) {
-                recovery.tick(LiveTick(1.0, 0.0, "Playing", false, ""))
-                looper.idleFor(Duration.ofSeconds(1))
-            }
+            reportLiveTicks(recovery, LiveTick(1.0, 0.0, "Playing", false, ""), seconds = 15)
 
-            assertEquals(0, restarts)
+            assertTrue(steps.isEmpty())
             audio.setActiveRecordingConfigurations(emptyList(), true)
             StreamPlayback.reportActualState(playing = true)
+        }
+    }
+
+    private fun liveRecovery(steps: MutableList<LiveStallAction>) = LiveStallRecovery(
+        isLive = { true },
+        isPlaybackConfirmed = { StreamPlayback.isPlaybackConfirmed },
+        restartPlayer = { steps += LiveStallAction.RestartPlayer },
+        reloadPage = { steps += LiveStallAction.ReloadPage },
+    )
+
+    private fun reportLiveTicks(recovery: LiveStallRecovery, tick: LiveTick, seconds: Int) {
+        repeat(seconds) {
+            looper.idleFor(Duration.ofSeconds(1))
+            recovery.tick(tick)
         }
     }
 

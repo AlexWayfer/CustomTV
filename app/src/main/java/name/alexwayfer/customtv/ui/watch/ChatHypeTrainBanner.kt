@@ -46,6 +46,7 @@ internal fun ChatHypeTrainBanner(
 ) {
     val labelSize = chatSp(chatTextSize, 12, 14)
     val color = hypeTrainColor(train.colorHex) ?: TwitchPurple
+    val style = trainBannerStyle(train.theme)
     val completedLevel = rememberCompletedLevel(train)
     val fill by animateFloatAsState(
         targetValue = when {
@@ -65,7 +66,7 @@ internal fun ChatHypeTrainBanner(
         modifier = Modifier.drawWithContent {
             drawContent()
             // An approach has no fill yet; Twitch marks it with a stripe of the creator color instead.
-            if (train.phase == HypeTrainPhase.Approaching) {
+            if (train.phase == HypeTrainPhase.Approaching && style == null) {
                 drawRect(color, size = Size(APPROACH_STRIPE_WIDTH.toPx(), size.height))
             }
         },
@@ -74,6 +75,7 @@ internal fun ChatHypeTrainBanner(
                 train = train,
                 completedLevel = completedLevel,
                 color = color,
+                style = style,
                 expanded = expanded,
                 onExpandedChange = onExpandedChange,
                 chatTextSize = chatTextSize,

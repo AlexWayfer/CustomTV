@@ -20,7 +20,7 @@ internal object ChannelEventsRepository {
         .build()
 
     /** Null when Twitch did not answer or refused the request. */
-    suspend fun fetch(channelId: String): ChannelEvents? {
+    suspend fun fetch(channelId: String, viewerId: String?): ChannelEvents? {
         if (channelId.isBlank()) return null
         return withContext(Dispatchers.IO) {
             try {
@@ -32,9 +32,9 @@ internal object ChannelEventsRepository {
                     val body = response.body.string()
                     Diagnostics.reportGql(TAG, "events", response.code, body)
                     when (response.code) {
-                        in HTTP_SUCCESS -> parseChannelEventsGql(body, System.currentTimeMillis()).also {
-                            if (it == null) AppLog.w(TAG, "events unreadable: ${gqlFailureCause(body)}")
-                        }
+                        in HTTP_SUCCESS -> parseChannelEventsGql(body, System.currentTimeMillis()) {
+                            TwitchHeistTrainFlags.get(viewerId)
+                        }.also { if (it == null) AppLog.w(TAG, "events unreadable: ${gqlFailureCause(body)}") }
                         in HTTP_CLIENT_ERROR -> {
                             AppLog.w(TAG, "events rejected HTTP ${response.code}")
                             null
@@ -56,14 +56,18 @@ internal object ChannelEventsRepository {
 
     private const val TAG = "ChannelEvents"
     private const val EVENTS_QUERY =
-        $$"query($id:ID!){user(id:$id){" +
+        $$"query($id:ID!){sharedChatSession(channelID:$id){status participants{channel{id} status}} " +
+            $$"user(id:$id){id stream{game{id}} " +
             "viewablePoll{id title status durationSeconds remainingDurationMilliseconds " +
             "choices{id title votes{total}} votes{total}} " +
             "channel{activePredictionEvents{$PREDICTION_GQL_FIELDS} lockedPredictionEvents{$PREDICTION_GQL_FIELDS} " +
             "hypeTrain{execution{id updatedAt expiresAt endedAt config{primaryHexColor} " +
+            "isGoldenKappaTrain isTreasureTrain treasureTrainDetails{__typename} variantTrainDetails{__typename} " +
+            "sharedHypeTrainDetails{sharedProgress{user{stream{game{id}}}}} " +
             "progress{goal progression total remainingSeconds " +
             "level{value goal rewards{... on HypeTrainEmoteReward{emote{id token}}}}} " +
             "conductors{source user{login displayName}}} " +
             "approaching{goal expiresAt creatorColor eventsRemaining{events} " +
+            "hypeTrainType isGoldenKappaTrain isTreasureTrain treasureTrainDetails{__typename} " +
             "levelOneRewards{... on HypeTrainEmoteReward{emote{id token}}}}}}}}"
 }

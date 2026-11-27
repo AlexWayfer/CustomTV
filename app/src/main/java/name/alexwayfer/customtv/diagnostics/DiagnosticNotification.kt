@@ -15,7 +15,7 @@ internal const val DIAGNOSTIC_NOTIFICATION_ID = 7107
  * One notice for every problem the next report holds: a newer problem updates it with the count and
  * every headline, since Send report sends them all at once.
  */
-internal fun showDiagnosticNotification(context: Context, headlines: List<String>) {
+internal fun showDiagnosticNotification(context: Context, headlines: List<String>, hasParseError: Boolean) {
     val manager = context.getSystemService(NotificationManager::class.java) ?: return
     if (manager.getNotificationChannel(CHANNEL_ID) == null) {
         manager.createNotificationChannel(
@@ -33,6 +33,7 @@ internal fun showDiagnosticNotification(context: Context, headlines: List<String
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
     val text = context.getString(R.string.diagnostics_text)
+    val action = if (hasParseError) R.string.diagnostics_send_to_developer else R.string.diagnostics_send
     manager.notify(
         DIAGNOSTIC_NOTIFICATION_ID,
         appNotificationBuilder(context, CHANNEL_ID)
@@ -43,7 +44,7 @@ internal fun showDiagnosticNotification(context: Context, headlines: List<String
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText((listOf(text) + headlines).joinToString("\n")))
             .setContentIntent(send)
-            .addAction(0, context.getString(R.string.diagnostics_send), send)
+            .addAction(0, context.getString(action), send)
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .build(),

@@ -98,7 +98,7 @@ internal fun BoxScope.PlayerVideoBox(
             gestures = touches.gestures(),
             inPictureInPicture = scene.inPictureInPicture,
             shrunk = scene.progress > 0f,
-            fullscreen = scene.fullscreenActive,
+            fullscreenQuality = scene.fullscreen.fullscreenQuality,
             seekbarGap = seekbarOverlay?.gap ?: 0.dp,
             modifier = Modifier.playerPageLayout(scene, frame, fullWidthPx)
                 .onSizeChanged { size ->

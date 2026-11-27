@@ -109,6 +109,7 @@ internal fun diagnosticHeadline(event: DiagnosticEvent): String = when (event.ki
     DiagnosticKind.Rejected -> "${event.source}: HTTP ${event.httpCode} ${event.detail}"
     DiagnosticKind.RateLimited -> "${event.source}: HTTP 429 ${event.detail}"
     DiagnosticKind.GqlError -> "${event.source}: error in ${event.detail}"
+    DiagnosticKind.ParseError -> "${event.source}: could not read ${event.detail}"
     DiagnosticKind.Crash -> "Crash: ${event.detail}"
     DiagnosticKind.Anr -> "Freeze: ${event.detail}"
 }

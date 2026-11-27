@@ -6,7 +6,7 @@
     <string name="premium_feature_past_broadcasts">Записи трансляций и клипы</string>
     <string name="premium_feature_notifications">Настраиваемые уведомления</string>
     <string name="premium_feature_moderation">Инструменты модерации</string>
-    <string name="premium_feature_chat">Превью ссылок в чате</string>
+    <string name="premium_feature_chat">Превью ссылок и отправка изображений в чате</string>
     <string name="premium_feature_ai">ИИ-портреты чаттеров и пересказ чата</string>
     <string name="premium_feature_channel_points">Баллы канала и Drops</string>
     <plurals name="premium_all_features">
@@ -28,6 +28,7 @@
     <string name="premium_all_explore">Вкладка «Обзор» с рекомендуемыми трансляциями и категориями</string>
     <string name="premium_all_hidden_categories">Скрытие категорий в отслеживаемых, «Обзоре» и уведомлениях</string>
     <string name="premium_all_link_previews">Превью ссылок</string>
+    <string name="premium_all_send_images">Отправка изображений в чат</string>
     <string name="premium_all_chat_identity">Изменение бейджей и цвета ника в чате</string>
     <string name="premium_all_word_alerts">Оповещения о выбранных словах</string>
     <string name="premium_all_hidden_words">Скрытие сообщений по выбранным словам</string>
@@ -38,6 +39,7 @@
     <string name="premium_all_donations">Донаты и MemeAlerts из меню чата</string>
     <string name="premium_all_live_alerts">Когда отслеживаемый канал выходит в эфир</string>
     <string name="premium_all_title_alerts">Когда канал в эфире меняет название или категорию</string>
+    <string name="premium_all_gift_alerts">Когда вам дарят подписку на канал</string>
     <string name="premium_all_alerts_per_channel">Настройки уведомлений для каждого канала</string>
     <string name="premium_all_home_widget">Виджет для рабочего стола</string>
     <string name="premium_all_bans">Бан, таймаут и разбан из карточки чаттера</string>

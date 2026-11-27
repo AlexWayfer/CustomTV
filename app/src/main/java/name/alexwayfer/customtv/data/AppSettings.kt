@@ -41,6 +41,7 @@ data class AppSettings(
     val scrollToLatestAfterSend: Boolean = true,
     /** A button in the message field that brings back the user's own messages in the chat, and Up and Down keys. */
     val sentMessageHistory: Boolean = true,
+    val chatImageRetention: ChatImageRetention = ChatImageRetention.ThreeDays,
     /** Premium: chatters' messages with one of these phrases do not show in chat. */
     val hiddenPhrases: List<KeywordPhrase> = emptyList(),
     /** Whether [hiddenPhrases] also hide messages in the channels the user moderates. */

@@ -58,7 +58,6 @@ internal class LiveStallWatchdog {
     private var lastPositionSeconds = Double.NaN
     private var stepsTaken = 0
     private var lastStepAtMs: Long? = null
-    private var networkWait = false
     @Volatile private var networkGraceUntilMs = 0L
     private var awaitedSegmentRetryId: String? = null
 
@@ -66,13 +65,18 @@ internal class LiveStallWatchdog {
     var recovering = false
         private set
 
+    /** A validated network changed and the stream has yet to resume or finish recovery. */
+    var networkRecoveryPending = false
+        private set
+
     fun tick(nowMs: Long, watch: LiveStallWatch, tick: LiveTick): LiveStallAction {
         if (tick.segmentRetry?.deadline == true && awaitedSegmentRetryId == null) return LiveStallAction.None
         if (watch == LiveStallWatch.Off) {
             recovering = false
-            networkWait = false
+            networkRecoveryPending = false
         }
-        val watching = watch == LiveStallWatch.Playing || watch == LiveStallWatch.Stopped && (recovering || networkWait)
+        val watching = watch == LiveStallWatch.Playing ||
+            watch == LiveStallWatch.Stopped && (recovering || networkRecoveryPending)
         val positionSeconds = tick.positionSeconds
         follow(nowMs, watching, tick)
         if (!watching || !networkGraceElapsed(nowMs)) return LiveStallAction.None
@@ -97,7 +101,7 @@ internal class LiveStallWatchdog {
         stepsTaken = 0
         lastStepAtMs = null
         recovering = false
-        networkWait = true
+        networkRecoveryPending = true
         networkGraceUntilMs = nowMs + STALL_MS
         anchorAtMs = nowMs
         lastTickAtMs = nowMs
@@ -110,13 +114,13 @@ internal class LiveStallWatchdog {
         stepsTaken = 0
         lastStepAtMs = null
         recovering = false
-        networkWait = false
+        networkRecoveryPending = false
         networkGraceUntilMs = 0L
         awaitedSegmentRetryId = null
     }
 
     private fun recoverStall(nowMs: Long, tick: LiveTick): LiveStallAction {
-        val restarting = stepsTaken == 0 && !networkWait && !tick.waitingForPlaylistWithLowBuffer
+        val restarting = stepsTaken == 0 && !networkRecoveryPending && !tick.waitingForPlaylistWithLowBuffer
         if (restarting && shouldWaitForRetry(tick)) return LiveStallAction.None
         return step(nowMs, tick.positionSeconds, tick.waitingForPlaylistWithLowBuffer)
     }
@@ -138,7 +142,7 @@ internal class LiveStallWatchdog {
     ): LiveStallAction {
         // Keep the regular restart after a network switch. Otherwise a stuck playlist can reuse the same connection
         // on a player restart, so use the first page reload from the existing budget.
-        if (stepsTaken == 0 && waitingForPlaylistWithLowBuffer && !networkWait) stepsTaken += 1
+        if (stepsTaken == 0 && waitingForPlaylistWithLowBuffer && !networkRecoveryPending) stepsTaken += 1
         val action = when {
             stepsTaken == 0 -> LiveStallAction.RestartPlayer
             stepsTaken <= PAGE_RELOAD_LIMIT -> LiveStallAction.ReloadPage
@@ -148,7 +152,7 @@ internal class LiveStallWatchdog {
         stepsTaken += 1
         lastStepAtMs = nowMs
         recovering = action != LiveStallAction.GiveUp
-        networkWait = false
+        if (!recovering) networkRecoveryPending = false
         anchor(nowMs, positionSeconds)
         return action
     }
@@ -169,7 +173,7 @@ internal class LiveStallWatchdog {
             (!reportGap && tick.hasPlaybackBuffer && recentProgress >= RESUMED_PROGRESS_SECONDS)
         if (movedOn) {
             recovering = false
-            networkWait = false
+            networkRecoveryPending = false
         }
         val elsewhere = movedOn || positionSeconds < anchorSeconds
         if (!watching || reportGap || elsewhere) anchor(nowMs, positionSeconds)

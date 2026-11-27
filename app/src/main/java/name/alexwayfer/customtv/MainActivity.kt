@@ -17,6 +17,7 @@ import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import name.alexwayfer.customtv.diagnostics.AppLog
+import name.alexwayfer.customtv.data.TwitchTrainCatalog
 import name.alexwayfer.customtv.links.OutsideLinkRoute
 import name.alexwayfer.customtv.links.TwitchLinkRequest
 import name.alexwayfer.customtv.links.linkHandlerPackage
@@ -156,6 +157,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         pipCloseHandler.removeCallbacks(confirmPipClose)
         super.onStart()
+        TwitchTrainCatalog.onAppOpen(this)
     }
 
     override fun onStop() {

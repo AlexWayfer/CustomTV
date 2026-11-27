@@ -75,6 +75,7 @@ private val premiumFeatureSections = listOf(
         R.string.premium_section_chat,
         listOf(
             R.string.premium_all_link_previews,
+            R.string.premium_all_send_images,
             R.string.premium_all_chat_identity,
             R.string.premium_all_word_alerts,
             R.string.premium_all_hidden_words,
@@ -90,6 +91,7 @@ private val premiumFeatureSections = listOf(
         listOf(
             R.string.premium_all_live_alerts,
             R.string.premium_all_title_alerts,
+            R.string.premium_all_gift_alerts,
             R.string.premium_all_alerts_per_channel,
             R.string.premium_all_home_widget,
         ),

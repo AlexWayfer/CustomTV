@@ -91,6 +91,7 @@ internal fun TwitchPlayer(
     controlsUp: Boolean,
     /** The player rests at its full size, with nothing of the screen's over its middle. */
     centerFree: Boolean,
+    fullscreenQuality: Boolean,
     modifier: Modifier = Modifier,
     gestures: PlayerGestures = PlayerGestures(),
     inPictureInPicture: Boolean = false,
@@ -99,7 +100,6 @@ internal fun TwitchPlayer(
      * without a tap that would play a paused stream.
      */
     shrunk: Boolean = false,
-    fullscreen: Boolean = false,
     /** Room between a recording's time labels and its seek bar, where the screen draws over the page. */
     seekbarGap: Dp = 0.dp,
 ) {
@@ -110,7 +110,7 @@ internal fun TwitchPlayer(
     var tapSeekSeries by remember(target.key) { mutableStateOf<TapSeekSeries?>(null) }
     var zoom by remember { mutableStateOf(PlayerZoomTransform()) }
     val showWebView = rememberPlayerWebViewStarts()
-    PlayerHostEffects(host, inPictureInPicture, shrunk, fullscreen, seekbarGap, serviceOwner)
+    PlayerHostEffects(host, inPictureInPicture, shrunk, fullscreenQuality, seekbarGap, serviceOwner)
     Box(modifier.playerPipSource().background(ComposeColor.Black)) {
         if (showWebView) {
             AndroidView(
@@ -217,7 +217,7 @@ private fun PlayerHostEffects(
     host: TwitchWebViewHost?,
     inPictureInPicture: Boolean,
     shrunk: Boolean,
-    fullscreen: Boolean,
+    fullscreenQuality: Boolean,
     seekbarGap: Dp,
     serviceOwner: Any,
 ) {
@@ -262,8 +262,8 @@ private fun PlayerHostEffects(
         host?.setPlacement(inPictureInPicture, shrunk)
         onDispose { }
     }
-    DisposableEffect(host, fullscreen) {
-        host?.quality?.setFullscreen(fullscreen)
+    DisposableEffect(host, fullscreenQuality) {
+        host?.quality?.setFullscreen(fullscreenQuality)
         onDispose { }
     }
 }
@@ -665,7 +665,12 @@ private class TwitchWebViewHost(context: Context) : FrameLayout(context) {
         val js = if (playing) scripts.play(PlayerPlaySource.Command) else scripts.pause
         webView.evaluateJavascript(js) { onRun() }
         mainHandler.postDelayed({
-            if (!released && (!playing || StreamPlayback.canAutomaticallyPlay)) {
+            val repeatStillWanted = if (playing) {
+                StreamPlayback.canAutomaticallyPlay
+            } else {
+                StreamPlayback.isExplicitlyPaused
+            }
+            if (!released && repeatStillWanted) {
                 val repeat = if (playing) scripts.play(PlayerPlaySource.Repeat) else scripts.pause
                 webView.evaluateJavascript(repeat, null)
             }

@@ -157,7 +157,9 @@ internal class StreamHiding(
 @Composable
 internal fun rememberStreamHiding(channel: String, overScreen: Boolean): StreamHiding {
     val scope = rememberCoroutineScope()
-    val hiding = remember(channel) { StreamHiding(scope, StreamPlayback::pause, StreamPlayback::play) }
+    val hiding = remember(channel) {
+        StreamHiding(scope, pause = { StreamPlayback.pause(holdUntilPlay = true) }, play = StreamPlayback::play)
+    }
     SideEffect { hiding.overScreen = overScreen }
     LaunchedEffect(hiding) {
         StreamPlayback.playback.collect { playback -> hiding.playbackChanged(playback) }

@@ -65,8 +65,6 @@ internal fun WatchScreen(
         data.badgeUrls.value,
     )
     val moderates = ownBadgesModerate(ownBadges?.badges)
-    LiveMentionFeedback(chatViewModel, channel, account, settings, moderates)
-    LiveChatHiding(chatViewModel, account, settings, moderates)
     val mode =rememberWatchChatMode(channel, profile, chatViewModel, account, ownBadges?.badges)
     val chat = remember(channel) { WatchChatState() }
     val streamHiding = rememberStreamHiding(
@@ -89,7 +87,7 @@ internal fun WatchScreen(
         chrome = remember(streamHiding) { PlayerChromeVisibility(outOfSight = { streamHiding.hidden }) },
         playerState = rememberMinimizablePlayerState(placement.minimized),
         streamHiding = streamHiding,
-        highlightPins = rememberTemporaryHighlightPins(channel),
+        highlightPins = rememberLiveTemporaryHighlightPins(channel, account),
         ownFollow = rememberOwnChannelFollow(account),
         ownBadges = ownBadges,
         collaboration = rememberCollaboration(profile.id.takeIf { profile.sharedViewerCount != null }, channel),
@@ -97,6 +95,8 @@ internal fun WatchScreen(
         chatSettingsViewModel = chatSettingsViewModel,
         settingsViewModel = settingsViewModel,
     )
+    LiveMentionFeedback(scene, moderates)
+    LiveChatHiding(chatViewModel, account, settings, moderates)
     WatchDropsSession(scene) {
         WatchChannelEffects(scene)
         ReplySessionEffects(chat, data.messages)

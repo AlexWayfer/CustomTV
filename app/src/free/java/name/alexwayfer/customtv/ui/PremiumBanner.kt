@@ -163,7 +163,7 @@ private fun PremiumBannerDialog(onDismiss: () -> Unit) {
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                             .heightIn(min = maxHeight)
-                            .padding(top = 58.dp, bottom = 24.dp),
+                            .padding(top = 32.dp, bottom = 24.dp),
                         verticalArrangement = Arrangement.SpaceBetween,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {

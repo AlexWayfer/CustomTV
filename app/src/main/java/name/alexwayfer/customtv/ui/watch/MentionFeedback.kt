@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import name.alexwayfer.customtv.chat.ChatMentionSelf
 import name.alexwayfer.customtv.chat.ChatMessage
 import name.alexwayfer.customtv.chat.channelHiddenPhrases
 import name.alexwayfer.customtv.chat.mentionBaselineResets
@@ -40,15 +41,20 @@ internal fun MentionFeedback(
     selfDisplayName: String?,
     settings: AppSettings,
     moderates: Boolean,
+    highlightPins: TemporaryHighlightPins,
 ) {
     val timeline = remember(messages) { messages.map { it to 0 } }
-    MentionAlerts(timeline, channel, selfLogin, selfDisplayName, settings, moderates)
+    MentionAlerts(
+        timeline, channel, selfLogin, selfDisplayName, settings, moderates,
+        readManuallyDismissedIds = highlightPins.readManuallyDismissedIds,
+    )
 }
 
 /**
  * The alerts behind both the live chat and a replay: [timeline] carries the chat and its jump generation, and
  * [settings] the mention vibration, sound, and keyword phrases. A message the chat hides does not alert; [moderates]
- * tells whether the user moderates the channel, where the hidden phrases may not apply.
+ * tells whether the user moderates the channel, where the hidden phrases may not apply. Live chat also skips pins
+ * the viewer dismissed, after [readManuallyDismissedIds] has restored them.
  */
 @Composable
 internal fun MentionAlerts(
@@ -57,7 +63,8 @@ internal fun MentionAlerts(
     selfLogin: String?,
     selfDisplayName: String?,
     settings: AppSettings,
-    moderates: Boolean = false,
+    moderates: Boolean,
+    readManuallyDismissedIds: (suspend () -> Set<String>)? = null,
 ) {
     val context = LocalContext.current
     val alertAudible = rememberMentionAlertAudible()
@@ -65,27 +72,31 @@ internal fun MentionAlerts(
     val loginState = rememberUpdatedState(selfLogin.orEmpty())
     val nameState = rememberUpdatedState(selfDisplayName.orEmpty())
     val moderatesState = rememberUpdatedState(moderates)
-    LaunchedEffect(channel, timeline) {
+    LaunchedEffect(channel, timeline, readManuallyDismissedIds) {
         var baselineGeneration: Int? = null
         var seen = emptySet<String>()
         var soundJob: Job? = null
         timeline.collect { (current, generation) ->
+            val previouslySeen = seen
+            seen = current.map { it.id }.toSet()
             if (mentionBaselineResets(baselineGeneration, generation)) {
                 baselineGeneration = generation
-                seen = current.map { it.id }.toSet()
                 return@collect
             }
+            val alerts = settingsState.value
+            if (!alerts.mentionVibration && !alerts.mentionSound) return@collect
             val login = loginState.value
             val name = nameState.value
-            val alerts = settingsState.value
             val hidden = channelHiddenPhrases(
                 alerts.hiddenPhrases,
                 alerts.hidePhrasesWhenModerator,
                 moderatesState.value,
             )
             val shown = withoutHiddenMessages(current, hidden, login)
-            val mentioned = newMentionArrived(seen, shown, login, name, alerts.keywordPhrases)
-            seen = current.map { it.id }.toSet()
+            val mentioned = newMentionArrived(
+                previouslySeen, shown, ChatMentionSelf(login, name, alerts.keywordPhrases),
+                manuallyDismissedIds = readManuallyDismissedIds?.invoke().orEmpty(),
+            )
             if (!mentioned) return@collect
             if (!alertAudible()) return@collect
             if (alerts.mentionVibration) {

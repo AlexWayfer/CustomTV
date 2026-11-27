@@ -259,6 +259,7 @@ private fun watchCompose(scene: WatchScene): ChatCompose {
         },
         onOpenChatterCard = scene::openChatterCard,
         onOpenPrediction = rememberPredictionCommand(scene.profile.id),
+        imageRetention = settings.chatImageRetention,
     )
 }
 

@@ -7,16 +7,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeywordMentionArrivalTest {
-    private val phrases = listOf(KeywordPhrase("raid", wholeWord = true))
+    private val self = ChatMentionSelf("alex", "Alex", listOf(KeywordPhrase("raid", wholeWord = true)))
 
     @Test
     fun aKeywordAsksForNoFeedbackInTheFreeBuild() {
-        assertFalse(newMentionArrived(setOf("old"), listOf(newChat("raid")), "alex", "Alex", phrases))
+        assertFalse(newMentionArrived(setOf("old"), listOf(newChat("raid")), self))
     }
 
     @Test
     fun aMentionStillAsksForFeedbackWithSavedKeywords() {
-        assertTrue(newMentionArrived(setOf("old"), listOf(newChat("hey alex")), "alex", "Alex", phrases))
+        assertTrue(newMentionArrived(setOf("old"), listOf(newChat("hey alex")), self))
     }
 
     /** A message that is not among the seen ones. */

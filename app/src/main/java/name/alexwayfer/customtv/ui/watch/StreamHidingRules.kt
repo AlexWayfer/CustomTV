@@ -21,9 +21,9 @@ internal fun streamHiddenAfterDrag(startHidden: Boolean, progress: Float, veloci
         progress > MINIMIZE_DRAG_PROGRESS || velocityY < -MINIMIZE_FLING_VELOCITY
     }
 
-/** Chat-only lasts while the stream stays paused. */
+/** Chat-only lasts until playback starts again. */
 internal fun streamStaysHidden(hidden: Boolean, playback: PlayerPlayback): Boolean =
-    hidden && playback == PlayerPlayback.Paused
+    hidden && (playback == PlayerPlayback.Paused || playback == PlayerPlayback.Offline)
 
 /** The height left of [heightPx] with [hiddenFraction] of it closed, never below zero. */
 internal fun streamRoomHeightPx(heightPx: Int, hiddenFraction: Float): Int =

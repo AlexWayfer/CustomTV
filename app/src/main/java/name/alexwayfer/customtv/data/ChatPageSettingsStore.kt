@@ -77,4 +77,8 @@ class ChatPageSettingsStore(context: Context) {
             prefs[LINK_PREVIEW_MODE] = mode.name
         }
     }
+
+    suspend fun setChatImageRetention(retention: ChatImageRetention) {
+        dataStore.edit { prefs -> prefs[CHAT_IMAGE_RETENTION] = retention.name }
+    }
 }

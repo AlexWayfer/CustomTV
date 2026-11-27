@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import name.alexwayfer.customtv.data.AppSettingsStore
 import name.alexwayfer.customtv.data.ChannelAvatarRepository
 import name.alexwayfer.customtv.data.ChannelCustomRewards
+import name.alexwayfer.customtv.data.ChannelEventsRepository
 import name.alexwayfer.customtv.data.ChannelLookup
 import name.alexwayfer.customtv.data.SevenTvRepository
 import name.alexwayfer.customtv.diagnostics.LiveChatMemory
@@ -79,7 +80,9 @@ class ChatViewModel(
     private val shoutouts =
         ChannelShoutouts(viewModelScope, pubSub, { currentChannelId }, _messages, trim) { _sessionChatters.value }
     internal val shoutout: StateFlow<ChannelShoutout?> = shoutouts.latest
-    private val liveEvents = ChannelEventsController(viewModelScope)
+    private val liveEvents = ChannelEventsController(viewModelScope, fetch = { channelId ->
+        ChannelEventsRepository.fetch(channelId, timeouts.state.value.userId)
+    })
     internal val channelEvents: StateFlow<ChannelEvents> = liveEvents.events
 
     private val recentChat = RecentChatLoad(

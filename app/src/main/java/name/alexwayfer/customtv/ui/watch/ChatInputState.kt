@@ -36,6 +36,7 @@ import name.alexwayfer.customtv.data.ChatSendError
 /** What the bar keeps for the open channel: the picker, the rules sheet, and the message being sent. */
 @Stable
 internal class ChatComposerState {
+    val imageUpload = ChatImageUpload()
     var pickerOpen by mutableStateOf(false)
 
     /** The keyboard rises in the picker's place, which keeps its room until the keyboard has it. */
@@ -194,4 +195,6 @@ internal data class ChatInput(
 ) {
     val timedOut: Boolean get() = timeoutAccess != ChatTimeoutAccess.Editable
     val canEdit: Boolean get() = user.canSend && !timedOut
+    val canAttachImage: Boolean
+        get() = canEdit && !warned && !rulesNeedConfirmation && compose.shareOffer?.composing != true
 }

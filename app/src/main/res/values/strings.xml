@@ -332,6 +332,10 @@
     <string name="chat_notice_show_poll">Show poll</string>
     <string name="chat_notice_show_hype_train">Show hype train</string>
     <string name="chat_hype_train">Hype Train</string>
+    <string name="chat_heist_train">Heist Train</string>
+    <string name="chat_shared_heist_train">Shared Heist Train</string>
+    <string name="chat_heist_train_approaching">%1$s is approaching</string>
+    <string name="chat_heist_train_ended">%1$s ended</string>
     <string name="chat_hype_train_approaching">Hype Train approaching</string>
     <string name="chat_hype_train_ended">Hype Train ended</string>
     <string name="chat_hype_train_level">Lvl %1$d</string>
@@ -695,6 +699,7 @@
     <string name="diagnostics_channel">Problem reports</string>
     <string name="diagnostics_text">Send a report to the developer so it can be fixed.</string>
     <string name="diagnostics_send">Send report</string>
+    <string name="diagnostics_send_to_developer">Send report to developer</string>
     <string name="diagnostics_subject">CustomTV problem report</string>
     <string name="diagnostics_send_title">Sending a report</string>
     <string name="diagnostics_privacy_advice">It\'s better to email the report or send it to the developer directly rather than post it in public chats.</string>

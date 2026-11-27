@@ -29,6 +29,7 @@ internal data class ChannelHypeTrain(
     val conductors: List<HypeTrainConductor>,
     val rewards: List<HypeTrainEmote>,
     val eventsToStart: Int = 0,
+    val theme: HypeTrainTheme? = null,
 )
 
 /** The share of the current level already filled, from 0 to 100. */
@@ -49,6 +50,8 @@ internal sealed interface HypeTrainEvent {
 
     /** The whole train, as a start, a level-up, or a load from GQL sends it. */
     data class Execution(val train: ChannelHypeTrain) : HypeTrainEvent
+
+    data class SharedConversion(val train: ChannelHypeTrain) : HypeTrainEvent
 
     /** A contribution moved the train along; it carries no color or conductors. */
     data class Progress(
@@ -88,6 +91,12 @@ internal fun applyHypeTrainEvent(current: ChannelHypeTrain?, event: HypeTrainEve
         )
     }
     is HypeTrainEvent.Execution -> event.train
+    is HypeTrainEvent.SharedConversion -> if (current?.id == event.train.id) {
+        // Conversion frames can arrive after newer progress for this id.
+        current.copy(theme = current.theme?.shared())
+    } else {
+        event.train
+    }
     is HypeTrainEvent.Progress -> {
         val base = current?.takeIf { it.id == event.id }
         (base ?: ChannelHypeTrain(event.id, HypeTrainPhase.Active, 0, 0, 0, 0L, null, emptyList(), emptyList())).copy(
@@ -117,6 +126,8 @@ internal object HypeTrainParser {
             "hype-train-start" -> execution(data, nowMillis)?.let(HypeTrainEvent::Execution)
             "hype-train-level-up" -> execution(data.optJSONObject("hype_train"), nowMillis)
                 ?.let(HypeTrainEvent::Execution)
+            "hype-train-shared-conversion", "hype-train-shared-merge-trains" ->
+                execution(data.optJSONObject("hypeTrain"), nowMillis)?.let(HypeTrainEvent::SharedConversion)
             "hype-train-progression" -> progress(data, nowMillis)
             "hype-train-conductor-update" -> conductor(data)
             "hype-train-end" -> data.trimmedText("id")?.let(HypeTrainEvent::End)

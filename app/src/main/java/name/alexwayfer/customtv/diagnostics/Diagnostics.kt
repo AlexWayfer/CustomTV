@@ -135,8 +135,8 @@ internal object Diagnostics {
         )
     }
 
-    private fun recordAndNotice(event: DiagnosticEvent) {
-        if (DiagnosticJournal.record(application, event)) notice(event)
+    internal fun recordAndNotice(event: DiagnosticEvent) {
+        if (::application.isInitialized && DiagnosticJournal.record(application, event)) notice(event)
     }
 
     /**
@@ -202,10 +202,11 @@ internal object Diagnostics {
         Log.w(DIAGNOSTICS_TAG, "problem notice ${event.kind}")
         application.getSharedPreferences(DIAGNOSTICS_PREFS, Context.MODE_PRIVATE)
             .edit { putLong(NOTICED_AT, System.currentTimeMillis()) }
+        val pending = DiagnosticJournal.eventsToSend(application).ifEmpty { listOf(event) }
         showDiagnosticNotification(
             application,
-            DiagnosticJournal.eventsToSend(application).map(::diagnosticHeadline)
-                .ifEmpty { listOf(diagnosticHeadline(event)) },
+            pending.map(::diagnosticHeadline),
+            hasParseError = pending.any { it.kind == DiagnosticKind.ParseError },
         )
         AppUpdates.afterProblem()
     }

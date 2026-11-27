@@ -91,6 +91,11 @@ class StreamHidingTest {
     }
 
     @Test
+    fun `a hidden stream stays hidden if the channel goes offline`() {
+        assertTrue(streamStaysHidden(hidden = true, playback = PlayerPlayback.Offline))
+    }
+
+    @Test
     fun `a hidden stream shows once it plays`() {
         assertFalse(streamStaysHidden(hidden = true, playback = PlayerPlayback.Playing))
     }

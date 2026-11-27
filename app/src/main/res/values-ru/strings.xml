@@ -372,6 +372,10 @@
     <string name="chat_notice_show_poll">Показать опрос</string>
     <string name="chat_notice_show_hype_train">Показать хайп-трейн</string>
     <string name="chat_hype_train">Хайп-трейн</string>
+    <string name="chat_heist_train">Хайповоз «Ограбление»</string>
+    <string name="chat_shared_heist_train">Мегахайповоз «Ограбление»</string>
+    <string name="chat_heist_train_approaching">%1$s приближается</string>
+    <string name="chat_heist_train_ended">%1$s окончен</string>
     <string name="chat_hype_train_approaching">Хайп-трейн на подходе</string>
     <string name="chat_hype_train_ended">Хайп-трейн окончен</string>
     <string name="chat_hype_train_level">Ур. %1$d</string>
@@ -753,6 +757,7 @@
     <string name="diagnostics_channel">Отчёты о проблемах</string>
     <string name="diagnostics_text">Отправьте отчёт разработчику, чтобы это исправили.</string>
     <string name="diagnostics_send">Отправить отчёт</string>
+    <string name="diagnostics_send_to_developer">Отправить отчёт разработчику</string>
     <string name="diagnostics_subject">Отчёт о проблеме CustomTV</string>
     <string name="diagnostics_send_title">Отправка отчёта</string>
     <string name="diagnostics_privacy_advice">Лучше отправлять отчёт по почте или напрямую разработчику, а не в общие чаты.</string>

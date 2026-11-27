@@ -59,6 +59,7 @@ internal fun ChatSettings(settings: AppSettings, viewModel: SettingsViewModel) {
         checked = settings.sentMessageHistory,
         onCheckedChange = { viewModel.chat.setSendOption(ChatSendOption.SentMessageHistory, it) },
     )
+    ChatImageRetentionSettings(settings, viewModel)
     HiddenMessageSettings(settings, viewModel)
 }
 

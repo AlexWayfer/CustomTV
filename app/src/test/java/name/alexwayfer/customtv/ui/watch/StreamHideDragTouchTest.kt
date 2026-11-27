@@ -227,6 +227,53 @@ class StreamHideDragTouchTest {
     }
 
     @Test
+    @Config(qualifiers = "w800dp-h400dp-land")
+    fun `in landscape dragging the fullscreen info up keeps the fullscreen quality`() {
+        lateinit var fullscreen: PlayerFullscreen
+        compose.setContent {
+            val scope = rememberCoroutineScope()
+            hiding = remember { StreamHiding(scope, pause = { events += "pause" }, play = { events += "play" }) }
+            SideEffect { hiding.overScreen = true }
+            fullscreen = rememberPlayerFullscreen(false, false, hiding.partlyHidden)
+            val drag = rememberStreamHideDrag(
+                travelPx = with(LocalDensity.current) { TRAVEL_DP.dp.toPx() },
+                onSwitched = { events += "switched" },
+            )
+            Box(Modifier.size(360.dp, TRAVEL_DP.dp)) {
+                if (fullscreen.active || hiding.keepsFullscreenInfo) {
+                    Box(
+                        Modifier.fullscreenInfoBar(
+                            span = { fullscreenInfoBarSpan(null, it) },
+                            shown = { 1f },
+                            hidden = { hiding.fraction },
+                            onHeight = {},
+                        ),
+                    ) {
+                        Box(Modifier.fillMaxWidth().height(60.dp).testTag(INFO).streamHideDrag(hiding, drag))
+                    }
+                }
+            }
+        }
+
+        compose.runOnIdle {
+            assertTrue(fullscreen.active)
+            assertTrue(fullscreen.fullscreenQuality)
+        }
+        drag(STEP_DP, FAR_STEPS, lift = false)
+        compose.runOnIdle {
+            assertFalse(fullscreen.active)
+            assertTrue(fullscreen.fullscreenQuality)
+            assertTrue(events.isEmpty())
+        }
+
+        compose.onNodeWithTag(INFO).performTouchInput { up() }
+        compose.waitForIdle()
+        assertEquals(listOf("pause", "switched"), events)
+        assertTrue(hiding.hidden)
+        assertTrue(fullscreen.fullscreenQuality)
+    }
+
+    @Test
     fun `in landscape the menu's switch slides the stream out`() {
         showInfo(overScreen = true)
 

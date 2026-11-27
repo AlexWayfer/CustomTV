@@ -1,5 +1,17 @@
 # CustomTV (free version)
 
+## v1.19.0 (2026-11-27)
+
+*   Automatically update Hype Train names and colors for limited-time Twitch events, including Heist Trains
+*   Fix streams getting stuck when switching networks
+*   Keep chat-only mode active after swiping the video away in landscape
+
+### Russian
+
+*   Автоматически обновлять названия и цвета хайп-трейнов для временных событий Twitch, включая поезда ограбления
+*   Исправить зависание трансляций при переключении между сетями
+*   Сохранять режим «Только чат» после скрытия видео свайпом в горизонтальной ориентации
+
 ## v1.18.0 (2026-11-21)
 
 *   Turn off the screen during playback when the proximity sensor stays covered

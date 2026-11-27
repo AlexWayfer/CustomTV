@@ -13,7 +13,7 @@ internal const val DIAGNOSTIC_JOURNAL_LIMIT = 20
 internal const val RATE_LIMIT_NOTICE_HITS = 3
 internal val RATE_LIMIT_WINDOW: Duration = 1.hours
 
-internal enum class DiagnosticKind { Rejected, RateLimited, GqlError, Crash, Anr }
+internal enum class DiagnosticKind { Rejected, RateLimited, GqlError, ParseError, Crash, Anr }
 
 /**
  * One problem the developer should hear about. [source] is the log tag, [detail] the endpoint or

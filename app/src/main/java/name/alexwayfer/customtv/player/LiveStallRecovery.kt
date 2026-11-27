@@ -22,11 +22,17 @@ internal class LiveStallRecovery(
     }
 
     fun tick(tick: LiveTick) {
+        // A network stall can leave the stream's own track active. Android's playback list cannot identify its owner.
+        val canRecover = if (watchdog.networkRecoveryPending) {
+            StreamPlayback.canAutomaticallyPlayIgnoringUnattributedAudio
+        } else {
+            StreamPlayback.canAutomaticallyPlay
+        }
         val watch = LiveStallWatchdog.watch(
             live = isLive(),
             playbackConfirmed = isPlaybackConfirmed(),
             // An assistant holding playback is not a stall, even if Twitch still reports Playing or Buffering.
-            userPaused = !StreamPlayback.canAutomaticallyPlay,
+            userPaused = !canRecover,
             tick = tick,
         )
         val action = watchdog.tick(SystemClock.elapsedRealtime(), watch, tick)

@@ -6,7 +6,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import name.alexwayfer.customtv.data.ChannelEventsRepository
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -34,7 +33,7 @@ internal fun hypeTrainHidesAfter(train: ChannelHypeTrain, nowMillis: Long): Dura
  */
 internal class ChannelEventsController(
     private val scope: CoroutineScope,
-    private val fetch: suspend (String) -> ChannelEvents? = ChannelEventsRepository::fetch,
+    private val fetch: suspend (String) -> ChannelEvents?,
     private val wait: suspend (Duration) -> Unit = { delay(it) },
     private val now: () -> Long = System::currentTimeMillis,
 ) {
@@ -51,6 +50,8 @@ internal class ChannelEventsController(
     private var predictionGeneration = 0
     private var hypeTrainGeneration = 0
     private var loadJob: Job? = null
+    private var themeJob: Job? = null
+    private var lastThemeAttempt: Pair<String, Int>? = null
     private val predictionHide = HideTimer()
     private val hypeTrainHide = HideTimer()
 
@@ -62,17 +63,23 @@ internal class ChannelEventsController(
         val hypeTrainStarted = hypeTrainGeneration
         loadJob?.cancel()
         loadJob = scope.launch {
-            val loaded = fetch(channelId) ?: return@launch
+            val loaded = fetch(channelId)
             if (this@ChannelEventsController.channelId != channelId) return@launch
-            if (pollGeneration == pollStarted) poll = loaded.poll
-            if (predictionGeneration == predictionStarted) prediction = loaded.prediction
-            if (hypeTrainGeneration == hypeTrainStarted) updateHypeTrain(loaded.hypeTrain)
+            if (loaded != null) {
+                if (pollGeneration == pollStarted) poll = loaded.poll
+                if (predictionGeneration == predictionStarted) prediction = loaded.prediction
+                if (hypeTrainGeneration == hypeTrainStarted) updateHypeTrain(loaded.hypeTrain)
+                else acceptTheme(loaded.hypeTrain)
+            }
+            if (hypeTrainGeneration != hypeTrainStarted && hypeTrain?.id != loaded?.hypeTrain?.id) loadMissingTheme()
             publish()
         }
     }
 
     fun clear() {
         loadJob?.cancel()
+        themeJob?.cancel()
+        lastThemeAttempt = null
         predictionHide.cancel()
         hypeTrainHide.cancel()
         channelId = null
@@ -114,11 +121,46 @@ internal class ChannelEventsController(
         val updated = applyHypeTrainEvent(hypeTrain, event)
         updated?.let { liveIds += it.id }
         updateHypeTrain(updated)
+        if (loadJob?.isActive != true) loadMissingTheme()
         publish()
     }
 
+    /** PubSub sends the train without the stream categories. One lookup covers all its contributions. */
+    private fun loadMissingTheme() {
+        val channel = channelId ?: return
+        val train = hypeTrain ?: return
+        if (train.theme != null || train.phase == HypeTrainPhase.Ended) return
+        val key = train.id to train.level
+        if (lastThemeAttempt == key || lastThemeAttempt?.first == train.id && themeJob?.isActive == true) return
+        themeJob?.cancel()
+        lastThemeAttempt = key
+        themeJob = scope.launch {
+            val snapshot = fetch(channel)?.hypeTrain
+            if (channelId == channel && snapshot?.id == train.id) {
+                acceptTheme(snapshot)
+                publish()
+            }
+        }
+    }
+
+    private fun acceptTheme(snapshot: ChannelHypeTrain?) {
+        val current = hypeTrain ?: return
+        if (snapshot?.id == current.id && snapshot.theme != null && current.theme == null) {
+            hypeTrain = current.copy(theme = snapshot.theme)
+        }
+    }
+
     private fun updateHypeTrain(train: ChannelHypeTrain?) {
-        hypeTrain = train
+        val previous = hypeTrain
+        if (previous?.id != train?.id) {
+            themeJob?.cancel()
+            lastThemeAttempt = null
+        }
+        hypeTrain = if (train != null && train.theme == null && previous?.id == train.id) {
+            train.copy(theme = previous.theme)
+        } else {
+            train
+        }
         val after = train?.let { hypeTrainHidesAfter(it, now()) }
         val key = when (train?.phase) {
             HypeTrainPhase.Approaching -> "approaching:${train.id}:${train.endsAtMillis}"
@@ -127,7 +169,7 @@ internal class ChannelEventsController(
         }
         hypeTrainHide.schedule(key, after) {
             if (hypeTrain?.id == train?.id && hypeTrain?.phase == train?.phase) {
-                hypeTrain = null
+                updateHypeTrain(null)
                 publish()
             }
         }

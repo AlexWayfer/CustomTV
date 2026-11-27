@@ -6,7 +6,7 @@
     <string name="premium_feature_past_broadcasts">Past broadcasts and clips</string>
     <string name="premium_feature_notifications">Customizable notifications</string>
     <string name="premium_feature_moderation">Moderation tools</string>
-    <string name="premium_feature_chat">Link previews in chat</string>
+    <string name="premium_feature_chat">Link previews and image sharing in chat</string>
     <string name="premium_feature_ai">AI chatter portraits and chat recaps</string>
     <string name="premium_feature_channel_points">Channel points and Drops</string>
     <plurals name="premium_all_features">
@@ -26,6 +26,7 @@
     <string name="premium_all_explore">“Explore” tab with recommended streams and categories</string>
     <string name="premium_all_hidden_categories">Hide categories in “Following”, “Explore” and notifications</string>
     <string name="premium_all_link_previews">Link previews</string>
+    <string name="premium_all_send_images">Send images in chat</string>
     <string name="premium_all_chat_identity">Change chat badges and name color</string>
     <string name="premium_all_word_alerts">Alerts for chosen words</string>
     <string name="premium_all_hidden_words">Hide messages by chosen words</string>
@@ -36,6 +37,7 @@
     <string name="premium_all_donations">Donations and MemeAlerts from the chat menu</string>
     <string name="premium_all_live_alerts">When a followed channel goes live</string>
     <string name="premium_all_title_alerts">When a live channel changes its title or category</string>
+    <string name="premium_all_gift_alerts">When you receive a gift subscription to a channel</string>
     <string name="premium_all_alerts_per_channel">Notification settings per channel</string>
     <string name="premium_all_home_widget">Home screen widget</string>
     <string name="premium_all_bans">Ban, timeout and unban from the chatter card</string>

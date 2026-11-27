@@ -6,8 +6,10 @@ import androidx.compose.runtime.remember
 
 /** Temporary pins are a Premium feature; the free build keeps nothing for them. */
 @Stable
-internal class TemporaryHighlightPins
+internal class TemporaryHighlightPins {
+    val readManuallyDismissedIds: (suspend () -> Set<String>)? = null
+}
 
 @Composable
-internal fun rememberTemporaryHighlightPins(chat: String): TemporaryHighlightPins =
-    remember { TemporaryHighlightPins() }
+internal fun rememberLiveTemporaryHighlightPins(chat: String, account: WatchAccount): TemporaryHighlightPins =
+    remember(chat, account.userId, account.signedIn) { TemporaryHighlightPins() }

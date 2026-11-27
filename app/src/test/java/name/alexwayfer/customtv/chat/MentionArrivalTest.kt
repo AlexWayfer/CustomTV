@@ -6,6 +6,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MentionArrivalTest {
+    private val self = ChatMentionSelf("alex", "Alex")
+
     @Test
     fun theFirstChatFrameIsTheBaselineNotAnArrival() {
         assertTrue(mentionBaselineResets(baselineGeneration = null, timelineGeneration = 0))
@@ -26,8 +28,27 @@ class MentionArrivalTest {
         val seen = mention("old")
         val fresh = mention("new")
 
-        assertFalse(newMentionArrived(setOf("old"), listOf(seen), "alex", "Alex"))
-        assertTrue(newMentionArrived(setOf("old"), listOf(seen, fresh), "alex", "Alex"))
+        assertFalse(newMentionArrived(setOf("old"), listOf(seen), self))
+        assertTrue(newMentionArrived(setOf("old"), listOf(seen, fresh), self))
+    }
+
+    @Test
+    fun reloadedMentionsWithManuallyDismissedPinsAreSilent() {
+        assertFalse(
+            newMentionArrived(
+                emptySet(), listOf(mention("closed")), self, manuallyDismissedIds = setOf("closed"),
+            ),
+        )
+    }
+
+    @Test
+    fun anUndismissedMentionInTheSameBatchStillAlerts() {
+        assertTrue(
+            newMentionArrived(
+                emptySet(), listOf(mention("closed"), mention("new")), self,
+                manuallyDismissedIds = setOf("closed"),
+            ),
+        )
     }
 
     @Test
